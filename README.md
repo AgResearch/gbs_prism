@@ -1,2 +1,2 @@
 # gbs_prism
-refactored GBS processing
+gbs processing, q/c and visualisation

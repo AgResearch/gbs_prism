@@ -1,0 +1,411 @@
+#!/bin/bash
+#
+# this prism supports demultiplex of a set of sequence files , all of which contain
+# multiplexed GBS sequencing data as specified by a sample information file.
+# 
+#
+
+declare -a files_array
+
+function get_opts() {
+
+   PWD0=$PWD
+   DRY_RUN=no
+   DEBUG=no
+   HPC_TYPE=slurm
+   FILES=""
+   OUT_DIR=""
+   ENZYME_INFO=""
+   KGD_VERSION=f7bc911f82fe444984f2603650d140d9a7d7f464  
+   
+
+   help_text=$(cat << 'EOF'
+usage : 
+./demultiplex_prism.sh  [-h] [-n] [-d] [-x gbsx|tassel3_qc|tassel3] [-l sample_info ]  [-e enzymeinfo] -O outdir input_file_name(s)
+example:
+./demultiplex_prism.sh -n -x gbsx -l  /dataset/hiseq/active/bin/gtseq_prism/source/LocusInfo_Casein_DGAT_new2.csv -O /dataset/miseq/scratch/postprocessing/gtseq/180403_M02412_0073_000000000-D3JC9/gbss /dataset/miseq/active/180403_M02412_0073_000000000-D3JC9/Data/Intensities/BaseCalls/BBG491876_S55_L001_R1_001.fastq
+
+Notes:
+
+* only use this script to process more than one fastq file, where all files relate to the sample info file 
+  (e.g. keyfile) you supply (i.e. all files relate to the same library)
+
+* for GBSX, enzyme_info is an optional filename, of a file containing cut-sites for non-default enzymes). For
+  tassel3 it is mandatory and is the name of the enzyme to use
+
+EOF
+)
+
+   help_text="
+\n
+.
+"
+   while getopts ":nhO:C:D:x:l:e:" opt; do
+   case $opt in
+       n)
+         DRY_RUN=yes
+         ;;
+       d)
+         DEBUG=yes
+         ;;
+       h)
+         echo -e $help_text
+         exit 0
+         ;;
+       O)
+         OUT_DIR=$OPTARG
+         ;;
+       C)
+         HPC_TYPE=$OPTARG
+         ;;
+       x)
+         ENGINE=$OPTARG         
+         ;;
+       e)
+         ENZYME_INFO=$OPTARG
+         ;;
+       l)
+         SAMPLE_INFO=$OPTARG    
+         ;;
+       \?)
+         echo "Invalid option: -$OPTARG" >&2
+         exit 1
+         ;;
+       :)
+         echo "Option -$OPTARG requires an argument." >&2
+         exit 1
+         ;;
+     esac
+   done
+
+   shift $((OPTIND-1))
+
+   FILE_STRING=$@
+
+   # this is needed because of the way we process args a "$@" - which 
+   # is needed in order to parse parameter sets to be passed to the 
+   # aligner (which are space-separated)
+   declare -a files="(${FILE_STRING})";
+   NUM_FILES=${#files[*]}
+   for ((i=0;$i<$NUM_FILES;i=$i+1)) do
+      files_array[$i]=${files[$i]}     
+   done
+}
+
+
+function check_opts() {
+   if [ -z "$SEQ_PRISMS_BIN" ]; then
+      echo "please set SEQ_PRISMS_BIN environment variable"
+      exit 1
+   fi
+
+   if [ ! -d $OUT_DIR ]; then
+      echo "OUT_DIR $OUT_DIR not found"
+      exit 1
+   fi
+
+   if [[ $HPC_TYPE != "local" && $HPC_TYPE != "slurm" ]]; then
+      echo "HPC_TYPE must be one of local, slurm"
+      exit 1
+   fi
+
+
+   if [ ! -f $SAMPLE_INFO ]; then
+      echo "could not find $SAMPLE_INFO"
+      exit 1
+   fi
+
+   if [[ ( $ENGINE != "gbsx" ) && ( $ENGINE != "tassel3_qc" ) && ( $ENGINE != "tassel3" ) ]] ; then
+      echo "demultiplexer engines supported : tassel3, gbsx , tassel3_qc (not $ENGINE ) "
+      exit 1
+   fi
+
+   if [ ! -z $ENZYME_INFO ]; then
+      if [ $ENGINE == "gbsx" ]; then
+         if [ ! -f $ENZYME_INFO ]; then 
+            echo "could not find $ENZYME_INFO"
+            exit 1
+         fi
+      fi
+   elif [ $ENGINE == "tassel3" ]; then
+      echo "must specify enzyme , for tassel3 (should match enzyme specified in keyfile)"
+      exit 1
+   fi
+
+}
+
+function echo_opts() {
+  echo OUT_DIR=$OUT_DIR
+  echo DRY_RUN=$DRY_RUN
+  echo DEBUG=$DEBUG
+  echo HPC_TYPE=$HPC_TYPE
+  echo FILES=${files_array[*]}
+  echo ENGINE=$ENGINE
+  echo SAMPLE_INFO=$SAMPLE_INFO
+  echo ENZYME_INFO=$ENZYME_INFO
+}
+
+
+#
+# edit this method to set required environment (or set up
+# before running this script)
+#
+function configure_env() {
+   # copy scripts we need to outfolder
+   cd $SEQ_PRISMS_BIN
+   cp ../demultiplex_prism.sh $OUT_DIR
+   cp ../seq_prisms/data_prism.py $OUT_DIR
+   cp ../gbs_prism.mk $OUT_DIR
+   cp ../run_kgd.sh $OUT_DIR ; chmod +x $OUT_DIR/run_kgd.sh
+   cp ../run_kgd.R $OUT_DIR
+   cp $SAMPLE_INFO $OUT_DIR
+   cp $ENZYME_INFO $OUT_DIR
+
+   # KGD lives here - and checkout a specific version ( a release name would be better)
+   cd $SEQ_PRISMS_BIN/..
+   if [ ! -d KGD ]; then 
+      git clone git@github.com:AgResearch/KGD.git
+   fi 
+   cd KGD 
+   git checkout $KGD_VERSION
+   
+
+   # set up the environment includes that we will need - these activate 
+   # environments 
+
+   echo "
+max_tasks=50
+" > $OUT_DIR/tardis.toml
+   echo "
+source activate tassel3
+" > $OUT_DIR/tassel3_env.src
+   echo "
+export CONDA_ENVS_PATH=\"/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
+source activate r_mro
+" > $OUT_DIR/R_env.src
+   cd $OUT_DIR
+}
+
+
+function check_env() {
+   if [ -z "$SEQ_PRISMS_BIN" ]; then
+      echo "SEQ_PRISMS_BIN not set - exiting"
+      exit 1
+   fi
+}
+
+function get_targets() {
+   # make a target moniker for each input file and write associated 
+   # ENGINE wrapper, which will be called by make 
+
+   rm -f $OUT_DIR/demultiplex_targets.txt
+
+   for ((j=0;$j<$NUM_FILES;j=$j+1)) do
+      file=${files_array[$j]}
+      file_base=`basename $file`
+      parameters_moniker=`basename $SAMPLE_INFO`
+      if [ ! -z $ENZYME_INFO ]; then
+         parameters_moniker="${parameters_moniker}.$ENZYME_INFO"
+      fi
+      
+
+      if [ $ENGINE == "gbsx" ]; then    
+         demultiplex_moniker=${file_base}.${parameters_moniker}.${ENGINE}
+         echo $OUT_DIR/${demultiplex_moniker}.demultiplex_prism >> $OUT_DIR/demultiplex_targets.txt
+         script=$OUT_DIR/${demultiplex_moniker}.sh
+      elif [[ ( $ENGINE == "tassel3" ) || ( $ENGINE == "tassel3_qc" ) ]]; then    
+         demultiplex_moniker=${parameters_moniker}.${ENGINE}
+         echo $OUT_DIR/${demultiplex_moniker}.demultiplex_prism > $OUT_DIR/demultiplex_targets.txt   # one line only 
+         script=$OUT_DIR/${demultiplex_moniker}.sh
+      fi
+
+      if [ -f script ]; then
+         if [ ! $FORCE == yes ]; then
+            echo "found existing demultiplex script $script  - will re-use (use -f to force rebuild of scripts) "
+            continue
+         fi
+      fi
+
+      base=`basename $file`
+
+      if [ $ENGINE == "tassel3" ]; then
+         # we only generate a single target , even if there are multiple files. The setup
+         # of the target involves configuring output sub-folders
+         # structure , so set this up 
+         if [ ! -d ${OUT_DIR}/key ] ; then 
+            mkdir -p ${OUT_DIR}/key
+            sample_info_base=`basename $SAMPLE_INFO`
+            cp -fs  $OUT_DIR/$sample_info_base ${OUT_DIR}/key
+         fi
+         if [ ! -d ${OUT_DIR}/Illumina ]; then
+            mkdir -p ${OUT_DIR}/Illumina
+            cp -s $file ${OUT_DIR}/Illumina
+         fi
+
+         echo "#!/bin/bash
+cd $OUT_DIR  
+if [ ! -d tagCounts ]; then 
+   mkdir tagCounts 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+fi
+        " > $script 
+         chmod +x $script
+      elif [ $ENGINE == "tassel3_qc" ]; then
+         # as above - but this one also runs downstream processsing as a convenience 
+         if [ ! -d ${OUT_DIR}/key ] ; then 
+            mkdir -p ${OUT_DIR}/key
+            sample_info_base=`basename $SAMPLE_INFO`
+            cp -fs  $OUT_DIR/$sample_info_base ${OUT_DIR}/key
+         fi
+         if [ ! -d ${OUT_DIR}/Illumina ]; then
+            mkdir -p ${OUT_DIR}/Illumina
+            cp -s $file ${OUT_DIR}/Illumina
+         fi
+
+         echo "#!/bin/bash
+cd $OUT_DIR  
+if [ ! -d tagCounts ]; then 
+   mkdir tagCounts 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+fi
+
+if [ ! -d mergedTagCounts ]; then 
+   mkdir mergedTagCounts
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMergeTaxaTagCountPlugin -w ./ -m 600000000 -x 100000000 -c 5 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stderr
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - quitting\"; exit 2
+fi
+
+if [ ! -d tagPair ]; then 
+   mkdir tagPair
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagCountToTagPairPlugin -w ./ -e 0.03 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stderr 
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from TagCountToTagPair process - quitting\"; exit 3
+fi
+
+if [ ! -d tagsByTaxa ]; then 
+   mkdir tagsByTaxa
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagPairToTBTPlugin -w ./ -endPlugin -runfork1  \> $OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stderr 
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from TagPairToTBT process - quitting\"; exit 4
+fi
+
+if [ ! -d mapInfo ] ; then 
+   mkdir mapInfo
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTBTToMapInfoPlugin -w ./ -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stderr 
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from TBTToMapInfo process - quitting\"; exit 5
+fi
+
+if [ ! -d hapMap ]; then
+   mkdir hapMap
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMapInfoToHapMapPlugin -w ./ -mnMAF 0.03 -mxMAF 0.5 -mnC 0.1 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stderr 
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
+fi
+
+
+if [ ! -d KGD ]; then
+   mkdir KGD
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD \> $OUT_DIR/${demultiplex_moniker}.KGD.stdout  2\>$OUT_DIR/${demultiplex_moniker}.KGD.stderr 
+fi
+if [ \$? != 0 ]; then
+   echo \"demultplex_prism.sh: error code returned from KGD process - quitting\"; exit 7
+fi
+        " > $script 
+         chmod +x $script
+      elif [ $ENGINE == "gbsx" ]; then 
+         sample_info_base=`basename $SAMPLE_INFO`
+         if [ -f "$ENZYME_INFO" ]; then
+            ENZYME_PHRASE="-ea $ENZYME_INFO"
+         fi
+         cat << THERE > $script
+#!/bin/bash
+#
+# note , currently using -k option for debugging - remove this 
+#
+set -x
+base=`basename $file`
+mkdir ${OUT_DIR}/${base}.demultiplexed
+cd ${OUT_DIR}
+# this will demultiplex in parallel into numbered subfolders of the tardis working folder
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 _condition_fastq_input_$file -i $OUT_DIR/$sample_info_base  -o _condition_output_$OUT_DIR/${base}.demultiplexed -lf TRUE -gzip FALSE \> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stdout 2\> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stderr
+# for each distinct sample , combine all the slices 
+# get the distinct samples
+for outfile in tardis_*/\${base}.*.demultiplexed/*.fastq; do
+   sample=\`basename \$outfile\`
+   echo \$sample >> $OUT_DIR/\${base}.demultiplexed/sample_list
+done
+
+# combine all slices 
+for sample in \`cat $OUT_DIR/\${base}.demultiplexed/sample_list\`; do
+   cat tardis_*/\${base}.*.demultiplexed/\${sample}  > $OUT_DIR/\${base}.demultiplexed/\${sample}
+done
+THERE
+         chmod +x $script
+      fi
+   done 
+
+}
+
+function fake_prism() {
+   echo "dry run ! 
+
+   "
+   exit 0
+}
+
+function run_prism() {
+   # do genotyping
+   make -f gbs_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/demultiplex_targets.txt` > $OUT_DIR/demultiplex_prism.log 2>&1
+
+   # run summaries
+}
+
+function html_prism() {
+   echo "tba" > $OUT_DIR/demultiplex_prism.html 2>&1
+}
+
+function clean() {
+   echo "skipping clean for now"
+   #rm -rf $OUT_DIR/tardis_*
+   #rm $OUT_DIR/*.fastq
+}
+
+
+function main() {
+   get_opts "$@"
+   check_opts
+   echo_opts
+   check_env
+   configure_env
+   get_targets
+   if [ $DRY_RUN != "no" ]; then
+      fake_prism
+   else
+      run_prism
+      if [ $? == 0 ] ; then
+         html_prism
+         clean
+      else
+         echo "error state from sample run - skipping html page generation and clean-up"
+         exit 1
+      fi
+   fi
+}
+
+
+set -x
+main "$@"
+set +x
