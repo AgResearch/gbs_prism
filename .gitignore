@@ -1,0 +1,6 @@
+seq_prisms/
+*.dat
+*.log
+KGD/
+bin/
+test/

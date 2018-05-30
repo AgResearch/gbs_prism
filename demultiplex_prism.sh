@@ -9,7 +9,6 @@ declare -a files_array
 
 function get_opts() {
 
-   PWD0=$PWD
    DRY_RUN=no
    DEBUG=no
    HPC_TYPE=slurm
@@ -17,13 +16,13 @@ function get_opts() {
    OUT_DIR=""
    ENZYME_INFO=""
    KGD_VERSION=f7bc911f82fe444984f2603650d140d9a7d7f464  
+   FORCE=no
    
 
    help_text=$(cat << 'EOF'
 usage : 
 ./demultiplex_prism.sh  [-h] [-n] [-d] [-x gbsx|tassel3_qc|tassel3] [-l sample_info ]  [-e enzymeinfo] -O outdir input_file_name(s)
 example:
-./demultiplex_prism.sh -n -x gbsx -l  /dataset/hiseq/active/bin/gtseq_prism/source/LocusInfo_Casein_DGAT_new2.csv -O /dataset/miseq/scratch/postprocessing/gtseq/180403_M02412_0073_000000000-D3JC9/gbss /dataset/miseq/active/180403_M02412_0073_000000000-D3JC9/Data/Intensities/BaseCalls/BBG491876_S55_L001_R1_001.fastq
 
 Notes:
 
@@ -35,18 +34,16 @@ Notes:
 
 EOF
 )
-
-   help_text="
-\n
-.
-"
-   while getopts ":nhO:C:D:x:l:e:" opt; do
+   while getopts ":nhfO:C:x:l:e:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
          ;;
        d)
          DEBUG=yes
+         ;;
+       f)
+         FORCE=yes
          ;;
        h)
          echo -e $help_text
@@ -156,20 +153,10 @@ function configure_env() {
    cp ../demultiplex_prism.sh $OUT_DIR
    cp ../seq_prisms/data_prism.py $OUT_DIR
    cp ../gbs_prism.mk $OUT_DIR
-   cp ../run_kgd.sh $OUT_DIR ; chmod +x $OUT_DIR/run_kgd.sh
-   cp ../run_kgd.R $OUT_DIR
    cp $SAMPLE_INFO $OUT_DIR
    cp $ENZYME_INFO $OUT_DIR
 
-   # KGD lives here - and checkout a specific version ( a release name would be better)
-   cd $SEQ_PRISMS_BIN/..
-   if [ ! -d KGD ]; then 
-      git clone git@github.com:AgResearch/KGD.git
-   fi 
-   cd KGD 
-   git checkout $KGD_VERSION
-   
-
+  
    # set up the environment includes that we will need - these activate 
    # environments 
 
@@ -179,10 +166,6 @@ max_tasks=50
    echo "
 source activate tassel3
 " > $OUT_DIR/tassel3_env.src
-   echo "
-export CONDA_ENVS_PATH=\"/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
-source activate r_mro
-" > $OUT_DIR/R_env.src
    cd $OUT_DIR
 }
 
@@ -313,15 +296,6 @@ if [ ! -d hapMap ]; then
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
-fi
-
-
-if [ ! -d KGD ]; then
-   mkdir KGD
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD \> $OUT_DIR/${demultiplex_moniker}.KGD.stdout  2\>$OUT_DIR/${demultiplex_moniker}.KGD.stderr 
-fi
-if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from KGD process - quitting\"; exit 7
 fi
         " > $script 
          chmod +x $script
