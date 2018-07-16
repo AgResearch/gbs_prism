@@ -164,7 +164,7 @@ function configure_env() {
 max_tasks=50
 " > $OUT_DIR/tardis.toml
    echo "
-source activate tassel3
+conda activate tassel3
 " > $OUT_DIR/tassel3_env.src
    cd $OUT_DIR
 }

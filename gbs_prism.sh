@@ -120,7 +120,7 @@ max_tasks=50
 " > $OUT_DIR/tardis.toml
    echo "
 export CONDA_ENVS_PATH=\"/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
-source activate r_mro
+conda activate r_mro
 " > $OUT_DIR/R_env.src
    cd $OUT_DIR
 
