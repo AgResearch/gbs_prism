@@ -122,6 +122,7 @@ function echo_opts() {
 function configure_env() {
    cd $GBS_PRISM_BIN
    cp ag_gbs_qc_prism.sh $OUT_ROOT
+   cp ag_gbs_qc_prism.mk $OUT_ROOT
    cp demultiplex_prism.sh $OUT_ROOT
    cp genotype_prism.sh $OUT_ROOT
    cp get_cohort_fastq_filenames.psql $OUT_ROOT
@@ -156,7 +157,7 @@ function get_targets() {
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       cohort=${cohorts_array[$j]}
       cohort_moniker=${RUN}.$cohort
-      echo $OUT_ROOT/$cohort_moniker.ag_gbs_qc_prism >> $OUT_ROOT/ag_gbs_qc_targets.txt
+      echo $OUT_ROOT/$cohort_moniker.ag_gbs_qc_prism >> $OUT_ROOT/ag_gbs_qc_prism_targets.txt
       script=$OUT_ROOT/${cohort_moniker}.sh
       if [ -f $script ]; then
          if [ ! $FORCE == yes ]; then
@@ -176,16 +177,13 @@ function get_targets() {
 
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc > $OUT_ROOT/${cohort_moniker}.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
-
-      # get the name of the fastq files
-      #fastq_filenames=""
-      
-      
+      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
 
       echo "#!/bin/bash
 cd $OUT_ROOT
-#./demultiplex_prism.sh  [-h] [-n] [-d] [-x gbsx|tassel3_qc|tassel3] [-l sample_info ]  [-e enzymeinfo] -O outdir input_file_name(s)
+mkdir -p $cohort
 # run demultiplexing
+./demultiplex_prism.sh -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\`
 # run genotyping
      " > $script
       chmod +x $script
@@ -203,7 +201,7 @@ function fake_prism() {
 function run_prism() {
    # do genotyping
    cd $OUT_ROOT
-   make -f ag_gbs_qc_prism.sh -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/ag_gbs_qc_prism_targets.txt` > $OUT_ROOT/ag_gbs_qc_prism.log 2>&1
+   make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/ag_gbs_qc_prism_targets.txt` > $OUT_ROOT/ag_gbs_qc_prism.log 2>&1
 
    # run summaries
 }

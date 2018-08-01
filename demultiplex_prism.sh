@@ -149,10 +149,9 @@ function echo_opts() {
 #
 function configure_env() {
    # copy scripts we need to outfolder
-   cd $SEQ_PRISMS_BIN
-   cp ../demultiplex_prism.sh $OUT_DIR
-   cp ../seq_prisms/data_prism.py $OUT_DIR
-   cp ../gbs_prism.mk $OUT_DIR
+   cd $GBS_PRISM_BIN
+   cp demultiplex_prism.sh $OUT_DIR
+   cp demultiplex_prism.mk $OUT_DIR
    cp $SAMPLE_INFO $OUT_DIR
    cp $ENZYME_INFO $OUT_DIR
 
@@ -175,6 +174,11 @@ function check_env() {
       echo "SEQ_PRISMS_BIN not set - exiting"
       exit 1
    fi
+   if [ -z "$GBS_PRISM_BIN" ]; then
+      echo "GBS_PRISM_BIN not set - exiting"
+      exit 1
+   fi
+
 }
 
 function get_targets() {
@@ -342,7 +346,7 @@ function fake_prism() {
 
 function run_prism() {
    # do genotyping
-   make -f gbs_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/demultiplex_targets.txt` > $OUT_DIR/demultiplex_prism.log 2>&1
+   make -f demultiplex_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/demultiplex_targets.txt` > $OUT_DIR/demultiplex_prism.log 2>&1
 
    # run summaries
 }

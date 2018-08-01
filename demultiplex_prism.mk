@@ -7,7 +7,7 @@
 #
 
 
-%.genotype_prism:
+%.demultiplex_prism:
 	$*.sh
 	date > $@
 	
