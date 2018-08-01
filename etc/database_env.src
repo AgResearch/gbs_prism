@@ -1,0 +1,2 @@
+# this env provides the psycopg2 python package in case needed  
+conda activate /dataset/hiseq/active/bin/gbs_prism/bin/conda_envs/database_env

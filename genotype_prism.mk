@@ -1,4 +1,4 @@
-# gbs_prism main makefile
+# genotype_priosm main makefile
 #***************************************************************************************
 # references:
 #***************************************************************************************
@@ -7,7 +7,7 @@
 #
 
 
-%.gbs_prism:
+%.genotype_priosm:
 	$*.sh
 	date > $@
 
@@ -18,7 +18,7 @@
 ##############################################
 # specify the intermediate files to keep 
 ##############################################
-.PRECIOUS: %.log %.gbs_prism
+.PRECIOUS: %.log %.genotype_priosm
 
 ##############################################
 # cleaning - not yet doing this using make  

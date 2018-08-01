@@ -1,0 +1,405 @@
+#!/bin/sh
+
+export SEQ_PRISMS_BIN=/dataset/hiseq/active/bin/gbs_prism/seq_prisms
+export GBS_PRISM_BIN=/dataset/hiseq/active/bin/gbs_prism
+
+gbs_version=$1
+
+function get_run_opts() {
+
+   DRY_RUN=no
+   DEBUG=no
+   HPC_TYPE=slurm
+   FILES=""
+   OUT_ROOT=""
+   ENGINE=v1
+
+   HISEQ_ROOT=/dataset/hiseq/active
+   MISEQ_ROOT=/dataset/miseq/active
+
+   HISEQ_PROCESSING_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
+   MISEQ_PROCESSING_ROOT=/dataset/miseq/scratch/postprocessing/gbs
+
+
+   echo "*** gbs analysis version $gbs_version ***
+* note that you can paste into your terminal window by clicking your right mouse button
+* at any stage you can press CTRL-C to exit the dialogs
+* if you would prefer to run a single batch command, use run_prisms.sh (-h for help) - e.g. 
+  this allows you to run the analysis on any collection of input files
+"
+
+   ####### get and check RUN
+   while [ 1 ] ; do
+      echo "
+please give the full name of gbs run you would like to process (e.g. 180403_M02412_0073_000000000-D3JC9 (miseq) 
+or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDYANXX (hiseq not (yet) archived) )
+
+"
+      read RUN
+      if [ ! -z "$RUN" ]; then 
+         if [ -d $HISEQ_ROOT/$RUN ]; then 
+            gbs_ROOT=$HISEQ_ROOT
+            PROCESSING_ROOT=$HISEQ_PROCESSING_ROOT
+            break
+         elif [ -d $MISEQ_ROOT/$RUN ]; then
+            gbs_ROOT=$MISEQ_ROOT
+            PROCESSING_ROOT=$MISEQ_PROCESSING_ROOT
+            break
+         else 
+            echo "sorry can't find $RUN under either $HISEQ_ROOT or $MISEQ_ROOT "
+         fi
+      fi
+
+   done
+
+   echo "will process $gbs_ROOT/$RUN "
+
+   # set up folder
+   while [ 1 ]; do
+      NEW_ROOT=$PROCESSING_ROOT/$RUN
+      answer=""
+      echo "please specify output base folder (or just press ENTER to use default , $PROCESSING_ROOT/$RUN)"
+      read answer 
+      if [ ! -z $answer ]; then
+         NEW_ROOT=$answer
+      fi
+      if [ ! -z "$NEW_ROOT" ] ; then
+         if [ -d $NEW_ROOT ]; then
+            answer=y
+            echo "warning - $NEW_ROOT already exists, use anyway ? (y/n, default=y)"
+            read answer
+            if [[ ( $answer == "y" ) || ( -z $answer ) ]]; then
+               OUTPUT_ROOT=$NEW_ROOT
+               break
+            fi
+         else
+            mkdir -p $NEW_ROOT
+            if [ -d $NEW_ROOT ]; then
+               OUTPUT_ROOT=$NEW_ROOT
+               break
+            fi
+         fi
+      fi
+   done
+
+   echo "will use output root folder $OUTPUT_ROOT 
+
+   "
+
+   
+   ####### get and check the analysis type 
+   ANALYSIS=tassell_kgd
+   while [ 1 ] ; do
+      echo "
+please give which q/c analysis you want (e.g. tassell_kgd  , tassel_kmers, tassel_blast) (or just press enter to run all)  
+
+"
+      read ANALYSIS
+
+      if [ -z "$ANALYSIS" ]; then 
+         ANALYSIS=tassell_kgd
+      fi
+
+      if [[ ( "$ANALYSIS" != "tassell_kgd" ) && ( "$ANALYSIS" != "tassel_kmers" ) && ( "$ANALYSIS" != "all" ) ]]; then
+         echo "analysis must be tassell_kgd or all"
+      else
+         break
+      fi
+   done
+
+   if [ "$ANALYSIS" == "tassell_kgd" ]; then
+      ls $OUTPUT_ROOT/tassel_gbs_qc/* > /dev/null 2>&1
+      if [ $? == 0 ] ; then
+         echo "found existing results under $OUTPUT_ROOT/tassel_gbs_qc - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
+         answer=n
+         read answer
+         if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
+            echo "ok quitting - please use a different output folder"
+            exit 1
+         fi
+      fi
+   elif [ "$ANALYSIS" == "tassel_kmers" ]; then
+      ls $OUTPUT_ROOT/tassel_kmers/* > /dev/null 2>&1
+      if [ $? == 0 ] ; then
+         echo "found existing results under $OUTPUT_ROOT/tassel_kmers - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
+         answer=n
+         read answer
+         if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
+            echo "ok quitting - please use a different output folder"
+            exit 1
+         fi
+      fi
+   fi
+
+
+   echo "will use analysis=$ANALYSIS
+   "
+
+
+   ####### get and check the sample sheet and a parameters file that controls the processing 
+   SAMPLE_SHEET=""
+   if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
+      echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press any key for listing)..."
+      read answer 
+      more $gbs_ROOT/$RUN/SampleSheet.csv
+      echo "
+
+      "
+      echo "is this OK ? (y/n, default=y)"
+      answer=n
+      read answer
+      if [[ ( "$answer" == "y" ) || ( -z "$answer" ) ]]; then
+         SAMPLE_SHEET=$gbs_ROOT/$RUN/SampleSheet.csv 
+      fi
+   else
+      echo "warning - could not find a sample sheet in the usual place ( $gbs_ROOT/$RUN/SampleSheet.csv )"
+   fi
+   while [ -z "$SAMPLE_SHEET" ]; do
+      echo "please enter enter or paste in the full path to the sample sheet specifying lane contents and downstream processing"
+      read SAMPLE_SHEET
+      if [ ! -f "$SAMPLE_SHEET" ]; then 
+         SAMPLE_SHEET=""
+      fi
+   done
+
+
+   PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
+   if [ -f $PARAMETERS_FILE ]; then
+      answer=n
+      echo "found existing processing parameters file $OUTPUT_ROOT/SampleProcessing.json  - is it OK to update this with GBS settings ? (y/n, default=n)"
+      read answer
+
+      if [ "$answer" != "y" ]; then
+         echo "OK will not update"
+      else
+         echo "OK will update, saving previous as $OUTPUT_ROOT/SampleProcessing.json.old"
+         mv $OUTPUT_ROOT/SampleProcessing.json $OUTPUT_ROOT/SampleProcessing.json.old
+         PARAMETERS_FILE=""
+      fi
+   else
+      PARAMETERS_FILE=""
+   fi
+
+   if [ -z "$PARAMETERS_FILE" ]; then         
+      # tardis --local used so not queued
+      echo "compiling processing parameters file $OUTPUT_ROOT/SampleProcessing.json . . . 
+      
+      "
+      tardis -d $OUTPUT_ROOT --hpctype local $SEQ_PRISMS_BIN/../get_processing_parameters.py --json_out_file $OUTPUT_ROOT/SampleProcessing.json --parameter_file $SAMPLE_SHEET --species_references_file  /dataset/hiseq/active/sample-sheets/reference_genomes.csv 
+   fi
+
+   if [ ! -f "$OUTPUT_ROOT/SampleProcessing.json" ]; then
+      echo "error , failed creating parameters files $OUTPUT_ROOT/SampleProcessing.json"
+      exit 1
+   else
+      PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
+   fi
+
+  
+   echo "will use the following processing parameters (press any key for listing)"
+   read answer 
+   more $PARAMETERS_FILE
+   echo "
+
+   OK to use these parameters ? (y/n, default=y)
+   "
+   read answer
+   if [ "$answer" == "n" ]; then
+      echo "please edit $PARAMETERS_FILE and try again"
+      exit 1
+   fi 
+}
+
+
+function get_cohort_opts() {
+   echo "getting default GBS libraries to process. . .
+
+   "
+
+   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
+   echo "please enter libraries to run (default = $LIBRARY_MONIKERS)"
+   answer=""
+   read answer
+   if [ ! -z "$answer" ]; then
+      LIBRARY_MONIKERS=$answer
+   fi
+
+   echo "getting default GBS cohorts to process. . .
+
+   "
+   gbs_cohorts=""
+   for library_moniker in $LIBRARY_MONIKERS; do
+       echo "from $library_moniker . . ."
+       library_cohorts=`tardis -q -d $OUTPUT_ROOT --hpctype local $GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $PARAMETERS_FILE --parameter_name cohorts  --sample $library_moniker`
+       for library_cohort in $library_cohorts; do
+          gbs_cohorts="$gbs_cohorts ${library_moniker}.${library_cohort} "
+       done
+   done
+   echo "please enter gbs cohorts to process (default=$gbs_cohorts)"
+   answer=""
+   read answer
+   if [ ! -z "$answer" ]; then
+      GBS_COHORTS=$answer
+   fi
+}
+
+
+function run_tassell_kgd() {
+   mkdir -p $PROCESSING_ROOT/$RUN/tassel_gbs_qc
+
+   if [ ! -d $PROCESSING_ROOT/$RUN/tassel_gbs_qc ]; then
+      echo "unable to create output folder $PROCESSING_ROOT/$RUN/tassel_gbs_qc - quitting"
+      exit 1
+   fi
+      
+   # find the input files 
+   if [ $gbs_ROOT == $MISEQ_ROOT ]; then
+      ls -l $gbs_ROOT/$RUN/Data/Intensities/BaseCalls/*.fastq* > /dev/null 2>&1
+      if [ $? != 0 ]; then
+         echo "can't find any fastq or compressed fastq under $gbs_ROOT/$RUN/Data/Intensities/BaseCalls - quitting"
+         exit 1
+      else 
+         echo "about to genotype data files under $gbs_ROOT/$RUN/Data/Intensities/BaseCalls , using $GENOTYPER, writing results to $PROCESSING_ROOT/$RUN/tassel_gbs_qc"
+         echo "press enter to continue (or CTRL-C to cancel)"
+         read junk 
+         time ./run_prisms.sh -P genotype -x $GENOTYPER -r $LOCUS_FILE -O $PROCESSING_ROOT/$RUN/tassel_gbs_qc $gbs_ROOT/$RUN/Data/Intensities/BaseCalls/*.fastq* 
+      fi
+   elif [ $gbs_ROOT == $HISEQ_ROOT ]; then
+      archived=no
+      PROJECT=""
+      ls -l $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/*/*/*.fastq* >  /dev/null 2>&1  # this is when each sample is a "project" in sample sheet
+      if [ $? != 0 ]; then
+         # try the archive folders
+         ls -l $gbs_ROOT/$RUN/archive/processed/bcl2fastq/*/*/*.fastq* > /dev/null 2>&1
+         if [ $? != 0 ]; then
+            # try getting user to choose project folder (each sample is not a project)
+            echo "available projects below - please paste in the full path for the project containing samples to be analysed:"
+            for file in $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/* ; do
+               if [ -d $file ]; then
+                  echo $file
+               fi
+            done
+            read PROJECT
+            ls -l $PROJECT/*.fastq* > /dev/null 2>&1
+            if [ $? != 0 ]; then
+               echo "can't find any gbs fastq or compressed fastq under either $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq or
+               $gbs_ROOT/$RUN/archive/processed/bcl2fastq or $PROJECT - quitting"
+               exit 1
+            fi
+         else
+            archived=yes
+         fi
+      fi
+
+   
+      if [ $archived == "no" ]; then
+         if [ -z "$PROJECT" ]; then
+            echo "about to genotype data files under $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq , writing results to $PROCESSING_ROOT/$RUN/tassel_gbs_qc"
+            echo "press enter to continue (or CTRL-C to cancel)"
+            read junk
+            time ./run_prisms.sh -P genotype -x $GENOTYPER -r $LOCUS_FILE -O $PROCESSING_ROOT/$RUN/tassel_gbs_qc $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/*/*/*.fastq*
+         else
+            echo "about to genotype data files under $PROJECT, writing results to $PROCESSING_ROOT/$RUN/tassel_gbs_qc"
+            echo "press enter to continue (or CTRL-C to cancel)"
+            read junk
+            time ./run_prisms.sh -P genotype -x $GENOTYPER -r $LOCUS_FILE -O $PROCESSING_ROOT/$RUN/tassel_gbs_qc $PROJECT/*.fastq*
+         fi
+      else
+         echo "about to genotype using data files under $gbs_ROOT/$RUN/archive/processed/bcl2fastq , writing results to $PROCESSING_ROOT/$RUN/tassel_gbs_qc"
+         echo "press enter to continue (or CTRL-C to cancel)"
+         read junk 
+         time ./run_prisms.sh -P genotype -x $GENOTYPER -r $LOCUS_FILE -O $PROCESSING_ROOT/$RUN/tassel_gbs_qc $gbs_ROOT/$RUN/archive/processed/bcl2fastq/*/*/*.fastq*
+      fi
+   fi
+}
+
+
+function run_kmer_analysis() {
+   mkdir -p $PROCESSING_ROOT/$RUN/tassel_kmers
+
+   if [ ! -d $PROCESSING_ROOT/$RUN/tassel_kmers ]; then
+      echo "unable to create output folder $PROCESSING_ROOT/$RUN/tassel_kmers - quitting"
+      exit 1
+   fi
+
+   # find the input files
+   if [ $gbs_ROOT == $MISEQ_ROOT ]; then
+      ls -l $gbs_ROOT/$RUN/Data/Intensities/BaseCalls/*.fastq* > /dev/null 2>&1
+      if [ $? != 0 ]; then
+         echo "can't find any fastq or compressed fastq under $gbs_ROOT/$RUN/Data/Intensities/BaseCalls - quitting"
+         exit 1
+      else
+         echo "about to analyse kmer distributions for data files under $gbs_ROOT/$RUN/Data/Intensities/BaseCalls , writing results to $PROCESSING_ROOT/$RUN/tassel_kmers"
+         echo "press enter to continue (or CTRL-C to cancel)"
+         read junk
+         time ./run_prisms.sh -P tassel_kmers -O $PROCESSING_ROOT/$RUN/tassel_kmers $gbs_ROOT/$RUN/Data/Intensities/BaseCalls/*.fastq*
+      fi
+   elif [ $gbs_ROOT == $HISEQ_ROOT ]; then
+      archived=no
+      PROJECT=""
+      ls -l $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/*/*/*.fastq* >  /dev/null 2>&1  # this is when each sample is a "project" in sample sheet
+      if [ $? != 0 ]; then
+         # try the archive folders
+         ls -l $gbs_ROOT/$RUN/archive/processed/bcl2fastq/*/*/*.fastq* > /dev/null 2>&1
+         if [ $? != 0 ]; then
+            # try getting user to choose project folder (each sample is not a project)
+            echo "available projects below - please paste in the full path for the project containing samples to be analysed:"
+            for file in $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/* ; do
+               if [ -d $file ]; then
+                  echo $file
+               fi
+            done
+            read PROJECT
+            ls -l $PROJECT/*.fastq* > /dev/null 2>&1
+            if [ $? != 0 ]; then
+               echo "can't find any gbs fastq or compressed fastq under either $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq or
+               $gbs_ROOT/$RUN/archive/processed/bcl2fastq or $PROJECT - quitting"
+               exit 1
+            fi
+         else
+            archived=yes
+         fi
+      fi
+
+      if [ $archived == "no" ]; then
+         if [ -z "$PROJECT" ]; then
+            echo "about to analyse kmer distributions for data files under $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq , writing results to $PROCESSING_ROOT/$RUN/tassel_kmers"
+            echo "press enter to continue (or CTRL-C to cancel)"
+            read junk
+            time ./run_prisms.sh -P tassel_kmers -O $PROCESSING_ROOT/$RUN/tassel_kmers $PROCESSING_ROOT/../${RUN}.processed/bcl2fastq/*/*/*.fastq*
+         else
+            echo "about to analyse kmer distributions for data files under $PROJECT, writing results to $PROCESSING_ROOT/$RUN/tassel_kmers"
+            echo "press enter to continue (or CTRL-C to cancel)"
+            read junk
+            time ./run_prisms.sh -P tassel_kmers -O $PROJECT/*.fastq*
+         fi
+      else
+         echo "about to analyse kmer distributions for data files under $gbs_ROOT/$RUN/archive/processed/bcl2fastq , writing results to $PROCESSING_ROOT/$RUN/tassel_kmers"
+         echo "press enter to continue (or CTRL-C to cancel)"
+         read junk
+         time ./run_prisms.sh -P tassel_kmers -O $PROCESSING_ROOT/$RUN/tassel_kmers $gbs_ROOT/$RUN/archive/processed/bcl2fastq/*/*/*.fastq*
+      fi
+   fi
+}
+
+get_run_opts
+get_cohort_opts
+
+#if [[ ( $ANALYSIS == "tassell_kgd" ) || ( $ANALYSIS == "all" ) ]]; then
+#   run_tassell_kgd
+#fi
+#if [[ ( $ANALYSIS == "tassel_kmers" ) || ( $ANALYSIS == "all" ) ]]; then
+#   run_kmer_analysis
+#fi
+
+
+
+
+
+
+         
+      
+
+
+
+

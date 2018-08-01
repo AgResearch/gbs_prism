@@ -1,0 +1,29 @@
+species,reference genome,comment
+sheep,/dataset/OARv3.0/active/current_version/sheep.v3.0.14th.final.fa,
+goat,/dataset/datacache/scratch/ncbi/indexes/bwa/capra_hircus_ncbi_PRJNA290100.fasta,
+cattle,/dataset/AFC_dairy_cows/active/1000_bulls/umd_3_1_reference_1000_bull_genomes.fa,
+cow,/dataset/AFC_dairy_cows/active/1000_bulls/umd_3_1_reference_1000_bull_genomes.fa,
+deer,/dataset/deer2011/archive/blast/unique/bins/CELA_1.0/CELA_all_but_U.fa,
+atlantic salmon,/dataset/Salmo_salar_2014/active/AGKD04000000/AGKD04.fasta,
+chinook salmon,/dataset/Salmo_salar_2014/active/AGKD04000000/AGKD04.fasta,
+greenshell mussel,/dataset/mussel_assembly/archive/assemblies/GSM_transcriptome_scaffold.fasta,
+potato,/dataset/datacache/scratch/misc/potato/indexes/PGSC_DM_v4.03.fasta,
+endophyte,/dataset/PGP_endophyte/scratch/sickle/J210-edena-whole/J210-sspace-standard_output/standard_output.final.scaffolds.fasta,
+fur seal,,
+white clover,/dataset/White_Clover_GBS/scratch/reference_genome/TrR.v4.fasta,
+ryegrass,/dataset/MBIE_genomics4production/active/rachael_ryegrass_GBS/LP_GBS_reference_2_rename_v2.fasta,
+oyster,/dataset/datacache/scratch/ncbi/indexes/bwa/crassostrea_gigas_ncbi_PRJNA70283.fasta,
+chiton,/dataset/datacache/scratch/ncbi/indexes/bwa/crassostrea_gigas_ncbi_PRJNA70283.fasta,
+tilapia,/dataset/datacache/scratch/ncbi/indexes/bwa/oreochromis_niloticus_ncbi.fna,
+bee,/bifo/scratch/datacache/beebase/indexes/Amel_4.5_scaffolds.fa
+duck,/dataset/datacache/scratch/ncbi/indexes/bwa/ncbi_anas_platyrhynchos.fna
+kaki,/dataset/datacache/scratch/ncbi/indexes/bwa/ncbi_anas_platyrhynchos.fna
+weevil,/dataset/datacache/scratch/ncbi/indexes/bwa/leptinotarsa_decemlineata_ncbi.fna
+velvet,/dataset/datacache/scratch/ncbi/indexes/bwa/gossypium_hirsutum_ncbi.fna
+fly,/dataset/datacache/scratch/ncbi/indexes/bwa/drosophila_melanogaster_ncbi.fna
+camel,/dataset/datacache/scratch/ncbi/indexes/bwa/camelus_dromedarius.fna
+bristle grass,/dataset/datacache/scratch/ncbi/indexes/bwa/setaria_italica.fna
+abalone,/dataset/datacache/scratch/gigadb/indexes/bwa/haliotis_discus_hannai.fa
+,,
+#reference genomes should be indexed for bwa,,
+#if a reference is unavailable please leave the reference genome field empty,,

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# this prism supports a basic q/c gbs analysis.It assumes that the demultiplex prism has been run.
+# this prism supports a basic q/c genotyping (by sequencing) analysis.It assumes that the demultiplex prism has been run.
 # (there is some overlap between the demultiplex and gsb analysis )
 # 
 #
@@ -20,9 +20,9 @@ function get_opts() {
 
    help_text=$(cat << 'EOF'
 usage :\n 
-./gbs_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] -O outdir folder\n
+./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] -O outdir folder\n
 example:\n
-./gbs_prism.sh -x KGD_tassel3 /dataset/hiseq/scratch/postprocessing/gbs/weevils_gbsx\n
+./genotype_prism.sh -x KGD_tassel3 /dataset/hiseq/scratch/postprocessing/gbs/weevils_gbsx\n
 EOF
 )
    while getopts ":nhfO:C:O:x:" opt; do
@@ -87,7 +87,7 @@ function check_opts() {
    fi
 
    if [[ ( $ENGINE != "KGD_tassel3" ) ]] ; then
-      echo "gbs engines supported : KGD_tassel3 (not $ENGINE ) "
+      echo "genotyping engines supported : KGD_tassel3 (not $ENGINE ) "
       exit 1
    fi
 
@@ -110,9 +110,9 @@ function echo_opts() {
 #
 function configure_env() {
    cd $SEQ_PRISMS_BIN
-   cp ../gbs_prism.sh $OUT_DIR
+   cp ../genotype_prism.sh $OUT_DIR
    cp ../seq_prisms/data_prism.py $OUT_DIR
-   cp ../gbs_prism.mk $OUT_DIR
+   cp ../genotype_prism.mk $OUT_DIR
    cp ../run_kgd.sh $OUT_DIR ; chmod +x $OUT_DIR/run_kgd.sh
    cp ../run_kgd.R $OUT_DIR
    echo "
@@ -145,16 +145,16 @@ function get_targets() {
    # make a target moniker  and write associated 
    # ENGINE wrapper, which will be called by make 
 
-   rm -f $OUT_DIR/gbs_targets.txt
+   rm -f $OUT_DIR/genotype_targets.txt
 
   
    file_base=`basename $DEMULTIPLEX_FOLDER`
-   gbs_moniker=${file_base}.${ENGINE}
-   echo $OUT_DIR/${gbs_moniker}.gbs_prism >> $OUT_DIR/gbs_targets.txt
-   script=$OUT_DIR/${gbs_moniker}.sh
+   genotype_moniker=${file_base}.${ENGINE}
+   echo $OUT_DIR/${genotype_moniker}.genotype_prism >> $OUT_DIR/genotype_targets.txt
+   script=$OUT_DIR/${genotype_moniker}.sh
    if [ -f $script ]; then
       if [ ! $FORCE == yes ]; then
-         echo "found existing gbs script $script  - will re-use (use -f to force rebuild of scripts) "
+         echo "found existing genotype script $script  - will re-use (use -f to force rebuild of scripts) "
          continue
       fi
    fi
@@ -165,10 +165,10 @@ function get_targets() {
 cd $OUT_DIR  
 if [ ! -d KGD ]; then
    mkdir KGD
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD \> $OUT_DIR/${gbs_moniker}.KGD.stdout  2\>$OUT_DIR/${gbs_moniker}.KGD.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD \> $OUT_DIR/${genotype_moniker}.KGD.stdout  2\>$OUT_DIR/${genotype_moniker}.KGD.stderr 
 fi
 if [ \$? != 0 ]; then
-   echo \"gbs_prism.sh: error code returned from KGD process - quitting\"; exit 1
+   echo \"genotype_prism.sh: error code returned from KGD process - quitting\"; exit 1
 fi
      " > $script 
       chmod +x $script
@@ -185,13 +185,13 @@ function fake_prism() {
 function run_prism() {
    # do genotyping
    cd $OUT_DIR
-   make -f gbs_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/gbs_targets.txt` > $OUT_DIR/gbs_prism.log 2>&1
+   make -f genotype_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/genotype_targets.txt` > $OUT_DIR/genotype_prism.log 2>&1
 
    # run summaries
 }
 
 function html_prism() {
-   echo "tba" > $OUT_DIR/gbs_prism.html 2>&1
+   echo "tba" > $OUT_DIR/genotype_prism.html 2>&1
 }
 
 function clean() {
