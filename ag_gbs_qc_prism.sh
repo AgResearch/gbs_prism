@@ -183,8 +183,17 @@ function get_targets() {
 cd $OUT_ROOT
 mkdir -p $cohort
 # run demultiplexing
-./demultiplex_prism.sh -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\`
+./demultiplex_prism.sh -C $HPC_TYPE -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
+if [ $? != 0 ]; then
+   echo \"demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code - will not attempt genotyping\"
+   exit 1
+fi
 # run genotyping
+./genotype_prism.sh -C $HPC_TYPE -x KGD_tassel3 $OUT_ROOT/$cohort
+if [ $? != 0 ]; then
+   echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
      " > $script
       chmod +x $script
    done
@@ -199,7 +208,6 @@ function fake_prism() {
 }
 
 function run_prism() {
-   # do genotyping
    cd $OUT_ROOT
    make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/ag_gbs_qc_prism_targets.txt` > $OUT_ROOT/ag_gbs_qc_prism.log 2>&1
 
