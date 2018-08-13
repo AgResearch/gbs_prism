@@ -17,16 +17,18 @@ function get_opts() {
    OUT_ROOT=""
    FORCE=no
    ENGINE=KGD_tassel3
+   ANALYSIS=all
 
    help_text=$(cat << 'EOF'
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] -O outdir cohort \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|fasta_sample|kmer_analysis|blast_analysis|all] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI
+./ag_gbs_qc_prism.sh -n -f -C local -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI
 EOF
 )
-   while getopts ":nhfO:C:r:" opt; do
+   while getopts ":nhfO:C:r:a:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -43,6 +45,9 @@ EOF
          ;;
        r)
          RUN=$OPTARG
+         ;;
+       a)
+         ANALYSIS=$OPTARG
          ;;
        C)
          HPC_TYPE=$OPTARG
@@ -103,6 +108,11 @@ function check_opts() {
       exit 1
    fi
 
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" ) ) ]] ; then
+      echo "analysis must be one of all, demultiplex, kgd , kmer_analysis, blast_analysis ) "
+      exit 1
+   fi
+
 }
 
 function echo_opts() {
@@ -112,6 +122,8 @@ function echo_opts() {
   echo HPC_TYPE=$HPC_TYPE
   echo COHORTS=${cohorts_array[*]}
   echo ENGINE=$ENGINE
+  echo ANALYSIS=$ANALYSIS
+
 }
 
 
@@ -157,21 +169,13 @@ function get_targets() {
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       cohort=${cohorts_array[$j]}
       cohort_moniker=${RUN}.$cohort
-      echo $OUT_ROOT/$cohort_moniker.ag_gbs_qc_prism >> $OUT_ROOT/ag_gbs_qc_prism_targets.txt
-      script=$OUT_ROOT/${cohort_moniker}.sh
-      if [ -f $script ]; then
-         if [ ! $FORCE == yes ]; then
-            echo "found existing gbs script $script  - will re-use (use -f to force rebuild of scripts) "
-            continue
-         fi
-      fi
 
       # extract keyfile and unblinding script for this cohort
       # cohort is like SQ0756.all.DEER.PstI
-      libname=`echo $cohort | awk -F\. '{print $1}' -`        
-      qc_cohort=`echo $cohort | awk -F\. '{print $2}' -` 
-      gbs_cohort=`echo $cohort | awk -F\. '{print $3}' -` 
-      enzyme=`echo $cohort | awk -F\. '{print $4}' -` 
+      libname=`echo $cohort | awk -F\. '{print $1}' -`
+      qc_cohort=`echo $cohort | awk -F\. '{print $2}' -`
+      gbs_cohort=`echo $cohort | awk -F\. '{print $3}' -`
+      enzyme=`echo $cohort | awk -F\. '{print $4}' -`
       fcid=`echo $RUN | awk -F_ '{print substr($4,2)}' -`
 
 
@@ -179,23 +183,83 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
 
+      for analysis_type in all demultiplex kgd kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
+         echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
+         script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
+         if [ -f $script ]; then
+            if [ ! $FORCE == yes ]; then
+               echo "found existing gbs script $script  - will re-use (use -f to force rebuild of scripts) "
+               continue
+            fi
+         fi
+      done
+
+      ############### demultiplex script
       echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort
 # run demultiplexing
 ./demultiplex_prism.sh -C $HPC_TYPE -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
 if [ $? != 0 ]; then
-   echo \"demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code - will not attempt genotyping\"
+   echo \"warning demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code\"
    exit 1
 fi
+      " > $OUT_ROOT/${cohort_moniker}.demultiplex.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.demultiplex.sh
+
+     ################ kgd script
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort
 # run genotyping
 ./genotype_prism.sh -C $HPC_TYPE -x KGD_tassel3 $OUT_ROOT/$cohort
 if [ $? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
-     " > $script
-      chmod +x $script
+     " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
+
+
+     ################ fasta_sample script (i.e. samples tags)
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/fasta
+# run fasta_sample
+$SEQ_PRISMS_BIN/sample_prism.sh -a tag_count_unique -t 50 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
+if [ $? != 0 ]; then
+   echo \"warning , fasta sample of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.fasta_sample.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.fasta_sample.sh 
+
+
+     ################ blast script 
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/blast
+# run blast
+$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta/*.fasta
+if [ $? != 0 ]; then
+   echo \"warning , blast  of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.blast_analysis.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.blast_analysis.sh
+
+
+     ################ taxonomy summary script 
+     echo "#!/bin/bash
+cd $OUT_ROOT
+# summarise blast results 
+$SEQ_PRISMS_BIN/taxonomy_prism.sh -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
+if [ $? != 0 ]; then
+   echo \"warning, summary of $OUT_ROOT/$cohort/blast returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
    done
 }
 
@@ -209,7 +273,8 @@ function fake_prism() {
 
 function run_prism() {
    cd $OUT_ROOT
-   make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/ag_gbs_qc_prism_targets.txt` > $OUT_ROOT/ag_gbs_qc_prism.log 2>&1
+
+   make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/${ANALYSIS}_targets.txt` > $OUT_ROOT/${ANALYSIS}.log 2>&1
 
    # run summaries
 }

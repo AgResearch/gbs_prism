@@ -5,3 +5,5 @@ KGD/
 bin/
 test/
 weevil_test.sh
+*.$$$
+tardis_*
