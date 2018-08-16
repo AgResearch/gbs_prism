@@ -164,7 +164,7 @@ function get_targets() {
    # for each cohort make a target moniker  and write associated
    # wrapper, which will be called by make
 
-   rm -f $OUTPUT_ROOT/ag_gbs_qc_targets.txt
+   rm -f $OUT_ROOT/*_targets.txt
 
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       cohort=${cohorts_array[$j]}

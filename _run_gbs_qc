@@ -1,7 +1,7 @@
 #!/bin/sh
 
-export SEQ_PRISMS_BIN=/dataset/hiseq/active/bin/gbs_prism/seq_prisms
-export GBS_PRISM_BIN=/dataset/hiseq/active/bin/gbs_prism
+export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms 
+export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
 gbs_version=$1
 
@@ -17,8 +17,8 @@ function get_run_opts() {
    HISEQ_ROOT=/dataset/hiseq/active
    MISEQ_ROOT=/dataset/miseq/active
 
-   HISEQ_PROCESSING_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
-   MISEQ_PROCESSING_ROOT=/dataset/miseq/scratch/postprocessing/gbs
+   HISEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
+   MISEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
 
 
    echo "*** gbs analysis version $gbs_version (using SNP engine = $SNP_ENGINE) ***
