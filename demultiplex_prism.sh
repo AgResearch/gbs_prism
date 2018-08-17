@@ -226,8 +226,8 @@ function get_targets() {
          fi
          if [ ! -d ${OUT_DIR}/Illumina ]; then
             mkdir -p ${OUT_DIR}/Illumina
-            cp -s $file ${OUT_DIR}/Illumina
          fi
+         cp -s $file ${OUT_DIR}/Illumina
 
          echo "#!/bin/bash
 cd $OUT_DIR  
@@ -249,8 +249,8 @@ fi
          fi
          if [ ! -d ${OUT_DIR}/Illumina ]; then
             mkdir -p ${OUT_DIR}/Illumina
-            cp -s $file ${OUT_DIR}/Illumina
          fi
+         cp -s $file ${OUT_DIR}/Illumina
 
          echo "#!/bin/bash
 cd $OUT_DIR  
