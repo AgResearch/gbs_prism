@@ -154,6 +154,7 @@ function configure_env() {
    cp demultiplex_prism.mk $OUT_DIR
    cp $SAMPLE_INFO $OUT_DIR
    cp $ENZYME_INFO $OUT_DIR
+   cp $GBS_PRISM_BIN/etc/larger_mem_slurm_array_job $OUT_DIR
 
   
    # set up the environment includes that we will need - these activate 
@@ -161,13 +162,18 @@ function configure_env() {
 
    echo "
 max_tasks=50
-" > $OUT_DIR/tardis.toml
+jobtemplatefile = \"$OUT_DIR/larger_mem_slurm_array_job\"
+" > $OUT_DIR/tardis_demultiplex.toml
+   if [ -f  $OUT_DIR/tardis.toml ]; then 
+      cp $OUT_DIR/tardis.toml $OUT_DIR/tardis.toml.orig
+   fi
+   cp  $OUT_DIR/tardis_demultiplex.toml $OUT_DIR/tardis.toml
+   cp $GBS_BIN/etc/larger_mem_slurm_array_job $OUT_DIR
    echo "
 conda activate tassel3
 " > $OUT_DIR/tassel3_env.src
    cd $OUT_DIR
 }
-
 
 function check_env() {
    if [ -z "$SEQ_PRISMS_BIN" ]; then
@@ -345,7 +351,6 @@ function fake_prism() {
 }
 
 function run_prism() {
-   # do genotyping
    make -f demultiplex_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/demultiplex_targets.txt` > $OUT_DIR/demultiplex_prism.log 2>&1
 
    # run summaries
@@ -356,6 +361,7 @@ function html_prism() {
 }
 
 function clean() {
+   mv $OUT_DIR/tardis.toml.orig $OUT_DIR/tardis.toml
    echo "skipping clean for now"
    #rm -rf $OUT_DIR/tardis_*
    #rm $OUT_DIR/*.fastq
