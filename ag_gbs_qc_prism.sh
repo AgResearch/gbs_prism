@@ -226,7 +226,11 @@ fi
 cd $OUT_ROOT
 mkdir -p $cohort/fasta
 # run fasta_sample
-$SEQ_PRISMS_BIN/sample_prism.sh -a tag_count_unique -t 50 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
+# sample high coverage - not running currently 
+#$SEQ_PRISMS_BIN/sample_prism.sh -a tag_count_unique -t 50 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
+# sample low coverage 
+$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
+
 if [ $? != 0 ]; then
    echo \"warning , fasta sample of $OUT_ROOT/$cohort returned an error code\"
    exit 1
