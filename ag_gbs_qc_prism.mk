@@ -6,16 +6,15 @@
 #     http://www.gnu.org/software/make/manual/make.html
 #
 
-
-%.all:  %.taxonomy_analysis
-	date > $@
-
 %.taxonomy_analysis:   %.blast_analysis
 	$@.sh
 	date > $@
 
 %.blast_analysis:   %.fasta_sample
 	$@.sh
+	date > $@
+
+%.all:  %.kmer_analysis
 	date > $@
 
 %.kmer_analysis:   %.fasta_sample

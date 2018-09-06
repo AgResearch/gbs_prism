@@ -19,15 +19,15 @@ function get_opts() {
    ENGINE=KGD_tassel3
    ANALYSIS=all
 
-   help_text=$(cat << 'EOF'
+   help_text="
 usage :\n 
 ./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|fasta_sample|kmer_analysis|blast_analysis|all] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
-./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI
-./ag_gbs_qc_prism.sh -n -f -C local -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI
-EOF
-)
+./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
+./ag_gbs_qc_prism.sh -n -f -C local -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI \n
+./ag_gbs_qc_prism.sh -n -f  -a kmer_analysis -O /dataset/gseq_processing/scratch/gbs/180824_D00390_0394_BCCPYFANXX -r 180824_D00390_0394_BCCPYFANXX SQ0784.all.DEER.PstI \n
+"
    while getopts ":nhfO:C:r:a:" opt; do
    case $opt in
        n)
@@ -264,8 +264,22 @@ if [ $? != 0 ]; then
 fi
      " >  $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
       chmod +x $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
+
+
+     ################ low-depth kmer summary script
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/kmer_analysis
+$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta/*.fasta 
+if [ $? != 0 ]; then
+   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
    done
 }
+
 
 
 function fake_prism() {
