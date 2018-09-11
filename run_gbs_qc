@@ -1,8 +1,9 @@
 #!/bin/sh
 
 function get_pipeline() {
-   export SEQ_PRISMS_BIN=/dataset/hiseq/active/bin/gbs_prism/seq_prisms 
-   cd $SEQ_PRISMS_BIN/..
+   export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
+   export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+   cd $GBS_PRISM_BIN
    gbs_version=$1
    echo "preparing to run pipeline version $gbs_version (press enter to continue)"
    read answer
