@@ -200,7 +200,7 @@ cd $OUT_ROOT
 mkdir -p $cohort
 # run demultiplexing
 ./demultiplex_prism.sh -C $HPC_TYPE -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
-if [ $? != 0 ]; then
+if [ \$? != 0 ]; then
    echo \"warning demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code\"
    exit 1
 fi
@@ -213,7 +213,7 @@ cd $OUT_ROOT
 mkdir -p $cohort
 # run genotyping
 ./genotype_prism.sh -C $HPC_TYPE -x KGD_tassel3 $OUT_ROOT/$cohort
-if [ $? != 0 ]; then
+if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
@@ -224,14 +224,15 @@ fi
      ################ fasta_sample script (i.e. samples tags)
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p $cohort/fasta
+mkdir -p $cohort/fasta_small_lowdepthsample
+mkdir -p $cohort/fasta_medium_lowdepthsample
 # run fasta_sample
 # sample high coverage - not running currently 
-#$SEQ_PRISMS_BIN/sample_prism.sh -a tag_count_unique -t 50 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
 # sample low coverage 
-$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
-if [ $? != 0 ]; then
+if [ \$? != 0 ]; then
    echo \"warning , fasta sample of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
@@ -244,9 +245,9 @@ fi
 cd $OUT_ROOT
 mkdir -p $cohort/blast
 # run blast
-$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta/*.fasta
-if [ $? != 0 ]; then
-   echo \"warning , blast  of $OUT_ROOT/$cohort returned an error code\"
+$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
+if [ \$? != 0 ]; then
+   echo \"warning , blast  of $OUT_ROOT/$cohort/fasta_small_lowdepthsample returned an error code\"
    exit 1
 fi
      " >  $OUT_ROOT/${cohort_moniker}.blast_analysis.sh 
@@ -258,7 +259,7 @@ fi
 cd $OUT_ROOT
 # summarise blast results 
 $SEQ_PRISMS_BIN/taxonomy_prism.sh -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
-if [ $? != 0 ]; then
+if [ \$? != 0 ]; then
    echo \"warning, summary of $OUT_ROOT/$cohort/blast returned an error code\"
    exit 1
 fi
@@ -270,9 +271,9 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/kmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta/*.fasta 
-if [ $? != 0 ]; then
-   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta returned an error code\"
+$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
+if [ \$? != 0 ]; then
+   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
    exit 1
 fi
      " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
