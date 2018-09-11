@@ -106,8 +106,8 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    ANALYSIS=all
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, blast_analysis) (or just press enter to run all)  
-(note - entering kgd implies demultiplex will also be run (unless already done); blast_analysis implies also kgd will be 
+please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, fasta_sample, taxonomy_analysis) (or just press enter to run all)  
+(note - entering kgd implies demultiplex will also be run (unless already done); taxonomy_analysis implies also kgd will be 
 run (unless already done), etc.)
 
 "
@@ -117,14 +117,14 @@ run (unless already done), etc.)
          ANALYSIS=all
       fi
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "blast_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, kmer_analysis, blast_analysis or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "taxonomy_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
+         echo "analysis must be one of demultiplex, kgd, kmer_analysis, taxonomy_analysis, fasta_sample or all"
       else
          break
       fi
    done
 
-   if [[ ( "$ANALYSIS" == "kgd" ) || ( "$ANALYSIS" == "all" ) || ( "$ANALYSIS" == "demultiplex" ) ]]; then
+   if [[ ( "$ANALYSIS" == "kgd" ) || ( "$ANALYSIS" == "all" ) || ( "$ANALYSIS" == "demultiplex" ) || ( "$ANALYSIS" == "fasta_sample" ) ]]; then
       ls $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc/* > /dev/null 2>&1
       if [ $? == 0 ] ; then
          echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
@@ -146,10 +146,10 @@ run (unless already done), etc.)
             exit 1
          fi
       fi
-   elif [ "$ANALYSIS" == "blast_analysis" ]; then
-      ls $OUTPUT_ROOT/${SNP_ENGINE}_blast_analysis/* > /dev/null 2>&1
+   elif [ "$ANALYSIS" == "taxonomy_analysis" ]; then
+      ls $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis/* > /dev/null 2>&1
       if [ $? == 0 ] ; then
-         echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_blast_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
+         echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
          answer=n
          read answer
          if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
@@ -295,6 +295,10 @@ function run_qc() {
 
       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
       " > $OUTPUT_ROOT/run_gbs_qc.log 
+      echo "
+      export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+      export GBS_PRISM_BIN=$GBS_PRISM_BIN 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
       time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
    fi
 }
