@@ -5,6 +5,9 @@ export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
 gbs_version=$1
 
+functon get_processing_parameters() {
+}
+
 function get_run_opts() {
 
    DRY_RUN=no
@@ -165,6 +168,7 @@ run (unless already done), etc.)
 
 
    ####### get and check the sample sheet and a parameters file that controls the processing 
+   ####### sample sheet:
    SAMPLE_SHEET=""
    if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
       echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press any key for listing)..."
@@ -190,52 +194,9 @@ run (unless already done), etc.)
       fi
    done
 
+   ####### processing parameters
+   $GBS_PRISM_BIN/get_processing_parameters.sh
 
-   PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
-   if [ -f $PARAMETERS_FILE ]; then
-      answer=n
-      echo "found existing processing parameters file $OUTPUT_ROOT/SampleProcessing.json  - is it OK to update this with GBS settings ? (y/n, default=n)"
-      read answer
-
-      if [ "$answer" != "y" ]; then
-         echo "OK will not update"
-      else
-         echo "OK will update, saving previous as $OUTPUT_ROOT/SampleProcessing.json.old"
-         mv $OUTPUT_ROOT/SampleProcessing.json $OUTPUT_ROOT/SampleProcessing.json.old
-         PARAMETERS_FILE=""
-      fi
-   else
-      PARAMETERS_FILE=""
-   fi
-
-   if [ -z "$PARAMETERS_FILE" ]; then         
-      # tardis --local used so not queued
-      echo "compiling processing parameters file $OUTPUT_ROOT/SampleProcessing.json . . . 
-      
-      "
-      tardis -d $OUTPUT_ROOT --hpctype local $SEQ_PRISMS_BIN/../get_processing_parameters.py --json_out_file $OUTPUT_ROOT/SampleProcessing.json --parameter_file $SAMPLE_SHEET --species_references_file  /dataset/hiseq/active/sample-sheets/reference_genomes.csv 
-   fi
-
-   if [ ! -f "$OUTPUT_ROOT/SampleProcessing.json" ]; then
-      echo "error , failed creating parameters files $OUTPUT_ROOT/SampleProcessing.json"
-      exit 1
-   else
-      PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
-   fi
-
-  
-   echo "will use the following processing parameters (press any key for listing)"
-   read answer 
-   more $PARAMETERS_FILE
-   echo "
-
-   OK to use these parameters ? (y/n, default=y)
-   "
-   read answer
-   if [ "$answer" == "n" ]; then
-      echo "please edit $PARAMETERS_FILE and try again"
-      exit 1
-   fi 
 }
 
 

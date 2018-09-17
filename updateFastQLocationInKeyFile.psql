@@ -1,0 +1,24 @@
+/*
+* this script updates a keyfile   
+* e.g.
+psql -U agrbrdf -d agrbrdf -v flowcell="'C6JT3ANXX'" -v keyfilename="'SQ0032'" -v lane=8 -v fastqlink="'/dataset/hiseq/active/fastq-link-farm/SQ0032_C6JT3ANXX_s_8_fastq.txt.gz'" -f updateFastQLocationInKeyFile.psql
+*/
+
+select
+    *
+from
+    biosampleob s join gbsKeyFileFact g on
+    s.samplename = :keyfilename and 
+    g.biosampleob = s.obid
+where
+    Flowcell = :flowcell and
+    lane = :lane and 
+    length(rtrim(ltrim(coalesce(Fastq_link,'')))) = 0; 
+
+update gbsKeyFileFact 
+    set Fastq_link = :fastqlink 
+where 
+    biosampleob = (select obid from biosampleob where samplename = :keyfilename) and 
+    Flowcell = :flowcell and
+    lane = :lane and 
+    length(rtrim(ltrim(coalesce(Fastq_link,'')))) = 0; 

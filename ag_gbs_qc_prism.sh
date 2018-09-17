@@ -137,7 +137,6 @@ function configure_env() {
    cp ag_gbs_qc_prism.mk $OUT_ROOT
    cp demultiplex_prism.sh $OUT_ROOT
    cp genotype_prism.sh $OUT_ROOT
-   cp get_cohort_fastq_filenames.psql $OUT_ROOT
 
 
    echo "

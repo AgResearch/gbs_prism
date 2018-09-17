@@ -1,0 +1,32 @@
+/*
+* this script is called by an early stage of the gbs pipeline, which is setting up 
+* links to the fastq files. We receive a run name , sample name and build folder name 
+* and predict a fastq file name pattern 
+* It is called like
+* psql -U agrbrdf -d agrbrdf -h invincible -v run="'161216_D00390_0276_AC9PM8ANXX'" -v sample="'SQ0291'" -v processed_root="'/dataset/hiseq/scratch/postprocessing/161216_D00390_0276_AC9PM8ANXX.processed'" -f get_fastq_filename_pattern.psql -q
+*
+* will return 
+* '/dataset/hiseq/scratch/postprocessing/161216_D00390_0276_AC9PM8ANXX.processed/bcl2fastq/Deer/SQ0291_S[0123456789]+_L[0123456789]+_R1_[0123456789]+\.fastq\.gz'
+* to match 
+* /dataset/hiseq/scratch/postprocessing/161216_D00390_0276_AC9PM8ANXX.processed/bcl2fastq/Deer/SQ0291_S1_L001_R1_001.fastq.gz
+* (when used as a pattern by egrep)
+*
+* (note additional join to gbskeyfilefact to pick up any error in for example the lane or SQ passed in)
+*
+*/
+\t
+select distinct 
+   :processed_root || '/bcl2fastq/' || sampleproject || '/' || upper(:sample) || E'_(S[0123456789]+|NoIndex)_L[0123456789]+_R1_[0123456789]+\.fastq\.gz'
+from 
+   (((biosamplelist as l join biosamplelistmembershiplink m on 
+   m.biosamplelist = l.obid)  join biosampleob as b on 
+   b.obid = m.biosampleob ) join hiseqsamplesheetfact as h on 
+   h.biosamplelist = l.obid) join gbskeyfilefact as g on
+   g.biosampleob = b.obid and 
+   g.lane = :lane and 
+   g.flowcell = h.fcid and
+   to_number(replace(:sample, 'SQ',''),'99999') =  g.libraryprepid
+where
+   l.listname = :run and
+   h.sampleid = :sample and 
+   h.downstream_processing = 'GBS';
