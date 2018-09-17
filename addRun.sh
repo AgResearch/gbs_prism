@@ -54,8 +54,8 @@ CANONICAL_RUN_PATH=/dataset/hiseq/active/$RUN_NAME
 }
 
 function check_opts() {
-if [ -z "$GBS_BIN" ]; then
-   echo "GBS_BIN not set - quitting"
+if [ -z "$GBS_PRISM_BIN" ]; then
+   echo "GBS_PRISM_BIN not set - quitting"
    exit 1
 fi
 
@@ -79,7 +79,7 @@ if [ ! -f $RUN_PATH/SampleSheet.csv ]; then
    exit 1
 fi
 
-in_db=`$GBS_BIN/is_run_in_database.sh $RUN_NAME`
+in_db=`$GBS_PRISM_BIN/is_run_in_database.sh $RUN_NAME`
 if [ $in_db != "0" ]; then
    echo "$RUN_NAME has already been added - quitting"
    exit 1 
@@ -122,7 +122,7 @@ fi
 #cp $RUN_ROOT/${RUN_NAME}/SampleSheet.csv /tmp/${RUN_NAME}.txt
 #awk -F, '{if(NF>5)print}' ${RUN_PATH}/SampleSheet.csv  > /tmp/${RUN_NAME}.txt
 set -x
-cat ${RUN_PATH}/SampleSheet.csv | $GBS_BIN/sanitiseSampleSheet.py -r $RUN_NAME > /tmp/${RUN_NAME}.txt
+cat ${RUN_PATH}/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN_NAME > /tmp/${RUN_NAME}.txt
 set +x
 
 # check we got something non-trivial

@@ -53,7 +53,7 @@ while getopts ":nhr:s:k:f:l:m:" opt; do
 done
 
 KEY_DIR=/dataset/hiseq/active/key-files
-PROCESSED_ROOT=/dataset/${MACHINE}/scratch/postprocessing/${RUN_NAME}.processed
+PROCESSED_ROOT=/dataset/gseq_processing/scratch/illumina/${MACHINE}/${RUN_NAME}
 LINK_FARM_ROOT=/dataset/hiseq/active/fastq-link-farm
 }
 

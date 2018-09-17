@@ -8,7 +8,7 @@ function get_opts() {
 
 help_text="
  examples : \n
- ./database_prism.sh -i -t db_update -r 171026_M02412_0043_000000000-D2N2U -m miseq \n
+ ./database_prism.sh -i -t db_update -r 180914_D00390_0399_ACCVK0ANXX -s SQ0788\n
 "
 
 DRY_RUN=no
@@ -98,7 +98,7 @@ function echo_opts() {
 function get_samples() {
    set -x
    if [ -z $SAMPLE ]; then
-      sample_monikers=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_BIN/get_run_samples.psql -q`
+      sample_monikers=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
    else
       sample_monikers=$SAMPLE
    fi
@@ -108,11 +108,10 @@ function get_samples() {
 }
 
 function update_database() {
-   add_run
+   #add_run
    get_samples 
    import_keyfiles
    update_fastq_locations
-   # no longer do this
 }
 
 function add_run() {
@@ -132,9 +131,9 @@ function import_keyfiles() {
    set -x
    for sample_moniker in $sample_monikers; do
       if [ $DRY_RUN == "no" ]; then
-         $GBS_PRISM_BIN/database/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker
       else
-         $GBS_PRISM_BIN/database/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker
       fi
       if [ $? != "0" ]; then
           echo "importOrUpdateKeyfile.sh  exited with $? - quitting"
@@ -151,13 +150,13 @@ function update_fastq_locations() {
       # to do : add a check that there is only one fcid - process not tested for 
       # a sample spread over different flowcells
       flowcell_moniker=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN $sample_moniker`
-      flowcell_lanes=`$GBS_PRISM_BIN/database/get_lane_from_database.sh $RUN $sample_moniker`
+      flowcell_lanes=`$GBS_PRISM_BIN/get_lane_from_database.sh $RUN $sample_moniker`
       for flowcell_lane in $flowcell_lanes; do
          echo "processing lane '${flowcell_lane}'"
          if [ $DRY_RUN == "no" ]; then
-            $GBS_PRISM_BIN/database/updateFastqLocations.sh -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane 
+            $GBS_PRISM_BIN/updateFastqLocations.sh -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane 
          else
-            $GBS_PRISM_BIN/database/updateFastqLocations.sh -n -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane 
+            $GBS_PRISM_BIN/updateFastqLocations.sh -n -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane 
          fi
          if [ $? != "0" ]; then
             echo "error !! updateFastqLocations.sh  exited with $? for $sample_moniker - continuing to attempt other samples "
@@ -171,7 +170,5 @@ get_opts $@
 check_opts
 
 echo_opts
-
-configure_env
 
 update_database 
