@@ -108,7 +108,7 @@ function get_samples() {
 }
 
 function update_database() {
-   #add_run
+   add_run
    get_samples 
    import_keyfiles
    update_fastq_locations

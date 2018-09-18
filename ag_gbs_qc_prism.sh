@@ -216,9 +216,15 @@ if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
+# generate unblinded output
+for file in $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv ; do
+   if [ -f \$file ]; then
+      cp -p \$file \$file.blinded
+      cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
+   fi
+done
      " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
       chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
-
 
      ################ fasta_sample script (i.e. samples tags)
      echo "#!/bin/bash
