@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 
-infile = "UFastqToTagCount.out"
-infh = open(infile)
-
-outfile = "TagCount.csv"
-ofh = open(outfile, "w")
+import sys
 
 outline = ""
 
-print >> ofh, "sample,flowcell,lane,sq,tags,reads"
+print "sample,flowcell,lane,sq,tags,reads"
 
-for line in infh.readlines():
+for line in sys.stdin:
 	line = line.strip()
 	if "Reading FASTQ file:" in line:
 		line = line.split("/")
@@ -23,11 +19,11 @@ for line in infh.readlines():
 	elif "Total number of reads in lane" in line:
 		line = line.split("=")
 		total_line = "total,%s,,%s" %(cellline, line[-1])
-		print >> ofh, total_line
+		print  total_line
 	elif "Total number of good barcoded reads" in line:
 		line = line.split("=")
 		good_line = "good,%s,,%s" %(cellline, line[-1])
-		print >> ofh, good_line
+		print good_line
 		cellline = ""
 		total_line = ""
 		good_line = ""
@@ -41,10 +37,7 @@ for line in infh.readlines():
 	elif not outline == "":
 		line = line.split()
 		outline += ",%s,%s" %(line[1], line[6])
-		print >> ofh, outline
+		print outline
 		outline = ""
 	else:
 		pass
-
-infh.close()
-ofh.close()

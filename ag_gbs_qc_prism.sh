@@ -21,7 +21,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|fasta_sample|kmer_analysis|blast_analysis|all] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|fasta_sample|kmer_analysis|blast_analysis|bwa_mapping|all] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -108,7 +108,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" ) ) ]] ; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) ) ]] ; then
       echo "analysis must be one of all, demultiplex, kgd , kmer_analysis, blast_analysis ) "
       exit 1
    fi
@@ -137,7 +137,7 @@ function configure_env() {
    cp ag_gbs_qc_prism.mk $OUT_ROOT
    cp demultiplex_prism.sh $OUT_ROOT
    cp genotype_prism.sh $OUT_ROOT
-
+   cp get_reads_tags_per_sample.py $OUT_ROOT
 
    echo "
 max_tasks=50
@@ -203,6 +203,8 @@ if [ \$? != 0 ]; then
    echo \"warning demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code\"
    exit 1
 fi
+# summarise the tag counts
+cat $cohort/*.FastqToTagCount.stdout | ./get_reads_tags_per_sample.py > $cohort/TagCount.csv
       " > $OUT_ROOT/${cohort_moniker}.demultiplex.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.demultiplex.sh
 
@@ -217,7 +219,7 @@ if [ \$? != 0 ]; then
    exit 1
 fi
 # generate unblinded output
-for file in $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv ; do
    if [ -f \$file ]; then
       cp -p \$file \$file.blinded
       cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
@@ -283,6 +285,31 @@ if [ \$? != 0 ]; then
 fi
      " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
+
+
+     ################ bwa mapping script
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/bwa_mapping
+$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta
+if [ \$? != 0 ]; then
+   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
+
+
+
+
+
+
+
+
+
+
+
+
    done
 }
 
