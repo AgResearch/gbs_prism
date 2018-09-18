@@ -8,26 +8,28 @@ help_text="\n
 
  Usage: \n
 
- listDBKeyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme [-t default|all|gbsx|qc|gbsx_qc|files|unblind|unblind_script] [ -f flowcell ]\n
+ list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme [-t default|all|gbsx|qc|gbsx_qc|files|unblind|unblind_script|bwa_index_paths|blast_index_paths] [ -f flowcell ]\n
 \n
 e.g.\n
-listDBKeyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format\n
-listDBKeyfile.sh  -s SQ0566 -v 5             # extract everything for SQ0566, default tassel 5 format\n
-listDBKeyfile.sh  -s SQ0566 -v 5 -t all      # extract everything for SQ0566, extended tassel 5 format (also include subject name)\n
-listDBKeyfile.sh  -s SQ0566 -t gbsx          # extract everything for SQ0566, GBSX format (only include sample, barcode, enzyme)\n
-listDBKeyfile.sh  -s SQ0566 -t qc            # internal primary key used instead of sampleid\n
-listDBKeyfile.sh  -s SQ0566 -t unblind       # dump a mapping between qc_sampleid and lab sampleid \n
-listDBKeyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid. Save output to a file and then run as sed -f script_file raw_file > patched_file \n
-listDBKeyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)\n
-listDBKeyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs)\n
-listDBKeyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)\n
-listDBKeyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format \n
-listDBKeyfile.sh  -t files -g deer -e PstI   # as above, report lane + file\n
-listDBKeyfile.sh  -g deer  -f CA95UANXX      # all deer , but only in flowcell CA95UANXX\n
-listDBKeyfile.sh  -f CA95UANXX               # extract everything on flowcell CA95UANXX\n
-listDBKeyfile.sh  -s SQ2701 -q uncontaminated      # all the samples flagged as uncontaminated in SQ2701 \n
-listDBKeyfile.sh -s SQ2701 -f CC5V9ANXX -e ApeKI -g Ryegrass -q contaminated_xanthomonas_translucens \n
-listDBKeyfile.sh                             # don't be greedy ! (extract entire keyfile database, ~ 200,000 records)\n
+list_keyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format\n
+list_keyfile.sh  -s SQ0566 -v 5             # extract everything for SQ0566, default tassel 5 format\n
+list_keyfile.sh  -s SQ0566 -v 5 -t all      # extract everything for SQ0566, extended tassel 5 format (also include subject name)\n
+list_keyfile.sh  -s SQ0566 -t gbsx          # extract everything for SQ0566, GBSX format (only include sample, barcode, enzyme)\n
+list_keyfile.sh  -s SQ0566 -t qc            # internal primary key used instead of sampleid\n
+list_keyfile.sh  -s SQ0566 -t unblind       # dump a mapping between qc_sampleid and lab sampleid \n
+list_keyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid. Save output to a file and then run as sed -f script_file raw_file > patched_file \n
+list_keyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)\n
+list_keyfile.sh  -s SQ0566 -t bwa_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
+list_keyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
+list_keyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs)\n
+list_keyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)\n
+list_keyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format \n
+list_keyfile.sh  -t files -g deer -e PstI   # as above, report lane + file\n
+list_keyfile.sh  -g deer  -f CA95UANXX      # all deer , but only in flowcell CA95UANXX\n
+list_keyfile.sh  -f CA95UANXX               # extract everything on flowcell CA95UANXX\n
+list_keyfile.sh  -s SQ2701 -q uncontaminated      # all the samples flagged as uncontaminated in SQ2701 \n
+list_keyfile.sh -s SQ2701 -f CC5V9ANXX -e ApeKI -g Ryegrass -q contaminated_xanthomonas_translucens \n
+list_keyfile.sh                             # don't be greedy ! (extract entire keyfile database, ~ 200,000 records)\n
 "
 
 CLIENT_VERSION=3
@@ -88,14 +90,14 @@ function check_opts() {
       echo "Tassel version should be 3 or 5"
       exit 1
    fi
-   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" ]]; then
-      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files (default and all are both tassel templates)"
+   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" ]]; then
+      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, bwa_index_paths, blast_index_paths  (default and all are both tassel templates)"
       exit 1
    fi
 
    if [[ ( -z $SAMPLE ) && ( -z "$GBS_COHORT" ) && ( -z "$ENZYME" ) && ( -z "$FLOWCELL" ) ]]; then
       answer="n"
-      echo "this will extract the whole keyfile database - are you sure ( listDBKeyfile.sh  -h to see options and examples ) ? (y/n)"
+      echo "this will extract the whole keyfile database - are you sure ( list_keyfile.sh  -h to see options and examples ) ? (y/n)"
       read answer
       if [ "$answer" != "y" ]; then
          exit 1
@@ -221,6 +223,32 @@ from
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
 order by 
+   1;
+"
+   elif [[ ( $TEMPLATE == "bwa_index_paths" ) ]]; then
+code="
+select distinct
+   gbs_cohort,
+   refgenome_bwa_indexes
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+order by
+   1;
+"
+   elif [[ ( $TEMPLATE == "blast_index_paths" ) ]]; then
+code="
+select distinct
+   gbs_cohort,
+   refgenome_blast_indexes
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+order by
    1;
 "
    elif [[ ( $TEMPLATE == "unblind" ) ]]; then
