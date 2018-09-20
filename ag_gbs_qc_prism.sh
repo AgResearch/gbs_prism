@@ -358,15 +358,26 @@ function run_prism() {
 }
 
 function html_prism() {
-   # summarise bwa mappings 
    mkdir -p $OUT_ROOT/html
-   tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/*/bwa_mapping/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
-   tardis -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
-   echo "tba" > $OUT_ROOT/ag_gbs_qc_prism.html 2>&1
+
+   # summarise bwa mappings 
+   if [ ! -f $OUT_ROOT/html/mapping_stats.jpg ]; then 
+       tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/*/bwa_mapping/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
+       tardis -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
+   fi
+
+   # import yield stats 
+   if [ ! -f  $OUT_ROOT/html/gbs_yield_import_temp.dat ]; then 
+      $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+   fi
+
+   if [ ! -f $OUT_ROOT/kgd_import_temp.dat ]; then
+      $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
+   fi
 }
 
 function clean() {
-   echo "cleaning up tardis workign folders..."
+   echo "cleaning up tardis working folders..."
    find $OUT_ROOT -name "tardis_*" -type d -exec rm {} \;
 }
 

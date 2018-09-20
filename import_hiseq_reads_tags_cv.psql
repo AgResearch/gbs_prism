@@ -1,0 +1,9 @@
+delete from gbs_yield_import_temp;
+
+\copy gbs_yield_import_temp( run , cohort , sampleid , flowcell , lane , sqnumber , tag_count , read_count ) from gbs_yield_import_temp.dat with NULL as ''
+
+update 
+   gbs_yield_import_temp
+set
+   lane = rtrim(ltrim(lane)),
+   sqnumber = rtrim(ltrim(sqnumber));
