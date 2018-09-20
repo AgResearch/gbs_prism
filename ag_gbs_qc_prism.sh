@@ -132,6 +132,7 @@ function echo_opts() {
 # before running this script)
 #
 function configure_env() {
+   export CONDA_ENVS_PATH=$CONDA_ENVS_PATH:/dataset/bioinformatics_dev/active/conda-env
    cd $GBS_PRISM_BIN
    cp ag_gbs_qc_prism.sh $OUT_ROOT
    cp ag_gbs_qc_prism.mk $OUT_ROOT
@@ -142,6 +143,22 @@ function configure_env() {
    echo "
 max_tasks=50
 " > $OUT_ROOT/tardis.toml
+
+   echo "
+conda activate bifo-essential
+" > $OUT_ROOT/bifo-essential_env.inc
+
+   echo "
+export CONDA_ENVS_PATH=$CONDA_ENVS_PATH
+conda activate bioconductor
+" > $OUT_ROOT/configure_bioconductor_env.src
+
+
+
+   echo "
+conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/gbs_prism 
+" > $OUT_ROOT/gbs_prism_env.inc
+
    cd $OUT_ROOT
 }
 
@@ -181,8 +198,11 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc > $OUT_ROOT/${cohort_moniker}.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
+      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
+      adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
+      bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
 
-      for analysis_type in all demultiplex kgd kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
+      for analysis_type in all bwa_mapping demultiplex kgd kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -287,29 +307,36 @@ fi
       chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
 
 
-     ################ bwa mapping script
+     ################ bwa mapping script (includes sampling and trimming)
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/bwa_mapping
-$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta
+#
+# sample each file referred to in $OUT_ROOT/${cohort_moniker}.filenames
+#$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/$cohort/bwa_mapping  \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
+#if [ \$? != 0 ]; then
+#   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
+#   exit 1
+#fi
+# trim the samples 
+#for fastq_sample in $cohort/bwa_mapping/*.fastq.gz; do
+#   outbase=\`basename \$fastq_sample .fastq.gz \`
+#   tardis -d $OUT_ROOT/$cohort/bwa_mapping --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.fastq 2\>$OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.report
+#   if [ \$? != 0 ]; then
+#      echo \"warning, cutadapt of \$fastq_sample returned an error code\"
+#      exit 1
+#   fi
+#done
+
+# align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references
+cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/$cohort/bwa_mapping/references.txt
+$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a bwa -r $OUT_ROOT/$cohort/bwa_mapping/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/$cohort/bwa_mapping -C $HPC_TYPE $OUT_ROOT/$cohort/bwa_mapping/*.trimmed.fastq
 if [ \$? != 0 ]; then
-   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
+   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
-     " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
-      chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
-
-
-
-
-
-
-
-
-
-
-
-
+     " >  $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
    done
 }
 
@@ -331,13 +358,16 @@ function run_prism() {
 }
 
 function html_prism() {
+   # summarise bwa mappings 
+   mkdir -p $OUT_ROOT/html
+   tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/*/bwa_mapping/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
+   tardis -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
    echo "tba" > $OUT_ROOT/ag_gbs_qc_prism.html 2>&1
 }
 
 function clean() {
-   echo "skipping clean for now"
-   #rm -rf $OUT_ROOT/tardis_*
-   #rm $OUT_ROOT/*.fastq
+   echo "cleaning up tardis workign folders..."
+   find $OUT_ROOT -name "tardis_*" -type d -exec rm {} \;
 }
 
 
