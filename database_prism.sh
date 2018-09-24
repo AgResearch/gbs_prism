@@ -8,12 +8,12 @@ function get_opts() {
 
 help_text="
  examples : \n
- ./database_prism.sh -i -t db_update -r 180914_D00390_0399_ACCVK0ANXX -s SQ0788\n
+ ./database_prism.sh -i -t import_new_run -r 180921_D00390_0400_BCCVDJANXX  -s SQ0788\n
 "
 
 DRY_RUN=no
 INTERACTIVE=no
-TASK=db_update
+TASK=import_new_run
 RUN=all
 MACHINE=hiseq
 SAMPLE=""
@@ -73,8 +73,8 @@ if [ -z "$GBS_PRISM_BIN" ]; then
 fi
 
 # check args
-if [[ ( $TASK != "db_update" ) ]]; then
-    echo "Invalid task name - must be db_update" 
+if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) ]]; then
+    echo "Invalid task name - must be import_new_run or import_results" 
     exit 1
 fi
 
@@ -107,11 +107,12 @@ function get_samples() {
    set +x
 }
 
-function update_database() {
-   add_run
+function import_new_run() {
+   #add_run
    get_samples 
    import_keyfiles
    update_fastq_locations
+   update_bwa_blast_refs
 }
 
 function add_run() {
@@ -165,10 +166,38 @@ function update_fastq_locations() {
    done
 }
 
+
+function update_bwa_blast_refs() {
+   # this fills in blast and bwa refs for newly imported records based on previous 
+   # records with matching species. Where new record is a nre species , a seperate update is needed 
+   psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
+}
+
+
+
+function import_results() {
+   # import yield stats
+   if [ ! -f  $OUT_ROOT/html/gbs_yield_import_temp.dat ]; then
+      $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+   fi
+
+   if [ ! -f $OUT_ROOT/kgd_import_temp.dat ]; then
+      $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
+   fi
+}
+
+
 get_opts $@
 
 check_opts
 
 echo_opts
 
-update_database 
+if [ $TASK == "import_new_run" ]; then
+   import_new_run  
+elif [ $TASK == "import_results" ]; then
+   import_results
+else
+   echo "unknown task $TASK"
+   exit 1
+fi
