@@ -142,6 +142,7 @@ function configure_env() {
 
    echo "
 max_tasks=50
+jobtemplatefile = \"$GBS_PRISM_BIN/etc/gbs_qc_slurm_array_job\"
 " > $OUT_ROOT/tardis.toml
 
    echo "
