@@ -240,7 +240,7 @@ if [ \$? != 0 ]; then
    exit 1
 fi
 # generate unblinded output
-for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt ; do
    if [ -f \$file ]; then
       cp -p \$file \$file.blinded
       cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
@@ -314,20 +314,20 @@ cd $OUT_ROOT
 mkdir -p $cohort/bwa_mapping
 #
 # sample each file referred to in $OUT_ROOT/${cohort_moniker}.filenames
-#$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/$cohort/bwa_mapping  \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
-#if [ \$? != 0 ]; then
-#   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
-#   exit 1
-#fi
+$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/$cohort/bwa_mapping  \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
+if [ \$? != 0 ]; then
+   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
 # trim the samples 
-#for fastq_sample in $cohort/bwa_mapping/*.fastq.gz; do
-#   outbase=\`basename \$fastq_sample .fastq.gz \`
-#   tardis -d $OUT_ROOT/$cohort/bwa_mapping --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.fastq 2\>$OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.report
-#   if [ \$? != 0 ]; then
-#      echo \"warning, cutadapt of \$fastq_sample returned an error code\"
-#      exit 1
-#   fi
-#done
+for fastq_sample in $cohort/bwa_mapping/*.fastq.gz; do
+   outbase=\`basename \$fastq_sample .fastq.gz \`
+   tardis -d $OUT_ROOT/$cohort/bwa_mapping --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.fastq 2\>$OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.report
+   if [ \$? != 0 ]; then
+      echo \"warning, cutadapt of \$fastq_sample returned an error code\"
+      exit 1
+   fi
+done
 
 # align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references
 cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/$cohort/bwa_mapping/references.txt

@@ -9,6 +9,7 @@ function get_opts() {
 help_text="
  examples : \n
  ./database_prism.sh -i -t import_new_run -r 180921_D00390_0400_BCCVDJANXX  -s SQ0788\n
+ ./database_prism.sh -i -t import_results -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
 "
 
 DRY_RUN=no
@@ -108,7 +109,7 @@ function get_samples() {
 }
 
 function import_new_run() {
-   #add_run
+   add_run
    get_samples 
    import_keyfiles
    update_fastq_locations
