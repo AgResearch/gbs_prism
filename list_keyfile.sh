@@ -267,7 +267,7 @@ order by
    elif [[ ( $TEMPLATE == "unblind_script" ) ]]; then
 code="
 select
-   's/' || replace(qc_sampleid,'-','.') || '/' || sample || '/g'
+   's/' || replace(qc_sampleid,'-',E'\\\\.') || '/' || sample || '/g'
 from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
