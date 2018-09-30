@@ -1,0 +1,39 @@
+/*
+* update blast and bwa indexes from previous values for the same species
+*/
+update gbskeyfilefact as k
+   set refgenome_bwa_indexes = r.refgenome_bwa_indexes
+from  
+    (  
+       select 
+          lower(species) as species,
+          max(refgenome_bwa_indexes) as refgenome_bwa_indexes
+       from 
+          gbskeyfilefact 
+       where
+          refgenome_bwa_indexes is not null
+       group by 
+          lower(species)
+      ) as r 
+where
+   r.species = lower(k.species) and 
+   k.refgenome_bwa_indexes is null;
+
+update gbskeyfilefact as k
+   set refgenome_blast_indexes = r.refgenome_blast_indexes
+from  
+    (  
+       select 
+          lower(species) as species,
+          max(refgenome_blast_indexes) as refgenome_blast_indexes
+       from 
+          gbskeyfilefact 
+       where
+          refgenome_blast_indexes is not null
+       group by 
+          lower(species)
+      ) as r 
+where
+   r.species = lower(k.species) and 
+   k.refgenome_blast_indexes is null;
+
