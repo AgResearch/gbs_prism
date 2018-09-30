@@ -21,7 +21,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|fasta_sample|kmer_analysis|blast_analysis|bwa_mapping|all|html] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|kmer_analysis|blast_analysis|bwa_mapping|all|html] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -109,8 +109,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
-      echo "analysis must be one of all, demultiplex, kgd , kmer_analysis, blast_analysis ) "
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
+      echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, blast_analysis ) "
       exit 1
    fi
 
@@ -204,7 +204,7 @@ function get_targets() {
       adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
       bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
 
-      for analysis_type in all bwa_mapping demultiplex kgd kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
+      for analysis_type in all bwa_mapping demultiplex kgd unblind kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -240,15 +240,28 @@ if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
+     " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
+
+
+     ################ unblind script
+     echo "#!/bin/bash
+cd $OUT_ROOT
+if [ ! -d $cohort ]; then 
+   exit 1
+fi
 # generate unblinded output
 for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt ; do
    if [ -f \$file ]; then
-      cp -p \$file \$file.blinded
+      if [ ! -f \$file.blinded ]; then
+         cp -p \$file \$file.blinded
+      fi
       cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
    fi
 done
-     " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
-      chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
+     " >  $OUT_ROOT/${cohort_moniker}.unblind.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.unblind.sh
+
 
      ################ fasta_sample script (i.e. samples tags)
      echo "#!/bin/bash

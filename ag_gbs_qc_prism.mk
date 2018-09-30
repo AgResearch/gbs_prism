@@ -21,7 +21,11 @@
 	$@.sh
 	date > $@
 
-%.fasta_sample:   %.kgd
+%.fasta_sample:   %.unblind
+	$@.sh
+	date > $@
+
+%.unblind:   %.kgd
 	$@.sh
 	date > $@
 
