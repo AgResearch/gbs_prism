@@ -46,7 +46,7 @@ jpeg("mapping_stats.jpg", height=nrow(mapping_stats) *  80, width=900)
 # https://stackoverflow.com/questions/13032777/scatter-plot-with-error-bars
 
 margins=par("mar")
-margins[2] = 8 * margins[2]
+margins[2] = 9 * margins[2]
 par(mar=margins)
 
 #sets the bottom, left, top and right margins respectively of the plot region in number of lines of text.
