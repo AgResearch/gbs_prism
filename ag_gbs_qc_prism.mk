@@ -6,15 +6,17 @@
 #     http://www.gnu.org/software/make/manual/make.html
 #
 
+# not part of "all" as expensive
 %.taxonomy_analysis:   %.blast_analysis
 	$@.sh
 	date > $@
 
+# not part of "all" as expensive
 %.blast_analysis:   %.fasta_sample
 	$@.sh
 	date > $@
 
-%.all:  %.kmer_analysis
+%.all:  %.kmer_analysis %.bwa_mapping 
 	date > $@
 
 %.kmer_analysis:   %.fasta_sample

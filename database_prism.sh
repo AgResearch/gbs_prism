@@ -146,6 +146,7 @@ function import_keyfiles() {
 
 function update_fastq_locations() {
    # update the fastq locations 
+   code_to_return=0
    echo "** updating fastq locations **"
    set -x
    for sample_moniker in $sample_monikers; do
@@ -162,9 +163,13 @@ function update_fastq_locations() {
          fi
          if [ $? != "0" ]; then
             echo "error !! updateFastqLocations.sh  exited with $? for $sample_moniker - continuing to attempt other samples "
+            code_to_return=1
          fi
       done
    done
+   if [ $code_to_return != 0 ]; then 
+      exit $code_to_return 
+   fi
 }
 
 
@@ -196,6 +201,31 @@ echo_opts
 
 if [ $TASK == "import_new_run" ]; then
    import_new_run  
+   if [ $? == 0 ]; then 
+      echo "
+
+*** import looks OK :-) *** 
+
+You can browse the run at http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=${RUN}&context=default 
+
+      "
+   else
+      echo "
+
+*** looks like the import had a problem :-( ***  
+
+You may be able to browse the run at http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=${RUN}&context=default
+
+common problems:
+
+* missing keyfile 
+* typo in keyfile  - e.g. wrong flowcell or library number - this means the import can't set up the correct fastq links
+* wrong species for GBS negatives, can lead to a spurious negatives-only cohort being set up 
+
+You can manually complete the import using $GBS_PRISM/database_prism.sh (-h for help)
+      "
+      exit 1
+   fi
 elif [ $TASK == "import_results" ]; then
    import_results
 else

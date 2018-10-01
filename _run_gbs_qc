@@ -104,26 +104,12 @@ or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDY
    echo "will process $gbs_ROOT/$RUN "
 
 
-   ####### get and check whether to run locally or on the cluster
-   echo "
-
-should this run be queued on the compute cluster ? (y/n, default=y. If n, will be run locally)
-"
-   answer=y   
-   read answer
-   if [ "$answer" != "n" ]; then 
-      HPC_TYPE=slurm
-   else
-      HPC_TYPE=local
-   fi
-   
-
-   # set up folder
+   # set up output folder
    while [ 1 ]; do
       NEW_ROOT=$PROCESSING_ROOT/$RUN
       answer=""
       echo "please specify output base folder (or just press ENTER to use default , $PROCESSING_ROOT/$RUN)"
-      read answer 
+      read answer
       if [ ! -z $answer ]; then
          NEW_ROOT=$answer
       fi
@@ -146,11 +132,65 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
       fi
    done
 
-   echo "will use output root folder $OUTPUT_ROOT 
+   echo "will use output root folder $OUTPUT_ROOT
 
    "
 
+
+
+   ####### check whether run is in database  - import it if not 
+   echo "
+
+checking if run is in the database... 
+
+"
+set -x
+   in_db=`$GBS_PRISM_BIN/is_run_in_database.sh $RUN | sed 's/\s//g' -`
+set +x
+   if [ $in_db == "0" ]; then
+      echo "$RUN is not in the database - will run database import first , about to execute 
+
+$GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN
+
+logging to $OUTPUT_ROOT/database_prism.log 
+
+OK ? (y/n, default = y)
+"
+      answer=y
+      read answer
+      if [ "$answer" != "n" ]; then
+         $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN > $OUTPUT_ROOT/database_prism.log 2>&1
+         if [ $? != 0 ]; then
+            echo "
+
+sorry - quitting after received bad return code from database import -try looking at
+
+$OUTPUT_ROOT/database_prism.log
+
+"
+            exit 1
+         fi
+      else
+         echo "OK quitting - can't run GBS q/c until run has been imported to database"
+         exit 1
+      fi
+   fi
+
+
+   ####### get and check whether to run locally or on the cluster
+   echo "
+
+should this run be queued on the compute cluster ? (y/n, default=y. If n, will be run locally)
+"
+   answer=y   
+   read answer
+   if [ "$answer" != "n" ]; then 
+      HPC_TYPE=slurm
+   else
+      HPC_TYPE=local
+   fi
    
+
    ####### get and check the analysis type 
    ANALYSIS=all
    while [ 1 ] ; do
