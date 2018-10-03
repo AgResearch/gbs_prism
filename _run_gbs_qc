@@ -1,16 +1,26 @@
 #!/bin/sh
+#
+# master interactive script for processing a hiseq run through bcl2fastq and GBS analysis
+#
 
 export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms 
 export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+BCL2FASTQ_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 
 gbs_version=$1
+
+function read_answer_with_default() {
+   read answer
+   if [ -z "$answer" ]; then
+      answer=$@
+   fi
+}
 
 function get_processing_parameters() {
    PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
    if [ -f $PARAMETERS_FILE ]; then
-      answer=n
       echo "found existing processing parameters file $OUTPUT_ROOT/SampleProcessing.json  - is it OK to update this with GBS settings ? (y/n, default=n)"
-      read answer
+      read_answer_with_default n
 
       if [ "$answer" != "y" ]; then
          echo "OK will not update"
@@ -46,11 +56,123 @@ function get_processing_parameters() {
 
    OK to use these parameters ? (y/n, default=y)
    "
-   read answer
+   read_answer_with_default y
    if [ "$answer" == "n" ]; then
       echo "please edit $PARAMETERS_FILE and try again"
       exit 1
    fi
+}
+
+
+function run_bcl2fastq() {
+   if [ $HOSTNAME != $BCL2FASTQ_NODE ]; then
+      echo "sorry you need to be logged on to iramohio-01 to run bcl2fastq"
+      exit 1
+   fi
+
+   echo "checking run is completed (i.e. looking for $HISEQ_ROOT/$RUN/RTAComplete.txt)"
+   if [ ! -f $HISEQ_ROOT/$RUN/RTAComplete.txt ]; then
+      echo "*** landmark file $HISEQ_ROOT/$RUN/RTAComplete.txt does not exist => this run has not completed sequencing - quitting"
+      exit 1
+   fi
+   echo "checking sample sheet has been configured for gbs q/c"
+   grep -i "downstream_processing" $HISEQ_ROOT/$RUN/SampleSheet.csv > /dev/null 2>&1
+   if [ $? != 0 ]; then
+      echo "could not find landmark column 'downstream_processing' in $HISEQ_ROOT/$RUN/SampleSheet.csv => has not been configured - please edit sample sheet, saving the original"
+      exit 1
+   fi
+   # set up for bcl2fastq run
+   mkdir -p $BCL2FASTQ_ROOT/$RUN
+   if [ ! -d $BCL2FASTQ_ROOT/$RUN ]; then
+      echo "could not create bcl2fastq output folder $BCL2FASTQ_ROOT/$RUN , quitting"
+      exit 1
+   fi
+   echo "about to run bcl2fastq using
+
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+
+   OK ? (y/n, default=y)
+   "
+   read_answer_with_default  y
+   if [ $answer != "y" ]; then
+      echo "OK quitting"
+      exit 1
+   fi
+   echo "
+   starting bcl2fastq, this should take around an hour or two...
+
+   "
+
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log
+
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+
+   if [ $? != 0 ]; then
+      echo "
+
+      bcl2fastq has finished but received a non zero process exit code from sequencing_qc_prism - do
+      you want to continue ? (y/n, default = n)
+      "
+      read_answer_with_default y 
+      if [ $answer != "y" ]; then
+         echo "OK quitting"
+         exit 1
+      fi
+   fi
+   echo "
+
+   bcl2fastq completed ok 
+
+   about to standardise the sequence file disposition (i.e. make project folders for non-barcoded output
+    - e.g. a file SQNNNN_L00x_R1_001.fastq.gz will generate a folder SQNNNN etc.)
+
+   "
+   folders=""
+
+   # get non-redundant list of the GBS librarys represented  (e.g. parse SQ0801_S1_L001_R1_001.fastq.gz to get SQ0801) 
+   for file in $BCL2FASTQ_ROOT/$RUN/bcl2fastq/*.fastq.gz ; do
+      base=`basename $file`
+      project=`echo $base |  awk -F_ '{print $1}' -`
+      echo $folders | grep -i $project > /dev/null 2>&1
+      if [ $? != 0 ]; then
+         folders="$folders $project"
+      fi
+   done
+
+   echo "please confirm which folders to create (default : $folders )"
+   read_answer_with_default $folders
+   set -x
+   for folder in $answer; do
+      mkdir -p $BCL2FASTQ_ROOT/$RUN/bcl2fastq/$folder
+      cp -s $BCL2FASTQ_ROOT/$RUN/bcl2fastq/${folder}*.fastq.gz $BCL2FASTQ_ROOT/$RUN/bcl2fastq/$folder
+   done
+   set +x
+
+   
+   echo "*** sequence file disposition complete ***
+
+   finding sequence files for fastqc..."
+   find $BCL2FASTQ_ROOT/$RUN -name "*.fastq.gz" -type f -print > $BCL2FASTQ_ROOT/$RUN/sequence_files.txt
+   echo "
+
+   about to start fastqc in the background using 
+
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
+
+   OK ? (y/n, default=y)
+   "
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK quitting"
+      exit 1
+   fi
+   echo "
+
+   running fastqc in background, then will continue with GBS q/c...
+
+   "
+
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN `cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
 }
 
 
@@ -67,7 +189,10 @@ function get_run_opts() {
    MISEQ_ROOT=/dataset/miseq/active
 
    HISEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
-   MISEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
+   # there is no MISEQ version of that as processing miseq using this script not supported currently 
+  
+   HISEQ_BCL2FASTQ_ROOT=/dataset/gseq_processing/scratch/illumina/hiseq
+   # there is no MISEQ version of that as processing miseq using this script not supported currently 
 
 
    echo "*** gbs analysis version $gbs_version (using SNP engine = $SNP_ENGINE) ***
@@ -89,11 +214,15 @@ or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDY
          if [ -d $HISEQ_ROOT/$RUN ]; then 
             gbs_ROOT=$HISEQ_ROOT
             PROCESSING_ROOT=$HISEQ_PROCESSING_ROOT
+            BCL2FASTQ_ROOT=$HISEQ_BCL2FASTQ_ROOT
             break
          elif [ -d $MISEQ_ROOT/$RUN ]; then
-            gbs_ROOT=$MISEQ_ROOT
-            PROCESSING_ROOT=$MISEQ_PROCESSING_ROOT
-            break
+            echo "
+to process miseq data, you will need to run the underlying scripts
+demultiplex_prism.sh and genotype_prism.sh , rather than this master
+script (which assumes hiseq data disposition)
+"
+            exit 1
          else 
             echo "sorry can't find $RUN under either $HISEQ_ROOT or $MISEQ_ROOT "
          fi
@@ -101,24 +230,37 @@ or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDY
 
    done
 
-   echo "will process $gbs_ROOT/$RUN "
+   echo "will process $gbs_ROOT/$RUN"
+   ####### check whether we can find sequence data - if not confirm  bcl2fastq is needed 
+   echo "checking sequence data (looking under  $BCL2FASTQ_ROOT/$RUN)...."
+   ls -lR $BCL2FASTQ_ROOT/$RUN/bcl2fastq 2>/dev/null | grep "fastq.gz"   > /dev/null 2>&1 
+   if [ $? != 0 ]; then
+      echo "could not find fastq data under $BCL2FASTQ_ROOT/$RUN so looks like bcl2fastq is needed - OK to run that ? (y/n, default=y)"
+      read_answer_with_default y 
+      if [ "$answer" != "y" ]; then
+         echo "OK quitting"
+         exit 1
+      fi
+      run_bcl2fastq 
+   fi
 
-
+   ######## continue on with GBS q/c ###########
    # set up output folder
    while [ 1 ]; do
       NEW_ROOT=$PROCESSING_ROOT/$RUN
       answer=""
-      echo "please specify output base folder (or just press ENTER to use default , $PROCESSING_ROOT/$RUN)"
+      echo "
+
+      please specify GBS q/c output base folder (or just press ENTER to use default , $PROCESSING_ROOT/$RUN)"
       read answer
       if [ ! -z $answer ]; then
          NEW_ROOT=$answer
       fi
       if [ ! -z "$NEW_ROOT" ] ; then
          if [ -d $NEW_ROOT ]; then
-            answer=y
             echo "warning - $NEW_ROOT already exists, use anyway ? (y/n, default=y)"
-            read answer
-            if [[ ( $answer == "y" ) || ( -z $answer ) ]]; then
+            read_answer_with_default y
+            if [ $answer == "y" ]; then
                OUTPUT_ROOT=$NEW_ROOT
                break
             fi
@@ -156,10 +298,10 @@ logging to $OUTPUT_ROOT/database_prism.log
 
 OK ? (y/n, default = y)
 "
-      answer=y
-      read answer
+      read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN > $OUTPUT_ROOT/database_prism.log 2>&1
+         echo "running $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN" > $OUTPUT_ROOT/database_prism.log
+         $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN >> $OUTPUT_ROOT/database_prism.log 2>&1
          if [ $? != 0 ]; then
             echo "
 
@@ -182,8 +324,7 @@ $OUTPUT_ROOT/database_prism.log
 
 should this run be queued on the compute cluster ? (y/n, default=y. If n, will be run locally)
 "
-   answer=y   
-   read answer
+   read_answer_with_default y
    if [ "$answer" != "n" ]; then 
       HPC_TYPE=slurm
    else
@@ -217,8 +358,7 @@ run (unless already done), etc.)
       ls $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc/* > /dev/null 2>&1
       if [ $? == 0 ] ; then
          echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         answer=n
-         read answer
+         read_answer_with_default n
          if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
             echo "ok quitting - please use a different output folder"
             exit 1
@@ -228,8 +368,7 @@ run (unless already done), etc.)
       ls $OUTPUT_ROOT/${SNP_ENGINE}_kmer_analysis/* > /dev/null 2>&1
       if [ $? == 0 ] ; then
          echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_kmer_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         answer=n
-         read answer
+         read_answer_with_default n
          if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
             echo "ok quitting - please use a different output folder"
             exit 1
@@ -239,8 +378,7 @@ run (unless already done), etc.)
       ls $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis/* > /dev/null 2>&1
       if [ $? == 0 ] ; then
          echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         answer=n
-         read answer
+         read_answer_with_default n
          if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
             echo "ok quitting - please use a different output folder"
             exit 1
@@ -264,9 +402,8 @@ run (unless already done), etc.)
 
       "
       echo "is this OK ? (y/n, default=y)"
-      answer=n
-      read answer
-      if [[ ( "$answer" == "y" ) || ( -z "$answer" ) ]]; then
+      read_answer_with_default y
+      if [ "$answer" == "y" ]; then
          SAMPLE_SHEET=$gbs_ROOT/$RUN/SampleSheet.csv 
       fi
    else
@@ -331,8 +468,7 @@ function run_qc() {
 
    "
    echo "OK to continue ? (y/n)"
-   answer=n
-   read answer 
+   read_answer_with_default y
    if [ $answer != "y" ]; then
       echo "OK quitting"
       exit 1
@@ -347,23 +483,61 @@ function run_qc() {
       export GBS_PRISM_BIN=$GBS_PRISM_BIN 
       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
       time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+      return_code=$?
    fi
 }
 
+function import_results() {
+
+   if [ $return_code != 0 ]; then
+      echo "
+
+looks like there may have been a problem with the q/c (non-zero exit code from ag_gbs_qc_prism.sh )  - 
+suggest you check  $OUTPUT_ROOT/run_gbs_qc.log. You can manually run the import later using : 
+  
+$GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN
+
+"
+      exit 1
+   else
+      echo "
+
+looks like q/c completed OK
+
+Ready to summarise and import yield stats using :
+
+$GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN
+
+OK to continue ? (y/n)"
+
+      read_answer_with_default y
+      if [ $answer != "y" ]; then
+         echo "OK quitting"
+         exit 1
+      else
+         echo "
+      running
+
+      $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+
+      " > $OUTPUT_ROOT/run_gbs_qc.log
+      $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
 
 
+      if [ $? != 0 ]; then
+         echo "
+
+** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
+"
+         exit 1
+      else
+         echo "** database import looks ok **"
+      fi
+   fi
+}
 
 get_run_opts
 get_cohort_opts
 run_qc
-
-
-
-
-
-         
-      
-
-
-
+import_results
 
