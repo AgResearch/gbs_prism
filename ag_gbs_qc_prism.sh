@@ -283,6 +283,18 @@ fi
 
 
      ################ blast script 
+### note ###
+# Re "Misunderstood parameter of NCBI BLAST impacts the correctness of bioinformatics workflows", Nidhi Shah  Michael G Nute  Tandy Warnow  Mihai Pop
+# and our use of "-max_target_seqs 1"
+# In the present context, the top hit returned from each (randomly sampled) sequence, from each sequenced biological sample, 
+# is used to prepare a numeric profile vector for each file, with the semantic details of the hits discarded.
+# The numeric vectors are then input to unsupervised machine learning - for example clustered
+# - so that we can highlight how similar or dissimilar new files are to previous files, and to each other.
+# It is not necessary for our purpose here that the hit returned , is the best (i.e. lowest evalue) in the database.
+# (This ("non-semantic") approach does depend on the same database version being used throughout
+# the series of files - and this would be true even if this blast parameter behaved as intuitively 
+# expected - i.e. returned the actual best hit in the database).
+############
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/blast
