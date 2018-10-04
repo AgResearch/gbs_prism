@@ -75,9 +75,16 @@ def sanitise(options):
          out_record_dict["sampleplate"] = get_import_value(record_dict, "(sample[_]*plate)")
          out_record_dict["samplewell"] = get_import_value(record_dict, "(sample[_]*well)")
          out_record_dict["downstream_processing"] = get_import_value(record_dict, "(downstream_processing)")
-         out_record_dict["basespace_project"] = get_import_value(record_dict, "(basespace_project)")
-         
-                                    
+         out_record_dict["basespace_project"] = get_import_value(record_dict, "(basespace_project)")         
+         if out_record_dict["downstream_processing"] == "" and options["supply_missing"]:
+            if out_record_dict["sampleindex"] == "":
+               out_record_dict["downstream_processing"] = "GBS"
+               out_record_dict["basespace_project"] = out_record_dict["description"]
+               out_record_dict["sampleproject"] = out_record_dict["sampleid"]
+            else:
+               out_record_dict["downstream_processing"] = "GTSEQ"
+               out_record_dict["basespace_project"] = out_record_dict["description"]
+                                                  
          record = [out_record_dict.get(key,"") for key in standard_header]
          
          csvwriter.writerow(record)
@@ -96,6 +103,7 @@ example : cat myfile.csv | sanitiseSampleSheet.py -r 161205_D00390_0274_AC9KW9AN
 
    parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
    parser.add_argument('-r', dest='run', required=True , help="name of run")
+   parser.add_argument('--supply_missing' , dest='supply_missing', default=False,action='store_true', help="add missing sections and headers")
 
    args = vars(parser.parse_args())
 
