@@ -521,17 +521,16 @@ OK to continue ? (y/n)"
       $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
 
       " > $OUTPUT_ROOT/run_gbs_qc.log
-      $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
-
-
-      if [ $? != 0 ]; then
-         echo "
+         $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+         if [ $? != 0 ]; then
+            echo "
 
 ** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
 "
-         exit 1
-      else
-         echo "** database import looks ok **"
+            exit 1
+         else
+             echo "** database import looks ok **"
+         fi
       fi
    fi
 }
