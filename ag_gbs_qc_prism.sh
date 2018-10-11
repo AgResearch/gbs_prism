@@ -337,18 +337,18 @@ fi
      ################ bwa mapping script (includes sampling and trimming)
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p $cohort/bwa_mapping
+mkdir -p bwa_mapping/$cohort   # note - must not allow tassel to see any fastq file names under $cohort ! 
 #
 # sample each file referred to in $OUT_ROOT/${cohort_moniker}.filenames
-$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/$cohort/bwa_mapping  \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
+$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/bwa_mapping/$cohort \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
 if [ \$? != 0 ]; then
-   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
+   echo \"warning, sampling in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
    exit 1
 fi
 # trim the samples 
-for fastq_sample in $cohort/bwa_mapping/*.fastq.gz; do
+for fastq_sample in $OUT_ROOT/bwa_mapping/$cohort/*.fastq.gz; do
    outbase=\`basename \$fastq_sample .fastq.gz \`
-   tardis -d $OUT_ROOT/$cohort/bwa_mapping --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.fastq 2\>$OUT_ROOT/$cohort/bwa_mapping/\$outbase.trimmed.report
+   tardis -d $OUT_ROOT/bwa_mapping/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.fastq 2\>$OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.report
    if [ \$? != 0 ]; then
       echo \"warning, cutadapt of \$fastq_sample returned an error code\"
       exit 1
@@ -356,10 +356,10 @@ for fastq_sample in $cohort/bwa_mapping/*.fastq.gz; do
 done
 
 # align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references
-cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/$cohort/bwa_mapping/references.txt
-$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a bwa -r $OUT_ROOT/$cohort/bwa_mapping/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/$cohort/bwa_mapping -C $HPC_TYPE $OUT_ROOT/$cohort/bwa_mapping/*.trimmed.fastq
+cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/bwa_mapping/$cohort/references.txt
+$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a bwa -r $OUT_ROOT/bwa_mapping/$cohort/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/bwa_mapping/$cohort -C $HPC_TYPE $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq
 if [ \$? != 0 ]; then
-   echo \"warning, bwa mapping of $OUT_ROOT/$cohort returned an error code\"
+   echo \"warning, bwa mapping in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
    exit 1
 fi
      " >  $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
@@ -389,7 +389,7 @@ function html_prism() {
 
    # summarise bwa mappings 
    if [ ! -f $OUT_ROOT/html/mapping_stats.jpg ]; then 
-       tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/*/bwa_mapping/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
+       tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
        tardis -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
    fi
 }
