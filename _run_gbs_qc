@@ -336,7 +336,7 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    ANALYSIS=all
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, fasta_sample, taxonomy_analysis) (or just press enter to run all)  
+please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, fasta_sample, taxonomy_analysis, bwa_mapping) (or just press enter to run all)  
 (note - entering kgd implies demultiplex will also be run (unless already done); taxonomy_analysis implies also kgd will be 
 run (unless already done), etc.)
 
@@ -347,45 +347,12 @@ run (unless already done), etc.)
          ANALYSIS=all
       fi
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "taxonomy_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, kmer_analysis, taxonomy_analysis, fasta_sample or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "taxonomy_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
+         echo "analysis must be one of demultiplex, kgd, kmer_analysis, bwa_mapping , taxonomy_analysis, fasta_sample or all"
       else
          break
       fi
    done
-
-   if [[ ( "$ANALYSIS" == "kgd" ) || ( "$ANALYSIS" == "all" ) || ( "$ANALYSIS" == "demultiplex" ) || ( "$ANALYSIS" == "fasta_sample" ) ]]; then
-      ls $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc/* > /dev/null 2>&1
-      if [ $? == 0 ] ; then
-         echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_gbs_qc - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         read_answer_with_default n
-         if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
-            echo "ok quitting - please use a different output folder"
-            exit 1
-         fi
-      fi
-   elif [ "$ANALYSIS" == "kmer_analysis" ]; then
-      ls $OUTPUT_ROOT/${SNP_ENGINE}_kmer_analysis/* > /dev/null 2>&1
-      if [ $? == 0 ] ; then
-         echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_kmer_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         read_answer_with_default n
-         if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
-            echo "ok quitting - please use a different output folder"
-            exit 1
-         fi
-      fi
-   elif [ "$ANALYSIS" == "taxonomy_analysis" ]; then
-      ls $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis/* > /dev/null 2>&1
-      if [ $? == 0 ] ; then
-         echo "found existing results under $OUTPUT_ROOT/${SNP_ENGINE}_taxonomy_analysis - are you sure you want to continue (e.g. complete an interrupted run) ? (y/n)"
-         read_answer_with_default n
-         if [[ ( $answer != "y" )  && ( $answer != "Y" ) ]]; then
-            echo "ok quitting - please use a different output folder"
-            exit 1
-         fi
-      fi
-   fi
-
 
    echo "will use analysis=$ANALYSIS
    "
