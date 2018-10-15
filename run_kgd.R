@@ -10,7 +10,9 @@ source(file.path(Sys.getenv("SEQ_PRISMS_BIN"),"/../KGD/GBS-Chip-Gmatrix.R"))
 Gfull <- calcG()
 GHWdgm.05 <- calcG(which(HWdis > -0.05),"HWdgm.05", npc=4)  # recalculate using Hardy-Weinberg disequilibrium cut-off at -0.05
 
-G5 <- GHWdgm.05$G5
-sampleID  <- read.table(text=seqID,sep="_",fill=TRUE)[,1]  ###This takes the first part of the ID before a '_'. Input from UNEAK is something like sample_flowcell_lane_library...
-save(G5,sampleID,file="GHW05.RData")
-write.csv(G5, "GHW05.csv", row.names=F)
+
+#To save a G Matrix
+writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
+
+#To write out vcf file
+writeVCF(outname="GHW05")
