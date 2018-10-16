@@ -1,0 +1,24 @@
+\a
+\f '\t'
+\pset footer off
+\o /dataset/gseq_processing/archive/backups/keyfile_dump.dat
+select * from gbskeyfilefact;
+\o /dataset/gseq_processing/archive/backups/qcsampleid_history.dat
+select * from gbs_sampleid_history_fact;
+\o /dataset/gseq_processing/archive/backups/sample_sheet_dump.dat
+select * from hiseqsamplesheetfact;
+\o /dataset/gseq_processing/archive/backups/yield_dump.dat
+select * from gbsyieldfact;
+\o /dataset/gseq_processing/archive/backups/runs_libraries_dump.dat
+select 
+   b.obid as sampleobid,
+   b.samplename,
+   l.obid as listobid,
+   l.listname
+from 
+   biosampleob as b join biosamplelistmembershiplink as m on 
+   m.biosampleob = b.obid join 
+   biosamplelist as l on l.obid = m.biosamplelist 
+where
+   b.sampletype = 'Illumina GBS Library';
+
