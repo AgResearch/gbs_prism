@@ -336,7 +336,7 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    ANALYSIS=all
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, fasta_sample, taxonomy_analysis, bwa_mapping) (or just press enter to run all)  
+please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, taxonomy_analysis, bwa_mapping) (or just press enter to run all)  
 (note - entering kgd implies demultiplex will also be run (unless already done); taxonomy_analysis implies also kgd will be 
 run (unless already done), etc.)
 
@@ -347,8 +347,8 @@ run (unless already done), etc.)
          ANALYSIS=all
       fi
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "taxonomy_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, kmer_analysis, bwa_mapping , taxonomy_analysis, fasta_sample or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "taxonomy_analysis" ) && ( "$ANALYSIS" != "all" ) ]]; then
+         echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , taxonomy_analysis, fasta_sample or all"
       else
          break
       fi

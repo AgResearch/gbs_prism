@@ -21,7 +21,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|kmer_analysis|blast_analysis|bwa_mapping|all|html] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -109,8 +109,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
-      echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, blast_analysis ) "
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
+      echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, allkmer_analysis, blast_analysis ) "
       exit 1
    fi
 
@@ -204,7 +204,7 @@ function get_targets() {
       adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
       bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
 
-      for analysis_type in all bwa_mapping demultiplex kgd unblind kmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
+      for analysis_type in all bwa_mapping demultiplex kgd unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -269,10 +269,11 @@ cd $OUT_ROOT
 mkdir -p $cohort/fasta_small_lowdepthsample
 mkdir -p $cohort/fasta_medium_lowdepthsample
 # run fasta_sample
-# sample high coverage - not running currently 
-# sample low coverage 
-$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+# sample all tags 
+$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -s .001 -O $OUT_ROOT/$cohort/fasta_alldepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+# sample low coverage tags (as used in GBS by KGD)
 $SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+
 
 if [ \$? != 0 ]; then
    echo \"warning , fasta sample of $OUT_ROOT/$cohort returned an error code\"
@@ -332,6 +333,19 @@ if [ \$? != 0 ]; then
 fi
      " >  $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.kmer_analysis.sh
+
+
+     ################ all-depth kmer summary script
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/allkmer_analysis
+$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
+if [ \$? != 0 ]; then
+   echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_alldepthsample returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.allkmer_analysis.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.allkmer_analysis.sh
 
 
      ################ bwa mapping script (includes sampling and trimming)

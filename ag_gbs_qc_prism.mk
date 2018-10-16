@@ -6,16 +6,20 @@
 #     http://www.gnu.org/software/make/manual/make.html
 #
 
-# not part of "all" as expensive
+########## non-standard analysis - these not (currently) part of "all" as expensive
 %.taxonomy_analysis:   %.blast_analysis
 	$@.sh
 	date > $@
 
-# not part of "all" as expensive
+%.allkmer_analysis: %.kmer_analysis
+	$@.sh
+	date > $@
+
 %.blast_analysis:   %.fasta_sample
 	$@.sh
 	date > $@
 
+########## standard analysis 
 %.all:  %.kmer_analysis %.bwa_mapping 
 	date > $@
 
