@@ -39,10 +39,10 @@ for RUN in `cat $1`; do
       # - in general this should be commented out , and control 
       # over which run is processed is done as part of creating the 
       # file of run names
-      if [ -f $cohort/KGD/GHW05.vcf ]; then
-         echo "skipping $cohort , already done (saw $cohort/KGD/GHW05.vcf)"
-         continue
-      fi
+      #if [ -f $cohort/KGD/GHW05.vcf ]; then
+      #   echo "skipping $cohort , already done (saw $cohort/KGD/GHW05.vcf)"
+      #   continue
+      #fi
 
       if [ ! -f $cohort/KGD/GHW05.RData ]; then
          echo "warning - could not find $cohort/KGD/GHW05.RData (skipping)"
@@ -60,7 +60,11 @@ for RUN in `cat $1`; do
 
       cohorts="$base $cohorts"
       rm -f $OUT_ROOT/${RUN}.${base}.kgd
+      rm -f $OUT_ROOT/${RUN}.${base}.unblind
       rm -f $cohort/*.genotype_prism
+
+      cp -p $cohort/hapMap/HapMap.hmc.txt.blinded $cohort/hapMap/HapMap.hmc.txt
+      cp -p $cohort/hapMap/HapMap.hmp.txt.blinded $cohort/hapMap/HapMap.hmp.txt 
    done
 
    echo "running $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a kgd -O $OUT_ROOT -r $RUN $cohorts > $OUT_ROOT/rerun_kgd.log 2>&1"
@@ -68,7 +72,15 @@ for RUN in `cat $1`; do
    if [ $? != 0 ]; then
       echo "looks like there was a problem (non zero return code) - check $OUT_ROOT/rerun_kgd.log"
    else
-      echo "** run looks good **"
+      echo "** kgd looks good , re-unblinding , with 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a unblind -O $OUT_ROOT -r $RUN $cohorts
+      "
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a unblind -O $OUT_ROOT -r $RUN $cohorts >> $OUT_ROOT/rerun_kgd.log 2>&1
+      if [ $? != 0 ]; then
+         echo "** run looks good **"
+      else
+         echo "looks like there was a problem (non zero return code) - check $OUT_ROOT/rerun_kgd.log"
+      fi
    fi
 done
 
