@@ -407,22 +407,28 @@ function html_prism() {
    # make shortcuts to output files that wil be linked to , under html root
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       cohort=${cohorts_array[$j]}
+
       mkdir -p  $OUT_ROOT/html/$cohort/KGD
       rm $OUT_ROOT/html/$cohort/KGD/*
       for file in $OUT_ROOT/$cohort/KGD/*; do
          cp -s $file $OUT_ROOT/html/$cohort/KGD
       done
+
       mkdir -p  $OUT_ROOT/html/$cohort/kmer_analysis
       rm $OUT_ROOT/html/$cohort/kmer_analysis/*
       for file in $OUT_ROOT/$cohort/kmer_analysis/*.jpg $OUT_ROOT/$cohort/kmer_analysis/*.txt ; do
          cp -s $file $OUT_ROOT/html/$cohort/kmer_analysis
       done
+
       mkdir -p  $OUT_ROOT/html/$cohort/blast
       rm $OUT_ROOT/html/$cohort/blast/*
       for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/blast
       done
+
    done
+
+   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
    # make peacock page which mashes up plots, output files etc.
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
 
@@ -436,6 +442,9 @@ function html_prism() {
 function clean() {
    echo "cleaning up tardis working folders..."
    find $OUT_ROOT -name "tardis_*" -type d -exec rm -r {} \;
+   # always exit with a clean exit code from the clean step 
+   # (irrespective of exit code from find  - which e.g. may be non-zero if no files are found) 
+   exit 0
 }
 
 
