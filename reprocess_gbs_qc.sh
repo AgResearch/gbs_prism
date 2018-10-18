@@ -1,7 +1,8 @@
 #!/bin/sh
 #
 # batch  script for reprocessing a hiseq run through GBS analysis (i.e. after the initial run, which 
-# did database import - e.g. to apply a later version of KGD)
+# did database import - e.g. to apply a later version of KGD). This script requeries the database, reruns tassel as 
+# well as reruns kgd. (Use batch_re_kgd.sh to just rerun kgd)
 #
 
 export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms 
