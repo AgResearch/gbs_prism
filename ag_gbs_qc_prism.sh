@@ -251,7 +251,7 @@ if [ ! -d $cohort ]; then
    exit 1
 fi
 # generate unblinded output
-for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/HeatmapOrderHWdgm.05.csv $OUT_ROOT/$cohort/KGD/HighRelatedness.csv $OUT_ROOT/$cohort/KGD/HighRelatednessHWdgm.05.csv $OUT_ROOT/$cohort/KGD/SampleStats.csv $OUT_ROOT/$cohort/KGD/seqID.csv $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt ; do
    if [ -f \$file ]; then
       if [ ! -f \$file.blinded ]; then
          cp -p \$file \$file.blinded
@@ -266,12 +266,15 @@ done
      ################ fasta_sample script (i.e. samples tags)
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p $cohort/fasta_small_lowdepthsample
+mkdir -p $cohort/fasta_alldepthsample 
 mkdir -p $cohort/fasta_medium_lowdepthsample
+mkdir -p $cohort/fasta_small_lowdepthsample
 # run fasta_sample
 # sample all tags 
 $SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -s .001 -O $OUT_ROOT/$cohort/fasta_alldepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
-# sample low coverage tags (as used in GBS by KGD)
+# small sample of low coverage tags (as used in GBS by KGD) - e.g. for blast work
+$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+# medium sample of low coverage tags (as used in GBS by KGD) - e.g. for kmer analysis 
 $SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
 
@@ -401,6 +404,28 @@ function run_prism() {
 function html_prism() {
    mkdir -p $OUT_ROOT/html
 
+   # make shortcuts to output files that wil be linked to , under html root
+   for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
+      cohort=${cohorts_array[$j]}
+      mkdir -p  $OUT_ROOT/html/$cohort/KGD
+      rm $OUT_ROOT/html/$cohort/KGD/*
+      for file in $OUT_ROOT/$cohort/KGD/*; do
+         cp -s $file $OUT_ROOT/html/$cohort/KGD
+      done
+      mkdir -p  $OUT_ROOT/html/$cohort/kmer_analysis
+      rm $OUT_ROOT/html/$cohort/kmer_analysis/*
+      for file in $OUT_ROOT/$cohort/kmer_analysis/*.jpg $OUT_ROOT/$cohort/kmer_analysis/*.txt ; do
+         cp -s $file $OUT_ROOT/html/$cohort/kmer_analysis
+      done
+      mkdir -p  $OUT_ROOT/html/$cohort/blast
+      rm $OUT_ROOT/html/$cohort/blast/*
+      for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt; do
+         cp -s $file $OUT_ROOT/html/$cohort/blast
+      done
+   done
+   # make peacock page which mashes up plots, output files etc.
+   $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
+
    # summarise bwa mappings 
    if [ ! -f $OUT_ROOT/html/mapping_stats.jpg ]; then 
        tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
@@ -410,7 +435,7 @@ function html_prism() {
 
 function clean() {
    echo "cleaning up tardis working folders..."
-   find $OUT_ROOT -name "tardis_*" -type d -exec rm {} \;
+   find $OUT_ROOT -name "tardis_*" -type d -exec rm -r {} \;
 }
 
 
@@ -430,7 +455,6 @@ function main() {
       else
          run_prism
          if [ $? == 0 ] ; then
-            html_prism
             clean
          else
             echo "error state from sample run - skipping html page generation and clean-up"
