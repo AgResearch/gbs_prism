@@ -449,7 +449,7 @@ function run_qc() {
       export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
       export GBS_PRISM_BIN=$GBS_PRISM_BIN 
       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
-      time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+      time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
    fi
 }
@@ -487,12 +487,15 @@ OK to continue ? (y/n)"
 
       $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
 
-      " > $OUTPUT_ROOT/run_gbs_qc.log
+      " >> $OUTPUT_ROOT/run_gbs_qc.log
          $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
-         if [ $? != 0 ]; then
+         return_code=$?
+         if [ $return_code != 0 ]; then
             echo "
 
 ** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
+( you can run manually using : $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN )
+
 "
             exit 1
          else
@@ -502,8 +505,47 @@ OK to continue ? (y/n)"
    fi
 }
 
+function generate_html() {
+
+   echo "
+
+   Ready to generate html and client report , with the following:
+
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN 
+
+   "
+   echo "OK to continue ? (y/n)"
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK quitting"
+      exit 1
+   else
+      echo "
+      running
+
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN
+
+      " >> $OUTPUT_ROOT/run_gbs_qc.log
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN > $OUTPUT_ROOT/generate_html.log 2>&1
+      return_code=$?
+      if [ $return_code != 0 ]; then
+         echo "
+
+** looks like there was a problem with generating html (non-zero return code ) - check $OUTPUT_ROOT/generate_html.log  **
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN )
+
+"
+         exit 1
+      else
+          echo "** html looks ok **"
+      fi
+   fi
+}
+
+
 get_run_opts
 get_cohort_opts
 run_qc
 import_results
+generate_html
 
