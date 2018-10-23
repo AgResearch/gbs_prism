@@ -9,7 +9,7 @@ if [ -z "$1" ]; then
 
 usage : batch_re_kgd.sh  file_of_run_names
 
-example : batch_re_kgd.sh xaf  "
+example : batch_re_kgd.sh list_of_runs  "
    exit 1
 fi
 
@@ -39,10 +39,10 @@ for RUN in `cat $1`; do
       # - in general this should be commented out , and control 
       # over which run is processed is done as part of creating the 
       # file of run names
-      #if [ -f $cohort/KGD/GHW05.vcf ]; then
-      #   echo "skipping $cohort , already done (saw $cohort/KGD/GHW05.vcf)"
-      #   continue
-      #fi
+      if [ -f $cohort/KGD/GHW05.vcf.blinded ]; then
+         echo "skipping $cohort , already done (saw $cohort/KGD/GHW05.vcf.blinded)"
+         continue
+      fi
 
       if [ ! -f $cohort/KGD/GHW05.RData ]; then
          echo "warning - could not find $cohort/KGD/GHW05.RData (skipping)"
