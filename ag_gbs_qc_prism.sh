@@ -420,6 +420,12 @@ function html_prism() {
          cp -s $file $OUT_ROOT/html/$cohort/kmer_analysis
       done
 
+      mkdir -p  $OUT_ROOT/html/$cohort/allkmer_analysis
+      rm $OUT_ROOT/html/$cohort/allkmer_analysis/*
+      for file in $OUT_ROOT/$cohort/allkmer_analysis/*.jpg $OUT_ROOT/$cohort/allkmer_analysis/*.txt ; do
+         cp -s $file $OUT_ROOT/html/$cohort/allkmer_analysis
+      done
+
       mkdir -p  $OUT_ROOT/html/$cohort/blast
       rm $OUT_ROOT/html/$cohort/blast/*
       for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt; do
@@ -432,19 +438,14 @@ function html_prism() {
    # make peacock page which mashes up plots, output files etc.
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
 
-   # summarise bwa mappings 
-   if [ ! -f $OUT_ROOT/html/mapping_stats.jpg ]; then 
-       tardis -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
-       tardis -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
-   fi
+   # (re ) summarise bwa mappings 
+   tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
+   tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
 }
 
 function clean() {
    echo "cleaning up tardis working folders..."
    find $OUT_ROOT -name "tardis_*" -type d -exec rm -r {} \;
-   # always exit with a clean exit code from the clean step 
-   # (irrespective of exit code from find  - which e.g. may be non-zero if no files are found) 
-   exit 0
 }
 
 
@@ -465,6 +466,7 @@ function main() {
          run_prism
          if [ $? == 0 ] ; then
             clean
+            echo "* done clean *"  # mainly to yield zero exit code
          else
             echo "error state from sample run - skipping html page generation and clean-up"
             exit 1

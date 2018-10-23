@@ -11,16 +11,16 @@
 	$@.sh
 	date > $@
 
-%.allkmer_analysis: %.kmer_analysis
-	$@.sh
-	date > $@
-
 %.blast_analysis:   %.fasta_sample
 	$@.sh
 	date > $@
 
 ########## standard analysis 
-%.all:  %.kmer_analysis %.bwa_mapping 
+%.all:  %.allkmer_analysis %.bwa_mapping 
+	date > $@
+
+%.allkmer_analysis:   %.kmer_analysis
+	$@.sh
 	date > $@
 
 %.kmer_analysis:   %.fasta_sample

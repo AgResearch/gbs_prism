@@ -422,19 +422,16 @@ fi
 
 if [ $DRY_RUN == "no" ]; then
    psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
-   echo updating repository...
-   cd $KEY_DIR
-   #hg add $KEYFILE_BASE.txt
-   #hg commit -m "importKeyfile.sh added $KEYFILE_BASE.txt" $KEYFILE_BASE.txt
-   #hg push
 else
    echo "keyfile import : will run 
    psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
+   "
+fi
 
-   cd $KEY_DIR
-   #hg add $KEYFILE_BASE.txt
-   #hg commit -m importKeyfile.sh added $KEYFILE_BASE.txt $KEYFILE_BASE.txt
-   #hg push"
+if [ $? != 0 ]; then
+   echo "*** looks like this failed : psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
+   (bad return code )
+   ****" 
 fi
 
 echo "done (url to access keyfile is http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=${SAMPLE}&context=default )"
