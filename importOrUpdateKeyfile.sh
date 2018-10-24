@@ -190,6 +190,7 @@ delete from keyfile_temp;
 
 \copy keyfile_temp(Flowcell,Lane,Barcode,Sample,PlateName,PlateRow,PlateColumn,LibraryPrepID${counter_copy_include},Comment,Enzyme,Species,NumberOfBarcodes${bifo_copy_include}${control_copy_include}${windowsize_copy_include}${gbscohort_copy_include}${fastq_copy_include}) from /tmp/$KEYFILE_BASE.txt with NULL as ''
 
+update keyfile_temp set gbs_cohort = lower(gbs_cohort) where gbs_cohort  is not null;
 update keyfile_temp set gbs_cohort = replace(regexp_replace(regexp_replace(enzyme,'[/&]','-'),'ApeKI-MspI','MspI-ApeKI','i'),'.','_') where gbs_cohort is null;
 update keyfile_temp set gbs_cohort = replace(regexp_replace(regexp_replace(enzyme,'[/&]','-'),'ApeKI-MspI','MspI-ApeKI','i'),'.','_') where length(ltrim(rtrim(gbs_cohort))) = 0;
 update keyfile_temp set gbs_cohort = replace(gbs_cohort, ' ', '_');
@@ -307,6 +308,7 @@ delete from keyfile_temp;
 
 \copy keyfile_temp(Flowcell,Lane,Barcode,Sample,PlateName,PlateRow,PlateColumn,LibraryPrepID${counter_copy_include},Comment,Enzyme,Species,NumberOfBarcodes${bifo_copy_include}${control_copy_include}${windowsize_copy_include}${gbscohort_copy_include}${fastq_copy_include}) from /tmp/$KEYFILE_BASE.txt with NULL as ''
 
+update keyfile_temp set gbs_cohort = lower(gbs_cohort) where gbs_cohort  is not null;
 update keyfile_temp set gbs_cohort = replace(regexp_replace(regexp_replace(enzyme,'[/&]','-'),'ApeKI-MspI','MspI-ApeKI','i'),'.','_') where gbs_cohort is null;
 update keyfile_temp set gbs_cohort = replace(regexp_replace(regexp_replace(enzyme,'[/&]','-'),'ApeKI-MspI','MspI-ApeKI','i'),'.','_') where length(ltrim(rtrim(gbs_cohort))) = 0;
 update keyfile_temp set gbs_cohort = replace(gbs_cohort, ' ', '_');
