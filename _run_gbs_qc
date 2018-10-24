@@ -449,7 +449,14 @@ function run_qc() {
       export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
       export GBS_PRISM_BIN=$GBS_PRISM_BIN 
       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
-      time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+
+      echo "
+      (if you need to kill this run, you can restart using : 
+      source $OUTPUT_ROOT/restart_qc.src
+      )
+      "
+    
+      time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
    fi
 }

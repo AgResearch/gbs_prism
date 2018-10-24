@@ -271,11 +271,11 @@ mkdir -p $cohort/fasta_medium_lowdepthsample
 mkdir -p $cohort/fasta_small_lowdepthsample
 # run fasta_sample
 # sample all tags 
-$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -s .001 -O $OUT_ROOT/$cohort/fasta_alldepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -s .001 -O $OUT_ROOT/$cohort/fasta_alldepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 # small sample of low coverage tags (as used in GBS by KGD) - e.g. for blast work
-$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 # medium sample of low coverage tags (as used in GBS by KGD) - e.g. for kmer analysis 
-$SEQ_PRISMS_BIN/sample_prism.sh  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
 
 if [ \$? != 0 ]; then
@@ -303,7 +303,7 @@ fi
 cd $OUT_ROOT
 mkdir -p $cohort/blast
 # run blast
-$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
+$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
 if [ \$? != 0 ]; then
    echo \"warning , blast  of $OUT_ROOT/$cohort/fasta_small_lowdepthsample returned an error code\"
    exit 1
@@ -316,7 +316,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 # summarise blast results 
-$SEQ_PRISMS_BIN/taxonomy_prism.sh -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
+$SEQ_PRISMS_BIN/taxonomy_prism.sh -C $HPC_TYPE -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
 if [ \$? != 0 ]; then
    echo \"warning, summary of $OUT_ROOT/$cohort/blast returned an error code\"
    exit 1
@@ -329,7 +329,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/kmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE  -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
    exit 1
@@ -342,7 +342,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/allkmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_alldepthsample returned an error code\"
    exit 1
@@ -357,7 +357,7 @@ cd $OUT_ROOT
 mkdir -p bwa_mapping/$cohort   # note - must not allow tassel to see any fastq file names under $cohort ! 
 #
 # sample each file referred to in $OUT_ROOT/${cohort_moniker}.filenames
-$SEQ_PRISMS_BIN/sample_prism.sh  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/bwa_mapping/$cohort \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -s .00005 -M 15000 -a fastq -O $OUT_ROOT/bwa_mapping/$cohort \`cut -f 2 $OUT_ROOT/${cohort_moniker}.filenames\`   
 if [ \$? != 0 ]; then
    echo \"warning, sampling in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
    exit 1
@@ -374,7 +374,7 @@ done
 
 # align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references
 cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/bwa_mapping/$cohort/references.txt
-$SEQ_PRISMS_BIN/align_prism.sh -m 60 -a bwa -r $OUT_ROOT/bwa_mapping/$cohort/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/bwa_mapping/$cohort -C $HPC_TYPE $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq
+$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a bwa -r $OUT_ROOT/bwa_mapping/$cohort/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/bwa_mapping/$cohort -C $HPC_TYPE $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq
 if [ \$? != 0 ]; then
    echo \"warning, bwa mapping in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
    exit 1
