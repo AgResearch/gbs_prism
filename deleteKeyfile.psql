@@ -1,0 +1,21 @@
+/*
+* this script deletes a keyfile. Before the delete, it backs up the
+* internal qc_sampleid's   
+*/
+insert into gbs_sampleid_history_fact(biosampleob, sample,qc_sampleid,comment,voptypeid)
+select 
+   biosampleob,
+   sample,
+   qc_sampleid,
+   'backup before delete of keyfile',
+   92
+from gbsKeyFileFact
+where
+   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+delete from gbsKeyFileFact  
+where 
+   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+delete from gbsyieldfact
+where
+   sqname = :keyfilename;
+
