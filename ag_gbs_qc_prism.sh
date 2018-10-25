@@ -317,7 +317,17 @@ fi
 cd $OUT_ROOT
 # summarise blast results 
 $SEQ_PRISMS_BIN/taxonomy_prism.sh -C $HPC_TYPE -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
-if [ \$? != 0 ]; then
+return_code=\$?
+# provide unblinded frequency tables
+for file in  $OUT_ROOT/$cohort/blast/frequency_table.txt; do
+   if [ -f \$file ]; then
+      if [ ! -f \$file.blinded ]; then
+         cp -p \$file \$file.blinded
+      fi
+      cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
+   fi
+done
+if [ \$return_code != 0 ]; then
    echo \"warning, summary of $OUT_ROOT/$cohort/blast returned an error code\"
    exit 1
 fi
@@ -432,7 +442,7 @@ function html_prism() {
 
       mkdir -p  $OUT_ROOT/html/$cohort/blast
       rm $OUT_ROOT/html/$cohort/blast/*
-      for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt; do
+      for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt $OUT_ROOT/$cohort/blast/frequency_table.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/blast
       done
 
