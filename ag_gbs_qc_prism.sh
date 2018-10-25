@@ -409,6 +409,10 @@ function html_prism() {
       cohort=${cohorts_array[$j]}
 
       mkdir -p  $OUT_ROOT/html/$cohort/KGD
+      for file in $OUT_ROOT/$cohort/TagCount.csv; do
+         cp -s $file $OUT_ROOT/html/$cohort
+      done
+
       rm $OUT_ROOT/html/$cohort/KGD/*
       for file in $OUT_ROOT/$cohort/KGD/*; do
          cp -s $file $OUT_ROOT/html/$cohort/KGD
