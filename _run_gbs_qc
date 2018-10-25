@@ -518,7 +518,7 @@ function generate_html() {
 
    Ready to generate html and client report , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN 
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
    echo "OK to continue ? (y/n)"
@@ -530,10 +530,10 @@ function generate_html() {
       echo "
       running
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN > $OUTPUT_ROOT/generate_html.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_html.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
