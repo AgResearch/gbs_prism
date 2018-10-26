@@ -118,8 +118,8 @@ def generate_run_plot(options):
         "Low depth tag kmer summary (text file links)" : [ 'kmer_analysis/heatmap_sample_clusters.k6weighting_methodtag_count.txt', 'kmer_analysis/zipfian_distances_fit.k6weighting_methodtag_count.txt']        ,
         "All tag kmer summary (plots)" : [ 'allkmer_analysis/kmer_entropy.k6weighting_methodtag_count.jpg', 'allkmer_analysis/kmer_zipfian_comparisons.k6weighting_methodtag_count.jpg','allkmer_analysis/zipfian_distances.k6weighting_methodtag_count.jpg']            ,
         "All tag kmer summary (text file links)" : [ 'allkmer_analysis/heatmap_sample_clusters.k6weighting_methodtag_count.txt', 'allkmer_analysis/zipfian_distances_fit.k6weighting_methodtag_count.txt']        ,
-        "Low depth tag nt blast summary (plots)" : [ 'blast/taxonomy_summary_profile.jpg', 'blast/taxonomy_summary_variable.jpg'],
-        "Low depth tag nt blast summary (text file links)" : [ 'blast/frequency_table.txt', 'blast/taxonomy_summary_profiles.heatmap_clusters.txt', 'blast/taxonomy_summary_variable.heatmap_clusters.txt']
+        "Low depth tag nt blast summary (plots)" : [ 'blast/locus_freq.jpg', 'blast/locus_freq_abundant.jpg', 'blast/taxonomy_summary_profile.jpg', 'blast/taxonomy_summary_variable.jpg'],
+        "Low depth tag nt blast summary (text file links)" : [ 'blast/locus_freq.txt', 'blast/frequency_table.txt', 'blast/taxonomy_summary_profiles.heatmap_clusters.txt', 'blast/taxonomy_summary_variable.heatmap_clusters.txt']
     }
 
     

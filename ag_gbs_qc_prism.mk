@@ -7,7 +7,7 @@
 #
 
 ########## non-standard analysis - these not (currently) part of "all" as expensive
-%.taxonomy_analysis:   %.blast_analysis
+%.annotation:   %.blast_analysis
 	$@.sh
 	date > $@
 

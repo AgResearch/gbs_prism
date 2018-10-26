@@ -109,7 +109,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "taxonomy_analysis" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
       echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, allkmer_analysis, blast_analysis ) "
       exit 1
    fi
@@ -204,7 +204,7 @@ function get_targets() {
       adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
       bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
 
-      for analysis_type in all bwa_mapping demultiplex kgd unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample taxonomy_analysis; do
+      for analysis_type in all bwa_mapping demultiplex kgd unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample annotation; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -312,14 +312,18 @@ fi
       chmod +x $OUT_ROOT/${cohort_moniker}.blast_analysis.sh
 
 
-     ################ taxonomy summary script 
+     ################ annotation script 
      echo "#!/bin/bash
 cd $OUT_ROOT
-# summarise blast results 
-$SEQ_PRISMS_BIN/taxonomy_prism.sh -C $HPC_TYPE -w tag_count -a "Overview-$cohort" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
-return_code=\$?
+# summarise species from blast results 
+$SEQ_PRISMS_BIN/annotation_prism.sh -C $HPC_TYPE -w tag_count -a taxonomy -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
+return_code1=\$?
+# summarise descriptions from blast results 
+rm -f $OUT_ROOT/$cohort/blast/*.annotation_prism
+$SEQ_PRISMS_BIN/annotation_prism.sh -C $HPC_TYPE -w tag_count -a description -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
+return_code2=\$?
 # provide unblinded frequency tables
-for file in  $OUT_ROOT/$cohort/blast/frequency_table.txt; do
+for file in  $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/locus_freq.txt ; do
    if [ -f \$file ]; then
       if [ ! -f \$file.blinded ]; then
          cp -p \$file \$file.blinded
@@ -327,12 +331,12 @@ for file in  $OUT_ROOT/$cohort/blast/frequency_table.txt; do
       cat \$file.blinded | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > \$file
    fi
 done
-if [ \$return_code != 0 ]; then
+if [[ ( \$return_code1 != 0 ) || ( \$return_code2 != 0 ) ]]; then
    echo \"warning, summary of $OUT_ROOT/$cohort/blast returned an error code\"
    exit 1
 fi
-     " >  $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
-      chmod +x $OUT_ROOT/${cohort_moniker}.taxonomy_analysis.sh 
+     " >  $OUT_ROOT/${cohort_moniker}.annotation.sh 
+      chmod +x $OUT_ROOT/${cohort_moniker}.annotation.sh 
 
 
      ################ low-depth kmer summary script
@@ -442,7 +446,7 @@ function html_prism() {
 
       mkdir -p  $OUT_ROOT/html/$cohort/blast
       rm $OUT_ROOT/html/$cohort/blast/*
-      for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt $OUT_ROOT/$cohort/blast/frequency_table.txt; do
+      for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt $OUT_ROOT/$cohort/blast/frequency_table.txt  $OUT_ROOT/$cohort/blast/locus_freq.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/blast
       done
 
