@@ -302,6 +302,12 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/blast
+# configure a custom slurm batch job that will specify medium memory 
+cp $GBS_PRISM_BIN/etc/medium_mem_slurm_array_job $OUT_ROOT
+echo \"
+jobtemplatefile = \\\"$OUT_ROOT/medium_mem_slurm_array_job\\\"
+max_tasks = 60
+\" > $OUT_ROOT/$cohort/blast/tardis.toml
 # run blast
 $SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
 if [ \$? != 0 ]; then
@@ -486,7 +492,7 @@ function main() {
             clean
             echo "* done clean *"  # mainly to yield zero exit code
          else
-            echo "error state from sample run - skipping html page generation and clean-up"
+            echo "error state from  run - skipping html page generation and clean-up"
             exit 1
          fi
       fi
