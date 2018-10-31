@@ -78,9 +78,50 @@ function run_bcl2fastq() {
    echo "checking sample sheet has been configured for gbs q/c"
    grep -i "downstream_processing" $HISEQ_ROOT/$RUN/SampleSheet.csv > /dev/null 2>&1
    if [ $? != 0 ]; then
-      echo "could not find landmark column 'downstream_processing' in $HISEQ_ROOT/$RUN/SampleSheet.csv => has not been configured - please edit sample sheet, saving the original"
-      exit 1
+      echo "could not find landmark column 'downstream_processing' in $HISEQ_ROOT/$RUN/SampleSheet.csv : attempting to edit and replace the sample sheet"
+
+      # back up the original 
+      if [ ! -f $HISEQ_ROOT/$RUN/SampleSheet.csv.orig ]; then
+         echo "saving the original..."
+         set -x
+         $GBS_PRISM_BIN/replace_hiseq_samplesheet -i $HISEQ_ROOT/$RUN/SampleSheet.csv -o $HISEQ_ROOT/$RUN/SampleSheet.csv.orig > /dev/null 2>&1
+         set +x
+         if [ $? != 0 ]; then
+            echo "there was an error saving the original - quitting"
+            exit 1
+         fi
+      fi
+
+      # generate the edited version
+      echo "editing..."
+      tempfile=`mktemp`
+      set -x
+      cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header | tr -d '\r' > $tempfile
+      set +x
+
+
+      echo "the edited sheet looks like this : ...(press enter for listing)..."
+      read answer 
+      more $tempfile
+      echo "
+
+      "
+      echo "is this OK ? (y/n, default=y)"
+      read_answer_with_default y
+      if [ "$answer" != "y" ]; then
+         echo "ok quitting"
+         exit 1
+      fi
+
+      # echo "replacing..."
+      $GBS_PRISM_BIN/replace_hiseq_samplesheet -i $tempfile -o $HISEQ_ROOT/$RUN/SampleSheet.csv > /dev/null 2>&1
+      if [ $? != 0 ]; then
+         echo "there was an error replacing the original - quitting"
+         exit 1
+      fi
    fi
+
+
    # set up for bcl2fastq run
    mkdir -p $BCL2FASTQ_ROOT/$RUN
    if [ ! -d $BCL2FASTQ_ROOT/$RUN ]; then
@@ -286,9 +327,7 @@ script (which assumes hiseq data disposition)
 checking if run is in the database... 
 
 "
-set -x
    in_db=`$GBS_PRISM_BIN/is_run_in_database.sh $RUN | sed 's/\s//g' -`
-set +x
    if [ $in_db == "0" ]; then
       echo "$RUN is not in the database - will run database import first , about to execute 
 

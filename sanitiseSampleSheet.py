@@ -5,6 +5,26 @@ import sys
 import re
 import string
 import argparse
+import datetime 
+
+header1="""[Header],,,,,,,,,,,,,
+IEMFileVersion,4,,,,,,,,,,,,
+Date,%(today)s,,,,,,,,,,,,
+Workflow,GenerateFASTQ,,,,,,,,,,,,
+Application,HiSeq FASTQ Only,,,,,,,,,,,,
+Assay,TruSeq HT,,,,,,,,,,,,
+Description,,,,,,,,,,,,,
+Chemistry,Amplicon,,,,,,,,,,,,
+,,,,,,,,,,,,,
+[Reads],,,,,,,,,,,,,
+101,,,,,,,,,,,,,
+,,,,,,,,,,,,,
+[Settings],,,,,,,,,,,,,
+ReverseComplement,0,,,,,,,,,,,,
+Adapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA,,,,,,,,,,,,
+AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
+[Data],,,,,,,,,,,,,"""
+
 
 def get_import_value(value_dict, regexp):
    matching_keys = [re.search(regexp, key, re.IGNORECASE).groups()[0] for key in value_dict.keys() if re.search(regexp, key, re.IGNORECASE) is not None]
@@ -32,8 +52,13 @@ def sanitise(options):
    csvreader = csv.reader(sys.stdin)
    csvwriter = csv.writer(sys.stdout)
    filter_record = True
-   standard_header = ["fcid","lane","sampleid","sampleref","sampleindex","description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
+   column_headings = ["fcid","lane","sampleid","sampleref","sampleindex","description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
 
+
+
+   if options["add_header"]:
+      print header1%{"today" : datetime.date.today().strftime("%d/%m/%Y")}
+      
    for record in csvreader:
       
       if filter_record:
@@ -46,11 +71,17 @@ def sanitise(options):
             header = record
 
             # output header
-            csvwriter.writerow(standard_header)
+            csvwriter.writerow(column_headings)
       else:
          # skip any embedded section headings
          if re.search("\[.*\]",record[0]) is not None:
             continue
+         if re.search("^#",record[0]) is not None:
+            csvwriter.writerow([record[0]] + (len(column_headings)-1) * [''])
+            continue
+            
+         
+         
          # prepare ther record, including the following mappings:
          #Lane->lane
          #Sample_ID->sampleid
@@ -79,13 +110,13 @@ def sanitise(options):
          if out_record_dict["downstream_processing"] == "" and options["supply_missing"]:
             if out_record_dict["sampleindex"] == "":
                out_record_dict["downstream_processing"] = "GBS"
-               out_record_dict["basespace_project"] = out_record_dict["description"]
+               out_record_dict["basespace_project"] = out_record_dict["sampleproject"]
                out_record_dict["sampleproject"] = out_record_dict["sampleid"]
             else:
                out_record_dict["downstream_processing"] = "GTSEQ"
                out_record_dict["basespace_project"] = out_record_dict["description"]
                                                   
-         record = [out_record_dict.get(key,"") for key in standard_header]
+         record = [out_record_dict.get(key,"") for key in column_headings]
          
          csvwriter.writerow(record)
 
@@ -104,6 +135,7 @@ example : cat myfile.csv | sanitiseSampleSheet.py -r 161205_D00390_0274_AC9KW9AN
    parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
    parser.add_argument('-r', dest='run', required=True , help="name of run")
    parser.add_argument('--supply_missing' , dest='supply_missing', default=False,action='store_true', help="add missing sections and headers")
+   parser.add_argument('--add_header' , dest='add_header', default=False,action='store_true', help="add sample sheet header")
 
    args = vars(parser.parse_args())
 
