@@ -49,7 +49,7 @@ function get_processing_parameters() {
    fi
 
 
-   echo "will use the following processing parameters (press any key for listing)"
+   echo "will use the following processing parameters (press enter for listing)"
    read answer
    more $PARAMETERS_FILE
    echo "
@@ -157,7 +157,7 @@ function run_bcl2fastq() {
       bcl2fastq has finished but received a non zero process exit code from sequencing_qc_prism - do
       you want to continue ? (y/n, default = n)
       "
-      read_answer_with_default y 
+      read_answer_with_default n 
       if [ $answer != "y" ]; then
          echo "OK quitting"
          exit 1
@@ -291,29 +291,23 @@ script (which assumes hiseq data disposition)
    ######## continue on with GBS q/c ###########
    # set up output folder
    while [ 1 ]; do
-      NEW_ROOT=$PROCESSING_ROOT/$RUN
-      answer=""
       echo "
 
       please specify GBS q/c output base folder (or just press ENTER to use default , $PROCESSING_ROOT/$RUN)"
-      read answer
-      if [ ! -z $answer ]; then
-         NEW_ROOT=$answer
-      fi
-      if [ ! -z "$NEW_ROOT" ] ; then
+      read_answer_with_default $PROCESSING_ROOT/$RUN
+      NEW_ROOT=$answer
+      if [ -d $NEW_ROOT ]; then
+         echo "warning - $NEW_ROOT already exists, use anyway ? (y/n, default=y)"
+         read_answer_with_default y
+         if [ $answer == "y" ]; then
+            OUTPUT_ROOT=$NEW_ROOT
+            break
+         fi
+      else
+         mkdir -p $NEW_ROOT
          if [ -d $NEW_ROOT ]; then
-            echo "warning - $NEW_ROOT already exists, use anyway ? (y/n, default=y)"
-            read_answer_with_default y
-            if [ $answer == "y" ]; then
-               OUTPUT_ROOT=$NEW_ROOT
-               break
-            fi
-         else
-            mkdir -p $NEW_ROOT
-            if [ -d $NEW_ROOT ]; then
-               OUTPUT_ROOT=$NEW_ROOT
-               break
-            fi
+            OUTPUT_ROOT=$NEW_ROOT
+            break
          fi
       fi
    done
@@ -375,7 +369,6 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    
 
    ####### get and check the analysis type 
-   ANALYSIS=all
    while [ 1 ] ; do
       echo "
 please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, annotation , bwa_mapping) (or just press enter to run all)  
@@ -383,11 +376,8 @@ please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, a
 run (unless already done), etc.)
 
 "
-      read ANALYSIS
-
-      if [ -z "$ANALYSIS" ]; then 
-         ANALYSIS=all
-      fi
+      read_answer_with_default all
+      ANALYSIS=$answer
 
       if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "all" ) ]]; then
          echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample or all"
@@ -404,7 +394,7 @@ run (unless already done), etc.)
    ####### sample sheet:
    SAMPLE_SHEET=""
    if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
-      echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press any key for listing)..."
+      echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press enter for listing)..."
       read answer 
       more $gbs_ROOT/$RUN/SampleSheet.csv
       echo "
@@ -439,11 +429,8 @@ function get_cohort_opts() {
 
    LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
    echo "please enter libraries to run (default = $LIBRARY_MONIKERS)"
-   answer=""
-   read answer
-   if [ ! -z "$answer" ]; then
-      LIBRARY_MONIKERS=$answer
-   fi
+   read_answer_with_default $LIBRARY_MONIKERS
+   LIBRARY_MONIKERS=$answer
 
    echo "getting default GBS cohorts to process. . .
 
@@ -457,13 +444,8 @@ function get_cohort_opts() {
        done
    done
    echo "please enter gbs cohorts to process (default=$gbs_cohorts)"
-   answer=""
-   read answer
-   if [ ! -z "$answer" ]; then
-      GBS_COHORTS=$answer
-   else
-      GBS_COHORTS=$gbs_cohorts
-   fi
+   read_answer_with_default $gbs_cohorts
+   GBS_COHORTS=$answer
 }
 
 
@@ -476,7 +458,7 @@ function run_qc() {
    $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
-   echo "OK to continue ? (y/n)"
+   echo "OK to continue ? (y/n - default = y)"
    read_answer_with_default y
    if [ $answer != "y" ]; then
       echo "OK quitting"
@@ -524,7 +506,7 @@ Ready to summarise and import yield stats using :
 
 $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN
 
-OK to continue ? (y/n)"
+OK to continue ? (y/n , default = y)"
 
       read_answer_with_default y
       if [ $answer != "y" ]; then
