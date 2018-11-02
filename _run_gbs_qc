@@ -97,6 +97,7 @@ function run_bcl2fastq() {
       tempfile=`mktemp`
       set -x
       cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header | tr -d '\r' > $tempfile
+      chmod o+r,g+r $tempfile
       set +x
 
 
@@ -114,7 +115,9 @@ function run_bcl2fastq() {
       fi
 
       # echo "replacing..."
+      set -x
       $GBS_PRISM_BIN/replace_hiseq_samplesheet -i $tempfile -o $HISEQ_ROOT/$RUN/SampleSheet.csv > /dev/null 2>&1
+      set +x
       if [ $? != 0 ]; then
          echo "there was an error replacing the original - quitting"
          exit 1
