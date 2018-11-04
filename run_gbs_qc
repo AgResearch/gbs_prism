@@ -21,4 +21,4 @@ function get_pipeline() {
    fi
 }
 
-get_pipeline v2.0.0-alpha
+get_pipeline 1.0.0
