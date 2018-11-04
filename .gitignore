@@ -7,3 +7,17 @@ test/
 weevil_test.sh
 *.$$$
 tardis_*
+batch_fastqc.sh
+batch_kmer.sh
+batch_tag_count.sh
+batch_unblind.sh
+check_genes.sh
+conda/
+fastq_link
+genotype_custom.sh
+herring_worm_parameters.list
+herring_worm_reference.list
+misc_annotation.sh
+parameters.list
+references.list
+replace_hiseq_samplesheet

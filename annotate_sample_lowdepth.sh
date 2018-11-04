@@ -26,7 +26,7 @@ output_folder=$2
 
 cd $output_folder/..   # attempt to use relevant run time e.g. tardis.toml
 
-#time $SEQ_PRISMS_BIN/align_prism.sh -f -a blastn  -r nt  -p "-evalue 1.0e-10  -dust \'20 64 1\'  -outfmt \'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\'"  -O $output_folder $sample_fasta 
+time $SEQ_PRISMS_BIN/align_prism.sh -f -a blastn  -r nt  -p "-evalue 1.0e-10  -dust \'20 64 1\'  -outfmt \'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\'"  -O $output_folder $sample_fasta 
 
 base=`basename $sample_fasta .fasta`
 moniker=`echo $base | awk -F_ '{print $1}' -`
