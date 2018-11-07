@@ -10,6 +10,7 @@ help_text="
  examples : \n
  ./database_prism.sh -i -t import_new_run -r 180921_D00390_0400_BCCVDJANXX  -s SQ0788\n
  ./database_prism.sh -i -t import_results -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
+ ./database_prism.sh -i -t reimport_library -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
 "
 
 DRY_RUN=no
@@ -74,8 +75,8 @@ if [ -z "$GBS_PRISM_BIN" ]; then
 fi
 
 # check args
-if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) ]]; then
-    echo "Invalid task name - must be import_new_run or import_results" 
+if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) && ( $TASK != "reimport_library" ) ]]; then
+    echo "Invalid task name - must be import_new_run, import_results, reimport_library" 
     exit 1
 fi
 
@@ -103,8 +104,6 @@ function get_samples() {
    else
       sample_monikers=$SAMPLE
    fi
-
-   echo DEBUG $sample_monikers
    set +x
 }
 
@@ -115,6 +114,15 @@ function import_new_run() {
    update_fastq_locations
    update_bwa_blast_refs
 }
+
+function reimport_library() {
+   sample_monikers=$SAMPLE
+   delete_keyfiles
+   import_keyfiles
+   update_fastq_locations     # !!!!! known bug - need to run this for each flowcell the library was on
+   update_bwa_blast_refs
+}
+
 
 function add_run() {
    # add the run 
@@ -143,6 +151,23 @@ function import_keyfiles() {
       fi
    done
 }
+
+function delete_keyfiles() {
+   echo "** deleting keyfiles **"
+   set -x
+   for sample_moniker in $sample_monikers; do
+      if [ $DRY_RUN == "no" ]; then
+         $GBS_PRISM_BIN/deleteKeyfile.sh -k $sample_moniker -s $sample_moniker
+      else
+         $GBS_PRISM_BIN/deleteKeyfile.sh -n -k $sample_moniker -s $sample_moniker
+      fi
+      if [ $? != "0" ]; then
+          echo "deleteKeyfile.sh  exited with $? - quitting"
+          exit 1
+      fi
+   done
+}
+
 
 function update_fastq_locations() {
    # update the fastq locations 
@@ -228,6 +253,8 @@ You can manually complete the import using $GBS_PRISM/database_prism.sh (-h for 
    fi
 elif [ $TASK == "import_results" ]; then
    import_results
+elif [ $TASK == "reimport_library" ]; then
+   reimport_library
 else
    echo "unknown task $TASK"
    exit 1

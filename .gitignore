@@ -21,3 +21,4 @@ misc_annotation.sh
 parameters.list
 references.list
 replace_hiseq_samplesheet
+.nfs*
