@@ -216,7 +216,7 @@ function main() {
          html_prism
          clean
       else
-         echo "error state from sample run - skipping html page generation and clean-up"
+         echo "error state from genotype run - skipping html page generation and clean-up"
          exit 1
       fi
    fi
