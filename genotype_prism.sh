@@ -151,7 +151,7 @@ function get_targets() {
    file_base=`basename $DEMULTIPLEX_FOLDER`
    genotype_moniker=${file_base}.${ENGINE}
    echo $OUT_DIR/${genotype_moniker}.genotype_prism >> $OUT_DIR/genotype_targets.txt
-   script=$OUT_DIR/${genotype_moniker}.sh
+   script=$OUT_DIR/${genotype_moniker}.genotype_prism.sh
    if [ -f $script ]; then
       if [ ! $FORCE == yes ]; then
          echo "found existing genotype script $script  - will re-use (use -f to force rebuild of scripts) "

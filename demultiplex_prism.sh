@@ -205,11 +205,11 @@ function get_targets() {
       if [ $ENGINE == "gbsx" ]; then    
          demultiplex_moniker=${file_base}.${parameters_moniker}.${ENGINE}
          echo $OUT_DIR/${demultiplex_moniker}.demultiplex_prism >> $OUT_DIR/demultiplex_targets.txt
-         script=$OUT_DIR/${demultiplex_moniker}.sh
+         script=$OUT_DIR/${demultiplex_moniker}.demultiplex_prism.sh
       elif [[ ( $ENGINE == "tassel3" ) || ( $ENGINE == "tassel3_qc" ) ]]; then    
          demultiplex_moniker=${parameters_moniker}.${ENGINE}
          echo $OUT_DIR/${demultiplex_moniker}.demultiplex_prism > $OUT_DIR/demultiplex_targets.txt   # one line only 
-         script=$OUT_DIR/${demultiplex_moniker}.sh
+         script=$OUT_DIR/${demultiplex_moniker}.demultiplex_prism.sh
       fi
 
       if [ -f script ]; then
