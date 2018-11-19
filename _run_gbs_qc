@@ -8,6 +8,7 @@ export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 BCL2FASTQ_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 
 gbs_version=$1
+kgd_version=$2
 
 function read_answer_with_default() {
    read answer
@@ -239,7 +240,7 @@ function get_run_opts() {
    # there is no MISEQ version of that as processing miseq using this script not supported currently 
 
 
-   echo "*** gbs analysis version $gbs_version (using SNP engine = $SNP_ENGINE) ***
+   echo "*** gbs analysis version $gbs_version (KGD version $kgd_version) (using SNP engine = $SNP_ENGINE) ***
 * note that you can paste into your terminal window by clicking your right mouse button
 * at any stage you can press CTRL-C to exit the dialogs
 * if you would prefer to run a single batch command, use ag_gbs_qc_prism.sh (-h for help) - e.g. 
@@ -371,15 +372,18 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, annotation , bwa_mapping) (or just press enter to run all)  
-(note - entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
-run (unless already done), etc.)
+please give which q/c analysis you want (clientreport, html, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, annotation , bwa_mapping) (or just press enter to run all)  
+(notes:
 
+* entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
+run (unless already done), etc.)
+* entering html or clientreport does not rerun any analyses - it just redoes the html page
+* entering import_results does not rerun any analyses - it just (re)imports the results 
 "
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "all" ) ]]; then
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "all" ) ]]; then
          echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample or all"
       else
          break
@@ -449,13 +453,15 @@ function get_cohort_opts() {
           else
              to_do="$to_do $library_moniker"
              echo "ok will reprocess $library_moniker "
-             echo "do you need the keyfile re-imported ? (y/n, default =y)"
-             read_answer_with_default y
-             if [ $answer != "y" ]; then
-                 echo "ok will not reimport keyfile"
-             else
-                 to_import="$to_import $library_moniker"
-                 echo "ok will reimport keyfile"
+             if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+                echo "do you need the keyfile re-imported ? (y/n, default =y)"
+                read_answer_with_default y
+                if [ $answer != "y" ]; then
+                    echo "ok will not reimport keyfile"
+                else
+                    to_import="$to_import $library_moniker"
+                    echo "ok will reimport keyfile"
+                fi
              fi
           fi
       else
@@ -514,20 +520,22 @@ function get_cohort_opts() {
    GBS_COHORTS=$answer
 
 
-   # optionally clean up 
-   for cohort in $GBS_COHORTS; do
-      if [ -d $OUTPUT_ROOT/$cohort ]; then
-         echo "found existing results for $cohort in $OUTPUT_ROOT/$cohort - do you want to reset this cohort ? (y/n, default = y)"
-         read_answer_with_default y
-         if [ $answer != "y" ]; then
-            echo "ok not cleaning - note , rerun may be incomplete"
-         else
-            set -x
-            $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clean -O $OUTPUT_ROOT -r $RUN $cohort  
-            set +x
+   # optionally clean up  (unless doing summaries etc)
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+      for cohort in $GBS_COHORTS; do
+         if [ -d $OUTPUT_ROOT/$cohort ]; then
+            echo "found existing results for $cohort in $OUTPUT_ROOT/$cohort - do you want to reset this cohort ? (y/n, default = y)"
+            read_answer_with_default y
+            if [ $answer != "y" ]; then
+               echo "ok not cleaning - note , rerun may be incomplete"
+            else
+               set -x
+               $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clean -O $OUTPUT_ROOT -r $RUN $cohort  
+               set +x
+            fi
          fi
-      fi
-   done
+      done
+   fi
 }
 
 
@@ -547,7 +555,7 @@ function run_qc() {
       exit 1
    else 
       echo "
-      running 
+      running gbs_prism version $gbs_version , KGD version $kgd_version , using : 
 
       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
       " > $OUTPUT_ROOT/run_gbs_qc.log 
@@ -568,6 +576,7 @@ function run_qc() {
 }
 
 function import_results() {
+   mkdir -p $OUTPUT_ROOT/html 
 
    if [ $return_code != 0 ]; then
       echo "
@@ -592,8 +601,7 @@ OK to continue ? (y/n , default = y)"
 
       read_answer_with_default y
       if [ $answer != "y" ]; then
-         echo "OK quitting"
-         exit 1
+         echo "OK not importing results"
       else
          echo "
       running
@@ -619,10 +627,11 @@ OK to continue ? (y/n , default = y)"
 }
 
 function generate_html() {
+   mkdir -p $OUTPUT_ROOT/html
 
    echo "
 
-   Ready to generate html and client report , with the following:
+   Ready to generate html summaries  , with the following:
 
    $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
@@ -655,10 +664,60 @@ function generate_html() {
    fi
 }
 
+function generate_clientreport() {
+
+   echo "
+
+   Ready to generate clientreport summaries  , with the following:
+
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+
+   "
+   echo "OK to continue ? (y/n)"
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK will not generate clientreports "
+   else
+      echo "
+      running
+
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+
+      " >> $OUTPUT_ROOT/run_gbs_qc.log
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_clientreport.log 2>&1
+      return_code=$?
+      if [ $return_code != 0 ]; then
+         echo "
+
+** looks like there was a problem with generating clientreports (non-zero return code ) - check $OUTPUT_ROOT/generate_clientreport.log  **
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN )
+
+"
+         exit 1
+      else
+          echo "** clientreport looks ok **"
+      fi
+   fi
+}
+
 
 get_run_opts
 get_cohort_opts
-run_qc
-import_results
-generate_html
+
+if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+   run_qc
+fi
+
+if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  ]]; then
+   return_code=0
+   import_results
+fi
+
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then
+   generate_html
+fi
+
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) ]]; then
+   generate_clientreport
+fi
 

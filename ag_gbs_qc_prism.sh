@@ -109,7 +109,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) ) ]] ; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "clientreport" ) ) ]] ; then
       echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, allkmer_analysis, blast_analysis , clean) "
       exit 1
    fi
@@ -464,6 +464,11 @@ function html_prism() {
          cp -s $file $OUT_ROOT/html/$cohort/blast
       done
 
+      mkdir -p  $OUT_ROOT/html/$cohort/hapMap
+      rm $OUT_ROOT/html/$cohort/hapMap 
+      for file in $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt; do
+         cp -s $file $OUT_ROOT/html/$cohort/hapMap
+      done
    done
 
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
@@ -473,6 +478,24 @@ function html_prism() {
    # (re ) summarise bwa mappings 
    tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
+}
+
+function clientreport_prism() {
+   if [ ! -d $OUT_ROOT/html ]; then 
+      echo "could not find $OUT_ROOT/html (please generate the html summaries first)"
+      exit 1
+   fi
+
+   $GBS_PRISM_BIN/make_clientcohort_pages.py -r $RUN -o report.html
+   for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
+      set -x
+      cohort=${cohorts_array[$j]}
+      cd  $OUT_ROOT/html/$cohort 
+      rm -f report.zip report.tar*
+      tar -cv --auto-compress --dereference -f report.tar.gz  --files-from=report.html.manifest
+      cat report.html.manifest | zip -@ report
+      set +x
+   done
 }
 
 function clean() {
@@ -490,6 +513,8 @@ function main() {
 
    if [ $ANALYSIS == "html" ]; then
       html_prism
+   elif [ $ANALYSIS == "clientreport" ]; then
+      clientreport_prism
    else
       get_targets
       if [ $DRY_RUN != "no" ]; then

@@ -119,7 +119,7 @@ function reimport_library() {
    sample_monikers=$SAMPLE
    delete_keyfiles
    import_keyfiles
-   update_fastq_locations     # !!!!! known bug - need to run this for each flowcell the library was on
+   update_all_fastq_locations     
    update_bwa_blast_refs
 }
 
@@ -197,6 +197,40 @@ function update_fastq_locations() {
    fi
 }
 
+
+function update_all_fastq_locations() {
+   # update the fastq locations
+   code_to_return=0
+   echo "** updating all fastq locations **"
+   set -x
+   for sample_moniker in $sample_monikers; do
+      # generate code to update fastq locations for all flowcells the sample was on - i.e. generate
+      #$GBS_PRISM_BIN/updateFastqLocations.sh -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane
+      generator_script=`mktemp --tmpdir tmp.data_prismXXXXX`
+      update_script=`mktemp --tmpdir tmp.data_prismXXXXX`
+      echo "\a
+\f '\t'
+\t
+\pset footer off 
+select distinct
+   '$GBS_PRISM_BIN/updateFastqLocations.sh -s $sample_moniker -k $sample_moniker -r ' || b.listname || ' -f ' || g.flowcell || ' -l ' ||g.lane 
+from 
+   hiseqsamplesheetfact h join biosamplelist b on h.biosamplelist = b.obid  join
+   biosamplelistmembershiplink as l on l.biosamplelist = b.obid join
+   gbskeyfilefact as g on g.biosampleob = l.biosampleob
+where 
+   h.sampleid = :sample_name and
+   h.lane = g.lane and 
+   to_number(replace(:sample_name, 'SQ',''),'99999') =  g.libraryprepid ;
+" >> $generator_script 
+      psql -U agrbrdf -d agrbrdf -h invincible -v sample_name="'${sample_moniker}'" -f $generator_script  > $update_script
+      if [ $DRY_RUN == "no" ]; then
+         source $update_script
+      else
+         echo "would run $update_script"
+      fi
+   done
+}
 
 function update_bwa_blast_refs() {
    # this fills in blast and bwa refs for newly imported records based on previous 
