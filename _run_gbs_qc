@@ -313,6 +313,7 @@ script (which assumes hiseq data disposition)
       fi
    done
 
+   PARAMETERS_FILE=$OUTPUT_ROOT/SampleProcessing.json
    echo "will use output root folder $OUTPUT_ROOT
 
    "
@@ -356,19 +357,6 @@ $OUTPUT_ROOT/database_prism.log
    fi
 
 
-   ####### get and check whether to run locally or on the cluster
-   echo "
-
-should this run be queued on the compute cluster ? (y/n, default=y. If n, will be run locally)
-"
-   read_answer_with_default y
-   if [ "$answer" != "n" ]; then 
-      HPC_TYPE=slurm
-   else
-      HPC_TYPE=local
-   fi
-   
-
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
@@ -393,35 +381,53 @@ run (unless already done), etc.)
    echo "will use analysis=$ANALYSIS
    "
 
-
-   ####### get and check the sample sheet and a parameters file that controls the processing 
-   ####### sample sheet:
-   SAMPLE_SHEET=""
-   if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
-      echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press enter for listing)..."
-      read answer 
-      more $gbs_ROOT/$RUN/SampleSheet.csv
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+      ####### get and check whether to run locally or on the cluster
       echo "
 
-      "
-      echo "is this OK ? (y/n, default=y)"
+should this run be queued on the compute cluster ? (y/n, default=y. If n, will be run locally)
+"
       read_answer_with_default y
-      if [ "$answer" == "y" ]; then
-         SAMPLE_SHEET=$gbs_ROOT/$RUN/SampleSheet.csv 
+      if [ "$answer" != "n" ]; then 
+         HPC_TYPE=slurm
+      else
+         HPC_TYPE=local
       fi
    else
-      echo "warning - could not find a sample sheet in the usual place ( $gbs_ROOT/$RUN/SampleSheet.csv )"
+      HPC_TYPE=local
    fi
-   while [ -z "$SAMPLE_SHEET" ]; do
-      echo "please enter enter or paste in the full path to the sample sheet specifying lane contents and downstream processing"
-      read SAMPLE_SHEET
-      if [ ! -f "$SAMPLE_SHEET" ]; then 
-         SAMPLE_SHEET=""
-      fi
-   done
 
-   ####### processing parameters
-   get_processing_parameters  
+
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+      ####### get and check the sample sheet and a parameters file that controls the processing 
+      ####### sample sheet:
+      SAMPLE_SHEET=""
+      if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
+         echo "will use sample sheet $gbs_ROOT/$RUN/SampleSheet.csv , containing...(press enter for listing)..."
+         read answer 
+         more $gbs_ROOT/$RUN/SampleSheet.csv
+         echo "
+
+         "
+         echo "is this OK ? (y/n, default=y)"
+         read_answer_with_default y
+         if [ "$answer" == "y" ]; then
+            SAMPLE_SHEET=$gbs_ROOT/$RUN/SampleSheet.csv 
+         fi
+      else
+         echo "warning - could not find a sample sheet in the usual place ( $gbs_ROOT/$RUN/SampleSheet.csv )"
+      fi
+      while [ -z "$SAMPLE_SHEET" ]; do
+         echo "please enter enter or paste in the full path to the sample sheet specifying lane contents and downstream processing"
+         read SAMPLE_SHEET
+         if [ ! -f "$SAMPLE_SHEET" ]; then 
+            SAMPLE_SHEET=""
+         fi
+      done
+
+      ####### processing parameters
+      get_processing_parameters  
+   fi 
 
 }
 
@@ -436,41 +442,46 @@ function get_cohort_opts() {
    read_answer_with_default $LIBRARY_MONIKERS
    LIBRARY_MONIKERS=$answer
 
-   # check if already run - if so prompt for reimport
-   to_do=""
-   to_import=""
-   for library_moniker in $LIBRARY_MONIKERS; do
-      # look for landmark file(s)  
-      ls $OUTPUT_ROOT/*.${library_moniker}*.demultiplex > $OUTPUT_ROOT/manifest.txt 2>&1
-      grep -q "cannot access" $OUTPUT_ROOT/manifest.txt 
-      if [ $? != 0 ]; then
-          echo "looks like $library_moniker has already been processed (found landmarks )"
-          echo "do you want to reprocess this library ? (y/n, default = y)"
-          read_answer_with_default y
-          if [ $answer != "y" ]; then
-             echo "ok skipping $library_moniker"
-             continue
-          else
-             to_do="$to_do $library_moniker"
-             echo "ok will reprocess $library_moniker "
-             if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
-                echo "do you need the keyfile re-imported ? (y/n, default =y)"
-                read_answer_with_default y
-                if [ $answer != "y" ]; then
-                    echo "ok will not reimport keyfile"
-                else
-                    to_import="$to_import $library_moniker"
-                    echo "ok will reimport keyfile"
+
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+
+      # check if already run - if so prompt for reimport
+      to_do=""
+      to_import=""
+      for library_moniker in $LIBRARY_MONIKERS; do
+         # look for landmark file(s)  
+         ls $OUTPUT_ROOT/*.${library_moniker}*.demultiplex > $OUTPUT_ROOT/manifest.txt 2>&1
+         grep -q "cannot access" $OUTPUT_ROOT/manifest.txt 
+            if [ $? != 0 ]; then
+             echo "looks like $library_moniker has already been processed (found landmarks )"
+             echo "do you want to reprocess this library ? (y/n, default = y)"
+             read_answer_with_default y
+             if [ $answer != "y" ]; then
+                echo "ok skipping $library_moniker"
+                continue
+             else
+                to_do="$to_do $library_moniker"
+                echo "ok will reprocess $library_moniker "
+                if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+                   echo "do you need the keyfile re-imported ? (y/n, default =y)"
+                   read_answer_with_default y
+                   if [ $answer != "y" ]; then
+                      echo "ok will not reimport keyfile"
+                   else
+                       to_import="$to_import $library_moniker"
+                       echo "ok will reimport keyfile"
+                   fi
                 fi
              fi
-          fi
-      else
-          to_do="$to_do $library_moniker"
-      fi
-   done
+         else
+            to_do="$to_do $library_moniker"
+         fi
+      done
+   
+      LIBRARY_MONIKERS=$to_do
+   fi
 
    # exit if nothing to do ; run imports if any to do
-   LIBRARY_MONIKERS=$to_do
    if [ -z "$LIBRARY_MONIKERS" ]; then
       echo "quitting , nothing to do"
       exit 1
@@ -567,7 +578,10 @@ function run_qc() {
       echo "
       (if you need to kill this run, you can restart using : 
       source $OUTPUT_ROOT/restart_qc.src
-      )
+
+      - once that completes you will also need to rerun this interactive script to generate the html 
+      summary page, and again to generate client reports , and again to import the results (if applicable) 
+      (choose html , and then clientreport, and then import_results, when prompted for the analysis)
       "
     
       time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
@@ -636,7 +650,7 @@ function generate_html() {
    $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
-   echo "OK to continue ? (y/n)"
+   echo "OK to continue ? (y/n , default = y)"
    read_answer_with_default y
    if [ $answer != "y" ]; then
       echo "OK quitting"
@@ -673,7 +687,7 @@ function generate_clientreport() {
    $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
-   echo "OK to continue ? (y/n)"
+   echo "OK to continue ? (y/n , default = y)"
    read_answer_with_default y
    if [ $answer != "y" ]; then
       echo "OK will not generate clientreports "
