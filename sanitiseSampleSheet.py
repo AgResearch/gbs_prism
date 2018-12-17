@@ -27,10 +27,14 @@ AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
 
 
 def get_import_value(value_dict, regexp):
-   matching_keys = [re.search(regexp, key, re.IGNORECASE).groups()[0] for key in value_dict.keys() if re.search(regexp, key, re.IGNORECASE) is not None]
+   #print "DEBUG get_import_value: value_dict=%s"%str(value_dict)
+   #print "DEBUG get_import_value: regexp=%s"%str(regexp)
+   #matching_keys = [re.search(regexp, key, re.IGNORECASE).groups()[0] for key in value_dict.keys() if re.search(regexp, key, re.IGNORECASE) is not None]
+   matching_keys = [key for key in value_dict.keys() if re.search(regexp, key, re.IGNORECASE) is not None]
+   
    #print value_dict
    #print regexp
-   #print matching_keys
+   #print "DEBUG get_import_value: matching_keys=%s"%str(matching_keys)
    if len(matching_keys) == 0:
       value = ""
    elif len(matching_keys) == 1:
@@ -52,10 +56,12 @@ def sanitise(options):
    csvreader = csv.reader(sys.stdin)
    csvwriter = csv.writer(sys.stdout)
    filter_record = True
-   column_headings = ["fcid","lane","sampleid","sampleref","sampleindex","description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
-
-
-
+   column_heading_sets = {
+      "sample" : ["fcid","lane","sampleid","sampleref"],
+      "indices" : ["sampleindex"],
+      "other" : ["description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
+   }
+  
    if options["add_header"]:
       print header1%{"today" : datetime.date.today().strftime("%d/%m/%Y")}
       
@@ -70,7 +76,16 @@ def sanitise(options):
             filter_record = False
             header = record
 
+            # discover the index columns
+            index_column_names = [item  for item in record if re.search("index",item,re.IGNORECASE) is not None]
+            if len(index_column_names) > 0:
+               column_heading_sets["indices"] = index_column_names
+
+            #print "DEBUG index column names : %s"%str(column_heading_sets["indices"])
+               
+
             # output header
+            column_headings = column_heading_sets["sample"] + column_heading_sets["indices"] + column_heading_sets["other"]
             csvwriter.writerow(column_headings)
       else:
          # skip any embedded section headings
@@ -92,11 +107,15 @@ def sanitise(options):
          #Sample_Project -> sampleproject
          #Description -> description
          record_dict = dict(zip(header, record))
+         #print "DEBUG : record_dict = %s"%str(record_dict)
          out_record_dict  = {}
          out_record_dict["fcid"] = options["fcid"]
          out_record_dict["lane"] = get_import_value(record_dict, "(lane)")
          out_record_dict["sampleid"] = get_import_value(record_dict, "(sample[_]*id)")
          out_record_dict["sampleref"] = get_import_value(record_dict, "(sampleref|sample[_]*name)")
+         for column_heading in column_heading_sets["indices"]:
+            out_record_dict[column_heading] = get_import_value(record_dict, "(^%s$)"%column_heading)
+
          out_record_dict["sampleindex"] = get_import_value(record_dict, "(.*index.*)")
          out_record_dict["description"] = get_import_value(record_dict, "(description)")
          out_record_dict["control"] = get_import_value(record_dict, "(control)")
@@ -108,7 +127,7 @@ def sanitise(options):
          out_record_dict["downstream_processing"] = get_import_value(record_dict, "(downstream_processing)")
          out_record_dict["basespace_project"] = get_import_value(record_dict, "(basespace_project)")         
          if out_record_dict["downstream_processing"] == "" and options["supply_missing"]:
-            if out_record_dict["sampleindex"] == "":
+            if get_import_value(record_dict, "(.*index.*)")  == "":
                out_record_dict["downstream_processing"] = "GBS"
                out_record_dict["basespace_project"] = out_record_dict["sampleproject"]
                out_record_dict["sampleproject"] = out_record_dict["sampleid"]
