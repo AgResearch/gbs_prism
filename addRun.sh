@@ -5,6 +5,7 @@
 # addRun.sh 150630_D00390_0232_AC6K0WANXX 
 # jumps through various hoops due to idiosyncracies of 
 # \copy and copy
+# only intended for importing GBS runs at this stage
 #
 function get_opts() {
 
@@ -18,8 +19,9 @@ help_text="\n
 DRY_RUN=no
 RUN_NAME=""
 MACHINE=hiseq
+RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
 
-while getopts ":nhr:m:" opt; do
+while getopts ":nhr:m:d:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -29,6 +31,9 @@ while getopts ":nhr:m:" opt; do
       ;;
     r)
       RUN_NAME=$OPTARG
+      ;;
+    d)
+      RUN_PATH=$OPTARG
       ;;
     m)
       MACHINE=$OPTARG
@@ -49,8 +54,6 @@ while getopts ":nhr:m:" opt; do
 done
 
 KEY_DIR=/dataset/hiseq/active/key-files
-RUN_PATH=/dataset/${MACHINE}/active/$RUN_NAME
-CANONICAL_RUN_PATH=/dataset/hiseq/active/$RUN_NAME
 }
 
 function check_opts() {
@@ -69,8 +72,8 @@ if [ ! -d $RUN_PATH ]; then
    exit 1
 fi
 
-if [[ ( $MACHINE == "miseq" ) && ( ! -h $CANONICAL_RUN_PATH ) ]]; then
-   echo error , miseq run and shortcut $CANONICAL_RUN_PATH not found
+if [ $MACHINE == "miseq" ]; then
+   echo "error , database import of miseq runs not currently supported"
    exit 1
 fi
 

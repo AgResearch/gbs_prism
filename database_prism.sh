@@ -20,8 +20,9 @@ RUN=all
 MACHINE=hiseq
 SAMPLE=""
 REUSE_TARGETS="no"
+RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
 
-while getopts ":nikht:r:m:s:e:" opt; do
+while getopts ":nikht:r:m:s:e:d:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -41,6 +42,9 @@ while getopts ":nikht:r:m:s:e:" opt; do
     r)
       RUN=$OPTARG
       ;;
+    d)
+      RUN_BASE_PATH=$OPTARG
+      ;;
     s)
       SAMPLE=$OPTARG
       ;;
@@ -58,12 +62,6 @@ while getopts ":nikht:r:m:s:e:" opt; do
       ;;
   esac
 done
-
-HISEQ_ROOT=/dataset/${MACHINE}/active
-BUILD_ROOT=/dataset/gseq_processing/scratch/illumina/${MACHINE} 
-
-CANONICAL_HISEQ_ROOT=/dataset/hiseq/active
-CANONICAL_BUILD_ROOT=/dataset/gseq_processing/scratch/illumina/hiseq
 
 }
 
@@ -84,6 +82,12 @@ fi
 if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) ]]; then
     echo "machine must be miseq or hiseq"
     exit 1
+fi
+
+# check RUN_BASE_PATH
+if [ ! -d $RUN_BASE_PATH ]; then
+   echo "$RUN_BASE_PATH not found"
+   exit 1
 fi
 
 }
@@ -129,9 +133,9 @@ function add_run() {
    echo "** adding Run **"
    set -x
    if [ $DRY_RUN == "no" ]; then
-      $GBS_PRISM_BIN/addRun.sh -r $RUN -m $MACHINE
+      $GBS_PRISM_BIN/addRun.sh -d $RUN_BASE_PATH -r $RUN -m $MACHINE
    else
-      $GBS_PRISM_BIN/addRun.sh -n -r $RUN -m $MACHINE
+      $GBS_PRISM_BIN/addRun.sh -d $RUN_BASE_PATH -n -r $RUN -m $MACHINE
    fi
 }
 

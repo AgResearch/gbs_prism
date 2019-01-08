@@ -59,7 +59,8 @@ def sanitise(options):
    column_heading_sets = {
       "sample" : ["fcid","lane","sampleid","sampleref"],
       "indices" : ["sampleindex"],
-      "other" : ["description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
+      "other" : ["description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"],
+      "coerced_for_database" : ["fcid","lane","sampleid","sampleref","sampleindex","description","control","recipe","operator","sampleproject","sampleplate","samplewell","downstream_processing","basespace_project"]
    }
   
    if options["add_header"]:
@@ -85,7 +86,13 @@ def sanitise(options):
                
 
             # output header
-            column_headings = column_heading_sets["sample"] + column_heading_sets["indices"] + column_heading_sets["other"]
+            if options["target"] == "bcl2fastq":
+               column_headings = column_heading_sets["sample"] + column_heading_sets["indices"] + column_heading_sets["other"]
+            elif options["target"] == "database":
+               column_headings = column_heading_sets["coerced_for_database"] 
+            else:
+               raise Exception("unknown target %s"%target)
+               
             csvwriter.writerow(column_headings)
       else:
          # skip any embedded section headings
@@ -113,8 +120,10 @@ def sanitise(options):
          out_record_dict["lane"] = get_import_value(record_dict, "(lane)")
          out_record_dict["sampleid"] = get_import_value(record_dict, "(sample[_]*id)")
          out_record_dict["sampleref"] = get_import_value(record_dict, "(sampleref|sample[_]*name)")
-         for column_heading in column_heading_sets["indices"]:
-            out_record_dict[column_heading] = get_import_value(record_dict, "(^%s$)"%column_heading)
+
+         if options["target"] == "bcl2fastq":
+            for column_heading in column_heading_sets["indices"]:
+               out_record_dict[column_heading] = get_import_value(record_dict, "(^%s$)"%column_heading)
 
          out_record_dict["sampleindex"] = get_import_value(record_dict, "(.*index.*)")
          out_record_dict["description"] = get_import_value(record_dict, "(description)")
@@ -155,6 +164,8 @@ example : cat myfile.csv | sanitiseSampleSheet.py -r 161205_D00390_0274_AC9KW9AN
    parser.add_argument('-r', dest='run', required=True , help="name of run")
    parser.add_argument('--supply_missing' , dest='supply_missing', default=False,action='store_true', help="add missing sections and headers")
    parser.add_argument('--add_header' , dest='add_header', default=False,action='store_true', help="add sample sheet header")
+   parser.add_argument('--target' , dest='target', default="bcl2fastq" , type=str, choices=["database","bcl2fastq"] , help="controls format of filtered sample sheet - if bcl2fastq, minimal changes ; if database , coerce for database import")
+
 
    args = vars(parser.parse_args())
 

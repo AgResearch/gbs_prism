@@ -93,7 +93,7 @@ function run_bcl2fastq() {
          fi
       fi
 
-      # generate the edited version
+      # generate the edited version for bcl2fastq
       echo "editing..."
       tempfile=`mktemp`
       set -x
@@ -200,9 +200,10 @@ function run_bcl2fastq() {
    find $BCL2FASTQ_ROOT/$RUN -name "*.fastq.gz" -type f -print > $BCL2FASTQ_ROOT/$RUN/sequence_files.txt
    echo "
 
-   about to start fastqc in the background using 
+   about to start fastqc and kmer_analysis in the background using 
 
    nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/kmer_analysis.log 2>&1 & 
 
    OK ? (y/n, default=y)
    "
@@ -213,11 +214,12 @@ function run_bcl2fastq() {
    fi
    echo "
 
-   running fastqc in background, then will continue with GBS q/c...
+   running fastqc and kmer analysis in background, then will continue with GBS q/c...
 
    "
 
    nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN `cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/kmer_analysis.log 2>&1 & 
 }
 
 
@@ -318,6 +320,8 @@ script (which assumes hiseq data disposition)
 
    "
 
+   ####### generate the edited sample sheet used for database import 
+   cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header --target database | tr -d '\r' > $OUTPUT_ROOT/SampleSheet.csv 
 
 
    ####### check whether run is in database  - import it if not 
@@ -330,7 +334,7 @@ checking if run is in the database...
    if [ $in_db == "0" ]; then
       echo "$RUN is not in the database - will run database import first , about to execute 
 
-$GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN
+$GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN
 
 logging to $OUTPUT_ROOT/database_prism.log 
 
@@ -338,8 +342,8 @@ OK ? (y/n, default = y)
 "
       read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         echo "running $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN" > $OUTPUT_ROOT/database_prism.log
-         $GBS_PRISM_BIN/database_prism.sh -i -t import_new_run -r $RUN >> $OUTPUT_ROOT/database_prism.log 2>&1
+         echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" > $OUTPUT_ROOT/database_prism.log
+         $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN >> $OUTPUT_ROOT/database_prism.log 2>&1
          if [ $? != 0 ]; then
             echo "
 
