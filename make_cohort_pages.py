@@ -29,6 +29,7 @@ Overview of %(run_name)s
     <ul>
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
+        <li> <a href="#kmer"> kmer distributions </a>
     </ul>
 <li> <a href="#sample_plots"> Sample Level Summaries (after demultiplexing)</a> 
     <ul>
@@ -57,6 +58,15 @@ overview_section="""
 <td> FASTQC </td>
 <td> <a href=fastqc> FASTQC results </a> </td>
 </tr>
+<tr id=kmer>
+<td> 6-mer distributions </td>
+<td>
+<img src=kmer_analysis/kmer_entropy.k6.jpg title=kmer_entropy.k6.jpg/>
+<a href=kmer_analysis/heatmap_sample_clusters.k6.txt> Clusters  </a>
+<img src=kmer_analysis/kmer_zipfian_comparisons.k6.jpg title=kmer_zipfian_comparisons.k6.jpg/>
+</td>
+</tr>
+
 <table>
 <p/>
 """

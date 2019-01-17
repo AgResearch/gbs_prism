@@ -472,6 +472,10 @@ function html_prism() {
    done
 
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
+   mkdir -p $OUT_ROOT/html/kmer_analysis
+   for file in kmer_entropy.k6.jpg heatmap_sample_clusters.k6.txt kmer_zipfian_comparisons.k6.jpg ; do
+      cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
+   done
    # make peacock page which mashes up plots, output files etc.
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
 
