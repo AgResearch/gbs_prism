@@ -120,7 +120,6 @@ function get_gbs_list() {
       if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
          echo "*** error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT using $filename_pattern ***"
          rm $PROCESSED_ROOT/$SAMPLE.gbslist
-         exit 1
       fi
    fi
 }
