@@ -36,4 +36,3 @@ from
 where
    r.species = lower(k.species) and 
    k.refgenome_blast_indexes is null;
-

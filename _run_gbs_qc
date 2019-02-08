@@ -364,18 +364,20 @@ $OUTPUT_ROOT/database_prism.log
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (clientreport, html, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, annotation , bwa_mapping) (or just press enter to run all)  
+please give which q/c analysis you want (clientreport, html, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, annotation , bwa_mapping, unblind) (or just press enter to run all)  
 (notes:
 
 * entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
 run (unless already done), etc.)
 * entering html or clientreport does not rerun any analyses - it just redoes the html page
 * entering import_results does not rerun any analyses - it just (re)imports the results 
+* running just kgd does not do unblinding - you will need to then run the unblind step
+* but you don't usually need to run unblind stand-alone
 "
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "all" ) ]]; then
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "all" ) ]]; then
          echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample or all"
       else
          break
