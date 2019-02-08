@@ -8,11 +8,11 @@
 
 ########## non-standard analysis - these not (currently) part of "all" as expensive
 %.annotation:   %.blast_analysis
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.blast_analysis:   %.fasta_sample
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 ########## standard analysis 
@@ -20,36 +20,36 @@
 	date > $@
 
 %.allkmer_analysis:   %.kmer_analysis
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.kmer_analysis:   %.fasta_sample
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.fasta_sample:   %.unblind
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.unblind:   %.kgd
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.kgd:   %.demultiplex
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.demultiplex:
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 %.bwa_mapping:
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 	date > $@
 
 .PHONY: %.clean
 %.clean: 
-	$@.sh > $@.log 2>&1
+	$@.sh > $@.mk.log 2>&1
 
 
 ##############################################
