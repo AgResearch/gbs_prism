@@ -27,6 +27,7 @@ Overview of %(run_name)s
 <ul>
 <li>  <a href="#overview_plots"> Overview Summaries (before demultiplexing) </a> 
     <ul>
+        <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
         <li> <a href="#kmer"> kmer distributions </a>
@@ -46,6 +47,10 @@ Overview of %(run_name)s
 overview_section="""
 <p/>
 <table width=90%% align=center>
+<tr id=bwa>
+<td> bcl2fastq reports  </td>
+<td> <a href=bcl2fastq/index.html> bcl2fastq reports </a>  </td>
+</tr>
 <tr id=bwa>
 <td> BWA alignment (plot) </td>
 <td> <img src=mapping_stats.jpg title=mapping_stats.jpg/> </td>

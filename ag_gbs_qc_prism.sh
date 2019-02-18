@@ -472,6 +472,8 @@ function html_prism() {
    done
 
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
+   mkdir $OUT_ROOT/html/bcl2fastq
+   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/bcl2fastq/Reports/html/* $OUT_ROOT/html/bcl2fastq
    mkdir -p $OUT_ROOT/html/kmer_analysis
    for file in kmer_entropy.k6.jpg heatmap_sample_clusters.k6.txt kmer_zipfian_comparisons.k6.jpg ; do
       cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
