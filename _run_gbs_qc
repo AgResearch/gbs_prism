@@ -199,13 +199,16 @@ function run_bcl2fastq() {
    finding sequence files for fastqc..."
    find $BCL2FASTQ_ROOT/$RUN -name "*.fastq.gz" -type f -print > $BCL2FASTQ_ROOT/$RUN/sequence_files.txt
    echo "
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/kmer_analysis.log 2>&1 
+   " > $BCL2FASTQ_ROOT/$RUN/lane_qc.src
+   echo "
 
    about to start fastqc and kmer_analysis in the background using 
-
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/kmer_analysis.log 2>&1 & 
-
-   OK ? (y/n, default=y)
+"
+   cat $BCL2FASTQ_ROOT/$RUN/lane_qc.src
+   echo "
+OK ? (y/n, default=y)
    "
    read_answer_with_default y
    if [ $answer != "y" ]; then
@@ -217,9 +220,7 @@ function run_bcl2fastq() {
    running fastqc and kmer analysis in background, then will continue with GBS q/c...
 
    "
-
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN `cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt` > $BCL2FASTQ_ROOT/$RUN/fastqc.log 2>&1 &
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN \`cat $BCL2FASTQ_ROOT/$RUN/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/kmer_analysis.log 2>&1 & 
+   source $BCL2FASTQ_ROOT/$RUN/lane_qc.src &
 }
 
 
