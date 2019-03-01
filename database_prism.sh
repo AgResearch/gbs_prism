@@ -246,13 +246,9 @@ function update_bwa_blast_refs() {
 
 function import_results() {
    # import yield stats
-   if [ ! -f  $OUT_ROOT/html/gbs_yield_import_temp.dat ]; then
-      $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
-   fi
+   $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
 
-   if [ ! -f $OUT_ROOT/kgd_import_temp.dat ]; then
-      $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
-   fi
+   $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
 }
 
 
