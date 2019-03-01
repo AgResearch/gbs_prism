@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # this script lists a keyfile from the database   
+DEBUG=0
 function get_opts() {
 
 help_text="\n
@@ -8,7 +9,7 @@ help_text="\n
 
  Usage: \n
 
- list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme [-t default|all|gbsx|qc|gbsx_qc|files|unblind|unblind_script|bwa_index_paths|blast_index_paths] [ -f flowcell ]\n
+ list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme] [-m species_moniker] [-t default|all|gbsx|qc|gbsx_qc|files|unblind|unblind_script|bwa_index_paths|blast_index_paths|list_species] [ -f flowcell ]\n
 \n
 e.g.\n
 list_keyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format\n
@@ -21,7 +22,10 @@ list_keyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch 
 list_keyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)\n
 list_keyfile.sh  -s SQ0566 -t bwa_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
 list_keyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
-list_keyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs)\n
+list_keyfile.sh  -s SQ0566 -t list_species  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
+list_keyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs, not case sensitive e.g. will include DEER)\n
+list_keyfile.sh  -m bee                     # extract everything that has species field deer (across all runs , not case sensitive e.g. will include BEE)\n
+list_keyfile.sh  -m bee -t gbsx             # as above, GBSX format \n
 list_keyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)\n
 list_keyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format \n
 list_keyfile.sh  -t files -g deer -e PstI   # as above, report lane + file\n
@@ -37,11 +41,15 @@ FLOWCELL=""
 TEMPLATE="default"  # tassel
 ENZYME=""
 GBS_COHORT=""
+SPECIES_MONIKER=""
 SAMPLE=""
 QC_COHORT="all"
 
-while getopts ":nhv:s:k:c:f:t:e:g:q:" opt; do
+while getopts ":ndhv:s:k:c:f:t:e:g:q:m:" opt; do
   case $opt in
+    d)
+      DEBUG=1
+      ;;
     s)
       SAMPLE=$OPTARG
       ;;
@@ -56,6 +64,9 @@ while getopts ":nhv:s:k:c:f:t:e:g:q:" opt; do
       ;;
     g)
       GBS_COHORT=$OPTARG
+      ;;
+    m)
+      SPECIES_MONIKER=$OPTARG
       ;;
     q)
       QC_COHORT=$OPTARG
@@ -80,6 +91,9 @@ done
 }
 
 function check_opts() {
+   if [ $DEBUG == 1 ]; then
+      echo "debug : species_moniker=$SPECIES_MONIKER"
+   fi 
    if [ -z "$GBS_PRISM_BIN" ]; then
       echo "GBS_PRISM_BIN not set - quitting"
       exit 1
@@ -90,12 +104,12 @@ function check_opts() {
       echo "Tassel version should be 3 or 5"
       exit 1
    fi
-   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" ]]; then
-      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, bwa_index_paths, blast_index_paths  (default and all are both tassel templates)"
+   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
+      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
       exit 1
    fi
 
-   if [[ ( -z $SAMPLE ) && ( -z "$GBS_COHORT" ) && ( -z "$ENZYME" ) && ( -z "$FLOWCELL" ) ]]; then
+   if [[ ( -z $SAMPLE ) && ( -z "$GBS_COHORT" ) && ( -z "$ENZYME" ) && ( -z "$FLOWCELL" ) && ( -z "$SPECIES_MONIKER" )]]; then
       answer="n"
       echo "this will extract the whole keyfile database - are you sure ( list_keyfile.sh  -h to see options and examples ) ? (y/n)"
       read answer
@@ -110,6 +124,7 @@ function build_extract_script() {
    sample_phrase1=" 1 = 1 "
    sample_phrase2=" sample "
    gbs_cohort_phrase=""
+   species_moniker_phrase=""
    qc_cohort_phrase=""
    enzyme_phrase=""
    extra_fields_phrase=""
@@ -123,6 +138,12 @@ function build_extract_script() {
 
    if [ ! -z "$GBS_COHORT" ]; then
       gbs_cohort_phrase=" and lower(g.gbs_cohort) = lower(:gbs_cohort) "
+   fi
+
+   if [ ! -z "$SPECIES_MONIKER" ]; then
+      # use design time binding here as there could be embedded blanks, and 
+      # seems difficult to handle using the run time binding method
+      species_moniker_phrase=" and lower(g.species) = lower('$SPECIES_MONIKER') "
    fi
 
    if [ "$QC_COHORT" != "all" ]; then
@@ -166,7 +187,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by 
    factid;
 "
@@ -193,7 +214,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by 
    factid;
 "
@@ -208,7 +229,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by 
    1,2,3;
 "
@@ -221,7 +242,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by 
    1;
 "
@@ -234,7 +255,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by
    1;
 "
@@ -247,7 +268,22 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+order by
+   1;
+"
+   elif [[ ( $TEMPLATE == "list_species" ) ]]; then
+code="
+select 
+   species,
+   count(*) as count
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+group by 
+   species
 order by
    1;
 "
@@ -260,7 +296,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by 
    1;
 "
@@ -272,7 +308,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
 order by
    1;
 "
@@ -281,17 +317,20 @@ order by
    echo "\a" > $script_name
    echo "\f '\t'" >> $script_name
    echo "\pset footer off " >> $script_name
-   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) ]]; then
+   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) || ( $TEMPLATE == "list_species" ) ]]; then
       echo "\t" >> $script_name
    fi
    echo $code >> $script_name
 }
 
 function run_extract() {
-   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) ]]; then
-      psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
+   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
+      if [ $DEBUG == 1 ]; then
+         echo  psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
+      fi 
+      psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
    else
-      psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v qc_cohort=\'$QC_COHORT\' -f $script_name | egrep -i \($FLOWCELL\|flowcell\)  
+      psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name | egrep -i \($FLOWCELL\|flowcell\)  
    fi
 
    if [ $? != 0 ]; then
@@ -301,7 +340,7 @@ function run_extract() {
 }
 
 
-get_opts $@
+get_opts "$@"
 
 check_opts
 
