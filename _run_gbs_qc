@@ -683,6 +683,15 @@ function generate_html() {
           echo "** html looks ok **"
       fi
    fi
+
+   echo "do you want to (re)generate the slippery slope plot ?"
+   read_answer_with_default y
+   if [ $answer == "y" ]; then
+      set -x
+      $GBS_PRISM_BIN/SelfRelDepth.sh -I
+      set +x
+   fi
+
 }
 
 function generate_clientreport() {

@@ -1,0 +1,38 @@
+/*
+example
+psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'CCR4LANXX'" -v libraryprepid=775 -v gbs_cohort="'TILAPIA'" -f get_cohort_count.psql -q
+output : 
+iramohio-01$ psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'CCR4LANXX'" -v libraryprepid=775 -v gbs_cohort="'TILAPIA'" -f get_cohort_count.psql -q
+species gbs_cohort      enzyme  count
+tilapia TILAPIA PstI-MspI       155
+*/
+\a
+\f '\t'
+\pset footer off
+select species, gbs_cohort, enzyme, count(*) from (
+select 
+   lower(species) as species,
+   gbs_cohort,
+   enzyme,
+   sample
+from 
+   gbskeyfilefact as g
+where
+   g.flowcell = :flowcell and 
+   g.libraryprepid = :libraryprepid and
+   gbs_cohort = :gbs_cohort
+union 
+select
+   lower(species) as species,
+   gbs_cohort,
+   enzyme,
+   sample
+from
+   gbskeyfilefact as g
+where
+   g.flowcell = :flowcell and
+   g.libraryprepid = :libraryprepid and
+   enzyme = :gbs_cohort ) as summary
+group by 
+   1,2,3
+order by 4 desc;

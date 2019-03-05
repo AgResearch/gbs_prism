@@ -32,24 +32,29 @@ Overview of %(run_name)s
         <li> <a href="#fastqc"> FASTQC output</a>
         <li> <a href="#kmer"> kmer distributions </a>
     </ul>
+<li>  <a href="#other_overview_plots"> Other Overview Summaries </a>
+    <ul>
+        <li> <a href="#slippery_slope"> Cumulative self-relatedness ~ depth </a>
+    </ul>
 <li> <a href="#sample_plots"> Sample Level Summaries (after demultiplexing)</a> 
     <ul>
         <li> <a href="#cohort_plots"> Cohort Plots </a>
     </ul>
 </ul>
 </p>
-<h2> Overview Summaries (before demultiplexing) </h2>
+<h2 id=overview_plots> Overview Summaries </h2>
 
 """
-
-
-
 overview_section="""
 <p/>
 <table width=90%% align=center>
-<tr id=bwa>
+<tr id=bcl2fastq>
 <td> bcl2fastq reports  </td>
 <td> <a href=bcl2fastq/index.html> bcl2fastq reports </a>  </td>
+</tr>
+<tr id=slippery_slope>
+<td> Cumulative self-relatedness </td>
+<td> <a href="file://isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
 </tr>
 <tr id=bwa>
 <td> BWA alignment (plot) </td>
