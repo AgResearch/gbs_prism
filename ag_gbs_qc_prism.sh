@@ -482,7 +482,7 @@ function html_prism() {
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
 
    # (re ) summarise bwa mappings 
-   tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/bwa_stats_summary.txt
+   tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/stats_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
 }
 
