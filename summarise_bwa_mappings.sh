@@ -45,8 +45,8 @@ fi
 #Reverse strand:    130171	(35.2132%)
 # these are what we need for the three summaries 
 
-$GBS_BIN/collate_mapping_stats.py $WORKING_FOLDER/*.stats > $WORKING_FOLDER/stats_summary.txt
-Rscript --vanilla  $GBS_BIN/mapping_stats_plots.r datafolder=$WORKING_FOLDER 
+$SEQ_PRISMS_BIN/collate_mapping_stats.py $WORKING_FOLDER/*.stats > $WORKING_FOLDER/stats_summary.txt
+Rscript --vanilla  $SEQ_PRISMS_BIN/mapping_stats_plots.r datafolder=$WORKING_FOLDER 
 
 
 echo "*** summarise_bwa_mappings.sh has completed ***"
