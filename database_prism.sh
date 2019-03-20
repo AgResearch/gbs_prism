@@ -120,6 +120,7 @@ function import_new_run() {
 }
 
 function reimport_library() {
+   flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE
    sample_monikers=$SAMPLE
    delete_keyfiles
    import_keyfiles
@@ -161,9 +162,9 @@ function delete_keyfiles() {
    set -x
    for sample_moniker in $sample_monikers; do
       if [ $DRY_RUN == "no" ]; then
-         $GBS_PRISM_BIN/deleteKeyfile.sh -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/deleteKeyfile.sh -k $sample_moniker -s $sample_moniker -f $flowcell
       else
-         $GBS_PRISM_BIN/deleteKeyfile.sh -n -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/deleteKeyfile.sh -n -k $sample_moniker -s $sample_moniker -f $flowcell
       fi
       if [ $? != "0" ]; then
           echo "deleteKeyfile.sh  exited with $? - quitting"

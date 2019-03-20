@@ -1,6 +1,7 @@
 /*
 * this script deletes a keyfile. Before the delete, it backs up the
 * internal qc_sampleid's   
+* it also does a cascade delete of the yield stats
 */
 insert into gbs_sampleid_history_fact(biosampleob, sample,qc_sampleid,comment,voptypeid)
 select 
@@ -11,11 +12,26 @@ select
    92
 from gbsKeyFileFact
 where
+   flowcell = :flowcell and 
    biosampleob = (select obid from biosampleob where samplename = :keyfilename);
-delete from gbsKeyFileFact  
-where 
-   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+
 delete from gbsyieldfact
 where
-   sqname = :keyfilename;
+   flowcell = :flowcell and
+   sqnumber = (
+   select distinct
+      libraryprepid 
+   from 
+      gbsKeyFileFact 
+   where 
+      biosampleob = (select obid from biosampleob where samplename = :keyfilename));
 
+delete from gbsKeyFileFact  
+where 
+   flowcell = :flowcell and 
+   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+
+delete from gbsyieldfact
+where
+   flowcell = :flowcell and 
+   sqname = :keyfilename;

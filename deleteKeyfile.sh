@@ -7,14 +7,15 @@ function get_opts() {
 help_text="\n
  this scripts deletes a keyfile \n
 
- deleteKeyfile.sh -s sample_name -k keyfile_base\n
+ deleteKeyfile.sh -s sample_name -k keyfile_base -f flowcell\n
 \n
  e.g.\n
- deleteKeyfile.sh -n  -s SQ0143 -k SQ0143\n
+ deleteKeyfile.sh -n  -s SQ0143 -k SQ0143 -f flowcell\n
 "
 
 DRY_RUN=no
-while getopts ":nhs:k:" opt; do
+FLOWCELL=""
+while getopts ":nhs:k:f:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -24,6 +25,9 @@ while getopts ":nhs:k:" opt; do
       ;;
     k)
       KEYFILE_BASE=$OPTARG
+      ;;
+    f)
+      FLOWCELL=$OPTARG
       ;;
     h)
       echo -e $help_text
@@ -56,6 +60,11 @@ function check_opts() {
 
    if [ -z $SAMPLE ]; then
       echo "must specify a sample name"
+      exit 1
+   fi
+
+   if [ -z $FLOWCELL ]; then
+      echo "must specify a flowcell name"
       exit 1
    fi
 
@@ -100,10 +109,10 @@ fi
 echo "deleting keyfile..."
 
 if [ $DRY_RUN == "no" ]; then
-   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
+   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
 else
    echo "*** dry run only *** will execute 
-   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
+   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
    "
 fi
 set +x
