@@ -120,7 +120,7 @@ function import_new_run() {
 }
 
 function reimport_library() {
-   flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE
+   flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE`
    sample_monikers=$SAMPLE
    delete_keyfiles
    import_keyfiles
@@ -217,6 +217,7 @@ function update_all_fastq_locations() {
 \f '\t'
 \t
 \pset footer off 
+\o $update_script
 select distinct
    '$GBS_PRISM_BIN/updateFastqLocations.sh -s $sample_moniker -k $sample_moniker -r ' || b.listname || ' -f ' || g.flowcell || ' -l ' ||g.lane 
 from 
@@ -228,7 +229,7 @@ where
    h.lane = g.lane and 
    to_number(replace(:sample_name, 'SQ',''),'99999') =  g.libraryprepid ;
 " >> $generator_script 
-      psql -U agrbrdf -d agrbrdf -h invincible -v sample_name="'${sample_moniker}'" -f $generator_script  > $update_script
+      psql -U agrbrdf -d agrbrdf -h invincible -v sample_name="'${sample_moniker}'" -f $generator_script  
       if [ $DRY_RUN == "no" ]; then
          source $update_script
       else
