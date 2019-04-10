@@ -162,10 +162,19 @@ for listfile in $PROCESSED_ROOT/*$SAMPLE*.gbslist; do
       if [ ! -h $link_path ]; then
          if [ $DRY_RUN == "no" ]; then
             set -x
-            cp -i -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
+            if [ ! -h $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz ]; then
+               cp -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
+            else
+               echo "
+**********************************  warning ************************************************
+an existing fastq link $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz was found, 
+this was *not* over-written  
+******************************************************************************************** 
+"
+            fi
             psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'${FLOWCELL_NAME}'" -v keyfilename="'${KEYFILE_BASE}'" -v lane=$LANE -v fastqlink="'${link_path}'" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql
          else
-            echo "cp -i -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz"
+            echo "cp -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz"
             echo "psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql"
          fi
       else
