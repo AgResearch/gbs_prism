@@ -54,6 +54,25 @@ done
 
 KEY_DIR=/dataset/hiseq/active/key-files
 PROCESSED_ROOT=/dataset/gseq_processing/scratch/illumina/${MACHINE}/${RUN_NAME}
+
+if [ ! -d $PROCESSED_ROOT ]; then
+   PROCESSED_ROOT=/dataset/hiseq_archive_1/archive/run_archives/${RUN_NAME}/processed
+fi
+
+if [ ! -d $PROCESSED_ROOT ]; then
+   PROCESSED_ROOT=/dataset/hiseq/archive/run_archives/${RUN_NAME}/processed
+fi
+
+if [ ! -d $PROCESSED_ROOT ]; then
+   echo "
+*** sorry I can't find this run anywhere 
+( - looked under /dataset/gseq_processing/scratch/illumina/${MACHINE} , /dataset/hiseq_archive_1/archive/run_archives and /dataset/hiseq/archive/run_archives )
+"
+   exit 1
+fi
+
+
+
 LINK_FARM_ROOT=/dataset/hiseq/active/fastq-link-farm
 }
 
@@ -118,8 +137,12 @@ function get_gbs_list() {
       find $PROCESSED_ROOT/bcl2fastq/*/ -name "*.fastq.gz" -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
       set +x
       if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
-         echo "*** error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT using $filename_pattern ***"
+         echo "
+error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT using $filename_pattern 
+-quitting as will not be able to figure out what to do 
+"
          rm $PROCESSED_ROOT/$SAMPLE.gbslist
+         exit
       fi
    fi
 }
@@ -132,14 +155,14 @@ echo_opts
 
 get_gbs_list
 
-echo "updating fastq locations in $KEY_DIR/$KEYFILE_BASE.txt for lane $LANE"
+echo "creating fastq links in $KEY_DIR/$KEYFILE_BASE.txt for lane $LANE (note will not over-write existing links, or update any existing links in database (gbskeyfilefact) ) "
 echo "using "
 for listfile in $PROCESSED_ROOT/*$SAMPLE*.gbslist; do
    echo "===>"$listfile 
    cat $listfile
 done
 
-# process the listfile to set up links
+# process the listfile to set up links - note, do not over-write any links that are there
 echo "setting up link farm links"
 for listfile in $PROCESSED_ROOT/*$SAMPLE*.gbslist; do
    echo "processing listfile $listfile"
@@ -147,30 +170,34 @@ for listfile in $PROCESSED_ROOT/*$SAMPLE*.gbslist; do
       echo "processing fastqfile $fastqfile"
       #new_path=`cat $listfile | sed 's/_in_progress//g' -`
       new_path=`echo $fastqfile | sed 's/_in_progress//g' -`
-      if [ ! -f $new_path ]; then
-         echo "ERROR $new_path not found - quitting"
-         exit 1
-      fi
 
       link_path=$LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
   
       if [ -h $link_path ]; then
          ls -l $link_path
-         echo "warning link_path $link_path already exists as above - will update it"
-         rm $link_path
-      fi
-      if [ ! -h $link_path ]; then
-         if [ $DRY_RUN == "no" ]; then
-            set -x
-            cp -i -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
-            psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'${FLOWCELL_NAME}'" -v keyfilename="'${KEYFILE_BASE}'" -v lane=$LANE -v fastqlink="'${link_path}'" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql
-         else
-            echo "cp -i -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz"
-            echo "psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql"
-         fi
+         echo "warning link_path $link_path already exists as above - will *not* update it"
       else
-         echo "ERROR : failed updating link path $link_path  ! Something has gone wrong  - quitting"
-         exit 1
+         if [ ! -f $new_path ]; then
+            echo "ERROR sequence data not found where expected ( $new_path )  - quitting"
+            exit 1
+         fi
+      fi
+      if [ $DRY_RUN == "no" ]; then
+         set -x
+         if [ ! -h $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz ]; then
+            cp -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
+         else
+            echo "
+**********************************  warning ************************************************
+an existing fastq link $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz was found, 
+this was *not* over-written  
+******************************************************************************************** 
+"
+         fi
+         psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'${FLOWCELL_NAME}'" -v keyfilename="'${KEYFILE_BASE}'" -v lane=$LANE -v fastqlink="'${link_path}'" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql
+      else
+         echo "cp -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz"
+         echo "psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql"
       fi
    done
 done
