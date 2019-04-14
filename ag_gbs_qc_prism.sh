@@ -373,7 +373,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/kmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE  -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE  -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
    exit 1
@@ -386,7 +386,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/allkmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fasta -p \"-k 6 --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_alldepthsample returned an error code\"
    exit 1
