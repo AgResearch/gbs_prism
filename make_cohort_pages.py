@@ -71,12 +71,11 @@ overview_section="""
 <tr id=kmer>
 <td> 6-mer distributions </td>
 <td>
-<img src=kmer_analysis/kmer_entropy.k6.jpg title=kmer_entropy.k6.jpg/>
-<a href=kmer_analysis/heatmap_sample_clusters.k6.txt> Clusters  </a>
-<img src=kmer_analysis/kmer_zipfian_comparisons.k6.jpg title=kmer_zipfian_comparisons.k6.jpg/>
+<img src=kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg/>
+<a href=kmer_analysis/heatmap_sample_clusters.k6A.txt> Clusters  </a>
+<img src=kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg/>
 </td>
 </tr>
-
 <table>
 <p/>
 """
@@ -134,10 +133,10 @@ def generate_run_plot(options):
         #"KGD links" : ['KGD/kgd.stdout', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/HighRelatedness.csv', 'KGD/seqID.csv', 'KGD/HighRelatednessHWdgm.05.csv'],        
         "KGD (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
         #"kmer and blast analysis" : ['blast_analysis/sample_blast_summary.jpg', 'kmer_analysis/kmer_zipfian_comparisons.jpg', 'kmer_analysis/zipfian_distances.jpg', 'kmer_analysis/kmer_entropy.jpg'],
-        "Low depth tag kmer summary (plots)" : [ 'kmer_analysis/kmer_entropy.k6weighting_methodtag_count.jpg', 'kmer_analysis/kmer_zipfian_comparisons.k6weighting_methodtag_count.jpg','kmer_analysis/zipfian_distances.k6weighting_methodtag_count.jpg']            ,
-        "Low depth tag kmer summary (text file links)" : [ 'kmer_analysis/heatmap_sample_clusters.k6weighting_methodtag_count.txt', 'kmer_analysis/zipfian_distances_fit.k6weighting_methodtag_count.txt']        ,
-        "All tag kmer summary (plots)" : [ 'allkmer_analysis/kmer_entropy.k6weighting_methodtag_count.jpg', 'allkmer_analysis/kmer_zipfian_comparisons.k6weighting_methodtag_count.jpg','allkmer_analysis/zipfian_distances.k6weighting_methodtag_count.jpg']            ,
-        "All tag kmer summary (text file links)" : [ 'allkmer_analysis/heatmap_sample_clusters.k6weighting_methodtag_count.txt', 'allkmer_analysis/zipfian_distances_fit.k6weighting_methodtag_count.txt']        ,
+        "Low depth tag kmer summary (plots)" : [ 'kmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'kmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','kmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
+        "Low depth tag kmer summary (text file links)" : [ 'kmer_analysis/heatmap_sample_clusters.k6Aweighting_methodtag_count.txt', 'kmer_analysis/zipfian_distances_fit.k6Aweighting_methodtag_count.txt']        ,
+        "All tag kmer summary (plots)" : [ 'allkmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'allkmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','allkmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
+        "All tag kmer summary (text file links)" : [ 'allkmer_analysis/heatmap_sample_clusters.k6Aweighting_methodtag_count.txt', 'allkmer_analysis/zipfian_distances_fit.k6Aweighting_methodtag_count.txt']        ,
         "Low depth tag nt blast summary (plots)" : [ 'blast/locus_freq.jpg', 'blast/locus_freq_abundant.jpg', 'blast/taxonomy_summary_profile.jpg', 'blast/taxonomy_summary_variable.jpg'],
         "Low depth tag nt blast summary (text file links)" : [ 'blast/locus_freq.txt', 'blast/frequency_table.txt', 'blast/taxonomy_summary_profiles.heatmap_clusters.txt', 'blast/taxonomy_summary_variable.heatmap_clusters.txt']
     }
@@ -149,7 +148,36 @@ def generate_run_plot(options):
 
         print >> out_stream, overview_section
 
-    
+        # common sequences section
+        common_sequence_files  = [ filename for filename in os.listdir(os.path.join(BASEDIR, options["run_name"], "html", "kmer_analysis")) \
+                                   if os.path.splitext(filename)[1] == ".common_sequences" ]
+        common_sequence_links = [ os.path.join("kmer_analysis", "%s.all_common_sequences"%os.path.splitext(filename)[0]) for filename in common_sequence_files ]
+
+        common_sequence_tuples = zip(common_sequence_files , common_sequence_links)
+        print >> out_stream, """
+<p/>
+<table width=90%% align=center>
+<tr id=common_sequences>
+<td> File </td>
+<td> All common sequences   </td>
+<td> Preview   </td>
+</tr>
+"""
+        for common_sequence_tuple in common_sequence_tuples:
+            with open(os.path.join(BASEDIR, options["run_name"], "html", "kmer_analysis",common_sequence_tuple[0]),"r") as infile:
+                text="\n".join((record.strip() for record in infile))
+            
+            print >> out_stream, """
+<tr>
+<td> <font size=-1> %s </font> </td>
+<td> <a href=%s target=all_common_sequences> All common sequences </a></td>
+<td> <font size=-2> <pre>%s</pre> </font> </td>
+</tr>
+"""%(common_sequence_tuple[0], common_sequence_tuple[1] ,text)
+        print >> out_stream, """
+</table>
+<p/>
+"""     
 
         #print "DEBUG : calling get_cohorts"
         cohorts = get_cohorts(options)
