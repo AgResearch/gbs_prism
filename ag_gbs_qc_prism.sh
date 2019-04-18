@@ -21,7 +21,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequences|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -205,7 +205,7 @@ function get_targets() {
       adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
       bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
 
-      for analysis_type in all bwa_mapping demultiplex kgd clean unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequences; do
+      for analysis_type in all bwa_mapping demultiplex kgd clean unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -429,14 +429,14 @@ fi
      ################ common sequences script (based on trimmed sample) 
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p $cohort/common_sequences
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/$cohort/common_sequences $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/$cohort/common_sequences/kmer_analysis.log
+mkdir -p $cohort/common_sequence
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/$cohort/common_sequence $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/$cohort/common_sequence/kmer_analysis.log
 if [ \$? != 0 ]; then
-   echo \"warning, common_sequences analysis of $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq  returned an error code\"
+   echo \"warning, common_sequence analysis of $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq  returned an error code\"
    exit 1
 fi
-     " >  $OUT_ROOT/${cohort_moniker}.common_sequnces.sh
-      chmod +x $OUT_ROOT/${cohort_moniker}.common_sequences.sh
+     " >  $OUT_ROOT/${cohort_moniker}.common_sequence.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.common_sequence.sh
 
    done
 }
@@ -498,7 +498,21 @@ function html_prism() {
       for file in $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/hapMap
       done
+
+      mkdir -p $OUT_ROOT/html/$cohort/common_sequence
+      rm $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt
+      rm $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt
+      for file in $OUT_ROOT/$cohort/common_sequence/*.k6A.log ; do
+         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt 
+         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt 
+      done
+      for file in $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt; do
+         cp -s $file $OUT_ROOT/html/$cohort/common_sequence
+      done
+
+      
    done
+
 
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
    mkdir $OUT_ROOT/html/bcl2fastq
@@ -507,12 +521,6 @@ function html_prism() {
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
       cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
-   for file in  $OUT_ROOT/../../illumina/hiseq/$RUN/kmer_analysis/*.k6A.log ; do
-       base=`basename $file .k6A.log`
-       grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' > $OUT_ROOT/html/kmer_analysis/${base}.all_common_sequences
-       grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' > $OUT_ROOT/html/kmer_analysis/${base}.common_sequences
-   done
-
 
    # make peacock page which mashes up plots, output files etc.
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html

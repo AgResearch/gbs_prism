@@ -16,7 +16,7 @@
 	date > $@
 
 ########## standard analysis 
-%.all:  %.allkmer_analysis %.bwa_mapping 
+%.all:  %.allkmer_analysis %.common_sequence 
 	date > $@
 
 %.allkmer_analysis:   %.kmer_analysis
@@ -43,6 +43,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.common_sequence:  %.bwa_mapping
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.bwa_mapping:
 	$@.sh > $@.mk.log 2>&1
 	date > $@
@@ -55,4 +59,4 @@
 ##############################################
 # specify the intermediate files to keep 
 ##############################################
-.PRECIOUS: %.log %.ag_gbs_qc_prism %.blast_analysis %.kmer_analysis %.kgd %.demultiplex %.all %.fasta_sample
+.PRECIOUS: %.log %.ag_gbs_qc_prism %.blast_analysis %.kmer_analysis %.kgd %.demultiplex %.all %.fasta_sample %.bwa_mapping %.unblind %.allkmer_analysis %.annotation
