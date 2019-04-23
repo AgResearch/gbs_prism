@@ -176,21 +176,24 @@ def generate_run_plot(options):
                     if file_type == "image":
                         image_relpath=os.path.join(cohort, file_name)
 
-                        if os.path.isfile(file_path):
+                        if os.path.exists(file_path):
                             print >> out_stream, "<td> <img src=%s title=%s height=300 width=300/> </td>\n"%(image_relpath, file_path)
                         else:
                             print >> out_stream, "<td> unavailable </td>\n"
                     elif file_type == "link":
                         link_relpath=os.path.join(cohort, file_name)
 
-                        if os.path.isfile(file_path):
+                        if os.path.exists(file_path):
                             print >> out_stream, "<td width=300> <a href=%s target=%s> %s </a></td>\n"%(link_relpath, file_name, link_relpath)
                         else:
                             print >> out_stream, "<td width=300> unavailable </td>\n"
                     elif file_type == "in-line":
-                        with open(file_path,"r") as infile:
-                            text="\n".join((record.strip() for record in infile))
-                            print >> out_stream, "<td id=\"%s\"> <font size=-2> <pre>%s</pre> </font> </td>"%(file_group,text)
+                        text = "(unavailable)"
+                        if os.path.exists(file_path):
+                            with open(file_path,"r") as infile:
+                                text="\n".join((record.strip() for record in infile))
+                                
+                        print >> out_stream, "<td id=\"%s\"> <font size=-2> <pre>%s</pre> </font> </td>"%(file_group,text)
                             
                 print >> out_stream , "</tr>\n"
             print >> out_stream, "</table>\n"
