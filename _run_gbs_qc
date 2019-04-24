@@ -73,8 +73,14 @@ function run_bcl2fastq() {
 
    echo "checking run is completed (i.e. looking for $HISEQ_ROOT/$RUN/RTAComplete.txt)"
    if [ ! -f $HISEQ_ROOT/$RUN/RTAComplete.txt ]; then
-      echo "*** landmark file $HISEQ_ROOT/$RUN/RTAComplete.txt does not exist => this run has not completed sequencing - quitting"
-      exit 1
+      echo "*** landmark file $HISEQ_ROOT/$RUN/RTAComplete.txt does not exist => this run has not completed sequencing (or uploading?) - are you SURE you want to continue !? (y/n default n)"
+      read_answer_with_default n
+      if [ $answer != "y" ]; then
+         echo "OK quitting"
+         exit 1
+      else
+         echo "OK will continue but note that output may be incomplete"
+      fi
    fi
    echo "checking sample sheet has been configured for gbs q/c"
    grep -i "downstream_processing" $HISEQ_ROOT/$RUN/SampleSheet.csv > /dev/null 2>&1
@@ -125,6 +131,13 @@ function run_bcl2fastq() {
       fi
    fi
 
+   bcl2fastq_phrase=""
+   echo "do you want to allow missing bcls ? (y/n, default=n)"
+   read_answer_with_default n
+   if [ "$answer" == "y" ]; then
+      bcl2fastq_phrase="-B \"--ignore-missing-bcls\""
+   fi
+
 
    # set up for bcl2fastq run
    mkdir -p $BCL2FASTQ_ROOT/$RUN
@@ -134,7 +147,7 @@ function run_bcl2fastq() {
    fi
    echo "about to run bcl2fastq using
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
 
    OK ? (y/n, default=y)
    "
@@ -148,9 +161,9 @@ function run_bcl2fastq() {
 
    "
 
-   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN $HISEQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
 
    if [ $? != 0 ]; then
       echo "
