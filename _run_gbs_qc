@@ -751,13 +751,13 @@ if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYS
    run_qc
 fi
 
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then
+   generate_html
+fi
+
 if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  ]]; then
    return_code=0
    import_results
-fi
-
-if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then
-   generate_html
 fi
 
 if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) ]]; then
