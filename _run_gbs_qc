@@ -401,7 +401,7 @@ run (unless already done), etc.)
    echo "will use analysis=$ANALYSIS
    "
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) ]]; then 
       ####### get and check whether to run locally or on the cluster
       echo "
 
@@ -418,7 +418,7 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    fi
 
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) ]]; then 
       ####### get and check the sample sheet and a parameters file that controls the processing 
       ####### sample sheet:
       SAMPLE_SHEET=""
@@ -463,7 +463,7 @@ function get_cohort_opts() {
    LIBRARY_MONIKERS=$answer
 
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) ]]; then 
 
       # check if already run - if so prompt for reimport
       to_do=""
@@ -482,7 +482,7 @@ function get_cohort_opts() {
              else
                 to_do="$to_do $library_moniker"
                 echo "ok will reprocess $library_moniker "
-                if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+                if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) ]]; then 
                    echo "do you need the keyfile re-imported ? (y/n, default =y)"
                    read_answer_with_default y
                    if [ $answer != "y" ]; then
@@ -552,7 +552,7 @@ function get_cohort_opts() {
 
 
    # optionally clean up  (unless doing summaries etc)
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) ]]; then 
       for cohort in $GBS_COHORTS; do
          if [ -d $OUTPUT_ROOT/$cohort ]; then
             echo "found existing results for $cohort in $OUTPUT_ROOT/$cohort - do you want to reset this cohort ? (y/n, default = y)"
