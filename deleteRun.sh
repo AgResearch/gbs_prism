@@ -11,16 +11,17 @@ function get_opts() {
 
 help_text="\n
       usage : deleteRun.sh -r run_name\n
-      example (dry run) : ./deleteRun.sh -n -r 190506_D00390_0455_ACDNN7ANXX\n
-      example           : ./deleteRun.sh -r 190506_D00390_0455_ACDNN7ANXX\n
+      example (dry run) : ./deleteRun.sh -n -r 190506_D00390_0455_ACDNN7ANXX -F CDNN7ANXX\n
+      example           : ./deleteRun.sh -r 190506_D00390_0455_ACDNN7ANXX -F CDNN7ANXX\n
 "
 
 DRY_RUN=no
 RUN_NAME=""
+FLOWCELL="?"
 MACHINE=hiseq
 RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
 
-while getopts ":nhr:m:d:" opt; do
+while getopts ":nhr:m:d:F:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -30,6 +31,9 @@ while getopts ":nhr:m:d:" opt; do
       ;;
     r)
       RUN_NAME=$OPTARG
+      ;;
+    F)
+      FLOWCELL=$OPTARG
       ;;
     m)
       MACHINE=$OPTARG
@@ -60,6 +64,12 @@ fi
 
 if [ -z "$RUN_NAME" ]; then
    echo -e $help_text
+   exit 1
+fi
+
+echo $RUN_NAME | grep -q $FLOWCELL  > /dev/null 2>&1
+if [ $? != 0 ]; then
+   echo "mismatch between flowcell ( $FLOWCELL ) and run ( $RUN_NAME )"
    exit 1
 fi
 
@@ -123,6 +133,13 @@ where biosamplelist != ( select
 obid from biosamplelist where listname = :run_name)
 ));
 
+-- delete from gbs yield table
+delete from gbsyieldfact where  biosamplelist = (select
+obid from biosamplelist where listname = :run_name ) and 
+flowcell = :flowcell;
+
+-- delete from keyfiletable 
+delete from gbskeyfilefact where flowcell = :flowcell; 
 
 -- delete the links
 delete from biosamplelistmembershiplink 
@@ -145,15 +162,13 @@ delete from biosamplelist where listname = :run_name;
 " > /tmp/delete_${RUN_NAME}.psql
 
 if [ $DRY_RUN == "no" ]; then
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -f /tmp/delete_${RUN_NAME}.psql
+   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
 else
    echo " will run 
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -f /tmp/delete_${RUN_NAME}.psql"
+   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql"
 fi
 
 
 echo "
 finished deleting ${RUN_NAME}
-
-NOTE : the keyfile table (gbskeyfilefact) may still contain records relating to this flowcell
 "
