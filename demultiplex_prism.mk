@@ -14,7 +14,7 @@
 ##############################################
 # specify the intermediate files to keep 
 ##############################################
-.PRECIOUS: %.log %.genotype_priosm
+.PRECIOUS: %.log %.genotype_prism
 
 ##############################################
 # cleaning - not yet doing this using make  

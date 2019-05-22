@@ -124,13 +124,12 @@ conda activate r_mro
 " > $OUT_DIR/R_env.src
    cd $OUT_DIR
 
-   # KGD lives here - and checkout a specific version ( a release name would be better)
+   # KGD lives here 
    cd $SEQ_PRISMS_BIN/..
    if [ ! -d KGD ]; then 
       git clone git@github.com:AgResearch/KGD.git
    fi 
    cd KGD 
-   git checkout $KGD_VERSION
 }
 
 

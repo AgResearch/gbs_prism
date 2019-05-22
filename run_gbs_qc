@@ -5,6 +5,8 @@ function get_pipeline() {
    export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
    cd $GBS_PRISM_BIN
    gbs_version=$1
+
+   # (to move to another KGD version, git pull  in the KGD folder, and then check out the version you want)
    kgd_version=`$GBS_PRISM_BIN/get_kgd_version.sh`
    echo "preparing to run gbs qc pipeline version $gbs_version (KGD version $kgd_version) (press enter to continue)"
    read answer

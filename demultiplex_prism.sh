@@ -15,7 +15,6 @@ function get_opts() {
    FILES=""
    OUT_DIR=""
    ENZYME_INFO=""
-   KGD_VERSION=f7bc911f82fe444984f2603650d140d9a7d7f464  
    FORCE=no
    
 
