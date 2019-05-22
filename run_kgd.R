@@ -15,4 +15,4 @@ GHWdgm.05 <- calcG(which(HWdis > -0.05),"HWdgm.05", npc=4)  # recalculate using 
 writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
 
 #To write out vcf file
-writeVCF(outname="GHW05")
+writeVCF(outname="GHW05", ep=.001)
