@@ -85,34 +85,6 @@ function run_bcl2fastq() {
 
    bcl2fastq completed ok 
 
-   about to standardise the sequence file disposition (i.e. make project folders for non-barcoded output
-    - e.g. a file SQNNNN_L00x_R1_001.fastq.gz will generate a folder SQNNNN etc.)
-
-   "
-   folders=""
-
-   # get non-redundant list of the GBS librarys represented  (e.g. parse SQ0801_S1_L001_R1_001.fastq.gz to get SQ0801) 
-   for file in $BCL2FASTQ_ROOT/$RUN/bcl2fastq/*.fastq.gz ; do
-      base=`basename $file`
-      project=`echo $base |  awk -F_ '{print $1}' -`
-      echo $folders | grep -i $project > /dev/null 2>&1
-      if [ $? != 0 ]; then
-         folders="$folders $project"
-      fi
-   done
-
-   echo "please confirm which folders to create (default : $folders )"
-   read_answer_with_default $folders
-   set -x
-   for folder in $answer; do
-      mkdir -p $BCL2FASTQ_ROOT/$RUN/bcl2fastq/$folder
-      cp -s $BCL2FASTQ_ROOT/$RUN/bcl2fastq/${folder}*.fastq.gz $BCL2FASTQ_ROOT/$RUN/bcl2fastq/$folder
-   done
-   set +x
-
-   
-   echo "*** sequence file disposition complete ***
-
    finding sequence files for fastqc..."
    find $BCL2FASTQ_ROOT/$RUN -name "*.fastq.gz" -type f -print > $BCL2FASTQ_ROOT/$RUN/sequence_files.txt
    echo "
