@@ -234,7 +234,9 @@ cat $cohort/*.FastqToTagCount.stdout | ./get_reads_tags_per_sample.py > $cohort/
      ################ clean script
      echo "#!/bin/bash
 cd $OUT_ROOT
-rm -rf $OUT_ROOT/$cohort
+
+# a recursive rm of the output folder can often be too slow - so just rename it
+mv $OUT_ROOT/$cohort $OUT_ROOT/OLD_$cohort
 rm -f *.${cohort}.*
      " >  $OUT_ROOT/${cohort_moniker}.clean.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.clean.sh
