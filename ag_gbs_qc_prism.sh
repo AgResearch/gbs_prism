@@ -202,8 +202,8 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
-      adapter_to_cut=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name adapter_to_cut`
-      bwa_alignment_parameters=`$GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $OUT_ROOT/SampleProcessing.json --parameter_name bwa_alignment_parameters`
+      adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
+      bwa_alignment_parameters="-B 10"
 
       for analysis_type in all bwa_mapping demultiplex kgd clean unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
@@ -516,12 +516,12 @@ function html_prism() {
    done
 
 
-   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/fastqc $OUT_ROOT/html/fastqc
+   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc $OUT_ROOT/html/fastqc
    mkdir $OUT_ROOT/html/bcl2fastq
-   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/bcl2fastq/Reports/html/* $OUT_ROOT/html/bcl2fastq
+   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/bcl2fastq/Reports/html/* $OUT_ROOT/html/bcl2fastq
    mkdir -p $OUT_ROOT/html/kmer_analysis
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
-      cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
+      cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
 
    # make peacock page which mashes up plots, output files etc.
@@ -551,8 +551,11 @@ function clientreport_prism() {
 }
 
 function clean() {
-   echo "cleaning up tardis working folders..."
+   echo "to clean up tardis working folders, execute this : 
+
    find $OUT_ROOT -name "tardis_*" -type d -exec rm -r {} \;
+
+   "
 }
 
 

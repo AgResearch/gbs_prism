@@ -103,7 +103,7 @@ def get_cohorts(options):
     #SQ2769.all.ApeKI.ApeKI
     #SQ2770.all.ApeKI.ApeKI
 
-    cohort_folders=[ node for node in os.listdir(run_folder) if re.search("^tardis", node) is None and  \
+    cohort_folders=[ node for node in os.listdir(run_folder) if re.search("^tardis", node) is None and  re.search("^OLD", node) is None and\
                      re.search("^\S+\.\S+\.\S+\.\S+$", node) is not None and os.path.isdir(os.path.join(run_folder, node)) ]
     
     return cohort_folders
