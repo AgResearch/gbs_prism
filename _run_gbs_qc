@@ -176,10 +176,10 @@ script (which assumes hiseq data disposition)
       echo "could not find fastq data under $BCL2FASTQ_ROOT/$RUN so looks like bcl2fastq is needed - OK to run that ? (y/n, default=y)"
       read_answer_with_default y 
       if [ "$answer" != "y" ]; then
-         echo "OK quitting"
-         exit 1
+         echo "OK continuing..."
+      else
+         run_bcl2fastq 
       fi
-      run_bcl2fastq 
    fi
 
    ######## continue on with GBS q/c ###########
