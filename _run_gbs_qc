@@ -232,7 +232,9 @@ OK ? (y/n, default = y)
 "
       read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" > $OUTPUT_ROOT/database_prism.log
+         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h invincible -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
+         psql -U agrbrdf -d agrbrdf -h invincible -f dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
+         echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
          $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN >> $OUTPUT_ROOT/database_prism.log 2>&1
          if [ $? != 0 ]; then
             echo "
