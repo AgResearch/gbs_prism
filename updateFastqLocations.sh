@@ -134,7 +134,7 @@ function get_gbs_list() {
       echo "** building $PROCESSED_ROOT/$SAMPLE.gbslist **"
       filename_pattern=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_fastq_filename_pattern.psql -q`
       set -x
-      find $PROCESSED_ROOT/*/bcl2fastq/*/ -name "*.fastq.gz" -type f -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
+      find $PROCESSED_ROOT/*/bcl2fastq -name "*.fastq.gz" -type f -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
       set +x
       if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
          echo "

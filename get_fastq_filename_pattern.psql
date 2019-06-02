@@ -11,7 +11,7 @@
 */
 \t
 select distinct 
-   upper(:sample) || E'_(S[0123456789]+|NoIndex)_L[0123456789]+_R1_[0123456789]+\.fastq\.gz'
+   E'*_(S[0123456789]+|NoIndex)_L00' || g.lane || E'_R1_[0123456789]+\.fastq\.gz$'
 from 
    (((biosamplelist as l join biosamplelistmembershiplink m on 
    m.biosamplelist = l.obid)  join biosampleob as b on 
@@ -24,4 +24,5 @@ from
 where
    l.listname = :run and
    h.sampleid = :sample and 
-   h.downstream_processing = 'GBS';
+   h.downstream_processing = 'GBS' and
+   g.lane = :lane;
