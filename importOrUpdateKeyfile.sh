@@ -424,13 +424,16 @@ fi
 
 if [ $DRY_RUN == "no" ]; then
    psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
+   result=$?
+   psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
 else
    echo "keyfile import : will run 
    psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
+   psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
    "
 fi
 
-if [ $? != 0 ]; then
+if [ $result != 0 ]; then
    echo "*** looks like this failed : psql -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
    (bad return code )
    ****" 
