@@ -515,6 +515,8 @@ function html_prism() {
       
    done
 
+   cp -s $OUT_ROOT/SampleSheet.csv $OUT_ROOT/html
+
 
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc $OUT_ROOT/html/fastqc
    mkdir $OUT_ROOT/html/bcl2fastq

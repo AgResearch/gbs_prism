@@ -27,6 +27,7 @@ Overview of %(run_name)s
 <ul>
 <li>  <a href="#overview_plots"> Overview Summaries (before demultiplexing) </a> 
     <ul>
+        <li> <a href="#samplesheet"> Sample Sheet </a>
         <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
@@ -49,6 +50,10 @@ Overview of %(run_name)s
 overview_section="""
 <p/>
 <table width=90%% align=center>
+<tr id=samplesheet>
+<td> Sample Sheet </td>
+<td> <a href="SampleSheet.csv" target=SampleSheet.csv> Sample Sheet </a>  </td>
+</tr>
 <tr id=bcl2fastq>
 <td> bcl2fastq reports  </td>
 <td> <a href=bcl2fastq/index.html> bcl2fastq reports </a>  </td>
