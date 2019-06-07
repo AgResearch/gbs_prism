@@ -262,7 +262,7 @@ if [ ! -d $cohort ]; then
    exit 1
 fi
 # generate unblinded output
-for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt ; do
    if [ -f \$file ]; then
       if [ ! -f \$file.blinded ]; then
          cp -p \$file \$file.blinded
