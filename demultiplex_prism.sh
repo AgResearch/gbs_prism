@@ -360,10 +360,13 @@ function html_prism() {
 }
 
 function clean() {
-   mv $OUT_DIR/tardis.toml.orig $OUT_DIR/tardis.toml
-   echo "skipping clean for now"
-   #rm -rf $OUT_DIR/tardis_*
-   #rm $OUT_DIR/*.fastq
+   if [ -f $OUT_DIR/tardis.toml.orig  ]; then
+      mv $OUT_DIR/tardis.toml.orig $OUT_DIR/tardis.toml
+   else 
+      echo "warning  - did not find $OUT_DIR/tardis.toml.orig to restore, check that $OUT_DIR/tardis.toml is what you want"
+   fi
+   nohup rm -rf $OUT_DIR/tardis_* > $OUT_DIR/demultiplex_clean.log 2>&1 &
+   rm -f $OUT_DIR/*.fastq
 }
 
 

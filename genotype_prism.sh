@@ -194,9 +194,8 @@ function html_prism() {
 }
 
 function clean() {
-   echo "skipping clean for now"
-   #rm -rf $OUT_DIR/tardis_*
-   #rm $OUT_DIR/*.fastq
+   nohup rm -rf $OUT_DIR/tardis_* > $OUT_DIR/genotype_clean.log 2>&1 &
+   rm $OUT_DIR/*.fastq
 }
 
 
