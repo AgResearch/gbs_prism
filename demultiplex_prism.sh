@@ -16,6 +16,7 @@ function get_opts() {
    OUT_DIR=""
    ENZYME_INFO=""
    FORCE=no
+   SPLIT=no
    
 
    help_text=$(cat << 'EOF'
@@ -33,7 +34,7 @@ Notes:
 
 EOF
 )
-   while getopts ":nhfO:C:x:l:e:" opt; do
+   while getopts ":nhSfO:C:x:l:e:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -62,6 +63,9 @@ EOF
          ;;
        l)
          SAMPLE_INFO=$OPTARG    
+         ;;
+       S)
+         SPLIT=yes
          ;;
        \?)
          echo "Invalid option: -$OPTARG" >&2
@@ -313,7 +317,10 @@ fi
          if [ -f "$ENZYME_INFO" ]; then
             ENZYME_PHRASE="-ea $ENZYME_INFO"
          fi
-         cat << THERE > $script
+         if [ $SPLIT == "yes" ]; then 
+            # can optionally split the input fastq and launch demultiplex of the splits in parallel - however this 
+            # usually is slower than just launching a single job
+            cat << END_SPLIT > $script
 #!/bin/bash
 #
 # note , currently using -k option for debugging - remove this 
@@ -335,7 +342,20 @@ done
 for sample in \`cat $OUT_DIR/\${base}.demultiplexed/sample_list\`; do
    cat tardis_*/\${base}.*.demultiplexed/\${sample}  > $OUT_DIR/\${base}.demultiplexed/\${sample}
 done
-THERE
+END_SPLIT
+         else
+            cat << END_NOSPLIT > $script
+#!/bin/bash
+#
+# note , currently using -k option for debugging - remove this
+#
+set -x
+base=`basename $file`
+mkdir ${OUT_DIR}/${base}.demultiplexed
+cd ${OUT_DIR}
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE -gzip TRUE \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
+END_NOSPLIT
+         fi
          chmod +x $script
       fi
    done 
