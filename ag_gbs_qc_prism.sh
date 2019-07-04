@@ -340,7 +340,7 @@ jobtemplatefile = \\\"$OUT_ROOT/medium_mem_slurm_array_job\\\"
 max_tasks = 60
 \" > $OUT_ROOT/$cohort/blast/tardis.toml
 # run blast
-$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
+$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -j $NUM_THREADS -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
 if [ \$? != 0 ]; then
    echo \"warning , blast  of $OUT_ROOT/$cohort/fasta_small_lowdepthsample returned an error code\"
    exit 1
@@ -380,7 +380,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/kmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE  -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_medium_lowdepthsample returned an error code\"
    exit 1
@@ -393,7 +393,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/allkmer_analysis
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
 if [ \$? != 0 ]; then
    echo \"warning, kmer analysis of $OUT_ROOT/$cohort/fasta_alldepthsample returned an error code\"
    exit 1
@@ -437,7 +437,7 @@ fi
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort/common_sequence
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/$cohort/common_sequence $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/$cohort/common_sequence/kmer_analysis.log
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/$cohort/common_sequence $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/$cohort/common_sequence/kmer_analysis.log
 if [ \$? != 0 ]; then
    echo \"warning, common_sequence analysis of $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq  returned an error code\"
    exit 1
