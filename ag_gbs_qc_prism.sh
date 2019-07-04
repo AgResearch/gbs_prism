@@ -18,10 +18,11 @@ function get_opts() {
    FORCE=no
    ENGINE=KGD_tassel3
    ANALYSIS=all
+   NUM_THREADS=16
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-a demultiplex|kgd|unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -29,7 +30,7 @@ example:\n
 ./ag_gbs_qc_prism.sh -n -f  -a kmer_analysis -O /dataset/gseq_processing/scratch/gbs/180824_D00390_0394_BCCPYFANXX -r 180824_D00390_0394_BCCPYFANXX SQ0784.all.DEER.PstI \n
 ./ag_gbs_qc_prism.sh -a html -O /dataset/gseq_processing/scratch/gbs/180925_D00390_0404_BCCVH0ANXX\n
 "
-   while getopts ":nhfO:C:r:a:" opt; do
+   while getopts ":nhfO:C:r:a:j:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -49,6 +50,9 @@ example:\n
          ;;
        a)
          ANALYSIS=$OPTARG
+         ;;
+       j)
+         NUM_THREADS=$OPTARG
          ;;
        C)
          HPC_TYPE=$OPTARG
@@ -124,6 +128,7 @@ function echo_opts() {
   echo COHORTS=${cohorts_array[*]}
   echo ENGINE=$ENGINE
   echo ANALYSIS=$ANALYSIS
+  echo NUM_THREADS=$NUM_THREADS
 
 }
 
@@ -455,12 +460,12 @@ function fake_prism() {
 function run_prism() {
    cd $OUT_ROOT
 
-   make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_ROOT/${ANALYSIS}_targets.txt` > $OUT_ROOT/${ANALYSIS}.log 2>&1
+   make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j $NUM_THREADS `cat $OUT_ROOT/${ANALYSIS}_targets.txt` > $OUT_ROOT/${ANALYSIS}.log 2>&1
 
    # run summaries
 }
 
-function html_prism() {
+function html() {
    mkdir -p $OUT_ROOT/html
 
    # make shortcuts to output files that wil be linked to , under html root
@@ -534,7 +539,7 @@ function html_prism() {
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
 }
 
-function clientreport_prism() {
+function clientreport() {
    if [ ! -d $OUT_ROOT/html ]; then 
       echo "could not find $OUT_ROOT/html (please generate the html summaries first)"
       exit 1
@@ -569,9 +574,9 @@ function main() {
    configure_env
 
    if [ $ANALYSIS == "html" ]; then
-      html_prism
+      html
    elif [ $ANALYSIS == "clientreport" ]; then
-      clientreport_prism
+      clientreport
    else
       get_targets
       if [ $DRY_RUN != "no" ]; then
