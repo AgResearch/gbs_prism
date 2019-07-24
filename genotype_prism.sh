@@ -174,14 +174,14 @@ fi
    fi
 }
 
-function fake_prism() {
+function fake() {
    echo "dry run ! 
 
    "
    exit 0
 }
 
-function run_prism() {
+function run() {
    # do genotyping
    cd $OUT_DIR
    make -f genotype_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/genotype_targets.txt` > $OUT_DIR/genotype_prism.log 2>&1
@@ -189,7 +189,7 @@ function run_prism() {
    # run summaries
 }
 
-function html_prism() {
+function html() {
    echo "tba" > $OUT_DIR/genotype_prism.html 2>&1
 }
 
@@ -207,11 +207,11 @@ function main() {
    configure_env
    get_targets
    if [ $DRY_RUN != "no" ]; then
-      fake_prism
+      fake
    else
-      run_prism
+      run
       if [ $? == 0 ] ; then
-         html_prism
+         html
          clean
       else
          echo "error state from genotype run - skipping html page generation and clean-up"

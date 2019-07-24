@@ -450,14 +450,14 @@ fi
 
 
 
-function fake_prism() {
+function fake() {
    echo "dry run ! 
 
    "
    exit 0
 }
 
-function run_prism() {
+function run() {
    cd $OUT_ROOT
 
    make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j $NUM_THREADS `cat $OUT_ROOT/${ANALYSIS}_targets.txt` > $OUT_ROOT/${ANALYSIS}.log 2>&1
@@ -580,9 +580,9 @@ function main() {
    else
       get_targets
       if [ $DRY_RUN != "no" ]; then
-         fake_prism
+         fake
       else
-         run_prism
+         run
          if [ $? == 0 ] ; then
             clean
             echo "* done clean *"  # mainly to yield zero exit code

@@ -362,20 +362,20 @@ END_NOSPLIT
 
 }
 
-function fake_prism() {
+function fake() {
    echo "dry run ! 
 
    "
    exit 0
 }
 
-function run_prism() {
+function run() {
    make -f demultiplex_prism.mk -d -k  --no-builtin-rules -j 16 `cat $OUT_DIR/demultiplex_targets.txt` > $OUT_DIR/demultiplex_prism.log 2>&1
 
    # run summaries
 }
 
-function html_prism() {
+function html() {
    echo "tba" > $OUT_DIR/demultiplex_prism.html 2>&1
 }
 
@@ -398,11 +398,11 @@ function main() {
    configure_env
    get_targets
    if [ $DRY_RUN != "no" ]; then
-      fake_prism
+      fake
    else
-      run_prism
+      run
       if [ $? == 0 ] ; then
-         html_prism
+         html
          clean
       else
          echo "error state from demultiplex  run - skipping html page generation and clean-up"
