@@ -206,6 +206,23 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
+
+      # check for missing fastq files and bail out if anything missing  - this shouldn't happen and there may have been an unsupported 
+      # keyfile import that will need to be manually patched (e.g. previously importing a future flowcell as well as current flowcell. The 
+      # former future is now current , but fastq link probably not updated )
+      missing_message=`$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t missing_files`
+      if [ ! -z "$missing_message" ]; then
+         echo "*** Bailing out as there are missing fastq_links for lib: $libname fcid: $fcid enzyme: $enzyme cohort: $gbs_cohort qccohort: $qc_cohort ***"
+         echo "(was this flowcell previously imported in one or more keyfiles as a future flowcell  ?)"
+         echo "suggest try manual update of fastq location using : 
+
+"
+         for lane in `$GBS_PRISM_BIN/get_lane_from_database.sh $RUN $libname`; do
+            echo "$GBS_PRISM_BIN/updateFastqLocations.sh -s $libname -k $libname -r $RUN -f $fcid -l $lane "
+         done
+         exit 1
+      fi
+
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
       adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
       bwa_alignment_parameters="-B 10"
