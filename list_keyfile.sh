@@ -9,7 +9,7 @@ help_text="\n
 
  Usage: \n
 
- list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme] [-m species_moniker] [-t default|all|gbsx|qc|gbsx_qc|files|unblind|unblind_script|bwa_index_paths|blast_index_paths|list_species] [ -f flowcell ]\n
+ list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme] [-m species_moniker] [-t default|all|gbsx|qc|gbsx_qc|files|missing_files|unblind|unblind_script|bwa_index_paths|blast_index_paths|list_species] [ -f flowcell ]\n
 \n
 e.g.\n
 list_keyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format\n
@@ -29,6 +29,7 @@ list_keyfile.sh  -m bee -t gbsx             # as above, GBSX format \n
 list_keyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)\n
 list_keyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format \n
 list_keyfile.sh  -t files -g deer -e PstI   # as above, report lane + file\n
+list_keyfile.sh  -t missing_files -g deer -e PstI   # as above, but report lane and any samples where the fastq file is missing\n
 list_keyfile.sh  -g deer  -f CA95UANXX      # all deer , but only in flowcell CA95UANXX\n
 list_keyfile.sh  -f CA95UANXX               # extract everything on flowcell CA95UANXX\n
 list_keyfile.sh  -s SQ2701 -q uncontaminated      # all the samples flagged as uncontaminated in SQ2701 \n
@@ -104,8 +105,8 @@ function check_opts() {
       echo "Tassel version should be 3 or 5"
       exit 1
    fi
-   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
-      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
+   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "missing_files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
+      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, missing_files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
       exit 1
    fi
 
@@ -246,6 +247,19 @@ where
 order by 
    1;
 "
+   elif [[ ( $TEMPLATE == "missing_files" ) ]]; then
+code="
+select distinct
+   lane,
+   '** warning , fastq_link missing **'
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase and fastq_link is null
+order by
+   1;
+"
    elif [[ ( $TEMPLATE == "bwa_index_paths" ) ]]; then
 code="
 select distinct
@@ -317,14 +331,14 @@ order by
    echo "\a" > $script_name
    echo "\f '\t'" >> $script_name
    echo "\pset footer off " >> $script_name
-   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) || ( $TEMPLATE == "list_species" ) ]]; then
+   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) || ( $TEMPLATE == "missing_files" ) || ( $TEMPLATE == "list_species" ) ]]; then
       echo "\t" >> $script_name
    fi
    echo $code >> $script_name
 }
 
 function run_extract() {
-   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
+   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "missing_files" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
       if [ $DEBUG == 1 ]; then
          echo  psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
       fi 
