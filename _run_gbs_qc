@@ -482,10 +482,25 @@ function run_qc() {
       - once that completes you will also need to rerun this interactive script to generate the html 
       summary page, and again to generate client reports , and again to import the results (if applicable) 
       (choose html , and then clientreport, and then import_results, when prompted for the analysis)
+
+
+      Logging output is captured in the following files: 
+
+      * $GBS_PRISM_BIN/ag_gbs_qc_prism.sh logs to $OUTPUT_ROOT/run_gbs_qc.log
+
       "
     
       time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
+
+      if [ $return_code != 0 ]; then
+         echo "
+
+>>>> ( looks like there was a problem with ag_gbs_qc_prism.sh (non-zero return code $return_code ) - check $OUTPUT_ROOT/run_gbs_qc.log  ) 
+"
+      else
+          echo "** run_qc looks ok **"
+      fi
    fi
 }
 
