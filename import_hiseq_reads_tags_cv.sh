@@ -79,7 +79,8 @@ echo_opts
 
 function collate_data() {
 rm -f $RUN_PATH/html/gbs_yield_import_temp.dat
-for file in $RUN_PATH/*/TagCount.csv.blinded; do
+files=`ls $RUN_PATH/*/TagCount.csv.blinded | egrep -v "\/OLD|_OLD"`
+for file in $files; do
    # files contain 
    #sample,flowcell,lane,sq,tags,reads
    #total,C6JPMANXX,7,88,,211124459

@@ -247,6 +247,11 @@ function update_bwa_blast_refs() {
 
 
 function import_results() {
+   set -x
+   # clear existing yields for this run 
+   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN}\' -f $GBS_PRISM_BIN/delete_run_yields.psql 
+   set +x
+
    # import yield stats
    $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
 
