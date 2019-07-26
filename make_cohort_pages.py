@@ -101,7 +101,7 @@ def get_cohorts(options):
     # * are of like SQ0775.all.TILAPIA.PstI-MspI
     #   - i.e. library.qc-cohort.gbs-cohort.enzyme
     run_folder=os.path.join(BASEDIR, options["run_name"])
-    print "DEBUG : "+run_folder
+    #print "DEBUG1 : "+run_folder
     #SQ0810.all.PstI-MspI.PstI-MspI
     #SQ0812.all.ApeKI.ApeKI
     #SQ2768.all.ApeKI.ApeKI
@@ -111,7 +111,9 @@ def get_cohorts(options):
     cohort_folders=[ node for node in os.listdir(run_folder) if re.search("^tardis", node) is None and  re.search("^OLD", node) is None and\
                      re.search("^\S+\.\S+\.\S+\.\S+$", node) is not None and os.path.isdir(os.path.join(run_folder, node)) ]
     
+    #print "DEBUG2 : %s" + str(cohort_folders)
     return cohort_folders
+   
     
     
 def generate_run_plot(options):
@@ -140,8 +142,8 @@ def generate_run_plot(options):
         #"KGD links" : ['KGD/kgd.stdout', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/HighRelatedness.csv', 'KGD/seqID.csv', 'KGD/HighRelatednessHWdgm.05.csv'],        
         "KGD (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
         #"kmer and blast analysis" : ['blast_analysis/sample_blast_summary.jpg', 'kmer_analysis/kmer_zipfian_comparisons.jpg', 'kmer_analysis/zipfian_distances.jpg', 'kmer_analysis/kmer_entropy.jpg'],
-        "Preview common sequence" : [ 'common_sequence/preview_common_sequence.txt']            ,
-        "All common sequence" : [ 'common_sequence/all_common_sequence.txt']            ,        
+        "Preview common sequence" : [ 'preview_common_sequence.txt']            ,
+        "All common sequence" : [ 'all_common_sequence.txt']            ,        
         "Low depth tag kmer summary (plots)" : [ 'kmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'kmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','kmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
         "Low depth tag kmer summary (text file links)" : [ 'kmer_analysis/heatmap_sample_clusters.k6Aweighting_methodtag_count.txt', 'kmer_analysis/zipfian_distances_fit.k6Aweighting_methodtag_count.txt']        ,
         "All tag kmer summary (plots)" : [ 'allkmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'allkmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','allkmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
@@ -188,12 +190,20 @@ def generate_run_plot(options):
                     elif file_type == "link":
                         link_relpath=os.path.join(cohort, file_name)
 
+                        if file_group in ["Preview common sequence", "All common sequence" ]:
+                            file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
+                            link_relpath=os.path.join(cohort, "common_sequence", file_name)
+
                         if os.path.exists(file_path):
                             print >> out_stream, "<td width=300> <a href=%s target=%s> %s </a></td>\n"%(link_relpath, file_name, link_relpath)
                         else:
                             print >> out_stream, "<td width=300> unavailable </td>\n"
                     elif file_type == "in-line":
                         text = "(unavailable)"
+
+                        if file_group in ["Preview common sequence", "All common sequence" ]:
+                            file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
+
                         if os.path.exists(file_path):
                             with open(file_path,"r") as infile:
                                 text="\n".join((record.strip() for record in infile))

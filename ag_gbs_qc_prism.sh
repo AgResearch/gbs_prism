@@ -453,8 +453,8 @@ fi
      ################ common sequences script (based on trimmed sample) 
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p $cohort/common_sequence
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/$cohort/common_sequence $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/$cohort/common_sequence/kmer_analysis.log
+mkdir -p common_sequence/$cohort # note - must not allow tassel to see any fastq file names under $cohort !
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/common_sequence/$cohort $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/common_sequence/$cohort/kmer_analysis.log
 if [ \$? != 0 ]; then
    echo \"warning, common_sequence analysis of $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq  returned an error code\"
    exit 1
@@ -524,13 +524,13 @@ function html() {
       done
 
       mkdir -p $OUT_ROOT/html/$cohort/common_sequence
-      rm $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt
-      rm $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt
-      for file in $OUT_ROOT/$cohort/common_sequence/*.k6A.log ; do
-         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt 
-         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt 
+      rm $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt
+      rm $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt
+      for file in $OUT_ROOT/common_sequence/$cohort/*.k6A.log ; do
+         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt 
+         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt 
       done
-      for file in $OUT_ROOT/$cohort/common_sequence/all_common_sequence.txt $OUT_ROOT/$cohort/common_sequence/preview_common_sequence.txt; do
+      for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/common_sequence
       done
 
