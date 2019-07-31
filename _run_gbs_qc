@@ -49,6 +49,9 @@ function run_bcl2fastq() {
       echo "could not create bcl2fastq output folder $BCL2FASTQ_ROOT/$RUN/SampleSheet , quitting"
       exit 1
    fi
+   # save a copy of the sample sheet used
+   cp $HISEQ_ROOT/$RUN/SampleSheet.csv $BCL2FASTQ_ROOT/$RUN
+
    echo "about to run bcl2fastq using
 
    $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $HISEQ_ROOT/$RUN/SampleSheet.csv > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
@@ -490,7 +493,7 @@ function run_qc() {
 
       "
     
-      time $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
 
       if [ $return_code != 0 ]; then
