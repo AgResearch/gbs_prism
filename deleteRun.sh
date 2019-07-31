@@ -56,6 +56,14 @@ done
 KEY_DIR=/dataset/hiseq/active/key-files
 }
 
+function read_answer_with_default() {
+   read answer
+   if [ -z "$answer" ]; then
+      answer=$@
+   fi
+}
+
+
 function check_opts() {
 if [ -z "$GBS_PRISM_BIN" ]; then
    echo "GBS_PRISM_BIN not set - quitting"
@@ -162,13 +170,20 @@ delete from biosamplelist where listname = :run_name;
 " > /tmp/delete_${RUN_NAME}.psql
 
 if [ $DRY_RUN == "no" ]; then
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
+   echo "are you sure you want to completely delete ${RUN_NAME} from the database, using the SQL code 
+in /tmp/delete_${RUN_NAME}.psql (y/n) ?"
+
+   read_answer_with_default n
+
+   if [ "$answer" != "y" ]; then
+      echo "ok quitting"
+   else
+      psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
+      echo "
+finished deleting ${RUN_NAME}. ( Note that the processing folder itself has not been deleted).
+      "
+   fi
 else
    echo " will run 
    psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql"
 fi
-
-
-echo "
-finished deleting ${RUN_NAME}
-"
