@@ -128,22 +128,18 @@ function echo_opts() {
 }
 
 function get_gbs_list() {
-   if [ -f $PROCESSED_ROOT/$SAMPLE.gbslist ]; then
-      echo "** using existing list $PROCESSED_ROOT/$SAMPLE.gbslist **"
-   else
-      echo "** building $PROCESSED_ROOT/$SAMPLE.gbslist **"
-      filename_pattern=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_fastq_filename_pattern.psql -q`
-      set -x
-      find $PROCESSED_ROOT/*/bcl2fastq -name "*.fastq.gz" -type f -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
-      set +x
-      if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
-         echo "
+   echo "** building $PROCESSED_ROOT/$SAMPLE.gbslist **"
+   filename_pattern=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_fastq_filename_pattern.psql -q`
+   set -x
+   find $PROCESSED_ROOT/*/bcl2fastq -name "*.fastq.gz" -type f -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
+   set +x
+   if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
+      echo "
 error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT using $filename_pattern 
 -quitting as will not be able to figure out what to do 
 "
-         rm $PROCESSED_ROOT/$SAMPLE.gbslist
-         exit
-      fi
+      rm $PROCESSED_ROOT/$SAMPLE.gbslist
+      exit
    fi
 }
 

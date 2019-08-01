@@ -90,21 +90,9 @@ echo_opts
 ########################### from here do delete #######################
 
 set -x
-echo "will delete the following data"
-echo "(press any key to continue)"
-read answer
+echo "deleting the following data"
 
-$GBS_PRISM_BIN/listDBKeyfile.sh -s $KEYFILE_BASE | more 
-
-echo "
-
-do you want to continue - if you answer y the keyfile will be deleted from the database (but not from $KEY_DIR) (y/n)"
-answer="n"
-read answer
- if [ "$answer" != "y" ]; then
-   echo "OK quitting"
-   exit 1
-fi
+$GBS_PRISM_BIN/listDBKeyfile.sh -s $KEYFILE_BASE  
 
 echo "deleting keyfile..."
 

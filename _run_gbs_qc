@@ -400,7 +400,7 @@ function get_cohort_opts() {
          echo "running $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library "
          echo "press Enter to continue. . ."
          read answer
-         $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library
+         $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
          return_code=$?
          if [ $return_code != 0 ]; then
             echo "looks like there was a problem with the import (exit code $return_code)  - check $OUTPUT_ROOT/reimport.log - quitting"
