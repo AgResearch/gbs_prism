@@ -250,13 +250,17 @@ order by
    elif [[ ( $TEMPLATE == "missing_files" ) ]]; then
 code="
 select distinct
+   flowcell,
    lane,
-   '** warning , fastq_link missing **'
+   case
+   when fastq_link is null then '** warning , fastq_link missing **'
+   else fastq_link
+   end  
 from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase and fastq_link is null
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase 
 order by
    1;
 "
@@ -338,7 +342,7 @@ order by
 }
 
 function run_extract() {
-   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "missing_files" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
+   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
       if [ $DEBUG == 1 ]; then
          echo  psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
       fi 

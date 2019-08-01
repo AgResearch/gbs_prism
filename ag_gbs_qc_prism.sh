@@ -210,7 +210,7 @@ function get_targets() {
       # check for missing fastq files and bail out if anything missing  - this shouldn't happen and there may have been an unsupported 
       # keyfile import that will need to be manually patched (e.g. previously importing a future flowcell as well as current flowcell. The 
       # former future is now current , but fastq link probably not updated )
-      missing_message=`$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t missing_files`
+      missing_message=`$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t missing_files | grep "fastq_link missing"`
       if [ ! -z "$missing_message" ]; then
          echo "*** Bailing out as there are missing fastq_links for lib: $libname fcid: $fcid enzyme: $enzyme cohort: $gbs_cohort qccohort: $qc_cohort ***"
          echo "(was this flowcell previously imported in one or more keyfiles as a future flowcell  ?)"
