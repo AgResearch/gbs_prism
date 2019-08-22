@@ -9,7 +9,9 @@ select
    number_of_samples,
    libraries,
    flowcells,
-   enzymes
+   enzymes,
+   windows,
+   geno_individuals
 from 
 ((
 (select 
@@ -48,6 +50,24 @@ from
 group by
    q3.species ) as agg_enzymes
 on agg_enzymes.species = agg_libs.species
+join
+(select
+   species,
+   agg_comma_concat(windowsize) as windows
+from
+   (select distinct species, windowsize from gbskeyfilefact ) as q4
+group by
+   q4.species ) as agg_windows
+on agg_windows.species = agg_libs.species
+join
+(select
+   g.species,
+   count(distinct biosubjectob) as genophyle_individuals
+from
+    gbskeyfilefact as g
+group by
+   g.species ) as geno_individuals
+on geno_individuals.species = agg_libs.species
 order by
 1;
 
