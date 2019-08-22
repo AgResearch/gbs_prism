@@ -6,8 +6,6 @@
 # 
 #
 
-declare -a files_array
-
 function get_opts() {
 
    DRY_RUN=no

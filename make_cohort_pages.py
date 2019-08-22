@@ -68,7 +68,7 @@ overview_section="""
 </tr>
 <tr>
 <td> BWA alignment (text) </td>
-<td> <a href=bwa_stats_summary.txt> bwa_stats_summary.txt </a> </td>
+<td> <a href=stats_summary.txt> bwa stats summary </a> </td>
 </tr>
 <tr id=fastqc>
 <td> FASTQC </td>
