@@ -4,6 +4,14 @@
 # it is run after process_hiseq.sh 
 # 
 
+function read_answer_with_default() {
+   read answer
+   if [ -z "$answer" ]; then
+      answer=$@
+   fi
+}
+
+
 function get_opts() {
 
 help_text="
@@ -151,8 +159,11 @@ function import_keyfiles() {
          $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker
       fi
       if [ $? != "0" ]; then
-          echo "importOrUpdateKeyfile.sh  exited with $? - quitting"
-          exit 1
+          echo "warning  - importOrUpdateKeyfile.sh  exited with $? for $sample_moniker - do you want to continue ? (y/n default y)"
+          read_answer_with_default y
+          if [ $answer != "y" ]; then
+             exit 1
+          fi
       fi
    done
 }
@@ -176,7 +187,6 @@ function delete_keyfiles() {
 
 function update_fastq_locations() {
    # update the fastq locations 
-   code_to_return=0
    echo "** updating fastq locations **"
    set -x
    for sample_moniker in $sample_monikers; do
@@ -192,14 +202,14 @@ function update_fastq_locations() {
             $GBS_PRISM_BIN/updateFastqLocations.sh -n -s $sample_moniker -k $sample_moniker -r $RUN -f $flowcell_moniker -l $flowcell_lane 
          fi
          if [ $? != "0" ]; then
-            echo "error !! updateFastqLocations.sh  exited with $? for $sample_moniker - continuing to attempt other samples "
-            code_to_return=1
+            echo "error !! updateFastqLocations.sh  exited with $? for $sample_moniker - do you want to continue ? (y/n default y)"
+            read_answer_with_default y
+            if [ $answer != "y" ]; then
+               exit 1
+            fi
          fi
       done
    done
-   if [ $code_to_return != 0 ]; then 
-      exit $code_to_return 
-   fi
 }
 
 

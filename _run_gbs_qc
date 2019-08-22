@@ -227,7 +227,7 @@ checking if run is in the database...
    if [ $in_db == "0" ]; then
       echo "$RUN is not in the database - will run database import first , about to execute 
 
-$GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN
+$GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a $OUTPUT_ROOT/database_prism.log
 
 logging to $OUTPUT_ROOT/database_prism.log 
 
@@ -238,7 +238,7 @@ OK ? (y/n, default = y)
          echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h invincible -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
          psql -U agrbrdf -d agrbrdf -h invincible -f dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
          echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
-         $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN >> $OUTPUT_ROOT/database_prism.log 2>&1
+         $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a  $OUTPUT_ROOT/database_prism.log 
          if [ $? != 0 ]; then
             echo "
 
