@@ -59,4 +59,4 @@
 ##############################################
 # specify the intermediate files to keep 
 ##############################################
-.PRECIOUS: %.log %.ag_gbs_qc_prism %.blast_analysis %.kmer_analysis %.kgd %.demultiplex %.all %.fasta_sample %.bwa_mapping %.unblind %.allkmer_analysis %.annotation
+.PRECIOUS: %.log %.ag_gbs_qc_prism %.blast_analysis %.kmer_analysis %.allkmer_analysis %.kgd %.demultiplex %.all %.fasta_sample %.bwa_mapping %.unblind %.allkmer_analysis %.annotation %.common_sequence

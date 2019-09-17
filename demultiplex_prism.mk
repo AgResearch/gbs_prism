@@ -1,4 +1,4 @@
-# genotype_priosm main makefile
+# demultiplex_prism main makefile
 #***************************************************************************************
 # references:
 #***************************************************************************************
@@ -14,7 +14,7 @@
 ##############################################
 # specify the intermediate files to keep 
 ##############################################
-.PRECIOUS: %.log %.genotype_prism
+.PRECIOUS: %.log %.demultiplex_prism
 
 ##############################################
 # cleaning - not yet doing this using make  

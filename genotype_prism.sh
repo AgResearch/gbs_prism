@@ -195,7 +195,6 @@ function html() {
 
 function clean() {
    nohup rm -rf $OUT_DIR/tardis_* > $OUT_DIR/genotype_clean.log 2>&1 &
-   rm $OUT_DIR/*.fastq
 }
 
 
