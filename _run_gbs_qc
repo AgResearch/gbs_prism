@@ -424,7 +424,8 @@ function get_cohort_opts() {
    gbs_cohorts=""
    for library_moniker in $LIBRARY_MONIKERS; do
        echo "from $library_moniker . . ."
-       library_cohorts=`psql -U agrbrdf -d agrbrdf -h invincible -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
+       flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $library_moniker  | sed 's/\s//g' - `
+       library_cohorts=`psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
        for library_cohort in $library_cohorts; do
           gbs_cohorts="$gbs_cohorts ${library_moniker}.${library_cohort} "
        done
