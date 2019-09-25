@@ -330,7 +330,7 @@ base=`basename $file`
 mkdir ${OUT_DIR}/${base}.demultiplexed
 cd ${OUT_DIR}
 # this will demultiplex in parallel into numbered subfolders of the tardis working folder
-tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 _condition_fastq_input_$file -i $OUT_DIR/$sample_info_base  -o _condition_output_$OUT_DIR/${base}.demultiplexed -lf TRUE -gzip FALSE \> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stdout 2\> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stderr
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 _condition_fastq_input_$file -i $OUT_DIR/$sample_info_base  -o _condition_output_$OUT_DIR/${base}.demultiplexed -lf TRUE -gzip FALSE -mb 0 -me 0 -n false -t 8 \> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stdout 2\> _condition_uncompressedtext_output_$OUT_DIR/${demultiplex_moniker}.stderr
 # for each distinct sample , combine all the slices 
 # get the distinct samples
 for outfile in tardis_*/\${base}.*.demultiplexed/*.fastq; do
@@ -353,7 +353,7 @@ set -x
 base=`basename $file`
 mkdir ${OUT_DIR}/${base}.demultiplexed
 cd ${OUT_DIR}
-tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE -gzip TRUE \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE -gzip TRUE -mb 0 -me 0 -n false -t 8 \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
 END_NOSPLIT
          fi
          chmod +x $script
