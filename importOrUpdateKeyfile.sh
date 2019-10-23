@@ -126,7 +126,7 @@ check_file_format() {
 
    # check if file has gbs_cohort column
    gbscohort_copy_include=""
-   head -1 $KEY_DIR/$KEYFILE_BASE.txt | grep -i gbs_cohort > /dev/null
+   head -1 $KEY_DIR/$KEYFILE_BASE.txt | egrep -i "gbs(\s|_|-)cohort" > /dev/null
    if [ $? == 1 ]; then
       echo "($KEY_DIR/$KEYFILE_BASE.txt does not appear to contain a gbs_cohort column)"
    else
