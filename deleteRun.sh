@@ -154,6 +154,9 @@ delete from biosamplelistmembershiplink
 where biosamplelist = (select
 obid from biosamplelist where listname = :run_name );
 
+-- delete from sample history 
+delete from gbs_sampleid_history_fact where biosampleob in (select obid from delete_run_tmp);
+
 -- delete the sampleobs
 delete from biosampleob where obid in (select obid from delete_run_tmp);
 
@@ -179,10 +182,17 @@ in /tmp/delete_${RUN_NAME}.psql (y/n) ?"
       echo "ok quitting"
    else
       psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
-      echo "
-finished deleting ${RUN_NAME}. ( Note that the processing folder itself has not been deleted).
-      "
    fi
+
+   echo "
+* finished deleting ${RUN_NAME} from the database * 
+
+Additional clean-up to consider : 
+
+* you probably should remove the GBS output folder if applicable (e.g. nohup rm -rf /dataset/gseq_processing/scratch/gbs/${RUN_NAME} & )
+* you probably should remove the raw data (bcl2fastq) (e.g. nohup rm -rf ${RUN_BASE_PATH}/../illumina/hiseq/${RUN_NAME} & ) 
+* you probably should remove the link-farm entries for the original fastq (e.g. rm /dataset/hiseq/active/fastq-link-farm/*${FLOWCELL}*  ) 
+"
 else
    echo " will run 
    psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql"
