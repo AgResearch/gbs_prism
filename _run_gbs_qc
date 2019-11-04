@@ -35,11 +35,11 @@ function run_bcl2fastq() {
       fi
    fi
 
-   bcl2fastq_phrase=""
+   bcl2fastq_phrase="-R $HISEQ_ROOT/$RUN -i $HISEQ_ROOT/$RUN/Data/Intensities/BaseCalls"
    echo "do you want to allow missing bcls ? (y/n, default=n)"
    read_answer_with_default n
    if [ "$answer" == "y" ]; then
-      bcl2fastq_phrase="-B \"--ignore-missing-bcls\""
+      bcl2fastq_phrase="-R $HISEQ_ROOT/$RUN -i $HISEQ_ROOT/$RUN/Data/Intensities/BaseCalls --ignore-missing-bcls"
    fi
 
 
@@ -49,12 +49,13 @@ function run_bcl2fastq() {
       echo "could not create bcl2fastq output folder $BCL2FASTQ_ROOT/$RUN/SampleSheet , quitting"
       exit 1
    fi
-   # save a copy of the sample sheet used
-   cp $HISEQ_ROOT/$RUN/SampleSheet.csv $BCL2FASTQ_ROOT/$RUN
+
+   ####### ensure sample sheet used for bcl2fastq contains header, and includes specification of adapter
+   cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv
 
    echo "about to run bcl2fastq using
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $HISEQ_ROOT/$RUN/SampleSheet.csv > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B \"$bcl2fastq_phrase\" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv  > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
 
    OK ? (y/n, default=y)
    "
@@ -68,9 +69,9 @@ function run_bcl2fastq() {
 
    "
 
-   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $HISEQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B \"$bcl2fastq_phrase\" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq $bcl2fastq_phrase -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $HISEQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B "$bcl2fastq_phrase" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log 2>&1
 
    if [ $? != 0 ]; then
       echo "
