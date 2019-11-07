@@ -35,6 +35,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.historical_unblind:   %.kgd
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.kgd:   %.demultiplex
 	$@.sh > $@.mk.log 2>&1
 	date > $@

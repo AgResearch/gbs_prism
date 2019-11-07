@@ -9,7 +9,7 @@ help_text="\n
 
  Usage: \n
 
- list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme] [-m species_moniker] [-t default|all|gbsx|qc|gbsx_qc|files|missing_files|unblind|unblind_script|bwa_index_paths|blast_index_paths|list_species] [ -f flowcell ]\n
+ list_keyfile.sh [-s sample_name]  [-v client version (e.g. 5 for tassel 5 etc)] [-g gbs_cohort ] [-e enzyme] [-m species_moniker] [-t default|all|gbsx|qc|gbsx_qc|files|missing_files|unblind|unblind_script|historical_unblind_script|bwa_index_paths|blast_index_paths|list_species] [ -f flowcell ]\n
 \n
 e.g.\n
 list_keyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format\n
@@ -19,6 +19,7 @@ list_keyfile.sh  -s SQ0566 -t gbsx          # extract everything for SQ0566, GBS
 list_keyfile.sh  -s SQ0566 -t qc            # internal primary key used instead of sampleid\n
 list_keyfile.sh  -s SQ0566 -t unblind       # dump a mapping between qc_sampleid and lab sampleid \n
 list_keyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid. Save output to a file and then run as sed -f script_file raw_file > patched_file \n
+list_keyfile.sh  -s SQ1131 -t historical_unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid - including historical qc_sampleids (e.g. if keyfile was reloaded) . Save output to a file and then run as sed -f script_file raw_file > patched_file \n
 list_keyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)\n
 list_keyfile.sh  -s SQ0566 -t bwa_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
 list_keyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
@@ -105,8 +106,8 @@ function check_opts() {
       echo "Tassel version should be 3 or 5"
       exit 1
    fi
-   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "missing_files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
-      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, files, missing_files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
+   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "missing_files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "historical_unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
+      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, historical_unblind_script, files, missing_files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
       exit 1
    fi
 
@@ -330,19 +331,40 @@ where
 order by
    1;
 "
+   elif [[ ( $TEMPLATE == "historical_unblind_script" ) ]]; then
+code="
+select
+   's/' || regexp_replace(qc_sampleid, E'[-\\\\.]','[-.]') || '/' || replace(sample,'/',E'\\\\/') || '/g'
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+union
+select
+   's/' || regexp_replace(h.qc_sampleid, E'[-\\\\.]','[-.]') || '/' || replace(h.sample,'/',E'\\\\/') || '/g'
+from
+   (biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid) join gbs_sampleid_history_fact as h on 
+   h.biosampleob = s.obid and h.sample = g.sample
+where 
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+order by
+   1;
+"
    fi 
 
    echo "\a" > $script_name
    echo "\f '\t'" >> $script_name
    echo "\pset footer off " >> $script_name
-   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) || ( $TEMPLATE == "missing_files" ) || ( $TEMPLATE == "list_species" ) ]]; then
+   if [[ ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "historical_unblind_script" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "files" ) || ( $TEMPLATE == "missing_files" ) || ( $TEMPLATE == "list_species" ) ]]; then
       echo "\t" >> $script_name
    fi
    echo $code >> $script_name
 }
 
 function run_extract() {
-   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
+   if [[ ( -z $FLOWCELL ) || ( $TEMPLATE == "unblind" ) || ( $TEMPLATE == "unblind_script" ) || ( $TEMPLATE == "historical_unblind_script" ) || ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "blast_index_paths" ) || ( $TEMPLATE == "bwa_index_paths" ) || ( $TEMPLATE == "list_species" ) ]]; then
       if [ $DEBUG == 1 ]; then
          echo  psql -q -U gbs -d agrbrdf -h invincible -v keyfilename=\'$SAMPLE\' -v enzyme=\'$ENZYME\' -v gbs_cohort=\'$GBS_COHORT\' -v species_moniker=\'$SPECIES_MONIKER\' -v qc_cohort=\'$QC_COHORT\' -f $script_name
       fi 

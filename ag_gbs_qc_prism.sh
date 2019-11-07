@@ -20,7 +20,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -111,8 +111,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) ]]; then
-      echo "analysis must be one of all, demultiplex, kgd , unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) ]]; then
+      echo "analysis must be one of all, demultiplex, kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
       exit 1
    fi
 
@@ -203,6 +203,7 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc > $OUT_ROOT/${cohort_moniker}.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
+      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
 
       # check for missing fastq files and bail out if anything missing  - this shouldn't happen and there may have been an unsupported 
@@ -225,7 +226,7 @@ function get_targets() {
       adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
       bwa_alignment_parameters="-B 10"
 
-      for analysis_type in all bwa_mapping demultiplex kgd clean unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence; do
+      for analysis_type in all bwa_mapping demultiplex kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -292,6 +293,27 @@ for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tass
 done
      " >  $OUT_ROOT/${cohort_moniker}.unblind.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.unblind.sh
+
+     ################ historical unblind script (can be used in the corner (race-condition) case, where a keyfile was reloaded in another job, 
+     # after the current job has completed processing, but before it has completed unblinding. In that case, samples have been assigned new 
+     # qc_sampleids that do not correspond with those in the current process, and therefore they will not be unblinded by the usual default
+     # script. 
+     echo "#!/bin/bash
+cd $OUT_ROOT
+if [ ! -d $cohort ]; then
+   exit 1
+fi
+# generate unblinded output
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/locus*.dat $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/taxonomy*.dat $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt $OUT_ROOT/$cohort/kmer_analysis/*.dat $OUT_ROOT/$cohort/allkmer_analysis/*.txt $OUT_ROOT/$cohort/allkmer_analysis/*.dat ; do
+   if [ -f \$file ]; then
+      if [ ! -f \$file.historical_blinded ]; then
+         cp -p \$file \$file.historical_blinded
+      fi
+      cat \$file.historical_blinded | sed -f $OUT_ROOT/${cohort_moniker}.historical_unblind.sed > \$file
+   fi
+done
+     " >  $OUT_ROOT/${cohort_moniker}.historical_unblind.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.historical_unblind.sh
 
 
      ################ fasta_sample script (i.e. samples tags)
