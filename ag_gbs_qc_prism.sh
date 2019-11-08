@@ -253,14 +253,28 @@ cat $cohort/*.FastqToTagCount.stdout | ./get_reads_tags_per_sample.py > $cohort/
       chmod +x $OUT_ROOT/${cohort_moniker}.demultiplex.sh
 
      ################ clean script
+     mkdir -p $OUT_ROOT/clean
+
+     # generate two scripts - the first one execs the second one , which deletes the first one
+     echo "#!/bin/bash
+cd $OUT_ROOT
+exec clean/${cohort_moniker}.clean.sh
+     " > $OUT_ROOT/${cohort_moniker}.clean.sh
+     chmod +x $OUT_ROOT/${cohort_moniker}.clean.sh
+    
      echo "#!/bin/bash
 cd $OUT_ROOT
 
 # a recursive rm of the output folder can often be too slow - so just rename it
-mv $OUT_ROOT/$cohort $OUT_ROOT/OLD_$cohort
-rm -f *.${cohort}.*
-     " >  $OUT_ROOT/${cohort_moniker}.clean.sh
-      chmod +x $OUT_ROOT/${cohort_moniker}.clean.sh
+if [ -d $OUT_ROOT/OLD_$cohort ]; then
+   # also slow but do no often encounter this case so OK 
+   echo \"removing an older run $OUT_ROOT/OLD_$cohort...\" > $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
+   rm -rf $OUT_ROOT/OLD_$cohort  >> $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
+fi
+mv $OUT_ROOT/$cohort $OUT_ROOT/OLD_$cohort   >> $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
+rm -f *.${cohort}.*  >> $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
+     " >  $OUT_ROOT/clean/${cohort_moniker}.clean.sh
+      chmod +x $OUT_ROOT/clean/${cohort_moniker}.clean.sh
 
      ################ kgd script
      echo "#!/bin/bash
