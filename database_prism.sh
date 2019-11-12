@@ -128,6 +128,7 @@ function import_new_run() {
 }
 
 function reimport_library() {
+   psql -U agrbrdf -d agrbrdf -h invincible -f $GBS_PRISM_BIN/dump_gbs_tables.psql
    flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE`
    sample_monikers=$SAMPLE
    delete_keyfiles
