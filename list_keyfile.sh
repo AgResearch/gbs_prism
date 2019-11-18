@@ -308,7 +308,7 @@ order by
 "
    elif [[ ( $TEMPLATE == "unblind" ) ]]; then
 code="
-select 
+select distinct
    qc_sampleid,
    sample
 from 
@@ -321,7 +321,7 @@ order by
 "
    elif [[ ( $TEMPLATE == "unblind_script" ) ]]; then
 code="
-select
+select distinct
    's/' || regexp_replace(qc_sampleid, E'[-\\\\.]','[-.]') || '/' || replace(sample,'/',E'\\\\/') || '/g'
 from
    biosampleob s join gbsKeyFileFact g on
@@ -333,7 +333,7 @@ order by
 "
    elif [[ ( $TEMPLATE == "historical_unblind_script" ) ]]; then
 code="
-select
+select distinct
    's/' || regexp_replace(qc_sampleid, E'[-\\\\.]','[-.]') || '/' || replace(sample,'/',E'\\\\/') || '/g'
 from
    biosampleob s join gbsKeyFileFact g on
