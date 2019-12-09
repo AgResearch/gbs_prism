@@ -20,7 +20,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_anlaysis|blast_analysis|bwa_mapping|all|html|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -111,7 +111,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) ]]; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) ]]; then
       echo "analysis must be one of all, demultiplex, kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
       exit 1
    fi
@@ -516,6 +516,14 @@ function run() {
    # run summaries
 }
 
+function trimmed_kmer_analysis() {
+   # kmer analysis of a sample of all the trimmed raw data 
+   cd $OUT_ROOT
+   mkdir -p trimmed_kmer_analysis
+   cp -fs $OUT_ROOT/bwa_mapping/*/*.trimmed.fastq $OUT_ROOT/trimmed_kmer_analysis   # this step eliminates duplicate filenames 
+   $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p "-k 6" -O $OUT_ROOT/trimmed_kmer_analysis $OUT_ROOT/trimmed_kmer_analysis/*.trimmed.fastq  > $OUT_ROOT/trimmed_kmer_analysis/kmer_analysis.log
+}
+
 function html() {
    mkdir -p $OUT_ROOT/html
 
@@ -581,6 +589,11 @@ function html() {
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
       cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
+   mkdir -p $OUT_ROOT/html/trimmed_kmer_analysis
+   for file in kmer_entropy.k6.jpg heatmap_sample_clusters.k6.txt kmer_zipfian_comparisons.k6.jpg ; do
+      cp -s $OUT_ROOT/trimmed_kmer_analysis/$file $OUT_ROOT/html/trimmed_kmer_analysis
+   done
+
 
    # make peacock page which mashes up plots, output files etc.
    $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
@@ -626,6 +639,8 @@ function main() {
 
    if [ $ANALYSIS == "html" ]; then
       html
+   elif [ $ANALYSIS == "trimmed_kmer_analysis" ]; then
+      trimmed_kmer_analysis 
    elif [ $ANALYSIS == "clientreport" ]; then
       clientreport
    else

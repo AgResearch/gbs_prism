@@ -31,7 +31,8 @@ Overview of %(run_name)s
         <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
-        <li> <a href="#kmer"> kmer distributions </a>
+        <li> <a href="#raw_kmer"> Raw kmer distributions </a>
+        <li> <a href="#trimmed_kmer"> Trimmed kmer distributions </a>
     </ul>
 <li>  <a href="#other_overview_plots"> Other Overview Summaries </a>
     <ul>
@@ -74,12 +75,20 @@ overview_section="""
 <td> FASTQC </td>
 <td> <a href=fastqc> FASTQC results </a> </td>
 </tr>
-<tr id=kmer>
-<td> 6-mer distributions </td>
+<tr id=raw_kmer>
+<td> 6-mer distributions (raw data)</td>
 <td>
-<img src=kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg/>
+<img src=kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg height=600 width=600/>
+<img src=kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
 <a href=kmer_analysis/heatmap_sample_clusters.k6A.txt> Clusters  </a>
-<img src=kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg/>
+</td>
+</tr>
+<tr id=trimmed_kmer>
+<td> 6-mer distributions (GBS-adapter-trimmed data)</td>
+<td>
+<img src=trimmed_kmer_analysis/kmer_entropy.k6.jpg title=kmer_entropy.k6.jpg height=600 width=600/>
+<img src=trimmed_kmer_analysis/kmer_zipfian_comparisons.k6.jpg title=kmer_zipfian_comparisons.k6.jpg  height=400 width=400/>
+<a href=trimmed_kmer_analysis/heatmap_sample_clusters.k6.txt> Clusters  </a>
 </td>
 </tr>
 <table>
