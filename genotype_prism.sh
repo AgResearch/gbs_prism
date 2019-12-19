@@ -15,17 +15,19 @@ function get_opts() {
    FILES=""
    OUT_DIR=""
    ENZYME_INFO=""
+   GENO_PARAMETERS=""
    FORCE=no
 
 
    help_text=$(cat << 'EOF'
 usage :\n 
-./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] -O outdir folder\n
+./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] [-p genotyping parameters] -O outdir folder\n
 example:\n
 ./genotype_prism.sh -x KGD_tassel3 /dataset/hiseq/scratch/postprocessing/gbs/weevils_gbsx\n
+./genotype_prism.sh -x KGD_tassel3 -p pooled /dataset/hiseq/scratch/postprocessing/gbs/pooled_worms\n
 EOF
 )
-   while getopts ":nhfO:C:O:x:" opt; do
+   while getopts ":nhfO:C:O:x:p:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -45,6 +47,9 @@ EOF
          ;;
        x)
          ENGINE=$OPTARG         
+         ;;
+       p)
+         GENO_PARAMETERS=$OPTARG
          ;;
        \?)
          echo "Invalid option: -$OPTARG" >&2
@@ -101,6 +106,7 @@ function echo_opts() {
   echo HPC_TYPE=$HPC_TYPE
   echo FILES=${files_array[*]}
   echo ENGINE=$ENGINE
+  echo GENO_PARAMETERS=$GENO_PARAMETERS
 }
 
 
@@ -146,7 +152,6 @@ function get_targets() {
 
    rm -f $OUT_DIR/genotype_targets.txt
 
-  
    file_base=`basename $DEMULTIPLEX_FOLDER`
    genotype_moniker=${file_base}.${ENGINE}
    echo $OUT_DIR/${genotype_moniker}.genotype_prism >> $OUT_DIR/genotype_targets.txt
@@ -164,7 +169,7 @@ function get_targets() {
 cd $OUT_DIR  
 if [ ! -d KGD ]; then
    mkdir KGD
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD \> $OUT_DIR/${genotype_moniker}.KGD.stdout  2\>$OUT_DIR/${genotype_moniker}.KGD.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD $GENO_PARAMETERS \> $OUT_DIR/${genotype_moniker}.KGD.stdout  2\>$OUT_DIR/${genotype_moniker}.KGD.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"genotype_prism.sh: error code returned from KGD process - quitting\"; exit 1

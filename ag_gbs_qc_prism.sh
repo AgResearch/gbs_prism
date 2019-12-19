@@ -205,6 +205,14 @@ function get_targets() {
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
+      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t method  | awk '{print $3}' - | sort -u > $OUT_ROOT/${cohort_moniker}.method
+
+      # check there is only one method for a cohort
+      method_count=`wc -l $OUT_ROOT/${cohort_moniker}.method | awk '{print $1}' -`
+      if [ $method_count != "1" ]; then
+         echo "*** Bailing out as more than one genotyping method has been specified for cohort ${cohort_moniker} - can only use one method in a cohort. Change cohort defn or method geno_method col ! ***"
+         exit 1
+      fi
 
       # check for missing fastq files and bail out if anything missing  - this shouldn't happen and there may have been an unsupported 
       # keyfile import that will need to be manually patched (e.g. previously importing a future flowcell as well as current flowcell. The 
@@ -277,11 +285,12 @@ rm -f *.${cohort}.*  >> $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
       chmod +x $OUT_ROOT/clean/${cohort_moniker}.clean.sh
 
      ################ kgd script
+     method=`cat $OUT_ROOT/${cohort_moniker}.method`
      echo "#!/bin/bash
 cd $OUT_ROOT
 mkdir -p $cohort
 # run genotyping
-./genotype_prism.sh -C $HPC_TYPE -x KGD_tassel3 $OUT_ROOT/$cohort
+./genotype_prism.sh -C $HPC_TYPE -x KGD_tassel3 -p $method $OUT_ROOT/$cohort
 if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
