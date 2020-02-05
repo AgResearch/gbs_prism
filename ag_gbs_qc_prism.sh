@@ -493,11 +493,19 @@ fi
      " >  $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
 
-     ################ common sequences script (based on trimmed sample) 
+     ################ common sequences script  
      echo "#!/bin/bash
 cd $OUT_ROOT
-mkdir -p common_sequence/$cohort # note - must not allow tassel to see any fastq file names under $cohort !
-$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/common_sequence/$cohort $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/common_sequence/$cohort/kmer_analysis.log
+# trimmed sequence
+mkdir -p common_sequence/$cohort/trimmed_sequence # note - must not allow tassel to see any fastq file names under $cohort !
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p \"-k 6 -A\" -O $OUT_ROOT/common_sequence/$cohort/trimmed_sequence $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq > $OUT_ROOT/common_sequence/$cohort/trimmed_sequence/kmer_analysis.log
+
+cd $OUT_ROOT
+# tags
+mkdir -p common_sequence/$cohort/lowdepth_tags
+cat $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta >  common_sequence/$cohort/lowdepth_tags/sample.fasta
+$SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/common_sequence/$cohort/lowdepth_tags $OUT_ROOT/common_sequence/$cohort/lowdepth_tags/sample.fasta
+
 if [ \$? != 0 ]; then
    echo \"warning, common_sequence analysis of $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq  returned an error code\"
    exit 1
@@ -507,8 +515,6 @@ fi
 
    done
 }
-
-
 
 function fake() {
    echo "dry run ! 
@@ -575,17 +581,22 @@ function html() {
       done
 
       mkdir -p $OUT_ROOT/html/$cohort/common_sequence
-      rm $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt
-      rm $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt
-      for file in $OUT_ROOT/common_sequence/$cohort/*.k6A.log ; do
-         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt 
-         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt 
+      rm $OUT_ROOT/common_sequence/$cohort/all_common_sequence_trimmed.txt
+      rm $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_trimmed.txt
+      for file in $OUT_ROOT/common_sequence/$cohort/trimmed_sequence/*.k6A.log ; do
+         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/all_common_sequence_trimmed.txt 
+         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_trimmed.txt 
       done
-      for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence.txt; do
+      for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence_trimmed.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_trimmed.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/common_sequence
       done
-
-      
+      for file in $OUT_ROOT/common_sequence/$cohort/lowdepth_tags/*.k6A*.log ; do
+         grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/all_common_sequence_lowdepthtags.txt
+         grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_lowdepthtags.txt
+      done
+      for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence_lowdepthtags.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_lowdepthtags.txt; do
+         cp -s $file $OUT_ROOT/html/$cohort/common_sequence
+      done
    done
 
    cp -s $OUT_ROOT/SampleSheet.csv $OUT_ROOT/html

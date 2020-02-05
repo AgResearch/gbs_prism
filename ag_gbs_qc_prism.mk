@@ -27,6 +27,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.common_sequence:  %.bwa_mapping %.fasta_sample
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.fasta_sample:   %.unblind
 	$@.sh > $@.mk.log 2>&1
 	date > $@
@@ -44,10 +48,6 @@
 	date > $@
 
 %.demultiplex:
-	$@.sh > $@.mk.log 2>&1
-	date > $@
-
-%.common_sequence:  %.bwa_mapping
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 

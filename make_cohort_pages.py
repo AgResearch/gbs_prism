@@ -41,7 +41,8 @@ Overview of %(run_name)s
 <li> <a href="#sample_plots"> Sample Level Summaries (after demultiplexing)</a> 
     <ul>
         <li> <a href="#cohort_plots"> Cohort Plots </a>
-        <li> <a href="#Preview common sequence"> Common sequence </a>
+        <li> <a href="#Preview common sequence (trimmed fastq)"> Common sequence (trimmed) </a>
+        <li> <a href="#Preview common sequence (low depth tags)"> Common sequence (LD tags) </a>
     </ul>
 </ul>
 </p>
@@ -134,7 +135,8 @@ def generate_run_plot(options):
 
     file_group_iter = ( ("Demultiplex (plots)", "image"), ("Demultiplex (text file links)", "link"),\
                        ("KGD (plots)", "image"), ("KGD (text file links)", "link"), \
-                       ("Preview common sequence", "in-line"), ("All common sequence", "link"), \
+                       ("Preview common sequence (trimmed fastq)", "in-line"), ("All common sequence (trimmed fastq)", "link"), \
+                       ("Preview common sequence (low depth tags)", "in-line"), ("All common sequence (low depth tags)", "link"), \
                        ("Low depth tag kmer summary (plots)", "image"), ("Low depth tag kmer summary (text file links)", "link"),\
                        ("All tag kmer summary (plots)", "image"), ("All tag kmer summary (text file links)", "link"),\
                        ("Low depth tag nt blast summary (plots)", "image"), ("Low depth tag nt blast summary (text file links)", "link")
@@ -151,8 +153,10 @@ def generate_run_plot(options):
         #"KGD links" : ['KGD/kgd.stdout', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/HighRelatedness.csv', 'KGD/seqID.csv', 'KGD/HighRelatednessHWdgm.05.csv'],        
         "KGD (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
         #"kmer and blast analysis" : ['blast_analysis/sample_blast_summary.jpg', 'kmer_analysis/kmer_zipfian_comparisons.jpg', 'kmer_analysis/zipfian_distances.jpg', 'kmer_analysis/kmer_entropy.jpg'],
-        "Preview common sequence" : [ 'preview_common_sequence.txt']            ,
-        "All common sequence" : [ 'all_common_sequence.txt']            ,        
+        "Preview common sequence (low depth tags)" : [ 'preview_common_sequence_lowdepthtags.txt']            ,
+        "All common sequence (low depth tags)" : [ 'all_common_sequence_lowdepthtags.txt']            ,        
+        "Preview common sequence (trimmed fastq)" : [ 'preview_common_sequence_trimmed.txt']            ,
+        "All common sequence (trimmed fastq)" : [ 'all_common_sequence_trimmed.txt']            ,        
         "Low depth tag kmer summary (plots)" : [ 'kmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'kmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','kmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
         "Low depth tag kmer summary (text file links)" : [ 'kmer_analysis/heatmap_sample_clusters.k6Aweighting_methodtag_count.txt', 'kmer_analysis/zipfian_distances_fit.k6Aweighting_methodtag_count.txt']        ,
         "All tag kmer summary (plots)" : [ 'allkmer_analysis/kmer_entropy.k6Aweighting_methodtag_count.jpg', 'allkmer_analysis/kmer_zipfian_comparisons.k6Aweighting_methodtag_count.jpg','allkmer_analysis/zipfian_distances.k6Aweighting_methodtag_count.jpg']            ,
@@ -199,7 +203,7 @@ def generate_run_plot(options):
                     elif file_type == "link":
                         link_relpath=os.path.join(cohort, file_name)
 
-                        if file_group in ["Preview common sequence", "All common sequence" ]:
+                        if file_group in ["Preview common sequence (trimmed fastq)", "All common sequence (trimmed fastq)" , "Preview common sequence (low depth tags)", "All common sequence (low depth tags)"]:
                             file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
                             link_relpath=os.path.join(cohort, "common_sequence", file_name)
 
@@ -210,7 +214,7 @@ def generate_run_plot(options):
                     elif file_type == "in-line":
                         text = "(unavailable)"
 
-                        if file_group in ["Preview common sequence", "All common sequence" ]:
+                        if file_group in ["Preview common sequence (trimmed fastq)", "All common sequence (trimmed fastq)" , "Preview common sequence (low depth tags)", "All common sequence (low depth tags)"]:
                             file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
 
                         if os.path.exists(file_path):
