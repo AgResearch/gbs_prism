@@ -20,7 +20,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -111,7 +111,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) ]]; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
       echo "analysis must be one of all, demultiplex, kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
       exit 1
    fi
@@ -234,7 +234,7 @@ function get_targets() {
       adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
       bwa_alignment_parameters="-B 10"
 
-      for analysis_type in all bwa_mapping demultiplex kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence; do
+      for analysis_type in all bwa_mapping demultiplex kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -513,6 +513,91 @@ fi
      " >  $OUT_ROOT/${cohort_moniker}.common_sequence.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.common_sequence.sh
 
+
+     ################ unblinded plots script
+     # (code here is cloned from seq_prisms  - we attempt to do "unblinded" plots. This 
+     # may occassionally fail due to feral sample names. If these succeed then the 
+     # unblinded plots supercede the blinded ones. If anything here fails, the blinded 
+     # plot is still available.
+     echo "#!/bin/bash
+cd $OUT_ROOT
+mkdir -p $cohort/unblinded_plots
+
+# taxonomy plots if applicable 
+if [ -f $cohort/blast/information_table.txt ]; then
+   cat $cohort/blast/information_table.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/information_table.txt
+   cat $cohort/blast/locus_freq.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/locus_freq.txt
+
+   tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort/unblinded_plots --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/taxonomy_prism.r analysis_name=\'$ANALYSIS_NAME\' summary_table_file=$OUT_ROOT/$cohort/unblinded_plots/information_table.txt output_base=\"taxonomy_summary\" 1\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stdout  2\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stderr
+
+   tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort/unblinded_plots --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/locus_summary_heatmap.r num_profiles=50 moniker="locus_freq" datafolder=$OUT_ROOT/$cohort/unblinded_plots 1\>\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stdout  2\>\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stderr
+
+fi
+
+#low depth kmer plots if applicable
+mkdir -p $cohort/unblinded_plots/kmer_analysis
+if [ -f $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
+   cat $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
+fi
+if [ -f $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt ]; then
+   cat $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
+fi
+
+# first do plots including N's , then rename and do plots excluding N's
+if [ -f $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
+   for version in \"\" \"_plus\" ; do
+      rm -f $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/kmer_summary.txt
+      cp -s $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/kmer_summary\${version}.k6Aweighting_methodtag_count.txt $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/kmer_summary.txt
+      tardis.py --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla $SEQ_PRISMS_BIN/kmer_plots.r datafolder=$OUT_ROOT/$cohort/unblinded_plots/kmer_analysis  1\>\> $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/kmer_prism.log 2\>\> $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/kmer_prism.log
+      for output in kmer_entropy kmer_zipfian_comparisons kmer_zipfian zipfian_distances; do
+         if [ -f $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}.jpg ]; then
+            mv $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}.jpg $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}\${version}.k6Aweighting_methodtag_count.jpg
+         fi
+      done
+      for output in heatmap_sample_clusters  zipfian_distances_fit ; do
+         if [ -f $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}.txt ]; then
+            mv $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}.txt $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/\${output}${version}.k6Aweighting_methodtag_count.txt
+         fi
+      done
+   done
+fi
+
+
+#all-depth kmer plots
+mkdir -p $cohort/unblinded_plots/allkmer_analysis
+if [ -f $cohort/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
+   cat $cohort/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
+fi
+if [ -f $cohort/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt ]; then
+   cat $cohort/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
+fi
+
+# first do plots including N's , then rename and do plots excluding N's
+if [ -f $cohort/unblinded_plots/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
+   for version in \"\" \"_plus\" ; do
+      rm -f $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/kmer_summary.txt
+      cp -s $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/kmer_summary\${version}.k6Aweighting_methodtag_count.txt $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/kmer_summary.txt
+      tardis.py --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla $SEQ_PRISMS_BIN/kmer_plots.r datafolder=$OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis  1\>\> $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/kmer_prism.log 2\>\> $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/kmer_prism.log
+      for output in kmer_entropy kmer_zipfian_comparisons kmer_zipfian zipfian_distances; do
+         if [ -f $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}.jpg ]; then
+            mv $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}.jpg $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}\${version}.k6Aweighting_methodtag_count.jpg
+         fi
+      done
+      for output in heatmap_sample_clusters  zipfian_distances_fit ; do
+         if [ -f $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}.txt ]; then
+            mv $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}.txt $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/\${output}${version}.k6Aweighting_methodtag_count.txt
+         fi
+      done
+   done
+fi
+
+
+if [ \$? != 0 ]; then
+   echo \"warning, unblinded plots of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.unblinded_plots.sh
+      chmod +x $OUT_ROOT/${cohort_moniker}.unblinded_plots.sh
    done
 }
 
@@ -558,20 +643,35 @@ function html() {
 
       mkdir -p  $OUT_ROOT/html/$cohort/kmer_analysis
       rm $OUT_ROOT/html/$cohort/kmer_analysis/*
+      # first copy blinded files 
       for file in $OUT_ROOT/$cohort/kmer_analysis/*.jpg $OUT_ROOT/$cohort/kmer_analysis/*.txt ; do
          cp -s $file $OUT_ROOT/html/$cohort/kmer_analysis
       done
+      # try replacing with unblinded files that are available (depending on sample names, unblinded plotting  may fail)
+      for file in $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/*.jpg $OUT_ROOT/$cohort/unblinded_plots/kmer_analysis/*.txt ; do
+         cp -fs $file $OUT_ROOT/html/$cohort/kmer_analysis
+      done
 
+      # first copy blinded files 
       mkdir -p  $OUT_ROOT/html/$cohort/allkmer_analysis
       rm $OUT_ROOT/html/$cohort/allkmer_analysis/*
       for file in $OUT_ROOT/$cohort/allkmer_analysis/*.jpg $OUT_ROOT/$cohort/allkmer_analysis/*.txt ; do
          cp -s $file $OUT_ROOT/html/$cohort/allkmer_analysis
       done
+      # try replacing with unblinded files that are available (depending on sample names, unblinded plotting  may fail)
+      for file in $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/*.jpg $OUT_ROOT/$cohort/unblinded_plots/allkmer_analysis/*.txt ; do
+         cp -fs $file $OUT_ROOT/html/$cohort/allkmer_analysis
+      done
 
+      # first try blinded files
       mkdir -p  $OUT_ROOT/html/$cohort/blast
       rm $OUT_ROOT/html/$cohort/blast/*
       for file in $OUT_ROOT/$cohort/blast/*.jpg $OUT_ROOT/$cohort/blast/taxonomy*clusters.txt $OUT_ROOT/$cohort/blast/frequency_table.txt  $OUT_ROOT/$cohort/blast/locus_freq.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/blast
+      done
+      # try replacing with unblinded files that are available (depending on sample names, unblinded plotting  may fail)
+      for file in $OUT_ROOT/$cohort/unblinded_plots/*.jpg $OUT_ROOT/$cohort/unblinded_plots/taxonomy*clusters.txt; do
+         cp -fs $file $OUT_ROOT/html/$cohort/blast
       done
 
       mkdir -p  $OUT_ROOT/html/$cohort/hapMap

@@ -260,7 +260,7 @@ $OUTPUT_ROOT/database_prism.log
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence) (or just press enter to run all)  
+please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots ) (or just press enter to run all)  
 (notes:
 
 * entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
@@ -273,8 +273,8 @@ run (unless already done), etc.)
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) ]]; then
+         echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots or all"
       else
          break
       fi
@@ -587,7 +587,6 @@ function generate_trimmed_kmer_analysis() {
          echo "
 
 ** looks like there was a problem with generating trimmed kmer analysis (non-zero return code ) - check $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log  **
-( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN )
 
 "
          exit 1
@@ -596,6 +595,41 @@ function generate_trimmed_kmer_analysis() {
       fi
    fi
 }
+
+function generate_unblinded_plots() {
+   echo "
+
+   Ready to attempt unblinded plots , with the following:
+
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+
+   "
+   echo "OK to run that  ? (y/n , default = y)"
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK will not run unblinded plots"
+   else
+      echo "
+      running
+
+       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+
+      " >> $OUTPUT_ROOT/generate_unblinded_plots.log
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_unblinded_plots.log 2>&1
+      return_code=$?
+      if [ $return_code != 0 ]; then
+         echo "
+
+** looks like there was a problem with generating generate_unblinded_plots (non-zero return code ) - check $OUTPUT_ROOT/generate_unblinded_plots.log  **
+
+"
+         exit 1
+      else
+          echo "** unblinded plot run looks ok **"
+      fi
+   fi
+}
+
 
 function generate_html() {
    mkdir -p $OUTPUT_ROOT/html
@@ -688,7 +722,11 @@ if [ $ANALYSIS == "trimmed_kmer_analysis" ]; then
    generate_trimmed_kmer_analysis
 fi
 
-if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) ]]; then 
+if [ $ANALYSIS == "unblinded_plots" ]; then
+   generate_unblinded_plots
+fi
+
+if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then 
    run_qc
    generate_trimmed_kmer_analysis
 fi
@@ -697,7 +735,7 @@ if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; 
    generate_html
 fi
 
-if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) ]]; then
+if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" )  ]]; then
    return_code=0
    import_results
 fi

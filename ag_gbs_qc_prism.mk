@@ -23,6 +23,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.unblinded_plots:   %.fasta_sample
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.kmer_analysis:   %.fasta_sample
 	$@.sh > $@.mk.log 2>&1
 	date > $@
