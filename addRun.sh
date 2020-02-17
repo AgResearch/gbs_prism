@@ -215,10 +215,10 @@ from
 " > /tmp/${RUN_NAME}.psql
 
 if [ $DRY_RUN == "no" ]; then
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql
 else
    echo " will run 
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql"
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql"
 fi
 
 

@@ -97,10 +97,10 @@ $GBS_PRISM_BIN/listDBKeyfile.sh -s $KEYFILE_BASE
 echo "deleting keyfile..."
 
 if [ $DRY_RUN == "no" ]; then
-   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
+   psql -q -U agrbrdf -d agrbrdf -h postgres -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
 else
    echo "*** dry run only *** will execute 
-   psql -q -U agrbrdf -d agrbrdf -h invincible -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
+   psql -q -U agrbrdf -d agrbrdf -h postgres -v keyfilename=\'$KEYFILE_BASE\' -v flowcell=\'$FLOWCELL\' -f $GBS_PRISM_BIN/deleteKeyfile.psql
    "
 fi
 set +x

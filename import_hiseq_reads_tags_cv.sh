@@ -101,11 +101,11 @@ done
 
 function import_data() {
    cd $RUN_PATH/html
-   psql -U agrbrdf -d agrbrdf -h invincible -f $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.psql
+   psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.psql
 }
 
 function update_data() {
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_hiseq_reads_tags_cv.psql 
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_hiseq_reads_tags_cv.psql 
 }
 
 set -x

@@ -3,7 +3,7 @@
 * links to the fastq files. We receive a run name , sample name and build folder name 
 * and predict a fastq file name pattern 
 * It is called like
-* psql -U agrbrdf -d agrbrdf -h invincible -v run="'161216_D00390_0276_AC9PM8ANXX'" -v sample="'SQ0291'" -v processed_root="'/dataset/hiseq/scratch/postprocessing/161216_D00390_0276_AC9PM8ANXX.processed'" -f get_fastq_filename_pattern.psql -q
+* psql -U agrbrdf -d agrbrdf -h postgres -v run="'161216_D00390_0276_AC9PM8ANXX'" -v sample="'SQ0291'" -v processed_root="'/dataset/hiseq/scratch/postprocessing/161216_D00390_0276_AC9PM8ANXX.processed'" -f get_fastq_filename_pattern.psql -q
 *
 * will return  e.g. 
 * SQ0291_S[0123456789]+_L[0123456789]+_R1_[0123456789]+\.fastq\.gz'

@@ -133,7 +133,7 @@ function run_gbs() {
 
    get_processing_parameters  
 
-   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
+   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
    gbs_cohorts=""
    for library_moniker in $LIBRARY_MONIKERS; do
        library_cohorts=`tardis -q -d $OUTPUT_ROOT --hpctype local $GBS_PRISM_BIN/get_processing_parameters.py --parameter_file $PARAMETERS_FILE --parameter_name cohorts  --sample $library_moniker`

@@ -1,6 +1,6 @@
 /*
 example
-psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'CDN6VANXX'" -v run_name="'190524_D00390_0462_ACDN6VANXX'" -v sample_name="'SQ0990'" -f get_flowcell_cohorts.psql -q
+psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'CDN6VANXX'" -v run_name="'190524_D00390_0462_ACDN6VANXX'" -v sample_name="'SQ0990'" -f get_flowcell_cohorts.psql -q
 output : 
 */
 \a

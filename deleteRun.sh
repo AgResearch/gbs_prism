@@ -181,7 +181,7 @@ in /tmp/delete_${RUN_NAME}.psql (y/n) ?"
    if [ "$answer" != "y" ]; then
       echo "ok quitting"
    else
-      psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
+      psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql
    fi
 
    echo "
@@ -195,5 +195,5 @@ Additional clean-up to consider :
 "
 else
    echo " will run 
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql"
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v flowcell=\'${FLOWCELL}\' -f /tmp/delete_${RUN_NAME}.psql"
 fi

@@ -236,8 +236,8 @@ OK ? (y/n, default = y)
 "
       read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h invincible -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
-         psql -U agrbrdf -d agrbrdf -h invincible -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
+         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
+         psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
          echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
          $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a  $OUTPUT_ROOT/database_prism.log 
          if [ $? != 0 ]; then
@@ -340,7 +340,7 @@ function get_cohort_opts() {
 
    "
 
-   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
+   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
    echo "please enter libraries to run (default = $LIBRARY_MONIKERS)"
    read_answer_with_default $LIBRARY_MONIKERS
    LIBRARY_MONIKERS=$answer
@@ -426,7 +426,7 @@ function get_cohort_opts() {
    for library_moniker in $LIBRARY_MONIKERS; do
        echo "from $library_moniker . . ."
        flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $library_moniker  | sed 's/\s//g' - `
-       library_cohorts=`psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
+       library_cohorts=`psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
        for library_cohort in $library_cohorts; do
           gbs_cohorts="$gbs_cohorts ${library_moniker}.${library_cohort} "
        done

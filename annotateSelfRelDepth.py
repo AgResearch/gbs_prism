@@ -53,8 +53,8 @@ def annotate():
             gbs_cohort = cohort_match.groups()[0]
             
         # exmaple :
-        # psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'CCR4LANXX'" -v libraryprepid=775 -v gbs_cohort="'TILAPIA'" -f get_cohort_count.psql -q                
-        command = ["psql",  "-U",  "gbs",  "-d" ,"agrbrdf", "-h", "invincible", "-v","flowcell='%s'"%flowcell, "-v", \
+        # psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'CCR4LANXX'" -v libraryprepid=775 -v gbs_cohort="'TILAPIA'" -f get_cohort_count.psql -q                
+        command = ["psql",  "-U",  "gbs",  "-d" ,"agrbrdf", "-h", "postgres", "-v","flowcell='%s'"%flowcell, "-v", \
                    "libraryprepid=%s"%libraryprepid, "-v", "gbs_cohort='%s'"%gbs_cohort, "-f",  "get_cohort_count.psql",  "-q"]
 
         print >> sys.stderr, "executing %s"%" ".join(command)

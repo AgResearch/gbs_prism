@@ -111,18 +111,18 @@ function import_data() {
    cd $RUN_PATH/html
    if [ $DRY_RUN == "yes" ]; then
       echo " dry run 
-      psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/import_kgd_stats.psql"
+      psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/import_kgd_stats.psql"
    else 
-      psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/import_kgd_stats.psql
+      psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/import_kgd_stats.psql
    fi
 }
 
 function update_data() {
    if [ $DRY_RUN == "yes" ]; then
       echo " dry run
-      psql -U agrbrdf -d agrbrdf -h invincible  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql"
+      psql -U agrbrdf -d agrbrdf -h postgres  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql"
    else
-      psql -U agrbrdf -d agrbrdf -h invincible  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql
+      psql -U agrbrdf -d agrbrdf -h postgres  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql
    fi
 }
 

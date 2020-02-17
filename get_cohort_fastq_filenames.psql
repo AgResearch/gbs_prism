@@ -4,7 +4,7 @@
 * gbs_fastq_link_folder is like /dataset/hiseq/scratch/postprocessing/150925_D00390_0235_BC6K0YANXX.gbs_in_progress/SQ0123.sample_in_progress/uneak_in_progress/Illumina
 * - from this we look up the relevant fastq link
 * It is called like
-* psql -U agrbrdf -d agrbrdf -h invincible -v gbs_fastq_link_folder="'/dataset/hiseq/scratch/postprocessing/150925_D00390_0235_BC6K0YANXX.gbs_in_progress/SQ0123.sample_in_progress/uneak_in_progress/Illumina'" -f get_fastq_link.psql -q
+* psql -U agrbrdf -d agrbrdf -h postgres -v gbs_fastq_link_folder="'/dataset/hiseq/scratch/postprocessing/150925_D00390_0235_BC6K0YANXX.gbs_in_progress/SQ0123.sample_in_progress/uneak_in_progress/Illumina'" -f get_fastq_link.psql -q
 *
 */
 \t

@@ -112,7 +112,7 @@ function echo_opts() {
 function get_samples() {
    set -x
    if [ -z $SAMPLE ]; then
-      sample_monikers=`psql -U agrbrdf -d agrbrdf -h invincible -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
+      sample_monikers=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
    else
       sample_monikers=$SAMPLE
    fi
@@ -128,7 +128,7 @@ function import_new_run() {
 }
 
 function reimport_library() {
-   psql -U agrbrdf -d agrbrdf -h invincible -f $GBS_PRISM_BIN/dump_gbs_tables.psql
+   psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql
    flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE`
    sample_monikers=$SAMPLE
    delete_keyfiles
@@ -240,7 +240,7 @@ where
    h.lane = g.lane and 
    to_number(replace(:sample_name, 'SQ',''),'99999') =  g.libraryprepid ;
 " >> $generator_script 
-      psql -U agrbrdf -d agrbrdf -h invincible -v sample_name="'${sample_moniker}'" -f $generator_script  
+      psql -U agrbrdf -d agrbrdf -h postgres -v sample_name="'${sample_moniker}'" -f $generator_script  
       if [ $DRY_RUN == "no" ]; then
          source $update_script
       else
@@ -252,7 +252,7 @@ where
 function update_bwa_blast_refs() {
    # this fills in blast and bwa refs for newly imported records based on previous 
    # records with matching species. Where new record is a nre species , a seperate update is needed 
-   psql -U agrbrdf -d agrbrdf -h invincible  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
+   psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
 }
 
 
@@ -260,7 +260,7 @@ function update_bwa_blast_refs() {
 function import_results() {
    set -x
    # clear existing yields for this run 
-   psql -U agrbrdf -d agrbrdf -h invincible -v run_name=\'${RUN}\' -f $GBS_PRISM_BIN/delete_run_yields.psql 
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN}\' -f $GBS_PRISM_BIN/delete_run_yields.psql 
    set +x
 
    # import yield stats
