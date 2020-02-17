@@ -190,7 +190,15 @@ this was *not* over-written
 ******************************************************************************************** 
 "
          fi
+         echo "running 
+psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql"
          psql -U agrbrdf -d agrbrdf -h invincible -v flowcell="'${FLOWCELL_NAME}'" -v keyfilename="'${KEYFILE_BASE}'" -v lane=$LANE -v fastqlink="'${link_path}'" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql
+         if [ $? != 0 ]; then
+            echo "warning - call to 
+psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql
+                 returned an error
+            "
+         fi
       else
          echo "cp -s $new_path $LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz"
          echo "psql -U agrbrdf -d agrbrdf -h invincible -v flowcell=\"'${FLOWCELL_NAME}'\" -v keyfilename=\"'${KEYFILE_BASE}'\" -v lane=$LANE -v fastqlink=\"'${link_path}'\" -f $GBS_PRISM_BIN/updateFastQLocationInKeyFile.psql"

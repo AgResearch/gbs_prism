@@ -21,5 +21,4 @@ where
       '.',1) and
    b.samplename =    split_part(
       split_part(:gbs_fastq_link_folder,'/',7),
-      '.',1) ;
-
+      '.',1) and b.sampletype = 'Illumina GBS Library';

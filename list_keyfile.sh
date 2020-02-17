@@ -107,8 +107,8 @@ function check_opts() {
       echo "Tassel version should be 3 or 5"
       exit 1
    fi
-   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "method" && $TEMPLATE != "missing_files" && $TEMPLATE != "qc" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "historical_unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
-      echo "template should be one of default, all, gbsx, gbsx_qc, unblind, unblind_script, historical_unblind_script, files, method, missing_files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
+   if [[ $TEMPLATE != "default" && $TEMPLATE != "all" && $TEMPLATE != "gbsx" && $TEMPLATE != "files" && $TEMPLATE != "method" && $TEMPLATE != "missing_files" && $TEMPLATE != "qc" && $TEMPLATE != "qc1" && $TEMPLATE != "gbsx_qc" && $TEMPLATE != "unblind"  && $TEMPLATE != "unblind_script" && $TEMPLATE != "historical_unblind_script" && $TEMPLATE != "bwa_index_paths" && $TEMPLATE != "blast_index_paths" && $TEMPLATE != "list_species" ]]; then
+      echo "template should be one of default, all, gbsx, qc, gbsx_qc, unblind, unblind_script, historical_unblind_script, files, method, missing_files, bwa_index_paths, blast_index_paths list_species (default and all are both tassel templates)"
       exit 1
    fi
 
@@ -161,7 +161,7 @@ function build_extract_script() {
       extra_fields_phrase=", subjectname"
    fi    
 
-   if [[ ( $TEMPLATE == "qc" ) || ( $TEMPLATE == "gbsx_qc" ) ]] ; then
+   if [[ ( $TEMPLATE == "qc" ) || ( $TEMPLATE == "gbsx_qc" ) || ( $TEMPLATE == "qc1" ) ]] ; then
       sample_phrase2=" qc_sampleid "
    fi    
    
@@ -191,6 +191,7 @@ from
    g.biosampleob = s.obid
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by 
    factid;
 "
@@ -218,10 +219,70 @@ from
    g.biosampleob = s.obid
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by 
    factid;
 "
       fi 
+   elif [ $TEMPLATE == "qc1"  ]; then
+      if [ $CLIENT_VERSION == "5" ]; then
+code="
+select
+   Flowcell,
+   Lane,
+   Barcode,
+   PlateRow||PlateColumn as sample,
+   PlateName,
+   PlateRow as Row,
+   PlateColumn as Column,
+   LibraryPrepID,
+   Counter,
+   Comment,
+   Enzyme,
+   Species,
+   NumberOfBarcodes,
+   Bifo,
+   Control,
+   Fastq_link,
+   Sample||':'||LibraryPrepID as FullSampleName $extra_fields_phrase
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
+order by
+   factid;
+"
+      elif [ $CLIENT_VERSION == "3" ]; then
+code="
+select
+   Flowcell,
+   Lane,
+   Barcode,
+   PlateRow||PlateColumn as sample,
+   PlateName,
+   PlateRow as Row,
+   PlateColumn as Column,
+   LibraryPrepID,
+   Counter,
+   Comment,
+   Enzyme,
+   Species,
+   NumberOfBarcodes,
+   Bifo,
+   Control,
+   Fastq_link $extra_fields_phrase
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
+order by
+   factid;
+"
+      fi
    elif [[ ( $TEMPLATE == "gbsx" ) || ( $TEMPLATE == "gbsx_qc" ) ]]; then
 code="
 select distinct 
@@ -233,6 +294,7 @@ from
    g.biosampleob = s.obid
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by 
    1,2,3;
 "
@@ -246,6 +308,7 @@ from
    g.biosampleob = s.obid
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by 
    1;
 "
@@ -260,6 +323,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "
@@ -277,6 +341,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase 
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "
@@ -290,6 +355,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "
@@ -303,6 +369,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "
@@ -316,6 +383,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 group by 
    species
 order by
@@ -331,6 +399,7 @@ from
    g.biosampleob = s.obid
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by 
    1;
 "
@@ -343,6 +412,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "
@@ -355,6 +425,7 @@ from
    g.biosampleob = s.obid
 where
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 union
 select
    's/' || regexp_replace(h.qc_sampleid, E'[-\\\\.]','[-.]') || '/' || replace(h.sample,'/',E'\\\\/') || '/g'
@@ -364,6 +435,7 @@ from
    h.biosampleob = s.obid and h.sample = g.sample
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   and s.sampletype = 'Illumina GBS Library'
 order by
    1;
 "

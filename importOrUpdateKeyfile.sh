@@ -265,7 +265,7 @@ select
    ip.obid
 from 
    (datasourceob ds join biosampleob bs on 
-   ds.xreflsid = :keyfilename and bs.samplename = :samplename) join
+   ds.xreflsid = :keyfilename and bs.samplename = :samplename and sampletype = 'Illumina GBS Library') join
    importprocedureob ip on ip.xreflsid = 'importKeyfile.sh';
 " >> /tmp/$KEYFILE_BASE.psql
 
@@ -382,7 +382,7 @@ select
    ip.obid
 from
    (datasourceob ds join biosampleob bs on
-   ds.xreflsid = :keyfilename and bs.samplename = :samplename) join
+   ds.xreflsid = :keyfilename and bs.samplename = :samplename and bs.sampletype = 'Illumina GBS Library') join
    importprocedureob ip on ip.xreflsid = 'importOrUpdateKeyfile.sh';
 " >> /tmp/$KEYFILE_BASE.psql
 

@@ -13,7 +13,7 @@ select
 from gbsKeyFileFact
 where
    flowcell = :flowcell and 
-   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+   biosampleob = (select obid from biosampleob where samplename = :keyfilename and sampletype = 'Illumina GBS Library');
 
 delete from gbsyieldfact
 where
@@ -24,12 +24,12 @@ where
    from 
       gbsKeyFileFact 
    where 
-      biosampleob = (select obid from biosampleob where samplename = :keyfilename));
+      biosampleob = (select obid from biosampleob where samplename = :keyfilename and sampletype = 'Illumina GBS Library'));
 
 delete from gbsKeyFileFact  
 where 
    flowcell = :flowcell and 
-   biosampleob = (select obid from biosampleob where samplename = :keyfilename);
+   biosampleob = (select obid from biosampleob where samplename = :keyfilename and sampletype = 'Illumina GBS Library');
 
 delete from gbsyieldfact
 where
