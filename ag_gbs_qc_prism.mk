@@ -15,15 +15,17 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+######### ( only applicable if kmer_analysis , allkmer_analysis or annotation have been done but we don't want to trigger a build of those
+######### so handle dependency outside make )
+%.unblinded_plots:
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 ########## standard analysis 
 %.all:  %.allkmer_analysis %.common_sequence 
 	date > $@
 
 %.allkmer_analysis:   %.kmer_analysis
-	$@.sh > $@.mk.log 2>&1
-	date > $@
-
-%.unblinded_plots:   %.fasta_sample
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 

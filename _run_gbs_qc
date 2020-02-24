@@ -729,6 +729,7 @@ fi
 if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then 
    run_qc
    generate_trimmed_kmer_analysis
+   generate_unblinded_plots
 fi
 
 if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then
