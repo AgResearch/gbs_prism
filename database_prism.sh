@@ -155,9 +155,9 @@ function import_keyfiles() {
    set -x
    for sample_moniker in $sample_monikers; do
       if [ $DRY_RUN == "no" ]; then
-         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker -D /dataset/${MACHINE}/active/key-files
       else
-         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker -D /dataset/${MACHINE}/active/key-files
       fi
       if [ $? != "0" ]; then
           echo "warning  - importOrUpdateKeyfile.sh  exited with $? for $sample_moniker - do you want to continue ? (y/n default y)"

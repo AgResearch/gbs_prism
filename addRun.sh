@@ -19,7 +19,6 @@ help_text="\n
 DRY_RUN=no
 RUN_NAME=""
 MACHINE=hiseq
-RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
 
 while getopts ":nhr:m:d:" opt; do
   case $opt in
@@ -53,7 +52,7 @@ while getopts ":nhr:m:d:" opt; do
   esac
 done
 
-KEY_DIR=/dataset/hiseq/active/key-files
+KEY_DIR=/dataset/$MACHINE/active/key-files
 }
 
 function check_opts() {
@@ -72,10 +71,10 @@ if [ ! -d $RUN_PATH ]; then
    exit 1
 fi
 
-if [ $MACHINE == "miseq" ]; then
-   echo "error , database import of miseq runs not currently supported"
-   exit 1
-fi
+#if [ $MACHINE == "miseq" ]; then
+#   echo "error , database import of miseq runs not currently supported"
+#   exit 1
+#fi
 
 if [ ! -f $RUN_PATH/SampleSheet.csv ]; then
    echo $RUN_PATH/SampleSheet.csv not found

@@ -11,6 +11,7 @@ help_text="\n
  importOrUpdateKeyfile.sh -s SQ0032 -k SQ0032\n
  importOrUpdateKeyfile.sh -s SQ0105 -k SQ0105_ApeKI\n
  importOrUpdateKeyfile.sh -n -s SQ0032 -k SQ0032\n
+ importOrUpdateKeyfile.sh -s SQ1224 -k SQ1224 -D /dataset/miseq/active/key-files\n
  jumps through various hoops due to idiosynchracies of\n
  \\copy and copy\n
 "
@@ -18,8 +19,9 @@ help_text="\n
 DRY_RUN=no
 INTERACTIVE=no
 CREATE_FASTQ_COLUMN="no"
+KEY_DIR=/dataset/hiseq/active/key-files
 
-while getopts ":nhs:k:" opt; do
+while getopts ":nhs:k:D:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -29,6 +31,9 @@ while getopts ":nhs:k:" opt; do
       ;;
     k)
       KEYFILE_BASE=$OPTARG
+      ;;
+    D)
+      KEY_DIR=$OPTARG
       ;;
     h)
       echo -e $help_text
@@ -45,7 +50,6 @@ while getopts ":nhs:k:" opt; do
   esac
 done
 
-KEY_DIR=/dataset/hiseq/active/key-files
 }
 
 function check_opts() {
