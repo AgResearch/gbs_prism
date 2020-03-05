@@ -17,10 +17,10 @@ function get_pipeline() {
          echo "unable to checkout pipeline version $gbs_version"
          exit 1
       fi
-      exec ./_run_gbs_qc $gbs_version
+      exec ./_run_gbs_qc -i $gbs_version
    else
       echo "(no checkout for alpha versions, just running in current branch)"
-      exec ./_run_gbs_qc $gbs_version $kgd_version
+      exec ./_run_gbs_qc -i $gbs_version $kgd_version
    fi
 }
 

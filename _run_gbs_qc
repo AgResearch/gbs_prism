@@ -7,15 +7,62 @@ export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
 export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 BCL2FASTQ_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 
-gbs_version=$1
-kgd_version=$2
-
 function read_answer_with_default() {
-   read answer
-   if [ -z "$answer" ]; then
+   if [ $INTERACTIVE == yes ]; then
+      read answer
+      if [ -z "$answer" ]; then
+         answer=$@
+      fi
+   else
       answer=$@
    fi
 }
+
+function more_with_default() {
+   if [ $INTERACTIVE == yes ]; then
+      more $1
+   else
+      cat $1
+   fi
+}
+
+function get_opts() {
+   INTERACTIVE=no
+   ARGRUN=""
+   help_text="
+This script is called by run_gbs_qc (or non-interactively by a cron job)
+usage :\n
+"
+   while getopts ":hir:" opt; do
+   case $opt in
+       h)
+         echo -e $help_text
+         exit 0
+         ;;
+       i)
+         INTERACTIVE=yes
+         ;;
+       r)
+         ARGRUN=$OPTARG
+         ;;
+       \?)
+         echo "Invalid option: -$OPTARG" >&2
+         exit 1
+         ;;
+       :)
+         echo "Option -$OPTARG requires an argument." >&2
+         exit 1
+         ;;
+     esac
+   done
+
+   shift $((OPTIND-1))
+
+   gbs_version=$1
+   kgd_version=$2
+}
+
+
 
 function run_bcl2fastq() {
    if [ $HOSTNAME != $BCL2FASTQ_NODE ]; then
@@ -117,7 +164,6 @@ OK ? (y/n, default=y)
    source $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/lane_qc.src &
 }
 
-
 function get_run_opts() {
 
    DRY_RUN=no
@@ -151,7 +197,9 @@ please give the full name of gbs run you would like to process (e.g. 180403_M024
 or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDYANXX (hiseq not (yet) archived) )
 
 "
-      read RUN
+      read_answer_with_default $ARGRUN
+      RUN=$answer
+
       if [ ! -z "$RUN" ]; then 
          if [ -d $HISEQ_ROOT/$RUN ]; then 
             gbs_ROOT=$HISEQ_ROOT
@@ -306,8 +354,8 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
       SAMPLE_SHEET=""
       if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
          echo "will use sample sheet $OUTPUT_ROOT/SampleSheet.csv , containing...(press enter for listing)..."
-         read answer 
-         more $OUTPUT_ROOT/SampleSheet.csv 
+         read_answer_with_default ""
+         more_with_default $OUTPUT_ROOT/SampleSheet.csv 
          echo "
 
          "
@@ -400,7 +448,7 @@ function get_cohort_opts() {
       for library in $to_import; do
          echo "running $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library "
          echo "press Enter to continue. . ."
-         read answer
+         read_answer_with_default ""
          $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
          return_code=$?
          if [ $return_code != 0 ]; then
@@ -715,6 +763,7 @@ function generate_clientreport() {
 }
 
 
+get_opts "$@"
 get_run_opts
 get_cohort_opts
 
