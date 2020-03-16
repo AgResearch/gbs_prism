@@ -721,6 +721,11 @@ function html() {
    # (re ) summarise bwa mappings 
    tardis --hpctype local -d $OUT_ROOT/html $SEQ_PRISMS_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/stats_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
+
+   # (re ) summarise tag yields 
+   tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_barcode_yields.py $OUT_ROOT/*/*.tassel3_qc.FastqToTagCount.stdout \> $OUT_ROOT/html/barcode_yield_summary.txt
+   tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/barcode_yields_plots.r datafolder=$OUT_ROOT/html
+
 }
 
 function clientreport() {

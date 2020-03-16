@@ -29,6 +29,7 @@ Overview of %(run_name)s
     <ul>
         <li> <a href="#samplesheet"> Sample Sheet </a>
         <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
+        <li> <a href="#barcode_yield"> Barcode yields </a>        
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
         <li> <a href="#raw_kmer"> Raw kmer distributions </a>
@@ -63,6 +64,14 @@ overview_section="""
 <tr id=slippery_slope>
 <td> Cumulative self-relatedness </td>
 <td> <a href="file://isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
+</tr>
+<tr id=barcode_yield>
+<td> Barcode yield (plot) </td>
+<td> <img src=barcode_yields.jpg title=barcode_yields.jpg/> </td>
+</tr>
+<tr>
+<td> Barcode yield (text) </td>
+<td> <a href=barcode_yield_summary.txt> barcode_yield_summary.txt </a> </td>
 </tr>
 <tr id=bwa>
 <td> BWA alignment (plot) </td>
