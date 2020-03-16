@@ -7,6 +7,8 @@
 # \copy and copy
 # only intended for importing GBS runs at this stage
 #
+export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+
 function get_opts() {
 
 help_text="\n
