@@ -17,6 +17,7 @@ function get_opts() {
    ENZYME_INFO=""
    FORCE=no
    SPLIT=no
+   PARAMETERS_FILE=""
    
 
    help_text=$(cat << 'EOF'
@@ -34,7 +35,7 @@ Notes:
 
 EOF
 )
-   while getopts ":nhSfO:C:x:l:e:" opt; do
+   while getopts ":nhSfO:C:x:l:e:p:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -63,6 +64,9 @@ EOF
          ;;
        l)
          SAMPLE_INFO=$OPTARG    
+         ;;
+       p)
+         PARAMETERS_FILE=$OPTARG
          ;;
        S)
          SPLIT=yes
@@ -131,6 +135,12 @@ function check_opts() {
       echo "must specify enzyme , for tassel3 (should match enzyme specified in keyfile)"
       exit 1
    fi
+   if [ ! -z "$PARAMETERS_FILE" ]; then
+      if [ ! -f "$PARAMETERS_FILE" ]; then
+         echo "could not find $PARAMETERS_FILE"
+         exit 1
+      fi
+   fi
 
 }
 
@@ -143,6 +153,7 @@ function echo_opts() {
   echo ENGINE=$ENGINE
   echo SAMPLE_INFO=$SAMPLE_INFO
   echo ENZYME_INFO=$ENZYME_INFO
+  echo PARAMETERS_FILE=$PARAMETERS_FILE
 }
 
 
@@ -188,6 +199,15 @@ function check_env() {
       exit 1
    fi
 
+}
+
+function get_uneak_plugin_parameters() {
+   if [ -z "$PARAMETERS_FILE" ]; then
+      uneak_plugin_parameters=""
+   else
+      plugin_name=$1
+      uneak_plugin_parameters=`grep $plugin_name $PARAMETERS_FILE | sed 's/$plugin_name//g' -`
+   fi
 }
 
 function get_targets() {
@@ -238,11 +258,19 @@ function get_targets() {
          fi
          cp -s $file ${OUT_DIR}/Illumina
 
+         # get plugin parameters (if applicable)
+         get_uneak_plugin_parameters FastqToTagCount ; p_FastqToTagCount=$uneak_plugin_parameters
+         get_uneak_plugin_parameters MergeTaxaTagCount ; p_MergeTaxaTagCount=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TagCountToTagPair ; p_TagCountToTagPair=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TagPairToTBT ; p_TagPairToTBT=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TBTToMapInfo ; p_TBTToMapInfo=$uneak_plugin_parameters
+         get_uneak_plugin_parameters MapInfoToHapMap ; p_MapInfoToHapMap=$uneak_plugin_parameters
+
          echo "#!/bin/bash
 cd $OUT_DIR  
 if [ ! -d tagCounts ]; then 
    mkdir tagCounts 
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -p $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
@@ -261,11 +289,19 @@ fi
          fi
          cp -s $file ${OUT_DIR}/Illumina
 
+         # get plugin parameters (if applicable)
+         get_uneak_plugin_parameters FastqToTagCount ; p_FastqToTagCount=$uneak_plugin_parameters
+         get_uneak_plugin_parameters MergeTaxaTagCount ; p_MergeTaxaTagCount=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TagCountToTagPair ; p_TagCountToTagPair=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TagPairToTBT ; p_TagPairToTBT=$uneak_plugin_parameters
+         get_uneak_plugin_parameters TBTToMapInfo ; p_TBTToMapInfo=$uneak_plugin_parameters
+         get_uneak_plugin_parameters MapInfoToHapMap ; p_MapInfoToHapMap=$uneak_plugin_parameters
+
          echo "#!/bin/bash
 cd $OUT_DIR  
 if [ ! -d tagCounts ]; then 
    mkdir tagCounts 
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
@@ -273,7 +309,7 @@ fi
 
 if [ ! -d mergedTagCounts ]; then 
    mkdir mergedTagCounts
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMergeTaxaTagCountPlugin -w ./ -m 600000000 -x 100000000 -c 5 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stderr
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMergeTaxaTagCountPlugin $p_MergeTaxaTagCount -w ./ -m 600000000 -x 100000000 -c 5 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - quitting\"; exit 2
@@ -281,7 +317,7 @@ fi
 
 if [ ! -d tagPair ]; then 
    mkdir tagPair
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagCountToTagPairPlugin -w ./ -e 0.03 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagCountToTagPairPlugin $p_TagCountToTagPair -w ./ -e 0.03 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TagCountToTagPair process - quitting\"; exit 3
@@ -289,7 +325,7 @@ fi
 
 if [ ! -d tagsByTaxa ]; then 
    mkdir tagsByTaxa
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagPairToTBTPlugin -w ./ -endPlugin -runfork1  \> $OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagPairToTBTPlugin $p_TagPairToTBT -w ./ -endPlugin -runfork1  \> $OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TagPairToTBT process - quitting\"; exit 4
@@ -297,7 +333,7 @@ fi
 
 if [ ! -d mapInfo ] ; then 
    mkdir mapInfo
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTBTToMapInfoPlugin -w ./ -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTBTToMapInfoPlugin $p_TBTToMapInfo -w ./ -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TBTToMapInfo process - quitting\"; exit 5
@@ -305,7 +341,7 @@ fi
 
 if [ ! -d hapMap ]; then
    mkdir hapMap
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMapInfoToHapMapPlugin -w ./ -mnMAF 0.03 -mxMAF 0.5 -mnC 0.1 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stderr 
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMapInfoToHapMapPlugin $p_MapInfoToHapMap -w ./ -mnMAF 0.03 -mxMAF 0.5 -mnC 0.1 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
