@@ -125,9 +125,10 @@ function configure_env() {
 max_tasks=50
 " > $OUT_DIR/tardis.toml
    echo "
-export CONDA_ENVS_PATH=\"/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
-conda activate r_mro
+export CONDA_ENVS_PATH=\"$GBS_PRISM_BIN/conda:/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
+conda activate gbs_prism
 " > $OUT_DIR/R_env.src
+
    cd $OUT_DIR
 
    # KGD lives here 

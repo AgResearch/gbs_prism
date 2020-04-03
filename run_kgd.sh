@@ -11,5 +11,9 @@ KGD_METHOD=$2
 HAPMAP_DATA=`dirname $KGD_WORKING`
 HAPMAP_DATA=${HAPMAP_DATA}/hapMap/HapMap.hmc.txt
 
+if [ -f ${HAPMAP_DATA}.blinded ]; then
+   HAPMAP_DATA=${HAPMAP_DATA}.blinded
+fi
+
 cd $KGD_WORKING
 Rscript --vanilla ../run_kgd.R $HAPMAP_DATA  $KGD_METHOD  
