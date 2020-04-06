@@ -47,12 +47,12 @@ if ( geno_method == "default" ) {
    GHWdgm.05 <- calcG(which(HWdis > -0.05),"HWdgm.05", npc=4)  # recalculate using Hardy-Weinberg disequilibrium cut-off at -0.05
    writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
    writeVCF(outname="GHW05", ep=.001)
-   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos)
+   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
 } else if ( geno_method == "pooled" ) {
    Gfull <- calcG(samptype=geno_method, npc=4)
    writeG(Gfull, "GFULL", outtype=c(1, 2, 3, 4, 5, 6))
    writeVCF(outname="GFULL", ep=.001)
-   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos)
+   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
    print("(not running HWdgm.05 filtering on pooled data)")
 } else {
    stop(paste("Error: geno_method ", geno_method, " is not supported"))
