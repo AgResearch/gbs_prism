@@ -690,6 +690,8 @@ function html() {
       for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence_trimmed.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_trimmed.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/common_sequence
       done
+      rm $OUT_ROOT/common_sequence/$cohort/all_common_sequence_lowdepthtags.txt
+      rm $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_lowdepthtags.txt
       for file in $OUT_ROOT/common_sequence/$cohort/lowdepth_tags/*.k6A*.log ; do
          grep assembled_by_distinct $file | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/all_common_sequence_lowdepthtags.txt
          grep assembled_by_distinct $file | head -10 | sed 's/assembled_by_distinct//g' >> $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_lowdepthtags.txt
@@ -727,9 +729,11 @@ function html() {
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/barcode_yields_plots.r datafolder=$OUT_ROOT/html
 
    # summarise and plot tag nd read counts by cohort
+   # CV
    $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -o $OUT_ROOT/html/tags_reads_summary.txt $OUT_ROOT/*/TagCount.csv
    cat $OUT_ROOT/html/tags_reads_summary.txt | awk -F'\t' '{printf("%s\t%s\t%s\n",$1,$4,$9)}' - > $OUT_ROOT/html/tags_reads_cv.txt
-   Rscript --vanilla  $GBS_PRISM_BIN/tag_count_plots.r infile=$OUT_ROOT/html/tags_reads_summary.txt outfolder=$OUT_ROOT/html 
+   $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -t unsummarised -o $OUT_ROOT/html/tags_reads_list.txt $OUT_ROOT/*/TagCount.csv
+   Rscript --vanilla  $GBS_PRISM_BIN/tag_count_plots.r infile=$OUT_ROOT/html/tags_reads_list.txt outfolder=$OUT_ROOT/html 
    convert $OUT_ROOT/html/tag_stats.jpg $OUT_ROOT/html/read_stats.jpg +append $OUT_ROOT/html/tag_read_stats.jpg
 }
 

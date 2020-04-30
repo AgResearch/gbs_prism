@@ -37,11 +37,11 @@ get_command_args <- function() {
 get_command_args()
 setwd(outfolder) 
 read_tag_stats = read.table(infile, header=TRUE, sep="\t")
-read_tag_stats <- read_tag_stats[order(read_tag_stats$mean_tag_count),] 
+read_tag_stats <- read_tag_stats[order(read_tag_stats$cohort),] 
 
 ###### tags #######
 
-jpeg("tag_stats.jpg", height=nrow(read_tag_stats) *  80, width=800)
+jpeg("tag_stats.jpg", height=800, width=800)
 
 # ref 
 # refs for this way of doing error bars 
@@ -49,25 +49,25 @@ jpeg("tag_stats.jpg", height=nrow(read_tag_stats) *  80, width=800)
 # https://stackoverflow.com/questions/13032777/scatter-plot-with-error-bars
 
 margins=par("mar")
-margins[2] = 9 * margins[2]
+margins[2] = 6 * margins[2]
 par(mar=margins)
 
 #sets the bottom, left, top and right margins respectively of the plot region in number of lines of text.
 
-print( max(read_tag_stats$mean_tag_count))
-tags.plot <- barplot(read_tag_stats$mean_tag_count, names.arg = read_tag_stats$flowcell_sq_cohort, horiz=TRUE, las=2,
-                      xlab="Mean tag count", ylab = "Cohort",cex.names = 0.8, xlim=c(min(read_tag_stats$mean_tag_count - 1.01*read_tag_stats$std_tag_count) , max(read_tag_stats$mean_tag_count + 1.01*read_tag_stats$std_tag_count)))
+#tags.plot <- barplot(read_tag_stats$mean_tag_count, names.arg = read_tag_stats$flowcell_sq_cohort, horiz=TRUE, las=2,
+#                      xlab="Mean tag count", ylab = "Cohort",cex.names = 0.8, xlim=c(min(read_tag_stats$mean_tag_count - 1.01*read_tag_stats$std_tag_count) , max(read_tag_stats$mean_tag_count + 1.01*read_tag_stats$std_tag_count)))
 
-lower <- read_tag_stats$mean_tag_count - read_tag_stats$std_tag_count
-upper <- read_tag_stats$mean_tag_count + read_tag_stats$std_tag_count
+tags.plot <- boxplot(tags~cohort, data=read_tag_stats, main="Tag counts", xlab="Tag count", ylab = "Cohort",cex.names = 0.8, horizontal=TRUE,las=1)
+#lower <- read_tag_stats$mean_tag_count - read_tag_stats$std_tag_count
+#upper <- read_tag_stats$mean_tag_count + read_tag_stats$std_tag_count
 
 #arrows(mapping.plot, lower, mapping.plot, upper, angle=90, code=3)
-arrows(lower, tags.plot, upper, tags.plot, angle=90, code=3, length=.1)
+#arrows(lower, tags.plot, upper, tags.plot, angle=90, code=3, length=.1)
 dev.off()
 
 ###### reads #######
 
-jpeg("read_stats.jpg", height=nrow(read_tag_stats) *  80, width=800)
+jpeg("read_stats.jpg", height=800, width=800)
 
 # ref
 # refs for this way of doing error bars
@@ -75,19 +75,22 @@ jpeg("read_stats.jpg", height=nrow(read_tag_stats) *  80, width=800)
 # https://stackoverflow.com/questions/13032777/scatter-plot-with-error-bars
 
 margins=par("mar")
-margins[2] = 9 * margins[2]
+margins[2] = 6 * margins[2]
 par(mar=margins)
 
 #sets the bottom, left, top and right margins respectively of the plot region in number of lines of text.
 
-print( max(read_tag_stats$mean_read_count))
-tags.plot <- barplot(read_tag_stats$mean_read_count, names.arg = read_tag_stats$flowcell_sq_cohort, horiz=TRUE, las=2,
-                      xlab="Mean read count", ylab = "Cohort",cex.names = 0.8, xlim=c(min(read_tag_stats$mean_read_count - 1.01*read_tag_stats$std_read_count) , max(read_tag_stats$mean_read_count + 1.01*read_tag_stats$std_read_count)))
+#tags.plot <- barplot(read_tag_stats$mean_read_count, names.arg = read_tag_stats$flowcell_sq_cohort, horiz=TRUE, las=2,
+#                      xlab="Mean read count", ylab = "Cohort",cex.names = 0.8, xlim=c(min(read_tag_stats$mean_read_count - 1.01*read_tag_stats$std_read_count) , max(read_tag_stats$mean_read_count + 1.01*read_tag_stats$std_read_count)))
+tags.plot <- boxplot(reads~cohort, data=read_tag_stats, main="Read counts", xlab="Read count", ylab = "Cohort",cex.names = 0.8, horizontal=TRUE,las=1)
 
-lower <- read_tag_stats$mean_read_count - read_tag_stats$std_read_count
-upper <- read_tag_stats$mean_read_count + read_tag_stats$std_read_count
+#lower <- read_tag_stats$mean_read_count - read_tag_stats$std_read_count
+#upper <- read_tag_stats$mean_read_count + read_tag_stats$std_read_count
 
 #arrows(mapping.plot, lower, mapping.plot, upper, angle=90, code=3)
-arrows(lower, tags.plot, upper, tags.plot, angle=90, code=3, length=.1)
+#arrows(lower, tags.plot, upper, tags.plot, angle=90, code=3, length=.1)
+
+
+
 dev.off()
 

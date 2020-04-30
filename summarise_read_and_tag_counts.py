@@ -13,7 +13,7 @@ def safe_cv(stddev,mean):
     else:
         return 0.0
 
-def get_summary(filename):
+def get_unsummarised(filename):
     """
     parse a CSV file like
     
@@ -26,9 +26,9 @@ F1506080	C89NRANXX	2	170	301157	1083759
 .
 .
 .
-and summarise it
+and return a flat tabular listing of the data which can be summarised
     """
-    print "summarising %s"%filename
+    print "parsing %s"%filename
     (tuple_stream, exclusions_stream)= itertools.tee(from_csv_file(filename))
 
     header=tuple_stream.next()
@@ -52,6 +52,11 @@ first record is :
                                                                   
     tags_reads = list((int(record[4]), int(record[5]), record[1], record[3]) for record in tuple_stream)
 
+    return ((cohort,flowcell,sq, len(tags_reads)), tags_reads) 
+
+def get_summary(cohort_tags_reads):
+    
+    (cohort_tuple, tags_reads) = cohort_tags_reads
     #print "DEBUG : %s"%str(tags_reads)
 
     # calculate mean and standard deviation
@@ -67,15 +72,15 @@ first record is :
     max_tag_count = max((record[0] for record in tags_reads))
     max_read_count = max((record[1] for record in tags_reads))
 
-    return ("%s_%s_%s"%(cohort,flowcell,sq),mean_tag_count, std_tag_count, safe_cv(std_tag_count, mean_tag_count), min_tag_count, max_tag_count, mean_read_count, std_read_count, safe_cv(std_read_count, mean_read_count), min_read_count, max_read_count)
+    return ("%s_%s_%s(n=%d)"%(cohort_tuple),mean_tag_count, std_tag_count, safe_cv(std_tag_count, mean_tag_count), min_tag_count, max_tag_count, mean_read_count, std_read_count, safe_cv(std_read_count, mean_read_count), min_read_count, max_read_count)
 
 def get_summaries(options):
 
     header = [("flowcell_sq_cohort","mean_tag_count", "std_tag_count", "cv_tag_count", "min_tag_count", "max_tag_count", "mean_read_count", "std_read_count", "cv_read_count", "min_read_count", "max_read_count")]
-    summary_iter = (get_summary(filename) for filename in options["filenames"])
+    summary_iter = (get_summary(get_unsummarised(filename)) for filename in options["filenames"])
 
-    # sort by tag count descending
-    sorted_summary = sorted(summary_iter, key=lambda record:record[1], reverse=True)
+    # sort by cohort name 
+    sorted_summary = sorted(summary_iter, key=lambda record:record[0], reverse=True)
 
     return itertools.chain(header, sorted_summary)
 
@@ -97,6 +102,10 @@ SQ1258.all.PstI.PstI_CE3EWANXX_SQ1258   243487.630319   19029.8927137   40472   
 SQ1259.all.PstI.PstI_CE3EWANXX_SQ1259   242148.553191   57613.3610063   39672   368608  689894.276596   281653.607972   54937   1606162
 SQ1260.all.cattle.PstI_CE3EWANXX_SQ1260 241946.8        44441.8022528   90710   332085  763308.06       275784.635112   170440  1601096
 
+OR
+
+
+
    
     """
 
@@ -104,6 +113,7 @@ SQ1260.all.cattle.PstI_CE3EWANXX_SQ1260 241946.8        44441.8022528   90710   
     parser.add_argument('filenames', type=str, nargs="+",help='input files')    
     parser.add_argument('-o', '--output_filename' , dest='output_filename', default="tags_reads_summary.txt", type=str, help="output file name")
     parser.add_argument('-f', '--out_format' , dest='out_format', default="text", type=str,  choices=["text","csv"], help="output format")
+    parser.add_argument('-t', '--summary_type' , dest='summary_type', default="summarised", type=str,  choices=["summarised","unsummarised"], help="summary type")
     
     args = vars(parser.parse_args())
 
@@ -116,15 +126,35 @@ SQ1260.all.cattle.PstI_CE3EWANXX_SQ1260 241946.8        44441.8022528   90710   
 def main():
     options=get_options()
 
-    if options["out_format"] == "text":
-        with open(options["output_filename"],"w") as outfile:
-            for summary_record in get_summaries(options):
-                print >> outfile, "\t".join(map(lambda x:str(x), summary_record))
-    elif options["out_format"] == "csv":
-        with open(options["output_filename"],'wb') as csvfile:
-            my_writer = csv.writer(csvfile,quotechar='"',quoting=csv.QUOTE_NONNUMERIC)
-            for summary_record in get_summaries(options):
-                my_writer.writerow(summary_record)
+    if options["summary_type"] == "summarised": 
+        if options["out_format"] == "text":
+            with open(options["output_filename"],"w") as outfile:
+                for summary_record in get_summaries(options):
+                    print >> outfile, "\t".join(map(lambda x:str(x), summary_record))
+        elif options["out_format"] == "csv":
+            with open(options["output_filename"],'wb') as csvfile:
+                my_writer = csv.writer(csvfile,quotechar='"',quoting=csv.QUOTE_NONNUMERIC)
+                for summary_record in get_summaries(options):
+                    my_writer.writerow(summary_record)
+    else:
+        if options["out_format"] == "text":
+            with open(options["output_filename"],"w") as outfile:
+                print >> outfile, "\t".join(("cohort","tags","reads"))
+                for filename in options["filenames"]:
+                    (cohort_tuple, tags_reads_list) = get_unsummarised(filename)
+                    for record in tags_reads_list:
+                        print >> outfile, "\t".join( ["%s_%s_%s(n=%d)"%(cohort_tuple)] + map(lambda x:str(x), record[0:2]))
+                        
+        elif options["out_format"] == "csv":
+            with open(options["output_filename"],'wb') as csvfile:
+                my_writer = csv.writer(csvfile,quotechar='"',quoting=csv.QUOTE_NONNUMERIC)
+                my_writer.writerow(("cohort","tags","reads"))
+                
+                for filename in options["filenames"]:
+                    (cohort_tuple, tags_reads_list) = get_unsummarised(filename)
+                    for record in tags_reads_list:
+                        my_writer.writerow(["%s_%s_%s(n=%d)"%(cohort_tuple)] + list(record[0:2]))
+
     
     return
                                 

@@ -67,12 +67,13 @@ overview_section="""
 <td> <a href="file://isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
 </tr>
 <tr id=tags_reads>
-<td> Tags and Reads Mean and Standard Deviation(plot) </td>
+<td> Tag and Read Counts (plot) </td>
 <td> <img src=tag_read_stats.jpg title=tag_read_stats.jpg/> </td>
 </tr>
 <tr>
-<td> Tags and Reads Mean and Standard Deviation (text) </td>
-<td> <a href=tags_reads_cv.txt target=_blank> tags_reads_cv.txt </a> </td>
+<td> Tag and Read Counts (text) </td>
+<td> <a href=tags_reads_cv.txt target=_blank> tags_reads_cv.txt </a>
+<p/> <a href=tags_reads_summary.txt target=_blank> tags_reads_summary.txt </td>
 </tr>
 <tr id=barcode_yield>
 <td> Barcode yield (plot) </td>
