@@ -722,10 +722,15 @@ function html() {
    tardis --hpctype local -d $OUT_ROOT/html $SEQ_PRISMS_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/stats_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/mapping_stats_plots.r datafolder=$OUT_ROOT/html
 
-   # (re ) summarise tag yields 
+   # (re ) summarise barcode yields 
    tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_barcode_yields.py $OUT_ROOT/*/*.tassel3_qc.FastqToTagCount.stdout \> $OUT_ROOT/html/barcode_yield_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/barcode_yields_plots.r datafolder=$OUT_ROOT/html
 
+   # summarise and plot tag nd read counts by cohort
+   $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -o $OUT_ROOT/html/tags_reads_summary.txt $OUT_ROOT/*/TagCount.csv
+   cat $OUT_ROOT/html/tags_reads_summary.txt | awk -F'\t' '{printf("%s\t%s\t%s\n",$1,$4,$9)}' - > $OUT_ROOT/html/tags_reads_cv.txt
+   Rscript --vanilla  $GBS_PRISM_BIN/tag_count_plots.r infile=$OUT_ROOT/html/tags_reads_summary.txt outfolder=$OUT_ROOT/html 
+   convert $OUT_ROOT/html/tag_stats.jpg $OUT_ROOT/html/read_stats.jpg +append $OUT_ROOT/html/tag_read_stats.jpg
 }
 
 function clientreport() {

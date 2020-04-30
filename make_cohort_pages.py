@@ -29,6 +29,7 @@ Overview of %(run_name)s
     <ul>
         <li> <a href="#samplesheet"> Sample Sheet </a>
         <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
+        <li> <a href="#tags_reads"> Tags, Reads Mean,Standard Deviation,CV  </a>
         <li> <a href="#barcode_yield"> Barcode yields </a>        
         <li> <a href="#bwa"> BWA Alignment Rates </a>
         <li> <a href="#fastqc"> FASTQC output</a>
@@ -64,6 +65,14 @@ overview_section="""
 <tr id=slippery_slope>
 <td> Cumulative self-relatedness </td>
 <td> <a href="file://isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
+</tr>
+<tr id=tags_reads>
+<td> Tags and Reads Mean and Standard Deviation(plot) </td>
+<td> <img src=tag_read_stats.jpg title=tag_read_stats.jpg/> </td>
+</tr>
+<tr>
+<td> Tags and Reads Mean and Standard Deviation (text) </td>
+<td> <a href=tags_reads_cv.txt target=_blank> tags_reads_cv.txt </a> </td>
 </tr>
 <tr id=barcode_yield>
 <td> Barcode yield (plot) </td>
