@@ -1,7 +1,7 @@
 #!/bin/sh
 #
-# this does a GBS Q/C run on the (GBS related) hiseq output.
-# it is run after process_hiseq.sh 
+# this handles updates of the agbrdf postgres database 
+# , as part of running the GBS q/c pipeline
 # 
 
 function read_answer_with_default() {
