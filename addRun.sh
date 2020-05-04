@@ -13,14 +13,16 @@ help_text="\n
       usage : addRun.sh -r run_name\n
       example (dry run) : ./addRun.sh -n -r 151016_D00390_0236_AC6JURANXX\n
       example           : ./addRun.sh -r 151016_D00390_0236_AC6JURANXX\n
-      example           : ./addRun.sh -r 171026_M02412_0043_000000000-D2N2Ua -m miseq
+      example           : ./addRun.sh -r 171026_M02412_0043_000000000-D2N2Ua -m miseq\n
+      example           : ./addRun.sh -r 190919_M02412_0124_000000000-CKPD4 -m miseq -s SQ2853\n
 "
 
 DRY_RUN=no
 RUN_NAME=""
+GBS_SAMPLE_LIB=""
 MACHINE=hiseq
 
-while getopts ":nhr:m:d:" opt; do
+while getopts ":nhr:m:d:s:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -36,6 +38,9 @@ while getopts ":nhr:m:d:" opt; do
       ;;
     m)
       MACHINE=$OPTARG
+      ;;
+    s)
+      GBS_SAMPLE_LIB=$OPTARG
       ;;
     h)
       echo -e $help_text
@@ -76,8 +81,8 @@ fi
 #   exit 1
 #fi
 
-if [ ! -f $RUN_PATH/SampleSheet.csv ]; then
-   echo $RUN_PATH/SampleSheet.csv not found
+if [[ ( ! -f $RUN_PATH/SampleSheet.csv ) && ( $MACHINE == "hiseq" ) ]]; then
+   echo $RUN_PATH/SampleSheet.csv not found , try using -d option to provide path to sample sheet
    exit 1
 fi
 
@@ -120,32 +125,33 @@ if [ -f /tmp/${RUN_NAME}.psql ]; then
 fi
 
 
-# parse the sample sheet
+# if this is a hiseq run, parse and import the sample sheet and do all the rest
 #cp $RUN_ROOT/${RUN_NAME}/SampleSheet.csv /tmp/${RUN_NAME}.txt
 #awk -F, '{if(NF>5)print}' ${RUN_PATH}/SampleSheet.csv  > /tmp/${RUN_NAME}.txt
-set -x
-cat ${RUN_PATH}/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN_NAME > /tmp/${RUN_NAME}.txt
-set +x
+if [ $MACHINE == "hiseq" ]; then 
+   set -x
+   cat ${RUN_PATH}/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN_NAME > /tmp/${RUN_NAME}.txt
+   set +x
 
-# check we got something non-trivial
-if [ ! -s /tmp/${RUN_NAME}.txt ]; then
-   echo "error parsed sample sheet /tmp/${RUN_NAME}.txt is missing or empty"
-   exit 1
-fi
-
-
-echo "
+   # check we got something non-trivial
+   if [ ! -s /tmp/${RUN_NAME}.txt ]; then
+      echo "error parsed sample sheet /tmp/${RUN_NAME}.txt is missing or empty"
+      exit 1
+   fi
 
 
-insert into bioSampleList (xreflsid, listName, listComment)
-values(:run_name, :run_name, 'AgResearch Hiseq Run');
-
-delete from samplesheet_temp;
+   echo "
 
 
-\copy samplesheet_temp from /tmp/${RUN_NAME}.txt with  CSV HEADER
+   insert into bioSampleList (xreflsid, listName, listComment)
+   values(:run_name, :run_name, 'AgResearch Hiseq Run');
 
-insert into hiseqSampleSheetFact (
+   delete from samplesheet_temp;
+
+
+   \copy samplesheet_temp from /tmp/${RUN_NAME}.txt with  CSV HEADER
+
+  insert into hiseqSampleSheetFact (
    biosamplelist ,
    FCID ,
    Lane ,
@@ -161,7 +167,7 @@ insert into hiseqSampleSheetFact (
    samplewell,
    downstream_processing,
    basespace_project)
-select
+  select
    obid,
    FCID ,
    Lane ,
@@ -177,47 +183,93 @@ select
    samplewell ,
    downstream_processing,
    basespace_project
-from 
+  from 
    bioSampleList as s join samplesheet_temp as t
    on s.listName = :run_name and 
    t. sampleid is not null;
 
-insert into biosampleob(xreflsid, samplename, sampledescription, sampletype)
-select distinct
+  insert into biosampleob(xreflsid, samplename, sampledescription, sampletype)
+   select distinct
    SampleID,
    SampleID,
    description,
    case when t.downstream_processing = 'GBS' then 'Illumina GBS Library'
    else 'Illumina Library'
    end
-from
+  from
    samplesheet_temp t where
    sampleid is not null and 
    not exists (select obid from biosampleob where samplename = t.SampleID);
 
-insert into biosamplelistmembershiplink (biosamplelist, biosampleob)
-select 
+  insert into biosamplelistmembershiplink (biosamplelist, biosampleob)
+   select 
     l.obid,
     s.obid
-from 
+   from 
     (biosampleob as s join samplesheet_temp as t on 
     t.sampleid = s.samplename ) join biosamplelist as l on 
     l.listname = :run_name  
-except
-select
+   except
+    select
     biosamplelist, 
     biosampleob
-from
+   from
     biosamplelistmembershiplink as m join biosamplelist as l on
     m.biosamplelist = l.obid and
     l.listname = :run_name ;
 " > /tmp/${RUN_NAME}.psql
+elif [ $MACHINE == "miseq" ]; then
+   # we don't bother with the sample sheet - just add any libraries from command line option
+   echo "
+   insert into bioSampleList (xreflsid, listName, listComment)
+   select 
+      :run_name,:run_name,'AgResearch Miseq Run'
+   except
+   select 
+      xreflsid, listName, listComment from bioSampleList 
+   where
+      xreflsid = :run_name and 
+      listName = :run_name and 
+      listComment = 'AgResearch Miseq Run';
+   " > /tmp/${RUN_NAME}.psql
+
+   # if a sample lib provided on command line, add setup of that as well
+   if [ ! -z "$GBS_SAMPLE_LIB" ]; then
+      echo "
+  insert into biosampleob(xreflsid, samplename, sampletype)
+   select :gbs_sample_lib, :gbs_sample_lib, 'Illumina GBS Library'
+   except
+   select 
+      xreflsid, samplename, sampletype
+   from
+      biosampleob
+   where
+      xreflsid = :gbs_sample_lib and samplename = :gbs_sample_lib and sampletype = 'Illumina GBS Library';
+
+  insert into biosamplelistmembershiplink (biosamplelist, biosampleob)
+   select
+    l.obid,
+    s.obid
+   from
+    biosampleob as s join biosamplelist as l on
+    l.listname = :run_name and s.xreflsid = :gbs_sample_lib
+   except
+    select
+    biosamplelist,
+    biosampleob
+   from
+    biosamplelistmembershiplink as m join biosamplelist as l on
+    m.biosamplelist = l.obid and
+    l.listname = :run_name ;
+   " >> /tmp/${RUN_NAME}.psql 
+   fi # adding a mised sample library
+fi # miseq 
 
 if [ $DRY_RUN == "no" ]; then
-   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql
 else
    echo " will run 
-   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f /tmp/${RUN_NAME}.psql"
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql"
 fi
 
 
