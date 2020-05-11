@@ -19,6 +19,7 @@ help_text="
  ./database_prism.sh -i -t import_new_run -r 180921_D00390_0400_BCCVDJANXX  -s SQ0788\n
  ./database_prism.sh -i -t import_results -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
  ./database_prism.sh -i -t reimport_library -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
+ ./database_prism.sh -i -t add_keyfile -r 180921_D00390_0400_BCCVDJANXX  -s SQ0799\n
 "
 
 DRY_RUN=no
@@ -81,8 +82,8 @@ if [ -z "$GBS_PRISM_BIN" ]; then
 fi
 
 # check args
-if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) && ( $TASK != "reimport_library" ) ]]; then
-    echo "Invalid task name - must be import_new_run, import_results, reimport_library" 
+if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) && ( $TASK != "reimport_library" ) && ( $TASK != "add_keyfile" ) ]]; then
+    echo "Invalid task name - must be import_new_run, import_results, reimport_library, add_keyfile" 
     exit 1
 fi
 
@@ -124,6 +125,14 @@ function import_new_run() {
    get_samples 
    import_keyfiles
    update_fastq_locations
+   update_bwa_blast_refs
+}
+
+function add_keyfile() {
+   flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $SAMPLE`
+   sample_monikers=$SAMPLE
+   import_keyfiles
+   update_all_fastq_locations
    update_bwa_blast_refs
 }
 
@@ -307,6 +316,8 @@ elif [ $TASK == "import_results" ]; then
    import_results
 elif [ $TASK == "reimport_library" ]; then
    reimport_library
+elif [ $TASK == "add_keyfile" ]; then
+   add_keyfile
 else
    echo "unknown task $TASK"
    exit 1

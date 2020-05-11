@@ -393,6 +393,30 @@ function get_cohort_opts() {
    read_answer_with_default $LIBRARY_MONIKERS
    LIBRARY_MONIKERS=$answer
 
+   # check that each library has been imported, in case we are re-running this, e.g. completing a run afer missing
+   # keyfiles have been supplied
+   to_import=""
+   echo "checking keyfiles for libraries have been imported . . . "
+   for library_moniker in $LIBRARY_MONIKERS; do
+       echo "checking $library_moniker . . ."
+       flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $library_moniker  | sed 's/\s//g' - `
+       library_cohorts=`psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
+       if [ -z "$library_cohorts" ]; then
+          echo "looks like $library_moniker needs importing - OK to import ? (y/n, default=y)"
+          read_answer_with_default y
+          if [ $answer != "y" ]; then
+             echo "ok will not import keyfile for $library_moniker"
+          else
+             to_import="$to_import $library_moniker"
+             echo "ok will import keyfile for $library_moniker"
+          fi
+       fi
+   done
+
+   if [ ! -z "to_import" ]; then
+       do_extra_library_imports add_keyfile "$to_import"
+   fi
+
 
    if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
 
@@ -439,33 +463,8 @@ function get_cohort_opts() {
    fi
 
    if [ ! -z "$to_import" ]; then
-      echo "about to reimport keyfiles for $to_import - ok ? (y/n, default = y)"
-      read_answer_with_default y
-      if [ $answer != "y" ]; then
-         echo "ok quitting"
-         exit 1
-      fi
-      for library in $to_import; do
-         echo "running $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library "
-         echo "press Enter to continue. . ."
-         read_answer_with_default ""
-         $GBS_PRISM_BIN/database_prism.sh -i -t reimport_library -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
-         return_code=$?
-         if [ $return_code != 0 ]; then
-            echo "looks like there was a problem with the import (exit code $return_code)  - check $OUTPUT_ROOT/reimport.log - quitting"
-            exit 1
-         fi
-      done
-
-      echo "*** finished reimporting keyfiles  ***"
-
-      # DEPRECATED 
-      #echo "updating processing parameters"
-      #mv $OUTPUT_ROOT/SampleProcessing.json $OUTPUT_ROOT/SampleProcessing.json.old
-      #get_processing_parameters
-
+      do_extra_library_imports reimport_library "$to_import"
    fi
-
 
    echo "getting default GBS cohorts to process. . .
 
@@ -499,6 +498,37 @@ function get_cohort_opts() {
             fi
          fi
       done
+   fi
+}
+
+
+function do_extra_library_imports() {
+   # usually library keyfiles are all imported early in the processing, but 
+   # sometimes the keyfile was not available, or was wrong, and needs to be 
+   # (re) imported later
+
+   import_type=$1
+   extra_imports=$2
+   if [ ! -z "$extra_imports" ]; then
+      echo "about to import keyfiles for $extra_imports - ok ? (y/n, default = y)"
+      read_answer_with_default y
+      if [ $answer != "y" ]; then
+         echo "ok quitting"
+         exit 1
+      fi
+      for library in $extra_imports; do
+         echo "running $GBS_PRISM_BIN/database_prism.sh -i -t $import_type -r $RUN -s $library "
+         echo "press Enter to continue. . ."
+         read_answer_with_default ""
+         $GBS_PRISM_BIN/database_prism.sh -i -t $import_type -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
+         return_code=$?
+         if [ $return_code != 0 ]; then
+            echo "looks like there was a problem with the import (exit code $return_code)  - check $OUTPUT_ROOT/reimport.log - quitting"
+            exit 1
+         fi
+      done
+
+      echo "*** finished importing keyfiles  ***"
    fi
 }
 
