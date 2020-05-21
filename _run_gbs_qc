@@ -308,7 +308,7 @@ $OUTPUT_ROOT/database_prism.log
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots ) (or just press enter to run all)  
+please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots , special) (or just press enter to run all)  
 (notes:
 
 * entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
@@ -317,12 +317,13 @@ run (unless already done), etc.)
 * entering import_results does not rerun any analyses - it just (re)imports the results 
 * running just kgd does not do unblinding - you will need to then run the unblind step
 * but you don't usually need to run unblind stand-alone
+* special, includes e.g. slippery slope
 "
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) && ( "$ANALYSIS" != "special" ) ]]; then
+         echo "analysis must be one of demultiplex, kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots,special or all"
       else
          break
       fi
@@ -746,14 +747,16 @@ function generate_html() {
       fi
    fi
 
-   echo "do you want to (re)generate the slippery slope plot ?"
+}
+
+function generate_special() {
+   echo "do you want to (re)generate the slippery slope plot ? (y/n default y)"
    read_answer_with_default y
    if [ $answer == "y" ]; then
       set -x
       $GBS_PRISM_BIN/SelfRelDepth.sh -I
       set +x
    fi
-
 }
 
 function generate_clientreport() {
@@ -824,3 +827,6 @@ if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) ]]; then
    generate_clientreport
 fi
 
+if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
+   generate_special
+fi

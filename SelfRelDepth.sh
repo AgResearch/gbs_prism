@@ -5,7 +5,20 @@ GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
 TEMP=/dataset/gseq_processing/scratch/temp
 INCREMENTAL=0
+INTERACTIVE=no
 RESET_BASE=0
+
+function read_answer_with_default() {
+   if [ $INTERACTIVE == yes ]; then
+      read answer
+      if [ -z "$answer" ]; then
+         answer=$@
+      fi
+   else
+      answer=$@
+   fi
+}
+
 
 function get_opts() {
 
@@ -15,7 +28,7 @@ usage :\n
 ./SelfRelDepth.sh [-h] [-I] [-R] run_name run_name . . . ]\n
 EOF
 )
-   while getopts ":hIR" opt; do
+   while getopts ":hIRi" opt; do
    case $opt in
        h)
          echo -e $help_text
@@ -23,6 +36,9 @@ EOF
          ;;
        I)
          INCREMENTAL=1
+         ;;
+       i)
+         INTERACTIVE=yes
          ;;
        R)
          RESET_BASE=1
@@ -48,7 +64,7 @@ function get_files_to_process() {
    # for each base , find the available data files and process them
    echo "searching for GHW05.RData files to process..."
    echo "press enter to continue or CTRL-C to exit"
-   read x
+   read_answer_with_default y
    rm  $TEMP/SelfRelDepth.files_to_process.tmp
    rm  $TEMP/SelfRelDepth.files_to_process.diff
    set -x
@@ -89,7 +105,7 @@ function process_files() {
    echo "will process file list $TEMP/SelfRelDepth.files_to_process.diff ( $num_to_process files )" 
    echo "(will overwrite $TEMP/SelfRelDepth.out.diff)"
    echo "press any key to continue (or CTRL-C to exit)"
-   read x
+   read_answer_with_default y
    echo "processing..."
    rm $TEMP/SelfRelDepth.out.diff
    set -x
