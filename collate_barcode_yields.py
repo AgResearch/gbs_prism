@@ -15,7 +15,12 @@ for filename in uneak_stdout_files:
    #/dataset/gseq_processing/scratch/gbs/200310_D00390_0538_BCE5FNANXX/SQ1244.all.PstI.PstI/200310_D00390_0538_BCE5FNANXX.SQ1244.all.PstI.PstI.key.PstI.tassel3_qc.FastqToTagCount.stdout
    
    
-   sample_ref = re.split("\.", os.path.basename(filename))[1]
+   sample_ref_tokens = re.split("\.", os.path.basename(filename))[1:]
+   sample_ref_match = re.match("^(.*).key",".".join(sample_ref_tokens))
+   if sample_ref_match is not None:
+      sample_ref = sample_ref_match.groups()[0]
+   else:
+      sample_ref = "?"
 
    yield_stats = [0,0] # will contain total reads, total good barcoded
    
