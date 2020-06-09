@@ -28,6 +28,7 @@ function more_with_default() {
 
 function get_opts() {
    INTERACTIVE=no
+   INTERACTIVE_OPT=""
    ARGRUN=""
    help_text="
 This script is called by run_gbs_qc (or non-interactively by a cron job)
@@ -41,6 +42,7 @@ usage :\n
          ;;
        i)
          INTERACTIVE=yes
+         INTERACTIVE_OPT="-i"
          ;;
        r)
          ARGRUN=$OPTARG
@@ -276,7 +278,7 @@ checking if run is in the database...
    if [ $in_db == "0" ]; then
       echo "$RUN is not in the database - will run database import first , about to execute 
 
-$GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a $OUTPUT_ROOT/database_prism.log
+$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a $OUTPUT_ROOT/database_prism.log
 
 logging to $OUTPUT_ROOT/database_prism.log 
 
@@ -286,8 +288,8 @@ OK ? (y/n, default = y)
       if [ "$answer" != "n" ]; then
          echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
          psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
-         echo "running $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
-         $GBS_PRISM_BIN/database_prism.sh -i -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a  $OUTPUT_ROOT/database_prism.log 
+         echo "running $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
+         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a  $OUTPUT_ROOT/database_prism.log 
          if [ $? != 0 ]; then
             echo "
 
@@ -518,10 +520,10 @@ function do_extra_library_imports() {
          exit 1
       fi
       for library in $extra_imports; do
-         echo "running $GBS_PRISM_BIN/database_prism.sh -i -t $import_type -r $RUN -s $library "
+         echo "running $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t $import_type -r $RUN -s $library "
          echo "press Enter to continue. . ."
          read_answer_with_default ""
-         $GBS_PRISM_BIN/database_prism.sh -i -t $import_type -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
+         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t $import_type -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
          return_code=$?
          if [ $return_code != 0 ]; then
             echo "looks like there was a problem with the import (exit code $return_code)  - check $OUTPUT_ROOT/reimport.log - quitting"
@@ -597,7 +599,7 @@ function import_results() {
 looks like there may have been a problem with the q/c (non-zero exit code from ag_gbs_qc_prism.sh )  - 
 suggest you check  $OUTPUT_ROOT/run_gbs_qc.log. You can manually run the import later using : 
   
-$GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN
+$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN
 
 "
       exit 1
@@ -608,7 +610,7 @@ looks like q/c completed OK
 
 Ready to summarise and import yield stats using :
 
-$GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN
+$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN
 
 OK to continue ? (y/n , default = y)"
 
@@ -619,16 +621,16 @@ OK to continue ? (y/n , default = y)"
          echo "
       running
 
-      $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+      $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT  -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-         $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
          return_code=$?
          if [ $return_code != 0 ]; then
             echo "
 
 ** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
-( you can run manually using : $GBS_PRISM_BIN/database_prism.sh -i -t import_results -r $RUN )
+( you can run manually using : $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN )
 
 "
             exit 1

@@ -219,7 +219,7 @@ function get_targets() {
       # former future is now current , but fastq link probably not updated )
       missing_message=`$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t missing_files | grep "fastq_link missing"`
       if [ ! -z "$missing_message" ]; then
-         echo "*** Bailing out as there are missing fastq_links for lib: $libname fcid: $fcid enzyme: $enzyme cohort: $gbs_cohort qccohort: $qc_cohort ***"
+         echo "*** !!!! ERROR !!!! there are missing fastq_links for lib: $libname fcid: $fcid enzyme: $enzyme cohort: $gbs_cohort qccohort: $qc_cohort ***"
          echo "(was this flowcell previously imported in one or more keyfiles as a future flowcell  ?)"
          echo "suggest try manual update of fastq location using : 
 
@@ -227,7 +227,6 @@ function get_targets() {
          for lane in `$GBS_PRISM_BIN/get_lane_from_database.sh $RUN $libname`; do
             echo "$GBS_PRISM_BIN/updateFastqLocations.sh -s $libname -k $libname -r $RUN -f $fcid -l $lane "
          done
-         exit 1
       fi
 
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
@@ -743,6 +742,10 @@ function clientreport() {
       exit 1
    fi
 
+   echo "refreshing GBS tab extract. . . "
+   psql -U agrbrdf -d agrbrdf -h postgres -f /dataset/genophyle_data/active/database/Ndb/bin/get_genophyle_export.psql
+
+   echo "generating client reports. . . "
    $GBS_PRISM_BIN/make_clientcohort_pages.py -r $RUN -o report.html
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       set -x

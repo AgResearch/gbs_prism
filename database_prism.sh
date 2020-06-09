@@ -5,11 +5,16 @@
 # 
 
 function read_answer_with_default() {
-   read answer
-   if [ -z "$answer" ]; then
+   if [ $INTERACTIVE == yes ]; then
+      read answer
+      if [ -z "$answer" ]; then
+         answer=$@
+      fi
+   else
       answer=$@
    fi
 }
+
 
 
 function get_opts() {
