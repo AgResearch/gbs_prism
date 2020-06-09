@@ -32,6 +32,7 @@ Overview of %(run_name)s
         <li> <a href="#tags_reads"> Tags, Reads Mean,Standard Deviation,CV  </a>
         <li> <a href="#barcode_yield"> Barcode yields </a>        
         <li> <a href="#bwa"> BWA Alignment Rates </a>
+        <li> <a href="#multiqc"> MULTIQC (mashup of FASTQC across lanes)</a>        
         <li> <a href="#fastqc"> FASTQC output</a>
         <li> <a href="#raw_kmer"> Raw kmer distributions </a>
         <li> <a href="#trimmed_kmer"> Trimmed kmer distributions </a>
@@ -94,6 +95,10 @@ overview_section="""
 <tr id=fastqc>
 <td> FASTQC </td>
 <td> <a href=fastqc> FASTQC results </a> </td>
+</tr>
+<tr id=multiqc>
+<td> MULTIQC </td>
+<td> <a href=multiqc> MULTIQC (mashup of FASTQC across lanes) </a> </td>
 </tr>
 <tr id=raw_kmer>
 <td> 6-mer distributions (raw data)</td>

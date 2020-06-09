@@ -154,11 +154,13 @@ conda activate bifo-essential
 " > $OUT_ROOT/bifo-essential_env.inc
 
    echo "
+conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/multiqc
+" > $OUT_ROOT/multiqc_env.inc
+
+   echo "
 export CONDA_ENVS_PATH=$CONDA_ENVS_PATH
 conda activate bioconductor
 " > $OUT_ROOT/configure_bioconductor_env.src
-
-
 
    echo "
 conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/gbs_prism 
@@ -702,8 +704,13 @@ function html() {
 
    cp -s $OUT_ROOT/SampleSheet.csv $OUT_ROOT/html
 
-
+   # fastqc and multiqc
+   mkdir -p $OUT_ROOT/html/multiqc
+   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc
+   
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc $OUT_ROOT/html/fastqc
+
+   # bcl2fastq
    mkdir $OUT_ROOT/html/bcl2fastq
    cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/bcl2fastq/Reports/html/* $OUT_ROOT/html/bcl2fastq
    mkdir -p $OUT_ROOT/html/kmer_analysis
