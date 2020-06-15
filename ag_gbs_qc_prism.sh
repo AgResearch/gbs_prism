@@ -484,12 +484,15 @@ for fastq_sample in $OUT_ROOT/bwa_mapping/$cohort/*.fastq.gz; do
    fi
 done
 
-# align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references
+# align the trimmed samples to the references referred to in $OUT_ROOT/${cohort_moniker}.bwa_references if it exists
 cut -f 2 $OUT_ROOT/$cohort_moniker.bwa_references > $OUT_ROOT/bwa_mapping/$cohort/references.txt
-$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a bwa -r $OUT_ROOT/bwa_mapping/$cohort/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/bwa_mapping/$cohort -C $HPC_TYPE $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq
-if [ \$? != 0 ]; then
-   echo \"warning, bwa mapping in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
-   exit 1
+contents=\`head -1 $OUT_ROOT/bwa_mapping/$cohort/references.txt\`
+if [ ! -z \"\$contents\" ]; then
+   $SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -m 60 -a bwa -r $OUT_ROOT/bwa_mapping/$cohort/references.txt -p \"$bwa_alignment_parameters\" -O $OUT_ROOT/bwa_mapping/$cohort -C $HPC_TYPE $OUT_ROOT/bwa_mapping/$cohort/*.trimmed.fastq
+   if [ \$? != 0 ]; then
+      echo \"warning, bwa mapping in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
+      exit 1
+   fi
 fi
      " >  $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
