@@ -648,7 +648,7 @@ function generate_trimmed_kmer_analysis() {
 
    Ready to generate trimmed kmer analysis , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
    echo "OK to run that  ? (y/n , default = y)"
@@ -659,10 +659,10 @@ function generate_trimmed_kmer_analysis() {
       echo "
       running
 
-       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
+       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
       " >> $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log 2>&1 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log 2>&1 
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
@@ -682,7 +682,7 @@ function generate_unblinded_plots() {
 
    Ready to attempt unblinded plots , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
    echo "OK to run that  ? (y/n , default = y)"
@@ -693,10 +693,10 @@ function generate_unblinded_plots() {
       echo "
       running
 
-       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
       " >> $OUTPUT_ROOT/generate_unblinded_plots.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_unblinded_plots.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_unblinded_plots.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
