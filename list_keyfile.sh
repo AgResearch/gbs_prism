@@ -27,6 +27,7 @@ list_keyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + pat
 list_keyfile.sh  -s SQ0566 -t list_species  # extract distinct cohort + path to bwa index for cohort species for SQ0566\n
 list_keyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs, not case sensitive e.g. will include DEER)\n
 list_keyfile.sh  -m bee                     # extract everything that has species field deer (across all runs , not case sensitive e.g. will include BEE)\n
+list_keyfile.sh  -m goat -x                     # extract everything that has species field goat , that has been excluded \n
 list_keyfile.sh  -m bee -t gbsx             # as above, GBSX format \n
 list_keyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)\n
 list_keyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format \n
@@ -47,8 +48,9 @@ GBS_COHORT=""
 SPECIES_MONIKER=""
 SAMPLE=""
 QC_COHORT="all"
+exclusions_phrase=" and coalesce(qc_cohort,'included') != 'excluded'  "
 
-while getopts ":ndhv:s:k:c:f:t:e:g:q:m:" opt; do
+while getopts ":ndhv:s:k:c:f:t:e:g:q:m:x" opt; do
   case $opt in
     d)
       DEBUG=1
@@ -64,6 +66,9 @@ while getopts ":ndhv:s:k:c:f:t:e:g:q:m:" opt; do
       ;;
     e)
       ENZYME=$OPTARG
+      ;;
+    x)
+      exclusions_phrase=" and qc_cohort = 'excluded' "
       ;;
     g)
       GBS_COHORT=$OPTARG
@@ -190,7 +195,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by 
    factid;
@@ -218,7 +223,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by 
    factid;
@@ -249,7 +254,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    factid;
@@ -277,7 +282,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    factid;
@@ -293,7 +298,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by 
    1,2,3;
@@ -307,7 +312,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by 
    1;
@@ -322,7 +327,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;
@@ -340,7 +345,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase 
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;
@@ -354,7 +359,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;
@@ -368,7 +373,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;
@@ -382,7 +387,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 group by 
    species
@@ -398,7 +403,7 @@ from
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by 
    1;
@@ -411,7 +416,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;
@@ -424,7 +429,7 @@ from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
 where
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 union
 select
@@ -434,7 +439,7 @@ from
    g.biosampleob = s.obid) join gbs_sampleid_history_fact as h on 
    h.biosampleob = s.obid and h.sample = g.sample
 where 
-   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
 order by
    1;

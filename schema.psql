@@ -1,0 +1,24 @@
+/*
+* controlled vocab for the qc_cohort column of gbskeyfilefact
+*/
+
+insert into ontologyob(ontologyName,   ontologyDescription ,xreflsid)
+values('gbs_qc_cohort_names','This ontology provides standard qc-cohort names','ontology.gbs_qc_cohort_names');
+insert into ontologyTermFact(ontologyOb,xreflsid,termName) select obid,'excluded','excluded' from ontologyOb where ontologyName = 'gbs_qc_cohort_names';
+
+CREATE FUNCTION check_gbs_qc_ontology() RETURNS trigger AS '
+    DECLARE
+        terms RECORD;
+    BEGIN
+        select into terms  * from ontologytermfact where termname = NEW.qc_cohort and 
+                       ontologyob = (select obid from ontologyOb where ontologyName = ''gbs_qc_cohort_names'');
+        if not FOUND then
+           RAISE EXCEPTION ''% is not a valid qc_cohort name '', NEW.qc_cohort;
+        else
+           return NEW;
+        end if;
+    END;
+' LANGUAGE plpgsql;
+
+CREATE TRIGGER checkOntology BEFORE INSERT OR UPDATE ON gbskeyfilefact
+    FOR EACH ROW EXECUTE PROCEDURE check_gbs_qc_ontology();
