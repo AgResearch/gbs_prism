@@ -268,12 +268,14 @@ function get_targets() {
 
          echo "#!/bin/bash
 cd $OUT_DIR  
-if [ ! -d tagCounts ]; then 
+if [ ! -f tagCounts.done ]; then 
    mkdir tagCounts 
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -p $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+else
+   date > tagCounts.done
 fi
         " > $script 
          chmod +x $script
@@ -299,52 +301,64 @@ fi
 
          echo "#!/bin/bash
 cd $OUT_DIR  
-if [ ! -d tagCounts ]; then 
+if [ ! -f tagCounts.done ]; then 
    mkdir tagCounts 
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+else
+   date > tagCounts.done
 fi
 
-if [ ! -d mergedTagCounts ]; then 
+if [ ! -f mergedTagCounts.done ]; then 
    mkdir mergedTagCounts
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMergeTaxaTagCountPlugin $p_MergeTaxaTagCount -w ./ -m 600000000 -x 100000000 -c 5 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - quitting\"; exit 2
+else
+   date > tagCounts.done
 fi
 
-if [ ! -d tagPair ]; then 
+if [ ! -f tagPair.done ]; then 
    mkdir tagPair
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagCountToTagPairPlugin $p_TagCountToTagPair -w ./ -e 0.03 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TagCountToTagPair process - quitting\"; exit 3
+else
+   date > tagPair.done
 fi
 
-if [ ! -d tagsByTaxa ]; then 
+if [ ! -f tagsByTaxa.done ]; then 
    mkdir tagsByTaxa
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagPairToTBTPlugin $p_TagPairToTBT -w ./ -endPlugin -runfork1  \> $OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TagPairToTBT process - quitting\"; exit 4
+else
+   date > tagsByTaxa.done
 fi
 
-if [ ! -d mapInfo ] ; then 
+if [ ! -f mapInfo.done ] ; then 
    mkdir mapInfo
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTBTToMapInfoPlugin $p_TBTToMapInfo -w ./ -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from TBTToMapInfo process - quitting\"; exit 5
+else
+   date > mapInfo.done
 fi
 
-if [ ! -d hapMap ]; then
+if [ ! -f hapMap.done ]; then
    mkdir hapMap
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMapInfoToHapMapPlugin $p_MapInfoToHapMap -w ./ -mnMAF 0.03 -mxMAF 0.5 -mnC 0.1 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stderr 
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
+else
+   date > hapMap.done
 fi
         " > $script 
          chmod +x $script
