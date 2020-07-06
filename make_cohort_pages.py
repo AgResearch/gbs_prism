@@ -157,7 +157,7 @@ def generate_run_plot(options):
         "no sample count" : 0
     }
 
-    file_group_iter = ( ("Demultiplex (plots)", "image"), ("Demultiplex (text file links)", "link"),\
+    file_group_iter = ( ("Demultiplex (plots)", "image"), ("Demultiplex (text file links)", "link"),("Overall SNP yields", "in-line"), \
                        ("KGD (plots)", "image"), ("KGD (text file links)", "link"), \
                        ("Preview common sequence (trimmed fastq)", "in-line"), ("All common sequence (trimmed fastq)", "link"), \
                        ("Preview common sequence (low depth tags)", "in-line"), ("All common sequence (low depth tags)", "link"), \
@@ -173,6 +173,7 @@ def generate_run_plot(options):
         #        'KGD/Co-call-.png', 'KGD/Gdiagdepth.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/MAFHWdgm.05.png', 'KGD/SampDepthHist.png', 'KGD/SNPDepthHist.png'],
         "Demultiplex (plots)" : [],
         "Demultiplex (text file links)" :  ["TagCount.csv"],
+        "Overall SNP yields" :  ["overall_snp_yield.txt"],
         "KGD (plots)" : ['KGD/AlleleFreq.png', 'KGD/CallRate.png', 'KGD/Co-call-HWdgm.05.png', 'KGD/Co-call-.png', 'KGD/finplot.png', \
                          'KGD/GcompareHWdgm.05.png', 'KGD/Gcompare.png', 'KGD/Gdiagdepth.png', 'KGD/G-diag.png', 'KGD/GHWdgm.05diagdepth.png', \
                          'KGD/GHWdgm.05-diag.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/HWdisMAFsig.png', 'KGD/LRT-hist.png', 'KGD/LRT-QQ.png', \
@@ -245,6 +246,9 @@ def generate_run_plot(options):
 
                         if file_group in ["Preview common sequence (trimmed fastq)", "All common sequence (trimmed fastq)" , "Preview common sequence (low depth tags)", "All common sequence (low depth tags)"]:
                             file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
+                        elif file_group in [ "Overall SNP yields" ]:
+                            file_path=os.path.join(BASEDIR, options["run_name"], cohort, file_name)
+                            
 
                         if os.path.exists(file_path):
                             with open(file_path,"r") as infile:

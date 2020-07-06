@@ -703,6 +703,11 @@ function html() {
       for file in $OUT_ROOT/common_sequence/$cohort/all_common_sequence_lowdepthtags.txt $OUT_ROOT/common_sequence/$cohort/preview_common_sequence_lowdepthtags.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/common_sequence
       done
+
+
+      # summarise overall SNP yield in cohort
+      $GBS_PRISM_BIN/get_snp_yield.sh $OUT_ROOT/$cohort/*.FastqToTagCount.stdout $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt  > $OUT_ROOT/$cohort/overall_snp_yield.txt
+
    done
 
    cp -s $OUT_ROOT/SampleSheet.csv $OUT_ROOT/html
@@ -745,6 +750,7 @@ function html() {
    $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -t unsummarised -o $OUT_ROOT/html/tags_reads_list.txt $OUT_ROOT/S*/TagCount.csv
    Rscript --vanilla  $GBS_PRISM_BIN/tag_count_plots.r infile=$OUT_ROOT/html/tags_reads_list.txt outfolder=$OUT_ROOT/html 
    convert $OUT_ROOT/html/tag_stats.jpg $OUT_ROOT/html/read_stats.jpg +append $OUT_ROOT/html/tag_read_stats.jpg
+
 }
 
 function clientreport() {
