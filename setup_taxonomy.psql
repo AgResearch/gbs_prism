@@ -1,0 +1,60 @@
+/*
+python makeWarehouseImport.py gbs_numbers_example_annotation.csv  format=csv
+using {'format': 'csv'}
+Names : ['\xef\xbb\xbflowercase_name', 'common_name_suggested', 'common_name_NCBI', 'taxonomy_ID', 'scientific_name', 'taxonomy_level', 'group', 'group_1']
+Types : [<type 'str'>, <type 'str'>, <type 'str'>, <type 'int'>, <type 'str'>, <type 'str'>, <type 'str'>, <type 'str'>]
+Widths : [30, 30, 30, 10, 30, 20, 10, 20]
+
+    create table (
+           lowercase_name varchar(30),
+           common_name_suggested varchar(30),
+           common_name_NCBI varchar(30),
+           taxonomy_ID int,
+           scientific_name varchar(30),
+           taxonomy_level varchar(20),
+           group varchar(10),
+           group_1 varchar(20)) without oids;
+*/
+/*
+    create table gbs_numbers_example_annotation (
+           lowercase_name varchar(30),
+           common_name_suggested varchar(30),
+           common_name_NCBI varchar(30),
+           taxonomy_ID int,
+           scientific_name varchar(30),
+           taxonomy_level varchar(20),
+           group_s varchar(10),
+           group_1 varchar(20)) without oids;
+
+\copy gbs_numbers_example_annotation from gbs_numbers_example_annotation.csv with  CSV HEADER 
+
+alter table gbskeyfilefact add taxid int;
+*/
+
+update gbskeyfilefact set
+taxid = taxonomy_ID
+from 
+gbs_numbers_example_annotation as a where 
+a.lowercase_name  = lower(species)  and 
+taxid is null;
+
+agrbrdf=> update gbskeyfilefact set taxid = 2 where species = 'Microbiome' and taxid is null;
+UPDATE 711
+agrbrdf=> update gbskeyfilefact set taxid = 3899 where species = 'whiteclover' and taxid is null;
+UPDATE 384
+agrbrdf=> update gbskeyfilefact set taxid = 2 where lower(species) like '%microbiome%' and taxid is null;
+UPDATE 480
+agrbrdf=> update gbskeyfilefact set taxid = 1787 where lower(species) like '%rifleman%' and taxid is null;
+UPDATE 192
+agrbrdf=> update gbskeyfilefact set taxid = 9925 where lower(species) like '%caprid%' and taxid is null;
+UPDATE 135
+agrbrdf=> update gbskeyfilefact set taxid = 74940 where lower(species) like '%chinook salmon%' and taxid is null;
+UPDATE 56
+agrbrdf=> update gbskeyfilefact set taxid = 9669 where lower(species) like '%ferret%' and taxid is null;
+UPDATE 192
+agrbrdf=> update gbskeyfilefact set taxid = 30532  where lower(species) like '%fallow deer%' and taxid is null;
+UPDATE 234
+agrbrdf=> update gbskeyfilefact set taxid = 66447   where lower(species) like '%koaro%' and taxid is null;
+UPDATE 192
+agrbrdf=>
+
