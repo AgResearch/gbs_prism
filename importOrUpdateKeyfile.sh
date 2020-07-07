@@ -430,10 +430,12 @@ if [ $DRY_RUN == "no" ]; then
    psql -U agrbrdf -d agrbrdf -h postgres -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
    result=$?
    psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
+   psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_taxid.psql
 else
    echo "keyfile import : will run 
    psql -U agrbrdf -d agrbrdf -h postgres -v keyfilename=\'$KEYFILE_BASE\' -v samplename=\'$SAMPLE\' -f /tmp/$KEYFILE_BASE.psql
    psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
+   psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_taxid.psql
    "
 fi
 

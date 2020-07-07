@@ -131,6 +131,7 @@ function import_new_run() {
    import_keyfiles
    update_fastq_locations
    update_bwa_blast_refs
+   update_taxid
 }
 
 function add_keyfile() {
@@ -139,6 +140,7 @@ function add_keyfile() {
    import_keyfiles
    update_all_fastq_locations
    update_bwa_blast_refs
+   update_taxid
 }
 
 function reimport_library() {
@@ -149,6 +151,7 @@ function reimport_library() {
    import_keyfiles
    update_all_fastq_locations     
    update_bwa_blast_refs
+   update_taxid
 }
 
 
@@ -269,7 +272,11 @@ function update_bwa_blast_refs() {
    psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_ref_indexes.psql
 }
 
-
+function update_taxid() {
+   # this fills in taxid for newly imported records based on previous
+   # records with matching species. Where new record is a new species , a seperate update is needed
+   psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/fill_in_taxid.psql
+}
 
 function import_results() {
    set -x

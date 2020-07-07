@@ -1,0 +1,20 @@
+/*
+* update taxid from previous values for the same species
+*/
+update gbskeyfilefact as k
+   set taxid = t.taxid
+from  
+    (  
+       select 
+          lower(species) as species,
+          min(taxid) as taxid
+       from 
+          gbskeyfilefact 
+       where
+          taxid is not null
+       group by 
+          lower(species)
+      ) as t 
+where
+   t.species = lower(k.species) and 
+   k.taxid is null;
