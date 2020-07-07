@@ -615,6 +615,15 @@ function fake() {
 function run() {
    cd $OUT_ROOT
 
+   if [ $FORCE == "yes" ]; then
+      echo "cleaning any existing target files so targets will be remade. . . "
+      for target in `cat $OUT_ROOT/${ANALYSIS}_targets.txt`; do
+         rm -f $target
+      done
+   else
+      echo "warning, not cleaning existing target files - use -f option to force a rebuild"
+   fi
+
    make -f ag_gbs_qc_prism.mk -d -k  --no-builtin-rules -j $NUM_THREADS `cat $OUT_ROOT/${ANALYSIS}_targets.txt` > $OUT_ROOT/${ANALYSIS}.log 2>&1
 
    # run summaries
