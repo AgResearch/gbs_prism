@@ -130,8 +130,22 @@ function check_opts() {
             echo "could not find $ENZYME_INFO"
             exit 1
          fi
+      else
+         # map enzymes such as HpaIII and HpaII (methylation sensitive) to equivalent
+         # (same recognition-site) enzymes that uneak knows about 
+         enzyme_for_uneak=$ENZYME_INFO
+         echo $enzyme_for_uneak | grep -iq "hpa" > /dev/null 2>&1
+         if [ $? == 0 ]; then
+            echo "attempting to map enzyme $ENZYME_INFO to an equivalent for uneak..."
+            enzyme_for_uneak=`echo $ENZYME_INFO | sed -r 's/HpaII|HpaIII/MspI/g' -`
+            if [ $ENZYME_INFO != $enzyme_for_uneak ]; then
+               echo "$ENZYME_INFO mapped to $enzyme_for_uneak for uneak"
+            else
+               echo "warning, no mapping done so will use $ENZYME_INFO"
+            fi
+         fi
       fi
-   elif [ $ENGINE == "tassel3" ]; then
+   elif [[  ( $ENGINE == "tassel3" ) || ( $ENGINE == "tassel3_qc" ) ]]; then
       echo "must specify enzyme , for tassel3 (should match enzyme specified in keyfile)"
       exit 1
    fi
@@ -270,7 +284,7 @@ function get_targets() {
 cd $OUT_DIR  
 if [ ! -f tagCounts.done ]; then 
    mkdir tagCounts 
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -p $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -p $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
@@ -303,7 +317,7 @@ fi
 cd $OUT_DIR  
 if [ ! -f tagCounts.done ]; then 
    mkdir tagCounts 
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $ENZYME_INFO  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 400000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
