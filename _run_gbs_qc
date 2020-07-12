@@ -644,6 +644,11 @@ OK to continue ? (y/n , default = y)"
 function generate_trimmed_kmer_analysis() {
    mkdir -p $OUTPUT_ROOT/trimmed_kmer_analysis
 
+   if [ ! -d $OUTPUT_ROOT/bwa_mapping ]; then
+      echo "*** unable to do trimmed_kmer_analysis as no trimmed fastq available (do a bwa_mapping run first) ***"
+      return
+   fi
+
    echo "
 
    Ready to generate trimmed kmer analysis , with the following:
