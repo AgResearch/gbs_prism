@@ -202,7 +202,7 @@ function get_targets() {
       fcid=`echo $RUN | awk -F_ '{print substr($4,2)}' -`
 
 
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc > $OUT_ROOT/${cohort_moniker}.key
+      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
@@ -541,10 +541,10 @@ fi
 #low depth kmer plots if applicable
 mkdir -p $cohort/unblinded_plots/kmer_analysis
 if [ -f $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
+   cat $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed | sed 's/.cnt.tag_count_unique.s.05m2T10_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' - > $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
 fi
 if [ -f $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
+   cat $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed |  sed 's/.cnt.tag_count_unique.s.05m2T10_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' > $cohort/unblinded_plots/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
 fi
 
 # first do plots including N's , then rename and do plots excluding N's
@@ -570,10 +570,10 @@ fi
 #all-depth kmer plots
 mkdir -p $cohort/unblinded_plots/allkmer_analysis
 if [ -f $cohort/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
+   cat $cohort/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed | sed 's/.cnt.tag_count_unique.s.001.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' - > $cohort/unblinded_plots/allkmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
 fi
 if [ -f $cohort/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
+   cat $cohort/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed | sed 's/.cnt.tag_count_unique.s.001.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' - > $cohort/unblinded_plots/allkmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
 fi
 
 # first do plots including N's , then rename and do plots excluding N's
@@ -633,8 +633,12 @@ function trimmed_kmer_analysis() {
    # kmer analysis of a sample of all the trimmed raw data 
    cd $OUT_ROOT
    mkdir -p trimmed_kmer_analysis
-   cp -fs $OUT_ROOT/bwa_mapping/*/*.trimmed.fastq $OUT_ROOT/trimmed_kmer_analysis   # this step eliminates duplicate filenames 
-   $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p "-k 6" -O $OUT_ROOT/trimmed_kmer_analysis $OUT_ROOT/trimmed_kmer_analysis/*.trimmed.fastq  > $OUT_ROOT/trimmed_kmer_analysis/kmer_analysis.log
+   if [ ! -d $OUT_ROOT/bwa_mapping ]; then
+      echo "*** please run bwa mapping before trimmed kmer analysis - unable to run trimmed kmer analysis as no trimmed fastq available yet ***"
+   else
+      cp -fs $OUT_ROOT/bwa_mapping/*/*.trimmed.fastq $OUT_ROOT/trimmed_kmer_analysis   # this step eliminates duplicate filenames 
+      $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p "-k 6" -O $OUT_ROOT/trimmed_kmer_analysis $OUT_ROOT/trimmed_kmer_analysis/*.trimmed.fastq  > $OUT_ROOT/trimmed_kmer_analysis/kmer_analysis.log
+   fi
 }
 
 function html() {
