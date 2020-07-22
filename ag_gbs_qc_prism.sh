@@ -350,9 +350,9 @@ mkdir -p $cohort/fasta_small_lowdepthsample
 # sample all tags 
 $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -s .001 -O $OUT_ROOT/$cohort/fasta_alldepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 # small sample of low coverage tags (as used in GBS by KGD) - e.g. for blast work
-$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 10 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s .002 -O $OUT_ROOT/$cohort/fasta_small_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 # medium sample of low coverage tags (as used in GBS by KGD) - e.g. for kmer analysis 
-$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 10 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
+$SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
 
 if [ \$? != 0 ]; then
