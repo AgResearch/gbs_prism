@@ -408,6 +408,13 @@ for sample in \`cat $OUT_DIR/\${base}.demultiplexed/sample_list\`; do
 done
 END_SPLIT
          else
+            # see if file is compressed  and set gzip option
+            gzip_phrase="-gzip TRUE"
+            gunzip -qt $file > /dev/null 2>&1
+            if [ $? != 0 ]; then
+               gzip_phrase=""
+            fi
+            
             cat << END_NOSPLIT > $script
 #!/bin/bash
 #
@@ -417,7 +424,7 @@ set -x
 base=`basename $file`
 mkdir ${OUT_DIR}/${base}.demultiplexed
 cd ${OUT_DIR}
-tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE -gzip TRUE -mb 0 -me 0 -n false -t 8 \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE $gzip_phrase -mb 0 -me 0 -n false -t 8 \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
 END_NOSPLIT
          fi
          chmod +x $script
