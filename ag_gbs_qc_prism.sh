@@ -248,6 +248,9 @@ function get_targets() {
 
       ############### demultiplex script (tassel demultiplex)
       echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort
 # run demultiplexing
@@ -266,12 +269,18 @@ cat $cohort/*.FastqToTagCount.stdout | ./get_reads_tags_per_sample.py > $cohort/
 
      # generate two scripts - the first one execs the second one , which deletes the first one
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 exec clean/${cohort_moniker}.clean.sh
      " > $OUT_ROOT/${cohort_moniker}.clean.sh
      chmod +x $OUT_ROOT/${cohort_moniker}.clean.sh
     
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 
 # a recursive rm of the output folder can often be too slow - so just rename it
@@ -288,6 +297,9 @@ rm -f *.${cohort}.*  >> $OUT_ROOT/clean/${cohort_moniker}.clean.log 2>&1
      ################ kgd script
      method=`cat $OUT_ROOT/${cohort_moniker}.method`
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort
 # run genotyping
@@ -302,6 +314,9 @@ fi
 
      ################ unblind script
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 if [ ! -d $cohort ]; then 
    exit 1
@@ -323,6 +338,9 @@ done
      # qc_sampleids that do not correspond with those in the current process, and therefore they will not be unblinded by the usual default
      # script. 
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 if [ ! -d $cohort ]; then
    exit 1
@@ -340,8 +358,11 @@ done
       chmod +x $OUT_ROOT/${cohort_moniker}.historical_unblind.sh
 
 
-     ################ fasta_sample script (i.e. samples tags)
+     ################ fasta_sample script (i.e. samples and also filters tags)
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/fasta_alldepthsample 
 mkdir -p $cohort/fasta_medium_lowdepthsample
@@ -354,6 +375,12 @@ $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s 
 # medium sample of low coverage tags (as used in GBS by KGD) - e.g. for kmer analysis 
 $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
+# trim the samples that will be used by blast
+for fasta_sample in $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta ; do
+   outbase=\`basename \$fasta_sample .fasta\`
+   outdir=\`dirname \$fasta_sample\`
+   tardis -d $OUT_ROOT/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta -m 1 -a $adapter_to_cut \$fasta_sample 1\>\$outdir/\${outbase}.trimmed.fasta 2\>\$outdir/\${outbase}.trimmed.fasta.report
+done
 
 if [ \$? != 0 ]; then
    echo \"warning , fasta sample of $OUT_ROOT/$cohort returned an error code\"
@@ -365,6 +392,9 @@ fi
 
      ################ fastq_sample script (uses gbsx demuliplex)
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/fastq
 mkdir -p $cohort/fastq_sample
@@ -392,6 +422,9 @@ fi
 # expected - i.e. returned the actual best hit in the database).
 ############
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/blast
 # configure a custom slurm batch job that will specify medium memory 
@@ -401,7 +434,7 @@ jobtemplatefile = \\\"$OUT_ROOT/medium_mem_slurm_array_job\\\"
 max_tasks = 60
 \" > $OUT_ROOT/$cohort/blast/tardis.toml
 # run blast
-$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -j $NUM_THREADS -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta
+$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -j $NUM_THREADS -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.trimmed.fasta
 if [ \$? != 0 ]; then
    echo \"warning , blast  of $OUT_ROOT/$cohort/fasta_small_lowdepthsample returned an error code\"
    exit 1
@@ -412,6 +445,9 @@ fi
 
      ################ annotation script 
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 # summarise species from blast results 
 $SEQ_PRISMS_BIN/annotation_prism.sh -C $HPC_TYPE -w tag_count -a taxonomy -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/blast/*.results.gz  
@@ -439,6 +475,9 @@ fi
 
      ################ low-depth kmer summary script
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/kmer_analysis
 $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/kmer_analysis $OUT_ROOT/$cohort/fasta_medium_lowdepthsample/*.fasta 
@@ -452,6 +491,9 @@ fi
 
      ################ all-depth kmer summary script
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/allkmer_analysis
 $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fasta -p \"-k 6 -A --weighting_method tag_count\" -O $OUT_ROOT/$cohort/allkmer_analysis $OUT_ROOT/$cohort/fasta_alldepthsample/*.fasta 
@@ -465,6 +507,9 @@ fi
 
      ################ bwa mapping script (includes sampling and trimming)
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p bwa_mapping/$cohort   # note - must not allow tassel to see any fastq file names under $cohort ! 
 #
@@ -499,6 +544,9 @@ fi
 
      ################ common sequences script  
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 # trimmed sequence
 mkdir -p common_sequence/$cohort/trimmed_sequence # note - must not allow tassel to see any fastq file names under $cohort !
@@ -524,6 +572,9 @@ fi
      # unblinded plots supercede the blinded ones. If anything here fails, the blinded 
      # plot is still available.
      echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_ROOT
 mkdir -p $cohort/unblinded_plots
 
@@ -541,10 +592,10 @@ fi
 #low depth kmer plots if applicable
 mkdir -p $cohort/unblinded_plots/kmer_analysis
 if [ -f $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed | sed 's/.cnt.tag_count_unique.s.05m2T10_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' - > $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
+   cat $cohort/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed | sed -r 's/.cnt.tag_count_unique.s.05m2T[[:digit:]]+_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' - > $cohort/unblinded_plots/kmer_analysis/kmer_summary.k6Aweighting_methodtag_count.txt
 fi
 if [ -f $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt ]; then
-   cat $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed |  sed 's/.cnt.tag_count_unique.s.05m2T10_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' > $cohort/unblinded_plots/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
+   cat $cohort/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed |  sed -r 's/.cnt.tag_count_unique.s.05m2T[[:digit:]]+_taggt2.fasta.k6Aweighting_methodtag_count.1.kmerdist//g' > $cohort/unblinded_plots/kmer_analysis/kmer_summary_plus.k6Aweighting_methodtag_count.txt
 fi
 
 # first do plots including N's , then rename and do plots excluding N's
