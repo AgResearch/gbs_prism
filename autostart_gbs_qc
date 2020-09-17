@@ -1,0 +1,126 @@
+#!/bin/sh
+
+POLL_INTERVAL=900      # seconds - i.e. 15 minutes 
+
+function read_answer_with_default() {
+   read answer
+   if [ -z "$answer" ]; then
+      answer=$@
+   fi
+}
+
+function get_opts() {
+   help_text="
+This is being used to test auto-start of a specific run
+usage example (currently run in a screen session) :\n
+autostart_gbs_qc 200511_D00390_0545_BHFMY3BCX3 | tee /dataset/gseq_processing/scratch/gbs/log/200511_D00390_0545_BHFMY3BCX3.log \n
+"
+   while getopts ":h" opt; do
+   case $opt in
+       h)
+         echo -e $help_text
+         exit 0
+         ;;
+       \?)
+         echo "Invalid option: -$OPTARG" >&2
+         exit 1
+         ;;
+       :)
+         echo "Option -$OPTARG requires an argument." >&2
+         exit 1
+         ;;
+     esac
+   done
+
+   shift $((OPTIND-1))
+   
+   if [ -z "$1" ]; then
+      echo "must supply a run name "
+      exit 1
+   fi
+
+   ARGRUN=$1
+}
+
+
+function get_pipeline() {
+   gbs_version=$1
+   RUN=$2 
+
+   export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
+   export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+   cd $GBS_PRISM_BIN
+
+   # (to move to another KGD version, git pull  in the KGD folder, and then check out the version you want)
+   kgd_version=`$GBS_PRISM_BIN/get_kgd_version.sh`
+   echo "running gbs qc pipeline version $gbs_version (KGD version $kgd_version)"
+   is_alpha=`echo $gbs_version | grep alpha`
+   if [ ! $is_alpha ]; then 
+      git checkout -q $gbs_version 
+      if [ $? != 0 ]; then
+         echo "unable to checkout pipeline version $gbs_version"
+         exit 1
+      fi
+      echo "running exec ./_run_gbs_qc -r $RUN $gbs_version $kgd_version"
+      send_mail
+      exec ./_run_gbs_qc -r $RUN $gbs_version $kgd_version
+   else
+      echo "(no checkout for alpha versions, just running in current branch)"
+      echo "running exec ./_run_gbs_qc -r $RUN $gbs_version $kgd_version"
+      send_mail
+      exec ./_run_gbs_qc -r $RUN $gbs_version $kgd_version
+   fi
+}
+
+function send_mail() {
+   echo "sending mail to vanstijnt , mccullocha, bairdh "
+   echo "" | mutt -s "FYI - looks like upload of $RUN is complete so auto-starting processing" vanstijnt , mccullocha, bairdh
+}
+
+function get_landmark() {
+   RUN=$1
+   landmark=""
+   if [ -f /dataset/hiseq/active/$RUN/RTAComplete.txt ]; then
+      landmark=/dataset/hiseq/active/$RUN/RTAComplete.txt
+   fi
+}
+
+function get_digest() {
+   RUN=$1
+   digest=`ls -lR /dataset/hiseq/active/$RUN/ | md5sum -b `
+   echo $digest
+}
+
+
+function poll_for() {
+   RUN=$1 
+
+   # polls for the run landmark 
+   poll_count=0
+   while [ 1 ]; do
+      get_landmark $RUN
+      get_digest $RUN
+      if [ ! -z "$landmark" ]; then
+         if [ $poll_count == 0 ]; then
+            echo "*** warning - landmark $landmark is already there ! *** "
+            echo "(final digest : "
+            get_digest $RUN
+            echo ")"
+            get_pipeline 1.0.4alpha $RUN
+         else
+            echo "found landmark ($landmark) - starting processing"
+            echo "(final digest : "
+            get_digest $RUN
+            echo ")"
+            get_pipeline 1.0.4alpha $RUN
+         fi
+      else
+         let poll_count=${poll_count}+1
+         echo "sleeping for $POLL_INTERVAL (poll count = $poll_count )"
+         sleep $POLL_INTERVAL
+      fi
+   done
+}
+
+get_opts "$@"
+poll_for $ARGRUN
