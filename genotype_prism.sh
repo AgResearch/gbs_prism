@@ -16,18 +16,20 @@ function get_opts() {
    OUT_DIR=""
    ENZYME_INFO=""
    GENO_PARAMETERS=""
-   FORCE=no
+   HAPMAP_FOLDER=hapMap
+   OUT_FOLDER=KGD
+   FORCE=no    # will clean the landmark target so it is rebuilt  
 
 
    help_text=$(cat << 'EOF'
 usage :\n 
-./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] [-p genotyping parameters] -O outdir folder\n
+./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] [-p genotyping parameters] [-m hapmap_folder] [-o outfolder] folder\n
 example:\n
 ./genotype_prism.sh -x KGD_tassel3 /dataset/hiseq/scratch/postprocessing/gbs/weevils_gbsx\n
 ./genotype_prism.sh -x KGD_tassel3 -p pooled /dataset/hiseq/scratch/postprocessing/gbs/pooled_worms\n
 EOF
 )
-   while getopts ":nhfO:C:O:x:p:" opt; do
+   while getopts ":nhfC:x:p:m:o:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -50,6 +52,12 @@ EOF
          ;;
        p)
          GENO_PARAMETERS=$OPTARG
+         ;;
+       m)
+         HAPMAP_FOLDER=$OPTARG     # relative name , e.g. hapMap
+         ;;
+       o)
+         OUT_FOLDER=$OPTARG        # relative name , e.g. KGD
          ;;
        \?)
          echo "Invalid option: -$OPTARG" >&2
@@ -107,6 +115,7 @@ function echo_opts() {
   echo FILES=${files_array[*]}
   echo ENGINE=$ENGINE
   echo GENO_PARAMETERS=$GENO_PARAMETERS
+  echo HAPMAP_FOLDER=$HAPMAP_FOLDER
 }
 
 
@@ -157,21 +166,25 @@ function get_targets() {
    genotype_moniker=${file_base}.${ENGINE}
    echo $OUT_DIR/${genotype_moniker}.genotype_prism >> $OUT_DIR/genotype_targets.txt
    script=$OUT_DIR/${genotype_moniker}.genotype_prism.sh
-   if [ -f $script ]; then
-      if [ ! $FORCE == yes ]; then
-         echo "found existing genotype script $script  - will re-use (use -f to force rebuild of scripts) "
-         continue
+
+   if [ $FORCE == "yes" ]; then
+      if [ -f $OUT_DIR/${genotype_moniker}.genotype_prism ]; then
+         echo "force = yes, so removing landmark $OUT_DIR/${genotype_moniker}.genotype_prism so will be rebuilt"
+         rm -f $OUT_DIR/${genotype_moniker}.genotype_prism
       fi
    fi
 
    if [ $ENGINE == "KGD_tassel3" ]; then
 
       echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
 cd $OUT_DIR  
-if [ ! -d KGD ]; then
-   mkdir KGD
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/KGD $GENO_PARAMETERS \> $OUT_DIR/${genotype_moniker}.KGD.stdout  2\>$OUT_DIR/${genotype_moniker}.KGD.stderr 
+if [ ! -d $OUT_FOLDER ]; then
+   mkdir $OUT_FOLDER
 fi
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/$OUT_FOLDER $GENO_PARAMETERS $HAPMAP_FOLDER \> $OUT_DIR/${genotype_moniker}.${OUT_FOLDER}.stdout  2\>$OUT_DIR/${genotype_moniker}.${OUT_FOLDER}.stderr 
 if [ \$? != 0 ]; then
    echo \"genotype_prism.sh: error code returned from KGD process - quitting\"; exit 1
 fi

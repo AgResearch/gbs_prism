@@ -20,7 +20,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|filtered_kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -111,8 +111,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
-      echo "analysis must be one of all, demultiplex, kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
+      echo "analysis must be one of all, demultiplex, kgd , filtered_kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
       exit 1
    fi
 
@@ -235,7 +235,7 @@ function get_targets() {
       adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
       bwa_alignment_parameters="-B 10"
 
-      for analysis_type in all bwa_mapping demultiplex kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
+      for analysis_type in all bwa_mapping demultiplex kgd filtered_kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -308,8 +308,35 @@ if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
+python $GBS_PRISM_BIN/make_clientcohort_pages.py -U hapMap -K KGD -t \"KGD\" -o $OUT_ROOT/$cohort/KGD.html $OUT_ROOT/$cohort
      " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
       chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
+
+
+     ################ filtered_kgd script
+     method=`cat $OUT_ROOT/${cohort_moniker}.method`
+     echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+
+adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
+mkdir -p $OUT_ROOT/$cohort/filtered_hapMap
+
+tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta --discard-untrimmed -a $adapter_to_cut $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt  1\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.discarded.txt  2\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.report.txt
+
+tardis  --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort python $GBS_PRISM_BIN/merge_filtered_hapmap.py  -D $OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.discarded.txt -O $OUT_ROOT/$cohort/filtered_hapMap $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt.blinded $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt.blinded
+
+cd $OUT_ROOT
+mkdir -p $cohort
+# run genotyping
+./genotype_prism.sh -f -C $HPC_TYPE -x KGD_tassel3 -p $method -m filtered_hapMap -o filtered_KGD $OUT_ROOT/$cohort
+if [ \$? != 0 ]; then
+   echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
+   exit 1
+fi
+python $GBS_PRISM_BIN/make_clientcohort_pages.py -U filtered_hapMap -K filtered_KGD -t \"Filtered KGD\" -o $OUT_ROOT/$cohort/filtered_KGD.html $OUT_ROOT/$cohort
+     " >  $OUT_ROOT/${cohort_moniker}.filtered_kgd.sh
+     chmod +x $OUT_ROOT/${cohort_moniker}.filtered_kgd.sh
 
 
      ################ unblind script

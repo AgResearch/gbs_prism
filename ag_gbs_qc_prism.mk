@@ -49,6 +49,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.filtered_kgd:   %.demultiplex
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.kgd:   %.demultiplex
 	$@.sh > $@.mk.log 2>&1
 	date > $@
