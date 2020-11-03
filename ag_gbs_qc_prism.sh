@@ -166,6 +166,12 @@ conda activate bioconductor
 conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/gbs_prism 
 " > $OUT_ROOT/gbs_prism_env.inc
 
+   echo "
+conda activate /dataset/bioinformatics_dev/active/conda-env/blast2.9
+" > $OUT_ROOT/blast_env.inc
+
+   NT_BLAST_DB=/dataset/blastdata/active/mirror/v5/nt
+
    cd $OUT_ROOT
 }
 
@@ -461,7 +467,7 @@ jobtemplatefile = \\\"$OUT_ROOT/medium_mem_slurm_array_job\\\"
 max_tasks = 60
 \" > $OUT_ROOT/$cohort/blast/tardis.toml
 # run blast
-$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -j $NUM_THREADS -m 60 -a blastn -r nt -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.trimmed.fasta
+$SEQ_PRISMS_BIN/align_prism.sh -C $HPC_TYPE -j $NUM_THREADS -m 60 -a blastn -e $OUT_ROOT/blast_env.inc -r $NT_BLAST_DB -p \"-evalue 1.0e-10  -dust \\'20 64 1\\' -max_target_seqs 1 -outfmt \\'7 qseqid sseqid pident evalue staxids sscinames scomnames sskingdoms stitle\\'\" -O $OUT_ROOT/$cohort/blast $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.trimmed.fasta
 if [ \$? != 0 ]; then
    echo \"warning , blast  of $OUT_ROOT/$cohort/fasta_small_lowdepthsample returned an error code\"
    exit 1
@@ -609,6 +615,7 @@ mkdir -p $cohort/unblinded_plots
 if [ -f $cohort/blast/information_table.txt ]; then
    cat $cohort/blast/information_table.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/information_table.txt
    cat $cohort/blast/locus_freq.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/locus_freq.txt
+   cat $cohort/blast/frequency_table.txt | sed -f $OUT_ROOT/${cohort_moniker}.unblind.sed > $cohort/unblinded_plots/frequency_table.txt
 
    tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort/unblinded_plots --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $SEQ_PRISMS_BIN/taxonomy_prism.r analysis_name=\'$ANALYSIS_NAME\' summary_table_file=$OUT_ROOT/$cohort/unblinded_plots/information_table.txt output_base=\"taxonomy_summary\" 1\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stdout  2\>$OUT_ROOT/$cohort/unblinded_plots/tax_plots.stderr
 
