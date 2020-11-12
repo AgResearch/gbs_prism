@@ -130,6 +130,8 @@ function configure_env() {
    cp ../genotype_prism.mk $OUT_DIR
    cp ../run_kgd.sh $OUT_DIR ; chmod +x $OUT_DIR/run_kgd.sh
    cp ../run_kgd.R $OUT_DIR
+   cp ../run_GUSbase.R $OUT_DIR
+   cp ../run_gusbase.sh $OUT_DIR ; chmod +x $OUT_DIR/run_gusbase.sh
    echo "
 max_tasks=50
 " > $OUT_DIR/tardis.toml
@@ -137,6 +139,10 @@ max_tasks=50
 export CONDA_ENVS_PATH=\"$GBS_PRISM_BIN/conda:/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
 conda activate gbs_prism
 " > $OUT_DIR/R_env.src
+   echo "
+export CONDA_ENVS_PATH=\"$GBS_PRISM_BIN/conda:/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
+conda activate GUSbase
+" > $OUT_DIR/gusbase_env.src
 
    cd $OUT_DIR
 
@@ -187,6 +193,11 @@ fi
 tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/R_env.src  $OUT_DIR/run_kgd.sh $OUT_DIR/$OUT_FOLDER $GENO_PARAMETERS $HAPMAP_FOLDER \> $OUT_DIR/${genotype_moniker}.${OUT_FOLDER}.stdout  2\>$OUT_DIR/${genotype_moniker}.${OUT_FOLDER}.stderr 
 if [ \$? != 0 ]; then
    echo \"genotype_prism.sh: error code returned from KGD process - quitting\"; exit 1
+fi
+# run gusbase
+tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/gusbase_env.src  $OUT_DIR/run_gusbase.sh $OUT_DIR/$OUT_FOLDER  \> $OUT_DIR/${genotype_moniker}.gusbase.${OUT_FOLDER}.stdout  2\>$OUT_DIR/${genotype_moniker}.gusbase.${OUT_FOLDER}.stderr
+if [ \$? != 0 ]; then
+   echo \"genotype_prism.sh: error code returned from KGD/gusbase process - quitting\"; exit 1
 fi
      " > $script 
       chmod +x $script

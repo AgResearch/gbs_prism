@@ -159,6 +159,7 @@ def generate_run_plot(options):
 
     file_group_iter = ( ("Demultiplex (plots)", "image"), ("Demultiplex (text file links)", "link"),("Overall SNP yields", "in-line"), \
                        ("KGD (plots)", "image"), ("KGD (text file links)", "link"), \
+                       ("GUSbase (plots)", "image"), ("GUSbase (text file links)", "link"), \
                        ("Preview common sequence (trimmed fastq)", "in-line"), ("All common sequence (trimmed fastq)", "link"), \
                        ("Preview common sequence (low depth tags)", "in-line"), ("All common sequence (low depth tags)", "link"), \
                        ("Low depth tag kmer summary (plots)", "image"), ("Low depth tag kmer summary (text file links)", "link"),\
@@ -180,9 +181,9 @@ def generate_run_plot(options):
                          'KGD/MAFHWdgm.05.png', 'KGD/MAF.png', 'KGD/PC1v2G5HWdgm.05.png', 'KGD/SampDepthCR.png', 'KGD/SampDepthHist.png', \
                          'KGD/SampDepth.png', 'KGD/SampDepth-scored.png', 'KGD/SNPCallRate.png', 'KGD/SNPDepthHist.png', 'KGD/SNPDepth.png', \
                          'KGD/X2star-QQ.png', 'KGD/PlateDepth.png', 'KGD/PlateInb.png', 'KGD/SubplateDepth.png', 'KGD/SubplateInb.png'],
-        #"KGD links" : ['KGD/kgd.stdout', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/HighRelatedness.csv', 'KGD/seqID.csv', 'KGD/HighRelatednessHWdgm.05.csv'],        
+        "GUSbase (plots)" : ['KGD/GUSbase_comet.jpg'],
+        "GUSbase (text file links)" : ['KGD/GUSbase_comet.pdf'],
         "KGD (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
-        #"kmer and blast analysis" : ['blast_analysis/sample_blast_summary.jpg', 'kmer_analysis/kmer_zipfian_comparisons.jpg', 'kmer_analysis/zipfian_distances.jpg', 'kmer_analysis/kmer_entropy.jpg'],
         "Preview common sequence (low depth tags)" : [ 'preview_common_sequence_lowdepthtags.txt']            ,
         "All common sequence (low depth tags)" : [ 'all_common_sequence_lowdepthtags.txt']            ,        
         "Preview common sequence (trimmed fastq)" : [ 'preview_common_sequence_trimmed.txt']            ,

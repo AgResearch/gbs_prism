@@ -57,3 +57,7 @@ if ( geno_method == "default" ) {
 } else {
    stop(paste("Error: geno_method ", geno_method, " is not supported"))
 } 
+
+# save objects needed for GUSbase
+print("saving objects for GUSbase")
+save(alleles, nsnps, file="GUSbase.RData")
