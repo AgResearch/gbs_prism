@@ -111,8 +111,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
-      echo "analysis must be one of all, demultiplex, kgd , filtered_kgd , unblind, historical_unblind, kmer_analysis, allkmer_analysis, blast_analysis , common_sequencs, clean "
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) && ( $ANALYSIS != "warehouse" ) ]]; then
+      echo "analysis must be one of clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse"
       exit 1
    fi
 
@@ -873,6 +873,12 @@ function clientreport() {
    done
 }
 
+function warehouse() {
+   echo "refreshing the GBS tab in genophyle. . . "
+   python /dataset/genophyle_data/active/database/Ndb/bin/snp_import/geno_import.py -H invsqlpv05 -t gbs_tab /dataset/genophyle_data/scratch/import_export/genophyle_gbs_import.txt | tee $OUT_ROOT/warehouse_update.log
+}
+
+
 function clean() {
    echo "to clean up tardis working folders, execute this : 
 
@@ -895,6 +901,8 @@ function main() {
       trimmed_kmer_analysis 
    elif [ $ANALYSIS == "clientreport" ]; then
       clientreport
+   elif [ $ANALYSIS == "warehouse" ]; then
+      warehouse
    else
       get_targets
       if [ $DRY_RUN != "no" ]; then

@@ -328,13 +328,13 @@ $OUTPUT_ROOT/database_prism.log
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots , special) (or just press enter to run all)  
+please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse, special) (or just press enter to run all)  
 (notes:
 
 * entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
 run (unless already done), etc.)
-* entering html or clientreport does not rerun any analyses - it just redoes the html page
-* entering import_results does not rerun any analyses - it just (re)imports the results 
+* entering html, clientreport or warehouse does not rerun any analyses - these just redo the html pages, and update the genophyle gbs tab
+* entering import_results does not rerun any analyses - it just (re)imports the results (GBS yields) into the GBS postgres database
 * running just kgd does not do unblinding - you will need to then run the unblind step
 * but you don't usually need to run unblind stand-alone
 * special, includes e.g. slippery slope
@@ -342,8 +342,8 @@ run (unless already done), etc.)
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "filtered_kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) && ( "$ANALYSIS" != "special" ) ]]; then
-         echo "analysis must be one of demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots,special or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "warehouse" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "filtered_kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) && ( "$ANALYSIS" != "special" ) ]]; then
+         echo "analysis must be one of demultiplex, html, trimmed_kmer_analysis, clientreport, warehouse, import_results, kgd, filtered_kgd, historical_unblind, unblind, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots,special or all"
       else
          break
       fi
@@ -352,7 +352,7 @@ run (unless already done), etc.)
    echo "will use analysis=$ANALYSIS
    "
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
       ####### get and check whether to run locally or on the cluster
       echo "
 
@@ -369,7 +369,7 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    fi
 
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
       ####### get and check the sample sheet and a parameters file that controls the processing 
       ####### sample sheet:
       SAMPLE_SHEET=""
@@ -439,7 +439,7 @@ function get_cohort_opts() {
    fi
 
 
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "historical_unblind" ) ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
 
       # check if already run - if so prompt for reimport
       to_do=""
@@ -458,7 +458,7 @@ function get_cohort_opts() {
              else
                 to_do="$to_do $library_moniker"
                 echo "ok will reprocess $library_moniker "
-                if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
+                if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
                    echo "do you need the keyfile re-imported ? (y/n, default =y)"
                    read_answer_with_default y
                    if [ $answer != "y" ]; then
@@ -505,7 +505,7 @@ function get_cohort_opts() {
 
 
    # optionally clean up  (unless doing summaries etc)
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "historical_unblind" )  ]]; then 
+   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" )  ]]; then 
       for cohort in $GBS_COHORTS; do
          if [ -d $OUTPUT_ROOT/$cohort ]; then
             echo "found existing results for $cohort in $OUTPUT_ROOT/$cohort - do you want to reset this cohort ? (y/n, default = y)"
@@ -585,7 +585,7 @@ function run_qc() {
 
       - once that completes you will also need to rerun this interactive script to generate the html 
       summary page, and again to generate client reports , and again to import the results (if applicable) 
-      (choose html , and then clientreport, and then import_results, when prompted for the analysis)
+      (choose html , and then clientreport, warehouse and import_results, when prompted for the analysis)
 
 
       Logging output is captured in the following files: 
@@ -820,6 +820,43 @@ function generate_clientreport() {
    fi
 }
 
+function update_warehouse() {
+
+   echo "
+
+   Ready to update the genophyle gbs tab, with the following:
+
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
+
+   "
+   echo "OK to continue ? (y/n , default = y)"
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK will not update genophyle gbs tab "
+   else
+      echo "
+      running
+
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
+
+      " >> $OUTPUT_ROOT/run_gbs_qc.log
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN  > $OUTPUT_ROOT/run_warehouse_update.log 2>&1
+      return_code=$?
+      if [ $return_code != 0 ]; then
+         echo "
+
+** looks like there was a problem updating the genophyle GBS tab (non-zero return code ) - check $OUTPUT_ROOT/update_warehouse.log  **
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN )
+
+"
+         exit 1
+      else
+          echo "** warehouse update looks ok **"
+      fi
+   fi
+}
+
+
 
 get_opts "$@"
 get_run_opts
@@ -833,25 +870,30 @@ if [ $ANALYSIS == "unblinded_plots" ]; then
    generate_unblinded_plots
 fi
 
-if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then 
+if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then 
    run_qc
    generate_trimmed_kmer_analysis
    generate_unblinded_plots
 fi
 
-if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) ]]; then
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" ) ]]; then
    generate_html
 fi
 
-if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" )  ]]; then
+if [[ ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" )  && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" )  ]]; then
    return_code=0
    import_results
 fi
 
-if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) ]]; then
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "warehouse" ) ]]; then
    generate_clientreport
 fi
 
-if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
+if [[ ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "clientreport" ) ]]; then
+   update_warehouse
+fi
+
+
+if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "unblinded_plots" ) ]]; then
    generate_special
 fi
