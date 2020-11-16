@@ -17,6 +17,10 @@ conda activate $GBS_PRISM_BIN/conda/GUSbase
 
 Rscript --vanilla ../run_GUSbase.R GUSbase.RData  
 
+conda deactivate
+
+conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/imagemagick
+
 if [ -f Rplots.pdf ]; then
    mv Rplots.pdf GUSbase_comet.pdf
    convert GUSbase_comet.pdf GUSbase_comet.jpg
