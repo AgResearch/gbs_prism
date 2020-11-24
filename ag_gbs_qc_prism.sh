@@ -553,7 +553,7 @@ if [ \$? != 0 ]; then
    exit 1
 fi
 # trim the samples 
-for fastq_sample in $OUT_ROOT/bwa_mapping/$cohort/*.fastq.gz; do
+for fastq_sample in $OUT_ROOT/bwa_mapping/$cohort/*.s.00005.fastq.gz; do
    outbase=\`basename \$fastq_sample .fastq.gz \`
    tardis -d $OUT_ROOT/bwa_mapping/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.fastq 2\>$OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.report
    if [ \$? != 0 ]; then
@@ -571,6 +571,12 @@ if [ ! -z \"\$contents\" ]; then
       echo \"warning, bwa mapping in $OUT_ROOT/bwa_mapping/$cohort returned an error code\"
       exit 1
    fi
+   # rm the short-cuts that the sampler created in case we rerun this (else it will create additional redundant ones) 
+   for link in $OUT_ROOT/bwa_mapping/$cohort/*.fastq.gz; do
+      if [ -h \$link ]; then
+         rm -f \$link
+      fi
+   done
 fi
      " >  $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.bwa_mapping.sh
