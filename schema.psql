@@ -5,6 +5,8 @@
 insert into ontologyob(ontologyName,   ontologyDescription ,xreflsid)
 values('gbs_qc_cohort_names','This ontology provides standard qc-cohort names','ontology.gbs_qc_cohort_names');
 insert into ontologyTermFact(ontologyOb,xreflsid,termName) select obid,'excluded','excluded' from ontologyOb where ontologyName = 'gbs_qc_cohort_names';
+insert into ontologyTermFact(ontologyOb,xreflsid,termName) select obid,'good','good' from ontologyOb where ontologyName = 'gbs_qc_cohort_names';
+insert into ontologyTermFact(ontologyOb,xreflsid,termName) select obid,'bad','bad' from ontologyOb where ontologyName = 'gbs_qc_cohort_names';
 
 CREATE OR REPLACE FUNCTION check_gbs_qc_ontology() RETURNS trigger AS '
     DECLARE
