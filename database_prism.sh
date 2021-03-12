@@ -254,6 +254,7 @@ from
    gbskeyfilefact as g on g.biosampleob = l.biosampleob
 where 
    h.sampleid = :sample_name and
+   h.fcid = g.flowcell and 
    h.lane = g.lane and 
    to_number(replace(:sample_name, 'SQ',''),'99999') =  g.libraryprepid ;
 " >> $generator_script 
