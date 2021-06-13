@@ -46,6 +46,14 @@ def apply_discards(filename, options):
             with open(mergename, "w") as mergeout:
                 record_count = 0
                 for record in mergefile:         # for tab file will be just a string, for fasta file will be (name, seq)
+  
+                    # if this is the first record it is a heading, so output and 
+                    # continue
+                    if record_count == 0 and filetype == "tab":
+                        print(record,end="", file=mergeout)
+                        record_count += 1
+                        continue
+     
                     if filetype == "tab":
                         tuples = re.split("\t", record)
                     else:
@@ -87,6 +95,14 @@ def apply_includes(filename, options):
             with open(mergename, "w") as mergeout:
                 record_count = 0
                 for record in mergefile:         # for tab file will be just a string, for fasta file will be (name, seq)
+
+                    # if this is the first record it is a heading, so output and
+                    # continue
+                    if record_count == 0 and filetype == "tab":
+                        print(record,end="", file=mergeout)
+                        record_count += 1
+                        continue
+
                     if filetype == "tab":
                         tuples = re.split("\t", record)
                     else:
