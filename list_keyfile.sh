@@ -183,9 +183,9 @@ function build_extract_script() {
       if [ $CLIENT_VERSION == "5" ]; then 
 code="
 select 
-   Flowcell,
-   Lane,
-   Barcode,
+   Flowcell as \"Flowcell\",
+   Lane as \"Lane\",
+   Barcode as \"Barcode\",
    $sample_phrase2 as sample,
    PlateName,
    PlateRow as Row,
@@ -199,7 +199,7 @@ select
    Bifo,
    Control,
    Fastq_link,
-   Sample||':'||LibraryPrepID as FullSampleName $extra_fields_phrase
+   Sample||':'||LibraryPrepID as \"FullSampleName\" $extra_fields_phrase
 from 
    biosampleob s join gbsKeyFileFact g on 
    g.biosampleob = s.obid
@@ -242,9 +242,9 @@ order by
       if [ $CLIENT_VERSION == "5" ]; then
 code="
 select
-   Flowcell,
-   Lane,
-   Barcode,
+   Flowcell as \"Flowcell\",
+   Lane as \"Lane\",
+   Barcode as \"Barcode\",
    PlateRow||PlateColumn as sample,
    PlateName,
    PlateRow as Row,
@@ -258,7 +258,7 @@ select
    Bifo,
    Control,
    Fastq_link,
-   Sample||':'||LibraryPrepID as FullSampleName $extra_fields_phrase
+   Sample||':'||LibraryPrepID as \"FullSampleName\" $extra_fields_phrase
 from
    biosampleob s join gbsKeyFileFact g on
    g.biosampleob = s.obid
