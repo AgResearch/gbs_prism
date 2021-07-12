@@ -35,8 +35,9 @@ MACHINE=hiseq
 SAMPLE=""
 REUSE_TARGETS="no"
 RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
+FORCE=no
 
-while getopts ":nikht:r:m:s:e:d:" opt; do
+while getopts ":nikht:r:m:s:e:d:f" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -49,6 +50,9 @@ while getopts ":nikht:r:m:s:e:d:" opt; do
       ;;
     t)
       TASK=$OPTARG
+      ;;
+    f)
+      FORCE=yes
       ;;
     m)
       MACHINE=$OPTARG
@@ -160,9 +164,9 @@ function add_run() {
    echo "** adding Run **"
    set -x
    if [ $DRY_RUN == "no" ]; then
-      $GBS_PRISM_BIN/addRun.sh -d $RUN_BASE_PATH -r $RUN -m $MACHINE
+      $GBS_PRISM_BIN/addRun.sh -f $FORCE -d $RUN_BASE_PATH -r $RUN -m $MACHINE
    else
-      $GBS_PRISM_BIN/addRun.sh -d $RUN_BASE_PATH -n -r $RUN -m $MACHINE
+      $GBS_PRISM_BIN/addRun.sh -f $FORCE -d $RUN_BASE_PATH -n -r $RUN -m $MACHINE
    fi
 }
 

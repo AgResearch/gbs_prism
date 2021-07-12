@@ -21,8 +21,9 @@ DRY_RUN=no
 RUN_NAME=""
 GBS_SAMPLE_LIB=""
 MACHINE=hiseq
+FORCE=no
 
-while getopts ":nhr:m:d:s:" opt; do
+while getopts ":nhr:m:d:s:f" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -35,6 +36,9 @@ while getopts ":nhr:m:d:s:" opt; do
       ;;
     d)
       RUN_PATH=$OPTARG
+      ;;
+    f)
+      FORCE=yes
       ;;
     m)
       MACHINE=$OPTARG
@@ -88,12 +92,14 @@ fi
 
 in_db=`$GBS_PRISM_BIN/is_run_in_database.sh $RUN_NAME`
 if [ $in_db != "0" ]; then
-   echo "$RUN_NAME has already been added - quitting"
-   exit 1 
+   if [ "$FORCE" != "yes" ]; then 
+      echo "$RUN_NAME has already been added - quitting (use -f to override, e.g. adding samples)"
+      exit 1 
+   fi
 fi
 
-# machine must be miseq or hiseq
-if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) ]]; then
+# machine must be miseq , hiseq or novaseq
+if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) ]]; then
     echo "machine must be miseq or hiseq"
     exit 1
 fi
@@ -218,7 +224,7 @@ if [ $MACHINE == "hiseq" ]; then
     m.biosamplelist = l.obid and
     l.listname = :run_name ;
 " > /tmp/${RUN_NAME}.psql
-elif [ $MACHINE == "miseq" ]; then
+elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) ]]; then
    # we don't bother with the sample sheet - just add any libraries from command line option
    echo "
    insert into bioSampleList (xreflsid, listName, listComment)
