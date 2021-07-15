@@ -11,7 +11,7 @@
 */
 \t
 select distinct 
-   E'*_(S[0123456789]+|NoIndex)_L00' || g.lane || E'_R1_[0123456789]+\.fastq\.gz$'
+   upper(:sample) || E'_(S[0123456789]+|NoIndex)_L00' || g.lane || E'_R1_[0123456789]+\.fastq\.gz$'
 from 
    (((biosamplelist as l join biosamplelistmembershiplink m on 
    m.biosamplelist = l.obid)  join biosampleob as b on 
