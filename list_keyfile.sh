@@ -234,8 +234,33 @@ from
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $taxid_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
+union
+select
+   Flowcell,
+   Lane + 1,
+   Barcode,
+   $sample_phrase2 as sample,
+   PlateName,
+   PlateRow as Row,
+   PlateColumn as Column,
+   LibraryPrepID,
+   Counter,
+   Comment,
+   Enzyme,
+   Species,
+   NumberOfBarcodes,
+   Bifo,
+   Control,
+   Fastq_link2 $extra_fields_phrase
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $taxid_phrase $qc_cohort_phrase $exclusions_phrase
+   and s.sampletype = 'Illumina GBS Library'
+   and Fastq_link2 is not null
 order by 
-   factid;
+   3,1,2;
 "
       fi 
    elif [ $TEMPLATE == "qc1"  ]; then
@@ -323,6 +348,17 @@ from
 where 
    $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $taxid_phrase $qc_cohort_phrase $exclusions_phrase
    and s.sampletype = 'Illumina GBS Library'
+union
+select distinct
+   lane+1,
+   fastq_link2
+from
+   biosampleob s join gbsKeyFileFact g on
+   g.biosampleob = s.obid
+where
+   $sample_phrase1 $enzyme_phrase $gbs_cohort_phrase $species_moniker_phrase $taxid_phrase $qc_cohort_phrase $exclusions_phrase
+   and s.sampletype = 'Illumina GBS Library' and 
+   fastq_link2 is not null
 order by 
    1;
 "
