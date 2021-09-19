@@ -22,8 +22,9 @@ RUN_NAME=""
 GBS_SAMPLE_LIB=""
 MACHINE=hiseq
 FORCE=no
+FLOWCELL_MONIKER=""
 
-while getopts ":nhr:m:d:s:f" opt; do
+while getopts ":nhr:m:d:s:fF:l:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -33,6 +34,12 @@ while getopts ":nhr:m:d:s:f" opt; do
       ;;
     r)
       RUN_NAME=$OPTARG
+      ;;
+    F)
+      FLOWCELL_MONIKER=$OPTARG
+      ;;
+    l)
+      LANE=$OPTARG
       ;;
     d)
       RUN_PATH=$OPTARG
@@ -61,7 +68,7 @@ while getopts ":nhr:m:d:s:f" opt; do
   esac
 done
 
-KEY_DIR=/dataset/$MACHINE/active/key-files
+KEY_DIR=/dataset/hiseq/active/key-files
 }
 
 function check_opts() {
@@ -99,7 +106,7 @@ if [ $in_db != "0" ]; then
 fi
 
 # machine must be miseq , hiseq or novaseq
-if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) ]]; then
+if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) && ( $MACHINE != "iseq" ) ]]; then
     echo "machine must be miseq or hiseq"
     exit 1
 fi
@@ -224,7 +231,7 @@ if [ $MACHINE == "hiseq" ]; then
     m.biosamplelist = l.obid and
     l.listname = :run_name ;
 " > /tmp/${RUN_NAME}.psql
-elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) ]]; then
+elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) || ( $MACHINE == "iseq" ) ]]; then
    # we don't bother with the sample sheet - just add any libraries from command line option
    echo "
    insert into bioSampleList (xreflsid, listName, listComment)
@@ -241,7 +248,32 @@ elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) ]]; then
 
    # if a sample lib provided on command line, add setup of that as well
    if [ ! -z "$GBS_SAMPLE_LIB" ]; then
+
+      if [ -z "$FLOWCELL_MONIKER" ]; then
+         echo "please supply a flowcell moniker (-F option)"
+         exit 1
+      fi
+      if [ -z "$LANE" ]; then
+         echo "please supply a lane arg (-l option)"
+         exit 1
+      fi
+
       echo "
+  insert into hiseqSampleSheetFact (
+   biosamplelist ,
+   fcid ,
+   Lane ,
+   SampleID ,
+   downstream_processing)
+  select
+   obid,
+   :fcid ,
+   :lane ,
+   :gbs_sample_lib,
+   'GBS'
+  from
+   bioSampleList where listName = :run_name ;
+
   insert into biosampleob(xreflsid, samplename, sampletype)
    select :gbs_sample_lib, :gbs_sample_lib, 'Illumina GBS Library'
    except
@@ -272,10 +304,10 @@ elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) ]]; then
 fi # miseq 
 
 if [ $DRY_RUN == "no" ]; then
-   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v fcid=\'${FLOWCELL_MONIKER}\' -v lane=$LANE -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql
 else
    echo " will run 
-   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql"
+   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -v fcid=\'${FLOWCELL_MONIKER}\' -v lane=$LANE -v gbs_sample_lib=\'${GBS_SAMPLE_LIB}\' -f /tmp/${RUN_NAME}.psql"
 fi
 
 

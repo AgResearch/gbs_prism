@@ -290,9 +290,9 @@ function import_results() {
    set +x
 
    # import yield stats
-   $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+   $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -d $RUN_BASE_PATH -r $RUN
 
-   $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
+   $GBS_PRISM_BIN/import_kgd_stats.sh -d $RUN_BASE_PATH -r $RUN
 }
 
 

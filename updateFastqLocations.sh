@@ -12,7 +12,7 @@ Example :
 
 DRY_RUN=no
 INTERACTIVE=no
-MACHINE=hiseq
+MACHINE=novaseq
 
 while getopts ":nhr:s:k:f:l:m:" opt; do
   case $opt in
@@ -112,8 +112,8 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) ]]; then
-      echo "machine must be miseq or hiseq"
+   if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) && ( $MACHINE != "iseq" ) ]]; then
+      echo "machine must be miseq , hiseq, novaseq or iseq"
       exit 1
    fi
 
@@ -129,13 +129,18 @@ function echo_opts() {
 
 function get_gbs_list() {
    echo "** building $PROCESSED_ROOT/$SAMPLE.gbslist **"
-   filename_pattern=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_fastq_filename_pattern.psql -q`
+
+   if [ $MACHINE == "hiseq" ]; then 
+      filename_pattern=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_fastq_filename_pattern.psql -q`
+   else
+      filename_pattern=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN_NAME\' -v sample=\'$SAMPLE\' -v processed_root=\'$PROCESSED_ROOT\' -v lane=$LANE -f $GBS_PRISM_BIN/get_nolane_fastq_filename_pattern.psql -q`
+   fi
    set -x
-   find $PROCESSED_ROOT/*/bcl2fastq -name "*.fastq.gz" -type f -print  | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
+   find $PROCESSED_ROOT/*/bclconvert -name "*.fastq.gz" -type f -print  | egrep -vi "undetermined" | egrep  $filename_pattern > $PROCESSED_ROOT/$SAMPLE.gbslist
    set +x
    if [ ! -s $PROCESSED_ROOT/$SAMPLE.gbslist  ]; then
       echo "
-error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT using $filename_pattern 
+error - could not find any sequence files for $SAMPLE under $PROCESSED_ROOT filtering with filename pattern \"$filename_pattern\" 
 -quitting as will not be able to figure out what to do 
 "
       rm $PROCESSED_ROOT/$SAMPLE.gbslist
@@ -162,12 +167,18 @@ done
 echo "setting up link farm links"
 for listfile in $PROCESSED_ROOT/*$SAMPLE*.gbslist; do
    echo "processing listfile $listfile"
-   for fastqfile in `cat $listfile | grep L00${LANE}`; do
+   fastq_files=`cat $listfile`
+   if [ $MACHINE == "hiseq" ]; then
+      fastq_files=`cat $listfile | grep L00${LANE}`
+   fi
+   for fastqfile in $fastq_files ; do
       echo "processing fastqfile $fastqfile"
       #new_path=`cat $listfile | sed 's/_in_progress//g' -`
       new_path=`echo $fastqfile | sed 's/_in_progress//g' -`
 
       link_path=$LINK_FARM_ROOT/${SAMPLE}_${FLOWCELL_NAME}_s_${LANE}_fastq.txt.gz
+
+      echo "link=$link_path , target=$fastqfile"
   
       if [ -h $link_path ]; then
          ls -l $link_path

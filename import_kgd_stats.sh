@@ -10,14 +10,18 @@ help_text="\n
 
 DRY_RUN=no
 RUN_NAME=""
+BUILD_ROOT=/dataset/gseq_processing/scratch/gbs 
 
-while getopts ":nhr:" opt; do
+while getopts ":nhr:d:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
       ;;
     r)
       RUN_NAME=$OPTARG
+      ;;
+    d)
+      BUILD_ROOT=$OPTARG
       ;;
     h)
       echo -e $help_text
@@ -34,7 +38,6 @@ while getopts ":nhr:" opt; do
   esac
 done
 
-BUILD_ROOT=/dataset/gseq_processing/scratch/gbs 
 RUN_PATH=$BUILD_ROOT/${RUN_NAME}
 
 }

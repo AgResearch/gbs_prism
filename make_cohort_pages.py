@@ -28,7 +28,7 @@ Overview of %(run_name)s
 <li>  <a href="#overview_plots"> Overview Summaries (before demultiplexing) </a> 
     <ul>
         <li> <a href="#samplesheet"> Sample Sheet </a>
-        <li> <a href="#bcl2fastq"> bcl2fastq reports (clustering etc)</a>
+        <li> <a href="#bclconvert"> bclconvert reports (clustering etc)</a>
         <li> <a href="#tags_reads"> Tags, Reads Mean,Standard Deviation,CV  </a>
         <li> <a href="#barcode_yield"> Barcode yields </a>        
         <li> <a href="#bwa"> BWA Alignment Rates </a>
@@ -54,14 +54,14 @@ Overview of %(run_name)s
 """
 overview_section="""
 <p/>
-<table width=90%% align=center>
+<table width=90%% align=left>
 <tr id=samplesheet>
 <td> Sample Sheet </td>
 <td> <a href="SampleSheet.csv" target=SampleSheet.csv> Sample Sheet </a>  </td>
 </tr>
-<tr id=bcl2fastq>
-<td> bcl2fastq reports  </td>
-<td> <a href=bcl2fastq/index.html> bcl2fastq reports </a>  </td>
+<tr id=bclconvert>
+<td> bclconvert reports  </td>
+<td> <a href=bclconvert/index.html> bclconvert reports </a>  </td>
 </tr>
 <tr id=slippery_slope>
 <td> Cumulative self-relatedness </td>
@@ -116,7 +116,7 @@ overview_section="""
 <a href=trimmed_kmer_analysis/heatmap_sample_clusters.k6.txt> Clusters  </a>
 </td>
 </tr>
-<table>
+</table>
 <p/>
 """
 
@@ -126,10 +126,8 @@ footer1="""
 </html>
 """
 
-BASEDIR="/dataset/gseq_processing/scratch/gbs"
-
-
 def get_cohorts(options):
+    BASEDIR=options["basedir"]
     # cohorts are idenitified as subfolders of the run folder that
     # * are not tardis working folders (i.e. have names starting with tardis
     # * are of like SQ0775.all.TILAPIA.PstI-MspI
@@ -151,14 +149,15 @@ def get_cohorts(options):
     
     
 def generate_run_plot(options):
+    BASEDIR=options["basedir"]   # e.g. /bifo/scratch/hiseq/postprocessing/gbs
     stats = {
         "found file count" : 0,
         "no file count" : 0,
         "no sample count" : 0
     }
 
-    file_group_iter = ( ("Demultiplex (plots)", "image"), ("Demultiplex (text file links)", "link"),("Overall SNP yields", "in-line"), \
-                       ("KGD (plots)", "image"), ("KGD (text file links)", "link"), \
+    file_group_iter = ( ("Demultiplex (text file links)", "link"),("Deduplication","in-line"),("Overall SNP yields", "in-line"), \
+                       ("KGD stdout", "in-line"),("KGD (plots)", "image"), ("KGD details (text file links)", "link"), \
                        ("GUSbase (plots)", "image"), ("GUSbase (text file links)", "link"), \
                        ("Preview common sequence (trimmed fastq)", "in-line"), ("All common sequence (trimmed fastq)", "link"), \
                        ("Preview common sequence (low depth tags)", "in-line"), ("All common sequence (low depth tags)", "link"), \
@@ -172,9 +171,10 @@ def generate_run_plot(options):
         #        'KGD/CallRate.png', 'KGD/GcompareHWdgm.05.png', 'KGD/GHWdgm.05diagdepth.png', 'KGD/LRT-hist.png', 'KGD/PC1v2G5HWdgm.05.png', 'KGD/SampDepth-scored.png'
         #        'KGD/Co-call-HWdgm.05.png', 'KGD/Gcompare.png', 'KGD/GHWdgm.05-diag.png', 'KGD/LRT-QQ.png', 'KGD/SampDepthCR.png', 'KGD/SNPCallRate.png'
         #        'KGD/Co-call-.png', 'KGD/Gdiagdepth.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/MAFHWdgm.05.png', 'KGD/SampDepthHist.png', 'KGD/SNPDepthHist.png'],
-        "Demultiplex (plots)" : [],
-        "Demultiplex (text file links)" :  ["TagCount.csv"],
+        "Demultiplex (text file links)" :  ["TagCount.csv","FastqToTagCount.stdout"],
+        "Deduplication" :  ["dedupe_summary.txt"],        
         "Overall SNP yields" :  ["overall_snp_yield.txt"],
+        "KGD stdout" :  ["KGD.stdout"],
         "KGD (plots)" : ['KGD/AlleleFreq.png', 'KGD/CallRate.png', 'KGD/Co-call-HWdgm.05.png', 'KGD/Co-call-.png', 'KGD/finplot.png', \
                          'KGD/GcompareHWdgm.05.png', 'KGD/Gcompare.png', 'KGD/Gdiagdepth.png', 'KGD/G-diag.png', 'KGD/GHWdgm.05diagdepth.png', \
                          'KGD/GHWdgm.05-diag.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/HWdisMAFsig.png', 'KGD/LRT-hist.png', 'KGD/LRT-QQ.png', \
@@ -183,7 +183,7 @@ def generate_run_plot(options):
                          'KGD/X2star-QQ.png', 'KGD/PlateDepth.png', 'KGD/PlateInb.png', 'KGD/SubplateDepth.png', 'KGD/SubplateInb.png'],
         "GUSbase (plots)" : ['KGD/GUSbase_comet.jpg'],
         "GUSbase (text file links)" : ['KGD/GUSbase_comet.pdf'],
-        "KGD (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
+        "KGD details (text file links)" : ['KGD/GHW05.csv', 'KGD/GHW05-Inbreeding.csv', 'KGD/GHW05-long.csv', 'KGD/GHW05-pca_metadata.tsv', 'KGD/GHW05-pca_vectors.tsv', 'KGD/GHW05-PC.csv', 'KGD/GHW05.RData', 'KGD/GHW05.vcf', 'KGD/HeatmapOrderHWdgm.05.csv', 'KGD/HeatmapOrderHWdgm.05.csv.blinded', 'KGD/PCG5HWdgm.05.pdf', 'KGD/SampleStats.csv', 'KGD/SampleStats.csv.blinded', 'KGD/seqID.csv', 'KGD/seqID.csv.blinded'],        
         "Preview common sequence (low depth tags)" : [ 'preview_common_sequence_lowdepthtags.txt']            ,
         "All common sequence (low depth tags)" : [ 'all_common_sequence_lowdepthtags.txt']            ,        
         "Preview common sequence (trimmed fastq)" : [ 'preview_common_sequence_trimmed.txt']            ,
@@ -207,13 +207,17 @@ def generate_run_plot(options):
         cohorts = get_cohorts(options)
 
         print >> out_stream, "<a id=lane_plots />\n"        
-        
         print >> out_stream, "<a id=sample_plots />\n<a id=cohort_plots />\n"
         for (file_group, file_type)  in file_group_iter:
             # output overall header for file group
-            print >> out_stream, "<h2> %s </h2>\n"%file_group
+            print >> out_stream, """
+<table width=90%% align=left>
+<tr>
+<td><h2> %s </h2></td>
+</tr>
+</table>"""%file_group
             # output cohort column headings
-            print >> out_stream, "<table width=90%% align=center>\n", \
+            print >> out_stream, "<table width=90%% align=left>\n", \
                                  "<tr>\n", \
                                  "<td> <h4> Name </h4> </td>\n",\
                                  "\n".join(["<td><h4> %s </h4></td>"%cohort for cohort in cohorts]), \
@@ -223,6 +227,7 @@ def generate_run_plot(options):
                 print >> out_stream , "<tr><td>%s</td>\n"%file_name
                 for cohort in cohorts:
                     file_path = os.path.join(BASEDIR, options["run_name"], cohort, file_name)
+                    alt_file_path=os.path.join(BASEDIR, options["run_name"], "html", cohort, file_name)
 
                     if file_type == "image":
                         image_relpath=os.path.join(cohort, file_name)
@@ -238,7 +243,8 @@ def generate_run_plot(options):
                             file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
                             link_relpath=os.path.join(cohort, "common_sequence", file_name)
 
-                        if os.path.exists(file_path):
+                        if os.path.exists(file_path) or os.path.exists(alt_file_path):
+                            print file_path
                             print >> out_stream, "<td width=300> <a href=%s target=%s> %s </a></td>\n"%(link_relpath, file_name, link_relpath)
                         else:
                             print >> out_stream, "<td width=300> unavailable </td>\n"
@@ -249,8 +255,8 @@ def generate_run_plot(options):
                             file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
                         elif file_group in [ "Overall SNP yields" ]:
                             file_path=os.path.join(BASEDIR, options["run_name"], cohort, file_name)
-                            
-
+                        elif file_group in [ "KGD stdout","Deduplication" ]:
+                            file_path=os.path.join(BASEDIR, options["run_name"], "html", cohort, file_name)                            
                         if os.path.exists(file_path):
                             with open(file_path,"r") as infile:
                                 text="\n".join((record.strip() for record in infile))
@@ -290,6 +296,7 @@ run     run_number      lane    samplename      species file_name
     parser.add_argument('-H', '--image_height' , dest='image_height', default=300, type=int, help="image height")
     parser.add_argument('-W', '--image_width' , dest='image_width', default=300, type=int, help="image width")
     parser.add_argument('-o', '--output_filename' , dest='output_filename', default="peacock.html", type=str, help="name of output file")
+    parser.add_argument('-b', '--basedir' , dest='basedir', default="/dataset/gseq_processing/scratch/gbs", type=str, help="base dir of original output")
 
     
     args = vars(parser.parse_args())

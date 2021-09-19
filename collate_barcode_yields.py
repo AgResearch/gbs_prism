@@ -28,12 +28,10 @@ for filename in uneak_stdout_files:
       for record in f:
          hit=re.search("^Total number of reads in lane=(\d+)$", record.strip())
          if hit is not None:
-            yield_stats[1]=float(hit.groups()[0])
-            continue
+            yield_stats[1]+=float(hit.groups()[0])
          hit=re.search("^Total number of good barcoded reads=(\d+)$", record.strip())
          if hit is not None:
-            yield_stats[0]=float(hit.groups()[0])
-            break
+            yield_stats[0]+=float(hit.groups()[0])
 
    stats_dict[sample_ref] = yield_stats
 

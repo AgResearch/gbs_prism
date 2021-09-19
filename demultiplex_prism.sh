@@ -181,7 +181,9 @@ function configure_env() {
    cp demultiplex_prism.sh $OUT_DIR
    cp demultiplex_prism.mk $OUT_DIR
    cp $SAMPLE_INFO $OUT_DIR
-   cp $ENZYME_INFO $OUT_DIR
+   if [ -f $ENZYME_INFO ]; then
+      cp $ENZYME_INFO $OUT_DIR
+   fi
    cp $GBS_PRISM_BIN/etc/larger_mem_slurm_array_job $OUT_DIR
 
   
@@ -196,7 +198,7 @@ jobtemplatefile = \"$OUT_DIR/larger_mem_slurm_array_job\"
       cp $OUT_DIR/tardis.toml $OUT_DIR/tardis.toml.orig
    fi
    cp  $OUT_DIR/tardis_demultiplex.toml $OUT_DIR/tardis.toml
-   cp $GBS_BIN/etc/larger_mem_slurm_array_job $OUT_DIR
+   cp $GBS_PRISM_BIN/etc/larger_mem_slurm_array_job $OUT_DIR
    echo "
 conda activate tassel3
 " > $OUT_DIR/tassel3_env.src
@@ -220,7 +222,7 @@ function get_uneak_plugin_parameters() {
       uneak_plugin_parameters=""
    else
       plugin_name=$1
-      uneak_plugin_parameters=`grep $plugin_name $PARAMETERS_FILE | sed 's/$plugin_name//g' -`
+      uneak_plugin_parameters=`grep $plugin_name $PARAMETERS_FILE | sed "s/$plugin_name//g" -`
    fi
 }
 
@@ -280,6 +282,16 @@ function get_targets() {
          get_uneak_plugin_parameters TBTToMapInfo ; p_TBTToMapInfo=$uneak_plugin_parameters
          get_uneak_plugin_parameters MapInfoToHapMap ; p_MapInfoToHapMap=$uneak_plugin_parameters
 
+         # 
+         # note that the tassel3 modules do not generally exit with a non-zero error code 
+         # if something goes wrong , so the code below that looks at the exit code does not work 
+         # - even if an early module fails , all modules are attempted , and the 
+         # error status is only picked up downstream when something tries to use the 
+         # demultiplex result.  This needs to be improved - e.g. sniff the stdout / stderr files 
+         # from these modules to figure out if the job completed OK - then exit with the 
+         # appropiate code
+         # 
+
          echo "#!/bin/bash
 cd $OUT_DIR  
 if [ ! -f tagCounts.done ]; then 
@@ -332,7 +344,7 @@ fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - quitting\"; exit 2
 else
-   date > tagCounts.done
+   date > mergedTagCounts.done 
 fi
 
 if [ ! -f tagPair.done ]; then 
@@ -373,6 +385,10 @@ if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
 else
    date > hapMap.done
+fi
+
+if [ ! -f hapMap.done ]; then
+   echo \"demultplex_prism.sh: didn't find hapMap.done - something went wrong - quitting\"; exit 7
 fi
         " > $script 
          chmod +x $script

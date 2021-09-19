@@ -20,8 +20,9 @@ DRY_RUN=no
 INTERACTIVE=no
 CREATE_FASTQ_COLUMN="no"
 KEY_DIR=/dataset/hiseq/active/key-files
+MACHINE=novaseq
 
-while getopts ":nhs:k:D:" opt; do
+while getopts ":nhs:k:D:m:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
@@ -34,6 +35,9 @@ while getopts ":nhs:k:D:" opt; do
       ;;
     D)
       KEY_DIR=$OPTARG
+      ;;
+    m)
+      MACHINE=$OPTARG
       ;;
     h)
       echo -e $help_text
@@ -222,6 +226,7 @@ insert into gbsKeyFileFact (
    windowsize,
    gbs_cohort,
    fastq_link,
+   sequencing_platform,
    voptypeid 
    )
 select
@@ -244,6 +249,7 @@ select
    windowsize,
    gbs_cohort,
    fastq_link,
+   '${MACHINE}',
    93
 from
    biosampleob as s join keyfile_temp as t on
@@ -339,6 +345,7 @@ insert into gbsKeyFileFact (
    windowsize,
    gbs_cohort,
    fastq_link,
+   sequencing_platform,
    voptypeid
    )
 select
@@ -361,6 +368,7 @@ select
    windowsize,
    gbs_cohort,
    fastq_link,
+   '${MACHINE}',
    93
 from
    biosampleob as s join keyfile_temp as t on

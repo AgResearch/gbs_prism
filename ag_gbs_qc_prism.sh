@@ -17,18 +17,20 @@ function get_opts() {
    ENGINE=KGD_tassel3
    ANALYSIS=all
    NUM_THREADS=16
+   PLATFORM=novaseq
+   CUSTOM_PARAMETERS_FILE=""
 
    help_text="
 usage :\n 
 ./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|filtered_kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
-./ag_gbs_qc_prism.sh -n -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
-./ag_gbs_qc_prism.sh -n -f -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
-./ag_gbs_qc_prism.sh -n -f -C local -O /dataset/hiseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI \n
+./ag_gbs_qc_prism.sh -n -O /dataset/novaseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
+./ag_gbs_qc_prism.sh -n -f -O /dataset/novaseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
+./ag_gbs_qc_prism.sh -n -f -C local -O /dataset/novaseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f  -a kmer_analysis -O /dataset/gseq_processing/scratch/gbs/180824_D00390_0394_BCCPYFANXX -r 180824_D00390_0394_BCCPYFANXX SQ0784.all.DEER.PstI \n
 ./ag_gbs_qc_prism.sh -a html -O /dataset/gseq_processing/scratch/gbs/180925_D00390_0404_BCCVH0ANXX\n
 "
-   while getopts ":nhfO:C:r:a:j:" opt; do
+   while getopts ":nhfO:C:r:a:j:m:p:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -51,6 +53,12 @@ example:\n
          ;;
        j)
          NUM_THREADS=$OPTARG
+         ;;
+       m)
+         PLATFORM=$OPTARG
+         ;;
+       p)
+         CUSTOM_PARAMETERS_FILE=$OPTARG
          ;;
        C)
          HPC_TYPE=$OPTARG
@@ -106,6 +114,11 @@ function check_opts() {
       exit 1
    fi
 
+   if [[ $PLATFORM != "novaseq" && $PLATFORM != "iseq" && $PLATFORM != "hiseq" && $PLATFORM != "miseq" ]]; then
+      echo "platform (-m option) must be one of novaseq, iseq, hiseq, miseq"
+      exit 1
+   fi
+
    if [[ ( $ENGINE != "KGD_tassel3" ) ]] ; then
       echo "gbs engines supported : KGD_tassel3 (not $ENGINE ) "
       exit 1
@@ -114,6 +127,13 @@ function check_opts() {
    if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) && ( $ANALYSIS != "warehouse" ) ]]; then
       echo "analysis must be one of clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse"
       exit 1
+   fi
+
+   if [ ! -z $CUSTOM_PARAMETERS_FILE ]; then
+      if [ ! -f $CUSTOM_PARAMETERS_FILE ]; then
+         echo "if specify a custom parameters file , file must exist "
+         exit 1
+      fi 
    fi
 
 }
@@ -238,7 +258,7 @@ function get_targets() {
       fi
 
       $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
-      adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
+      adapter_phrase="-a AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
       bwa_alignment_parameters="-B 10"
 
       for analysis_type in all bwa_mapping demultiplex kgd filtered_kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
@@ -253,6 +273,10 @@ function get_targets() {
       done
 
       ############### demultiplex script (tassel demultiplex)
+      custom_parameters_phrase=""
+      if [ ! -z "$CUSTOM_PARAMETERS_FILE" ]; then
+         custom_parameters_phrase="-p $CUSTOM_PARAMETERS_FILE"
+      fi
       echo "#!/bin/bash
 export GBS_PRISM_BIN=$GBS_PRISM_BIN
 export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
@@ -260,7 +284,7 @@ export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
 cd $OUT_ROOT
 mkdir -p $cohort
 # run demultiplexing
-./demultiplex_prism.sh -C $HPC_TYPE -x tassel3_qc -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
+./demultiplex_prism.sh -C $HPC_TYPE -x tassel3_qc $custom_parameters_phrase -l $OUT_ROOT/${cohort_moniker}.key  -e $enzyme -O $OUT_ROOT/$cohort \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
 if [ \$? != 0 ]; then
    echo \"warning demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code\"
    exit 1
@@ -325,10 +349,9 @@ python $GBS_PRISM_BIN/make_clientcohort_pages.py -U hapMap -K KGD -t \"KGD\" -o 
 export GBS_PRISM_BIN=$GBS_PRISM_BIN
 export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
 
-adapter_to_cut=AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT
 mkdir -p $OUT_ROOT/$cohort/filtered_hapMap
 
-tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta --discard-untrimmed -a $adapter_to_cut $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt  1\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.discarded.txt  2\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.report.txt
+tardis --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta --discard-untrimmed $adapter_phrase $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt  1\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.discarded.txt  2\>$OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.report.txt
 
 tardis  --hpctype $HPC_TYPE -d $OUT_ROOT/$cohort python $GBS_PRISM_BIN/merge_filtered_hapmap.py  -D $OUT_ROOT/$cohort/filtered_hapMap/HapMap.fas.discarded.txt -O $OUT_ROOT/$cohort/filtered_hapMap $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt.blinded $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt.blinded
 
@@ -412,7 +435,7 @@ $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s 
 for fasta_sample in $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta ; do
    outbase=\`basename \$fasta_sample .fasta\`
    outdir=\`dirname \$fasta_sample\`
-   tardis -d $OUT_ROOT/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta -m 1 -a $adapter_to_cut \$fasta_sample 1\>\$outdir/\${outbase}.trimmed.fasta 2\>\$outdir/\${outbase}.trimmed.fasta.report
+   tardis -d $OUT_ROOT/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta -m 1 $adapter_phrase \$fasta_sample 1\>\$outdir/\${outbase}.trimmed.fasta 2\>\$outdir/\${outbase}.trimmed.fasta.report
 done
 
 if [ \$? != 0 ]; then
@@ -555,7 +578,7 @@ fi
 # trim the samples 
 for fastq_sample in $OUT_ROOT/bwa_mapping/$cohort/*.s.00005.fastq.gz; do
    outbase=\`basename \$fastq_sample .fastq.gz \`
-   tardis -d $OUT_ROOT/bwa_mapping/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq -a $adapter_to_cut \$fastq_sample \> $OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.fastq 2\>$OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.report
+   tardis -d $OUT_ROOT/bwa_mapping/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fastq $adapter_phrase \$fastq_sample \> $OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.fastq 2\>$OUT_ROOT/bwa_mapping/$cohort/\$outbase.trimmed.report
    if [ \$? != 0 ]; then
       echo \"warning, cutadapt of \$fastq_sample returned an error code\"
       exit 1
@@ -734,10 +757,16 @@ function trimmed_kmer_analysis() {
 
 function html() {
    mkdir -p $OUT_ROOT/html
+   OUT_BASE=`dirname $OUT_ROOT`
 
    # make shortcuts to output files that wil be linked to , under html root
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
       cohort=${cohorts_array[$j]}
+
+      # copy some misc files 
+      mkdir -p  $OUT_ROOT/html/$cohort
+      cp -s $OUT_ROOT/$cohort/*.FastqToTagCount.stdout $OUT_ROOT/html/$cohort/FastqToTagCount.stdout
+      cp -s $OUT_ROOT/$cohort/*.KGD_tassel3.KGD.stdout $OUT_ROOT/html/$cohort/KGD.stdout
 
       mkdir -p  $OUT_ROOT/html/$cohort/KGD
       for file in $OUT_ROOT/$cohort/TagCount.csv; do
@@ -810,7 +839,16 @@ function html() {
 
 
       # summarise overall SNP yield in cohort
-      $GBS_PRISM_BIN/get_snp_yield.sh $OUT_ROOT/$cohort/*.FastqToTagCount.stdout $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt  > $OUT_ROOT/$cohort/overall_snp_yield.txt
+      $GBS_PRISM_BIN/get_snp_yield.py $OUT_ROOT/$cohort/*.FastqToTagCount.stdout $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt  > $OUT_ROOT/$cohort/overall_snp_yield.txt
+
+      # locate and summarise the deduplication counts.
+      # currently this is done as follows:
+      # * get fastq links from the Illumina folder in the cohort processing folder
+      # * from these get the real paths 
+      # * the dedupe summary is a file in the same folder as the fastq
+      # * summarise this into a text file in the cohort folder
+      # * present this inline in the web page
+      $GBS_PRISM_BIN/get_dedupe_log.py $OUT_ROOT/$cohort/Illumina/* > $OUT_ROOT/html/$cohort/dedupe_summary.txt
 
    done
 
@@ -819,16 +857,16 @@ function html() {
    # fastqc and multiqc
    mkdir -p $OUT_ROOT/html/multiqc
    rm -rf $OUT_ROOT/html/multiqc/*
-   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc
+   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/gbs/fastqc
    
-   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/fastqc $OUT_ROOT/html/fastqc
+   cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/gbs/fastqc $OUT_ROOT/html/fastqc
 
-   # bcl2fastq
-   mkdir $OUT_ROOT/html/bcl2fastq
-   cp -pR $OUT_ROOT/../../illumina/hiseq/$RUN/*/bcl2fastq/Reports/html/* $OUT_ROOT/html/bcl2fastq
+   # bclconvert
+   mkdir $OUT_ROOT/html/bclconvert
+   cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/bclconvert/Reports/html/* $OUT_ROOT/html/bclconvert
    mkdir -p $OUT_ROOT/html/kmer_analysis
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
-      cp -s $OUT_ROOT/../../illumina/hiseq/$RUN/*/gbs/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
+      cp -s $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/gbs/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
    mkdir -p $OUT_ROOT/html/trimmed_kmer_analysis
    for file in kmer_entropy.k6.jpg heatmap_sample_clusters.k6.txt kmer_zipfian_comparisons.k6.jpg ; do
@@ -837,7 +875,7 @@ function html() {
 
 
    # make peacock page which mashes up plots, output files etc.
-   $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -o $OUT_ROOT/html/peacock.html
+   $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -b $OUT_BASE -o $OUT_ROOT/html/peacock.html
 
    # (re ) summarise bwa mappings 
    tardis --hpctype local -d $OUT_ROOT/html $SEQ_PRISMS_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/stats_summary.txt

@@ -1,11 +1,11 @@
 #!/bin/sh
 #
-# master interactive script for processing a hiseq run through bcl2fastq and GBS analysis
+# master interactive script for processing a novaseq run through bclconvert and GBS analysis
 #
 
 export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms 
 export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
-BCL2FASTQ_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
+BCLCONVERT_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 
 function send_mail() {
    message="$1"
@@ -73,15 +73,15 @@ usage :\n
 
 
 
-function run_bcl2fastq() {
-   if [ $HOSTNAME != $BCL2FASTQ_NODE ]; then
-      echo "sorry you need to be logged on to iramohio-01 to run bcl2fastq"
+function run_bclconvert() {
+   if [ $HOSTNAME != $BCLCONVERT_NODE ]; then
+      echo "sorry you need to be logged on to iramohio-01 to run bclconvert"
       exit 1
    fi
 
-   echo "checking run is completed (i.e. looking for $HISEQ_ROOT/$RUN/RTAComplete.txt)"
-   if [ ! -f $HISEQ_ROOT/$RUN/RTAComplete.txt ]; then
-      echo "*** landmark file $HISEQ_ROOT/$RUN/RTAComplete.txt does not exist => this run has not completed sequencing (or uploading?) - are you SURE you want to continue !? (y/n default n)"
+   echo "checking run is completed (i.e. looking for $NOVASEQ_ROOT/$RUN/RTAComplete.txt)"
+   if [ ! -f $NOVASEQ_ROOT/$RUN/RTAComplete.txt ]; then
+      echo "*** landmark file $NOVASEQ_ROOT/$RUN/RTAComplete.txt does not exist => this run has not completed sequencing (or uploading?) - are you SURE you want to continue !? (y/n default n)"
       read_answer_with_default n
       if [ $answer != "y" ]; then
          echo "OK quitting"
@@ -91,27 +91,27 @@ function run_bcl2fastq() {
       fi
    fi
 
-   bcl2fastq_phrase="-R $HISEQ_ROOT/$RUN -i $HISEQ_ROOT/$RUN/Data/Intensities/BaseCalls"
+   bclconvert_phrase="-R $NOVASEQ_ROOT/$RUN -i $NOVASEQ_ROOT/$RUN/Data/Intensities/BaseCalls"
    echo "do you want to allow missing bcls ? (y/n, default=n)"
    read_answer_with_default n
    if [ "$answer" == "y" ]; then
-      bcl2fastq_phrase="-R $HISEQ_ROOT/$RUN -i $HISEQ_ROOT/$RUN/Data/Intensities/BaseCalls --ignore-missing-bcls"
+      bclconvert_phrase="-R $NOVASEQ_ROOT/$RUN -i $NOVASEQ_ROOT/$RUN/Data/Intensities/BaseCalls --ignore-missing-bcls"
    fi
 
 
-   # set up for bcl2fastq run
-   mkdir -p $BCL2FASTQ_ROOT/$RUN/SampleSheet
-   if [ ! -d $BCL2FASTQ_ROOT/$RUN/SampleSheet ]; then
-      echo "could not create bcl2fastq output folder $BCL2FASTQ_ROOT/$RUN/SampleSheet , quitting"
+   # set up for bclconvert run
+   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet
+   if [ ! -d $BCLCONVERT_ROOT/$RUN/SampleSheet ]; then
+      echo "could not create bclconvert output folder $BCLCONVERT_ROOT/$RUN/SampleSheet , quitting"
       exit 1
    fi
 
-   ####### ensure sample sheet used for bcl2fastq contains header, and includes specification of adapter
-   cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv
+   ####### ensure sample sheet used for bclconvert contains header, and includes specification of adapter
+   cat $NOVASEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCLCONVERT_ROOT/$RUN/SampleSheet.csv
 
-   echo "about to run bcl2fastq using
+   echo "about to run bclconvert using
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B \"$bcl2fastq_phrase\" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv  > $BCL2FASTQ_ROOT/$RUN/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  > $BCLCONVERT_ROOT/$RUN/bclconvert.log 2>&1
 
    OK ? (y/n, default=y)
    "
@@ -121,23 +121,23 @@ function run_bcl2fastq() {
       exit 1
    fi
    echo "
-   starting bcl2fastq, this should take around an hour or two...
+   starting bclconvert, this should take around an hour or two...
 
    "
 
-   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B \"$bcl2fastq_phrase\" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv" > $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv" > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bcl2fastq -B "$bcl2fastq_phrase" -O $BCL2FASTQ_ROOT/$RUN/SampleSheet $BCL2FASTQ_ROOT/$RUN/SampleSheet.csv >> $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B "$bclconvert_phrase" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv >> $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log 2>&1
 
    if [ $? != 0 ]; then
 
       if [ $INTERACTIVE != yes ]; then
-         send_mail "sorry bcl2fastq for $RUN exited with an error code"
+         send_mail "sorry bclconvert for $RUN exited with an error code"
       fi
 
       echo "
 
-      bcl2fastq has finished but received a non zero process exit code from sequencing_qc_prism - do
+      bclconvert has finished but received a non zero process exit code from sequencing_qc_prism - do
       you want to continue ? (y/n, default = n)
       "
       read_answer_with_default n 
@@ -149,25 +149,37 @@ function run_bcl2fastq() {
    
 
    if [ $INTERACTIVE != yes ]; then
-      send_mail "(bcl2fastq for $RUN completed ok - fastq data is now available)"
+      send_mail "(bclconvert for $RUN completed ok - fastq data is now available)"
    fi
 
    echo "
 
-   bcl2fastq completed ok 
+   bclconvert completed ok 
+
+   "
+}
+
+
+function run_fastqc() {
+   echo "
 
    finding sequence files for fastqc..."
-   mkdir -p $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs
-   find $BCL2FASTQ_ROOT/$RUN -name "*.fastq.gz" -type f -size +2000000000c  -print > $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt
+   min_size="+2000000000c"
+   if [ $BCLCONVERT_ROOT == $ISEQ_BCLCONVERT_ROOT ]; then
+      min_size="+200000c"
+   fi
+   
+   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs
+   find $BCLCONVERT_ROOT/$RUN -name "*.fastq.gz" -type f -size $min_size  -print > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt
    echo "
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs \`cat $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs \`cat $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1 
-   " > $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1 
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1 
+   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
    echo "
 
    about to start fastqc and kmer_analysis in the background using 
 "
-   cat $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/lane_qc.src 
+   cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src 
    echo "
 OK ? (y/n, default=y)
    "
@@ -181,7 +193,7 @@ OK ? (y/n, default=y)
    running fastqc and kmer analysis in background, then will continue with GBS q/c...
 
    "
-   source $BCL2FASTQ_ROOT/$RUN/SampleSheet/gbs/lane_qc.src &
+   source $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src &
 }
 
 function get_run_opts() {
@@ -193,13 +205,17 @@ function get_run_opts() {
    OUT_ROOT=""
    SNP_ENGINE=tassel        # the only one supported at this point
 
-   HISEQ_ROOT=/dataset/hiseq/active
+   NOVASEQ_ROOT=/dataset/hiseq/scratch
    MISEQ_ROOT=/dataset/miseq/active
+   ISEQ_ROOT=/dataset/hiseq/active
 
-   HISEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
+   #NOVASEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
+   NOVASEQ_PROCESSING_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
    # there is no MISEQ version of that as processing miseq using this script not supported currently 
   
-   HISEQ_BCL2FASTQ_ROOT=/dataset/gseq_processing/scratch/illumina/hiseq
+   #NOVASEQ_BCLCONVERT_ROOT=/dataset/gseq_processing/scratch/illumina/novaseq
+   NOVASEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/novaseq
+   ISEQ_BCLCONVERT_ROOT=/dataset/gseq_processing/scratch/illumina/iseq
    # there is no MISEQ version of that as processing miseq using this script not supported currently 
 
 
@@ -213,46 +229,67 @@ function get_run_opts() {
    ####### get and check RUN
    while [ 1 ] ; do
       echo "
-please give the full name of gbs run you would like to process (e.g. 180403_M02412_0073_000000000-D3JC9 (miseq) 
-or 180124_D00390_0342_ACBG7VANXX (hiseq - archived) or 180718_D00390_0389_ACCRDYANXX (hiseq not (yet) archived) )
+please give the full name of gbs run you would like to process (e.g. 210712_A01439_0006_AHC7MJDRXY (novaseq) 
 
 "
       read_answer_with_default $ARGRUN
       RUN=$answer
 
       if [ ! -z "$RUN" ]; then 
-         if [ -d $HISEQ_ROOT/$RUN ]; then 
-            gbs_ROOT=$HISEQ_ROOT
-            PROCESSING_ROOT=$HISEQ_PROCESSING_ROOT
-            BCL2FASTQ_ROOT=$HISEQ_BCL2FASTQ_ROOT
+         platform="unknown"
+         if [ -d $NOVASEQ_ROOT/$RUN ]; then 
+            platform=novaseq
+            gbs_ROOT=$NOVASEQ_ROOT
+            PROCESSING_ROOT=$NOVASEQ_PROCESSING_ROOT
+            BCLCONVERT_ROOT=$NOVASEQ_BCLCONVERT_ROOT
+            break
+         elif [ -d $ISEQ_ROOT/$RUN ]; then
+            platform=iseq
+            gbs_ROOT=$NOVASEQ_ROOT
+            PROCESSING_ROOT=$NOVASEQ_PROCESSING_ROOT
+            BCLCONVERT_ROOT=$ISEQ_BCLCONVERT_ROOT
             break
          elif [ -d $MISEQ_ROOT/$RUN ]; then
+            platform=miseq
             echo "
 to process miseq data, you will need to run the underlying scripts
 demultiplex_prism.sh and genotype_prism.sh , rather than this master
-script (which assumes hiseq data disposition)
+script (which assumes novaseq data disposition)
 "
             exit 1
          else 
-            echo "sorry can't find $RUN under either $HISEQ_ROOT or $MISEQ_ROOT "
+            echo "sorry can't find $RUN under either $NOVASEQ_ROOT or $MISEQ_ROOT "
          fi
       fi
 
    done
 
    echo "will process $gbs_ROOT/$RUN"
-   ####### check whether we can find sequence data - if not confirm  bcl2fastq is needed 
-   echo "checking sequence data (looking under  $BCL2FASTQ_ROOT/$RUN)...."
-   ls -lR $BCL2FASTQ_ROOT/$RUN/SampleSheet/bcl2fastq 2>/dev/null | grep "fastq.gz"   > /dev/null 2>&1 
+   ####### check whether we can find sequence data - if not confirm  bclconvert is needed 
+   echo "checking sequence data (looking under  $BCLCONVERT_ROOT/$RUN)...."
+   ls -lR $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert 2>/dev/null | grep "fastq.gz"   > /dev/null 2>&1 
    if [ $? != 0 ]; then
-      echo "could not find fastq data under $BCL2FASTQ_ROOT/$RUN so looks like bcl2fastq is needed - OK to run that ? (y/n, default=y)"
+      echo "could not find fastq data under $BCLCONVERT_ROOT/$RUN so looks like bclconvert is needed - OK to run that ? (y/n, default=y)"
       read_answer_with_default y 
       if [ "$answer" != "y" ]; then
          echo "OK continuing..."
       else
-         run_bcl2fastq 
+         run_bclconvert 
       fi
    fi
+
+   ####### check whether we can find fastqc results  - if not confirm 
+   echo "checking for fastqc results (looking for $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt)...."
+   if [ ! -f $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt ]; then 
+      echo "could not find fastqc landmark so looks like fastqc is needed - OK to run that ? (y/n, default=y)"
+      read_answer_with_default y
+      if [ "$answer" != "y" ]; then
+         echo "OK continuing..."
+      else
+         run_fastqc
+      fi
+   fi
+
 
    ######## continue on with GBS q/c ###########
    # set up output folder
@@ -284,7 +321,7 @@ script (which assumes hiseq data disposition)
    "
 
    ####### generate the edited sample sheet used for database import 
-   cat $HISEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header --target database | tr -d '\r' > $OUTPUT_ROOT/SampleSheet.csv 
+   cat $NOVASEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header --target database | tr -d '\r' > $OUTPUT_ROOT/SampleSheet.csv 
 
    ####### check whether run is in database  - import it if not 
    echo "
@@ -514,7 +551,7 @@ function get_cohort_opts() {
                echo "ok not cleaning - note , rerun may be incomplete"
             else
                set -x
-               $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clean -O $OUTPUT_ROOT -r $RUN $cohort  
+               $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -m $platform -C local -a clean -O $OUTPUT_ROOT -r $RUN $cohort  
                set +x
             fi
          fi
@@ -553,14 +590,47 @@ function do_extra_library_imports() {
    fi
 }
 
+function get_custom_parameters() {
+   while [ 1 ]; do
+      echo "if you wish to supply a custom parameters file, enter path to file (or just press Enter if you don't)
+
+(file contents is keyed by a moniker indicating which module the parameter phrase is for, followed by the phrase. Example:
+
+MergeTaxaTagCount -t n
+
+will result in the -t n option being passed on to the MergeTaxaTagCount utility "
+      read_answer_with_default n
+      if [[ ( "$answer" != "n" ) && ( "$answer" != "N" ) ]]; then
+         if [ ! -f $answer ]; then
+            continue
+         else
+            echo "passing on:"
+            cat $answer
+            break
+         fi
+      else
+         answer=""
+         break
+      fi
+   done
+   custom_parameters_file=$answer
+}
+
 
 function run_qc() {
+
+   get_custom_parameters
+
+   custom_parameters_phrase=""
+   if [ ! -z "$custom_parameters_file" ]; then
+      custom_parameters_phrase="-p $custom_parameters_file"
+   fi
 
    echo "
 
    Ready to run q/c , with the following: 
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
    echo "OK to continue ? (y/n - default = y)"
@@ -572,12 +642,12 @@ function run_qc() {
       echo "
       running gbs_prism version $gbs_version , KGD version $kgd_version , using : 
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
       " > $OUTPUT_ROOT/run_gbs_qc.log 
       echo "
       export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
       export GBS_PRISM_BIN=$GBS_PRISM_BIN 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
 
       echo "
       (if you need to kill this run, you can restart using : 
@@ -594,7 +664,7 @@ function run_qc() {
 
       "
     
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C $HPC_TYPE -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
 
       if [ $return_code != 0 ]; then
@@ -617,7 +687,7 @@ function import_results() {
 looks like there may have been a problem with the q/c (non-zero exit code from ag_gbs_qc_prism.sh )  - 
 suggest you check  $OUTPUT_ROOT/run_gbs_qc.log. You can manually run the import later using : 
   
-$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN
+$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN
 
 "
       exit 1
@@ -628,7 +698,7 @@ looks like q/c completed OK
 
 Ready to summarise and import yield stats using :
 
-$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN
+$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN
 
 OK to continue ? (y/n , default = y)"
 
@@ -639,16 +709,16 @@ OK to continue ? (y/n , default = y)"
          echo "
       running
 
-      $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT  -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+      $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT  -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
          return_code=$?
          if [ $return_code != 0 ]; then
             echo "
 
 ** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
-( you can run manually using : $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -t import_results -r $RUN )
+( you can run manually using : $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN )
 
 "
             exit 1
@@ -671,7 +741,7 @@ function generate_trimmed_kmer_analysis() {
 
    Ready to generate trimmed kmer analysis , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
    echo "OK to run that  ? (y/n , default = y)"
@@ -682,10 +752,10 @@ function generate_trimmed_kmer_analysis() {
       echo "
       running
 
-       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
+       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
       " >> $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log 2>&1 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a trimmed_kmer_analysis -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_trimmed_kmer_analysis.log 2>&1 
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
@@ -705,7 +775,7 @@ function generate_unblinded_plots() {
 
    Ready to attempt unblinded plots , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
    echo "OK to run that  ? (y/n , default = y)"
@@ -716,10 +786,10 @@ function generate_unblinded_plots() {
       echo "
       running
 
-       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+       $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
       " >> $OUTPUT_ROOT/generate_unblinded_plots.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_unblinded_plots.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE -f -a unblinded_plots -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  > $OUTPUT_ROOT/generate_unblinded_plots.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
@@ -742,7 +812,7 @@ function generate_html() {
 
    Ready to generate html summaries  , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
    echo "OK to continue ? (y/n , default = y)"
@@ -754,16 +824,16 @@ function generate_html() {
       echo "
       running
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_html.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_html.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
 
 ** looks like there was a problem with generating html (non-zero return code ) - check $OUTPUT_ROOT/generate_html.log  **
-( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS )
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a html -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS )
 
 "
          exit 1
@@ -790,7 +860,7 @@ function generate_clientreport() {
 
    Ready to generate clientreport summaries  , with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
    "
    echo "OK to continue ? (y/n , default = y)"
@@ -801,16 +871,16 @@ function generate_clientreport() {
       echo "
       running
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_clientreport.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a clientreport -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS > $OUTPUT_ROOT/generate_clientreport.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
 
 ** looks like there was a problem with generating clientreports (non-zero return code ) - check $OUTPUT_ROOT/generate_clientreport.log  **
-( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a clientreport -O $OUTPUT_ROOT -r $RUN )
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a clientreport -O $OUTPUT_ROOT -r $RUN )
 
 "
          exit 1
@@ -826,7 +896,7 @@ function update_warehouse() {
 
    Ready to update the genophyle gbs tab, with the following:
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
 
    "
    echo "OK to continue ? (y/n , default = y)"
@@ -837,16 +907,16 @@ function update_warehouse() {
       echo "
       running
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a warehouse -O $OUTPUT_ROOT -r $RUN 
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN  > $OUTPUT_ROOT/run_warehouse_update.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a warehouse -O $OUTPUT_ROOT -r $RUN  > $OUTPUT_ROOT/run_warehouse_update.log 2>&1
       return_code=$?
       if [ $return_code != 0 ]; then
          echo "
 
 ** looks like there was a problem updating the genophyle GBS tab (non-zero return code ) - check $OUTPUT_ROOT/update_warehouse.log  **
-( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f -C local -a warehouse -O $OUTPUT_ROOT -r $RUN )
+( you can run manually using : $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C local -a warehouse -O $OUTPUT_ROOT -r $RUN )
 
 "
          exit 1
