@@ -592,13 +592,15 @@ function do_extra_library_imports() {
 
 function get_custom_parameters() {
    while [ 1 ]; do
-      echo "if you wish to supply a custom parameters file, enter path to file (or just press Enter if you don't)
+      echo "if you wish to supply a custom parameters file, enter path to file (or just press Enter to use the 
+default file $GBS_PRISM_BIN/nomerge_options_file.txt )
 
 (file contents is keyed by a moniker indicating which module the parameter phrase is for, followed by the phrase. Example:
 
 MergeTaxaTagCount -t n
 
-will result in the -t n option being passed on to the MergeTaxaTagCount utility "
+will result in the -t n option being passed on to the MergeTaxaTagCount utility)
+"
       read_answer_with_default n
       if [[ ( "$answer" != "n" ) && ( "$answer" != "N" ) ]]; then
          if [ ! -f $answer ]; then
@@ -621,7 +623,7 @@ function run_qc() {
 
    get_custom_parameters
 
-   custom_parameters_phrase=""
+   custom_parameters_phrase="-p $GBS_PRISM_BIN/nomerge_options_file.txt"
    if [ ! -z "$custom_parameters_file" ]; then
       custom_parameters_phrase="-p $custom_parameters_file"
    fi
