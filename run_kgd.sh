@@ -27,4 +27,6 @@ if [ -f ${HAPMAP_DATA}.blinded ]; then
 fi
 
 cd $KGD_WORKING
+R_version=`Rscript --version 2>&1`
+echo "(running $R_version)"
 Rscript --vanilla ../run_kgd.R $HAPMAP_DATA  $KGD_METHOD  

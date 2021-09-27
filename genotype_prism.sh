@@ -137,7 +137,7 @@ max_tasks=50
 " > $OUT_DIR/tardis.toml
    echo "
 export CONDA_ENVS_PATH=\"$GBS_PRISM_BIN/conda:/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
-conda activate gbs_prism
+conda activate GUSbase 
 " > $OUT_DIR/R_env.src
    echo "
 export CONDA_ENVS_PATH=\"$GBS_PRISM_BIN/conda:/dataset/bioinformatics_dev/active/conda-env:$CONDA_ENVS_PATH\"
