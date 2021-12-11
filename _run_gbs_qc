@@ -215,7 +215,7 @@ function get_run_opts() {
   
    #NOVASEQ_BCLCONVERT_ROOT=/dataset/gseq_processing/scratch/illumina/novaseq
    NOVASEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/novaseq
-   ISEQ_BCLCONVERT_ROOT=/dataset/gseq_processing/scratch/illumina/iseq
+   ISEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/iseq
    # there is no MISEQ version of that as processing miseq using this script not supported currently 
 
 

@@ -48,6 +48,10 @@ for logname in stats_dict:
    if stats_dict[logname] is None:
       print("%(linkname)s: unavailable %"%stats_dict[logname])
       continue
+
+   if 'Duplicates Found' not in stats_dict[logname]:
+      print("warning - stats for %s incomplete (could not find 'Duplicates Found' key"%logname)
+      continue
       
    stats_dict[logname]["percent"] = 100.0 *  stats_dict[logname]["Duplicates Found"]/stats_dict[logname]["Reads In"]
    total_in += stats_dict[logname]["Reads In"]
@@ -56,7 +60,11 @@ for logname in stats_dict:
    print("%(linkname)s: in=%(Reads In)s duplicates=%(Duplicates Found)s ( %(percent)4.1f%% ) "%stats_dict[logname])
 
 print("\n")
-print("Total: in=%s duplicates=%s ( %4.1f%% ) "%(total_in, total_dups, 100.0 * total_dups/total_in))
+
+if total_in < 1:
+   print("warning - stats incomplete (total_in is 0)")
+else:
+   print("Total: in=%s duplicates=%s ( %4.1f%% ) "%(total_in, total_dups, 100.0 * total_dups/total_in))
 
 
 
