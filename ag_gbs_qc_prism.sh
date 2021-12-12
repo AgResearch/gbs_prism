@@ -228,12 +228,34 @@ function get_targets() {
       fcid=`echo $RUN | awk -F_ '{print substr($4,2)}' -`
 
 
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t method  | awk '{print $3}' - | sort -u > $OUT_ROOT/${cohort_moniker}.method
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
+      # keyfile for tassel
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=Flowcell,Lane,Barcode,qc_sampleid as sample,PlateName,platerow as Row,platecolumn as Column,LibraryPrepID,Counter,Comment,Enzyme,Species,NumberOfBarcodes,Bifo,Control,Fastq_link" $libname | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
+      # gbsx keyfile 
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=qc_sampleid as sample,Barcode,Enzyme" $libname > $OUT_ROOT/${cohort_moniker}.gbsx.key
+
+      # unblind script
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;unblinding;columns=qc_sampleid,sample;noheading" $libname > $OUT_ROOT/${cohort_moniker}.unblind.sed
+
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
+      # historical unblinding  - not supported by gquery
+      echo "
+      example query to generate a historical unblind script - but this is unlikely
+      to be needed. The use case is , the keyfile has been reimported so new qc sampleid generated,
+      but you want to unblind some old results
+
+      select distinct 's/' || regexp_replace(qc_sampleid, E'[-\\.]','[-.]') || '/' || replace(sample,'/',E'\\/') || '/g' from biosampleob s join gbsKeyFileFact g on g.biosampleob = s.obid where s.samplename = :keyfilename and coalesce(qc_cohort,'included') != 'excluded' and s.sampletype = 'Illumina GBS Library' union select 's/' || regexp_replace(h.qc_sampleid, E'[-\\.]','[-.]') || '/' || replace(h.sample,'/',E'\\/') || '/g' from (biosampleob s join gbsKeyFileFact g on g.biosampleob = s.obid) join gbs_sampleid_history_fact as h on h.biosampleob = s.obid and h.sample = g.sample where s.samplename = :keyfilename and coalesce(qc_cohort,'included') != 'excluded' and s.sampletype = 'Illumina GBS Library' order by 1;
+      " > $OUT_ROOT/${cohort_moniker}.historical_unblind.readme.txt
+
+      # non-redundant fastq file listing
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=lane,fastq_link;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.filenames
+
+      # method
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t method  | awk '{print $3}' - | sort -u > $OUT_ROOT/${cohort_moniker}.method
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=flowcell,lane,geno_method;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.method
 
       # check there is only one method for a cohort
       method_count=`wc -l $OUT_ROOT/${cohort_moniker}.method | awk '{print $1}' -`
@@ -257,7 +279,9 @@ function get_targets() {
          done
       fi
 
-      $GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=gbs_cohort,refgenome_bwa_indexes;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.bwa_references 
+
       adapter_phrase="-a AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
       bwa_alignment_parameters="-B 10"
 
