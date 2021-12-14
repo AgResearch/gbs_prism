@@ -616,6 +616,26 @@ will result in the -t n option being passed on to the MergeTaxaTagCount utility)
       fi
    done
    custom_parameters_file=$answer
+
+
+   while [ 1 ]; do
+      echo "if you wish to supply a custom path to the fastq files or links, enter path (or just press Enter to use the
+default path /dataset/hiseq/active/fastq-link-farm )
+"
+      read_answer_with_default n
+      if [ "$answer" != "n" ]; then
+         if [ ! -d "$answer" ]; then
+            continue
+         else
+            echo "will use $answer"
+            break
+         fi
+      else
+         answer=""
+         break
+      fi
+   done
+   custom_fastq_path=$answer
 }
 
 
@@ -628,11 +648,16 @@ function run_qc() {
       custom_parameters_phrase="-p $custom_parameters_file"
    fi
 
+   custom_fastq_path_phrase=""
+   if [ ! -z "$custom_fastq_path" ]; then
+      custom_fastq_path_phrase="-q $custom_fastq_path"
+   fi
+
    echo "
 
    Ready to run q/c , with the following: 
 
-   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
+   $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase $custom_fastq_path_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS 
 
    "
    echo "OK to continue ? (y/n - default = y)"
@@ -644,12 +669,12 @@ function run_qc() {
       echo "
       running gbs_prism version $gbs_version , KGD version $kgd_version , using : 
 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase $custom_fastq_path_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS
       " > $OUTPUT_ROOT/run_gbs_qc.log 
       echo "
       export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
       export GBS_PRISM_BIN=$GBS_PRISM_BIN 
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh  -m $platform -C $HPC_TYPE $custom_parameters_phrase $custom_fastq_path_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS" > $OUTPUT_ROOT/restart_qc.src 
 
       echo "
       (if you need to kill this run, you can restart using : 
@@ -666,7 +691,7 @@ function run_qc() {
 
       "
     
-      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
+      $GBS_PRISM_BIN/ag_gbs_qc_prism.sh -f  -m $platform -C $HPC_TYPE $custom_parameters_phrase $custom_fastq_path_phrase -a $ANALYSIS -O $OUTPUT_ROOT -r $RUN $GBS_COHORTS  >> $OUTPUT_ROOT/run_gbs_qc.log 2>&1
       return_code=$?
 
       if [ $return_code != 0 ]; then
