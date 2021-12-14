@@ -19,6 +19,7 @@ function get_opts() {
    NUM_THREADS=16
    PLATFORM=novaseq
    CUSTOM_PARAMETERS_FILE=""
+   CUSTOM_FASTQ_PATH=""
 
    help_text="
 usage :\n 
@@ -30,7 +31,7 @@ example:\n
 ./ag_gbs_qc_prism.sh -n -f  -a kmer_analysis -O /dataset/gseq_processing/scratch/gbs/180824_D00390_0394_BCCPYFANXX -r 180824_D00390_0394_BCCPYFANXX SQ0784.all.DEER.PstI \n
 ./ag_gbs_qc_prism.sh -a html -O /dataset/gseq_processing/scratch/gbs/180925_D00390_0404_BCCVH0ANXX\n
 "
-   while getopts ":nhfO:C:r:a:j:m:p:" opt; do
+   while getopts ":nhfO:C:r:a:j:m:p:q:" opt; do
    case $opt in
        n)
          DRY_RUN=yes
@@ -59,6 +60,9 @@ example:\n
          ;;
        p)
          CUSTOM_PARAMETERS_FILE=$OPTARG
+         ;;
+       q)
+         CUSTOM_FASTQ_PATH=$OPTARG
          ;;
        C)
          HPC_TYPE=$OPTARG
@@ -135,6 +139,14 @@ function check_opts() {
          exit 1
       fi 
    fi
+
+   if [ ! -z "$CUSTOM_FASTQ_PATH" ]; then
+      if [ ! -d $CUSTOM_FASTQ_PATH ]; then
+         echo "if specify a custom fastq path , path must exist and be a foldername "
+         exit 1
+      fi
+   fi
+
 
 }
 
@@ -228,19 +240,26 @@ function get_targets() {
       fcid=`echo $RUN | awk -F_ '{print substr($4,2)}' -`
 
 
+      custom_fastq_path_phrase="dummy"
+      if [ ! -z "$CUSTOM_FASTQ_PATH" ]; then
+         custom_fastq_path_phrase="fastq_path=$CUSTOM_FASTQ_PATH"
+      fi
+
+
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t qc | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
       # keyfile for tassel
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=Flowcell,Lane,Barcode,qc_sampleid as sample,PlateName,platerow as Row,platecolumn as Column,LibraryPrepID,Counter,Comment,Enzyme,Species,NumberOfBarcodes,Bifo,Control,Fastq_link" $libname | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link;$custom_fastq_path_phrase" $libname | sed -r 's/HpaII|HpaIII/MspI/g' - > $OUT_ROOT/${cohort_moniker}.key
+
       # gbsx keyfile 
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t gbsx_qc > $OUT_ROOT/${cohort_moniker}.gbsx.key
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=qc_sampleid as sample,Barcode,Enzyme" $libname > $OUT_ROOT/${cohort_moniker}.gbsx.key
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=qc_sampleid as sample,Barcode,Enzyme" $libname > $OUT_ROOT/${cohort_moniker}.gbsx.key
 
       # unblind script
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t unblind_script  > $OUT_ROOT/${cohort_moniker}.unblind.sed
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;unblinding;columns=qc_sampleid,sample;noheading" $libname > $OUT_ROOT/${cohort_moniker}.unblind.sed
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;unblinding;columns=qc_sampleid,sample;noheading" $libname > $OUT_ROOT/${cohort_moniker}.unblind.sed
 
-      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
       # historical unblinding  - not supported by gquery
+      #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t historical_unblind_script  > $OUT_ROOT/${cohort_moniker}.historical_unblind.sed
       echo "
       example query to generate a historical unblind script - but this is unlikely
       to be needed. The use case is , the keyfile has been reimported so new qc sampleid generated,
@@ -251,11 +270,11 @@ function get_targets() {
 
       # non-redundant fastq file listing
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t files  > $OUT_ROOT/${cohort_moniker}.filenames
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=lane,fastq_link;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.filenames
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=lane,fastq_link;noheading;distinct;$custom_fastq_path_phrase" $libname > $OUT_ROOT/${cohort_moniker}.filenames
 
       # method
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t method  | awk '{print $3}' - | sort -u > $OUT_ROOT/${cohort_moniker}.method
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=flowcell,lane,geno_method;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.method
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=geno_method;distinct;noheading;no_unpivot" $libname > $OUT_ROOT/${cohort_moniker}.method
 
       # check there is only one method for a cohort
       method_count=`wc -l $OUT_ROOT/${cohort_moniker}.method | awk '{print $1}' -`
@@ -280,7 +299,7 @@ function get_targets() {
       fi
 
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
-      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;qc_cohort=$qc_cohort;columns=gbs_cohort,refgenome_bwa_indexes;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.bwa_references 
+      gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=gbs_cohort,refgenome_bwa_indexes;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.bwa_references 
 
       adapter_phrase="-a AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
       bwa_alignment_parameters="-B 10"
@@ -782,6 +801,7 @@ function trimmed_kmer_analysis() {
 function html() {
    mkdir -p $OUT_ROOT/html
    OUT_BASE=`dirname $OUT_ROOT`
+   RUN_FOLDER=`basename $OUT_ROOT`
 
    # make shortcuts to output files that wil be linked to , under html root
    for ((j=0;$j<$NUM_COHORTS;j=$j+1)) do
@@ -899,7 +919,7 @@ function html() {
 
 
    # make peacock page which mashes up plots, output files etc.
-   $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN -b $OUT_BASE -o $OUT_ROOT/html/peacock.html
+   $GBS_PRISM_BIN/make_cohort_pages.py -r $RUN_FOLDER -b $OUT_BASE -o $OUT_ROOT/html/peacock.html
 
    # (re ) summarise bwa mappings 
    tardis --hpctype local -d $OUT_ROOT/html $SEQ_PRISMS_BIN/collate_mapping_stats.py $OUT_ROOT/bwa_mapping/*/*.stats \> $OUT_ROOT/html/stats_summary.txt
