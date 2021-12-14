@@ -19,11 +19,11 @@ header1="""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
 <html>
 <head>
 <title>
-Overview of %(run_name)s
+Overview of %(run_folder)s
 </title>
 </head>
 <body>
-<h1> Q/C Summaries for <a href="http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=%(run_name)s&context=default">%(run_name)s</a> </h1>
+<h1> Q/C Summaries for <a href="http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=%(run_folder)s&context=default">%(run_folder)s</a> </h1>
 <ul>
 <li>  <a href="#overview_plots"> Overview Summaries (before demultiplexing) </a> 
     <ul>
@@ -132,7 +132,7 @@ def get_cohorts(options):
     # * are not tardis working folders (i.e. have names starting with tardis
     # * are of like SQ0775.all.TILAPIA.PstI-MspI
     #   - i.e. library.qc-cohort.gbs-cohort.enzyme
-    run_folder=os.path.join(BASEDIR, options["run_name"])
+    run_folder=os.path.join(BASEDIR, options["run_folder"])
     #print "DEBUG1 : "+run_folder
     #SQ0810.all.PstI-MspI.PstI-MspI
     #SQ0812.all.ApeKI.ApeKI
@@ -226,8 +226,8 @@ def generate_run_plot(options):
 
                 print >> out_stream , "<tr><td>%s</td>\n"%file_name
                 for cohort in cohorts:
-                    file_path = os.path.join(BASEDIR, options["run_name"], cohort, file_name)
-                    alt_file_path=os.path.join(BASEDIR, options["run_name"], "html", cohort, file_name)
+                    file_path = os.path.join(BASEDIR, options["run_folder"], cohort, file_name)
+                    alt_file_path=os.path.join(BASEDIR, options["run_folder"], "html", cohort, file_name)
 
                     if file_type == "image":
                         image_relpath=os.path.join(cohort, file_name)
@@ -240,7 +240,7 @@ def generate_run_plot(options):
                         link_relpath=os.path.join(cohort, file_name)
 
                         if file_group in ["Preview common sequence (trimmed fastq)", "All common sequence (trimmed fastq)" , "Preview common sequence (low depth tags)", "All common sequence (low depth tags)"]:
-                            file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
+                            file_path=os.path.join(BASEDIR, options["run_folder"], "common_sequence", cohort, file_name)
                             link_relpath=os.path.join(cohort, "common_sequence", file_name)
 
                         if os.path.exists(file_path) or os.path.exists(alt_file_path):
@@ -252,11 +252,11 @@ def generate_run_plot(options):
                         text = "(unavailable)"
 
                         if file_group in ["Preview common sequence (trimmed fastq)", "All common sequence (trimmed fastq)" , "Preview common sequence (low depth tags)", "All common sequence (low depth tags)"]:
-                            file_path=os.path.join(BASEDIR, options["run_name"], "common_sequence", cohort, file_name)
+                            file_path=os.path.join(BASEDIR, options["run_folder"], "common_sequence", cohort, file_name)
                         elif file_group in [ "Overall SNP yields" ]:
-                            file_path=os.path.join(BASEDIR, options["run_name"], cohort, file_name)
+                            file_path=os.path.join(BASEDIR, options["run_folder"], cohort, file_name)
                         elif file_group in [ "KGD stdout","Deduplication" ]:
-                            file_path=os.path.join(BASEDIR, options["run_name"], "html", cohort, file_name)                            
+                            file_path=os.path.join(BASEDIR, options["run_folder"], "html", cohort, file_name)                            
                         if os.path.exists(file_path):
                             with open(file_path,"r") as infile:
                                 text="\n".join((record.strip() for record in infile))
@@ -292,7 +292,7 @@ run     run_number      lane    samplename      species file_name
 
     """
     parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-r', '--run_name' , dest='run_name', required=True, type=str, help="run name")
+    parser.add_argument('-r', '--run_folder' , dest='run_folder', required=True, type=str, help="run name")
     parser.add_argument('-H', '--image_height' , dest='image_height', default=300, type=int, help="image height")
     parser.add_argument('-W', '--image_width' , dest='image_width', default=300, type=int, help="image width")
     parser.add_argument('-o', '--output_filename' , dest='output_filename', default="peacock.html", type=str, help="name of output file")
