@@ -18,16 +18,16 @@ def get_options():
     """
     long_description = """
 
-*********************************************************
-* This is the legacy interface for extracting keyfiles  *
-*                                                       *
-* If possible please using gquery to extract keyfiles   *
-* (gquery -h for examples). This adds features such as  *
-* extracting multiple libraries, and integrates metadata*
-* from the genophyle database into the keyfile          *
-*                                                       *
-* (this interface now calls gquery under the hood       *
-*********************************************************
+***********************************************************************************************
+* This is the legacy interface for extracting keyfiles. It has been replaced by gquery        *
+*                                                                                             *
+* To see the gquery equivalent of any command using this interface, run your command with the *
+* -n (dry run) option - e.g.                                                                  *
+*                                                                                             *
+* listDBKeyfile.sh -n -s SQ0566                                                               * 
+*                                                                                             *
+* (this interface is now just a stub and calls gquery under the hood                          *
+***********************************************************************************************
 
 Examples : 
 
@@ -86,14 +86,24 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
 
 def call_gquery(args, dry_run):
     if dry_run:
+        # quote the predicate arg in this note
+        p_index=1+args.index("-p")
+        quoted_args =  [item for item in args]
+        quoted_args[p_index] = "\"%s\""%args[p_index]
+        
         print("""*** dry run ***
-gquery command would be
+The equivalent gquery command would be:
+
 %s
 
-(to run that , you will need to quote the -p argument. Suggest also adding --explain option for
-a detailed log of what was done, and some important notes about limitations when linking 
-genophyle metadata with keyfiles)
-"""%" ".join(args))
+Notes:
+
+* use gquery with the --explain option to get an explanation of exactly what was done, including underlying SQL code.
+* for species with metadata in genophyle (e.g. aquaculture, ruminants, conservation species), you can add additional column
+  names such as animalid,stud,uidtag,labid,breed to the above gquery command, to have these included in the keyfile.
+* "gquery -h" will list additional examples of extracting data from the keyfile database using gquery 
+
+"""%" ".join(quoted_args))
     else:
         try:
             proc = subprocess.call(args)
@@ -101,50 +111,66 @@ genophyle metadata with keyfiles)
             print("call_gquery failed with : %s"%e)
             raise e
 
-
-def parse_SQ(arg):
-    m=re.search("(\d+)", arg)
-    if m is not None:
-        return m.groups()[0]
-    
-
-    
 def main():    
     options = get_options()
 
 
-    if options["template"] in ("tassel", "qc"):
+    if options["template"] in ("tassel", "qc", "gbsx", "gbsx_qc"):
+
         # extract keyfile. qc template uses the safe sampleid , qc_sampleid
         params = {
             "sample_phrase" : "sample"
         }
 
-        if options["template"] == "qc":
+        if options["template"] in ("qc", "gbsx_qc"):
             params["sample_phrase"] = "qc_sampleid as sample"
 
         # extract may be in tassel 3 or 5 format                                           
-        columns_phrase = "columns=flowcell,lane,barcode,%(sample_phrase)s,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link,animalid,stud,uidtag,labid,breed"
+        columns_phrase = "columns=flowcell,lane,barcode,%(sample_phrase)s,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link"
         if options["client_version"] == "5":
-            columns_phrase = "columns=Flowcell,Lane,Barcode,%(sample_phrase)s,PlateName,platerow as Row,platecolumn as Column,LibraryPrepID,Counter,Comment,Enzyme,Species,NumberOfBarcodes,Bifo,Control,Fastq_link,FullSampleName,animalid,stud,uidtag,labid,breed"
+            columns_phrase = "columns=Flowcell,Lane,Barcode,%(sample_phrase)s,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link,FullSampleName"
 
+
+        # gbs / gbsx template
+        if options["template"] in ("gbsx", "gbsx_qc"):
+            columns_phrase = "columns=%(sample_phrase)s,barcode,enzyme"
+            
         columns_phrase=columns_phrase%params
 
         predicate_string=columns_phrase
 
-        
         if options["enzyme"] is not None:
             enzyme_phrase = "enzyme=%(enzyme)s"%options
             predicate_string="%s;%s"%(predicate_string, enzyme_phrase)
-            
-            
-           
+
+        predicate_string="%s;distinct"%predicate_string
+                       
         if options["sample"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , parse_SQ(options["sample"])], options["dry_run"])            
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]], options["dry_run"])            
         elif options["species_moniker"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
         else:
             print("expected something more ! please specify what to extract")
             exit(1)
+
+    elif options["template"] == "unblind_script":
+
+        predicate_string = "unblinding;columns=qc_sampleid,sample;noheading"
+        
+
+        if options["sample"] is not None:
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]], options["dry_run"])            
+        elif options["species_moniker"] is not None:
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
+        else:
+            print("expected something more ! please specify what to extract")
+            exit(1)
+
+    else:
+        print("""
+Sorry, the %(template)s option is no longer supported
+"""%options)
+        exit(1)
                 
 if __name__=='__main__':
     sys.exit(main())    
