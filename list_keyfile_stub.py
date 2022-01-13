@@ -76,18 +76,30 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
     parser.add_argument('-e','--enzyme', dest='enzyme', type=str, default=None, help='enzyme')    
     parser.add_argument('-x','--excluded', dest='excluded', action='store_const', default = False, const=True, help='also extract excluded records')
     parser.add_argument('-q','--qc_cohort', dest='qc_cohort', type=str, default=None, help='qc_cohort')
+    parser.add_argument('-n','--dry_run', dest='dry_run', action='store_const', default = False, const=True, help='dry run - just emit gquery command')
+
 
     args = vars(parser.parse_args())
 
     return args
 
 
-def call_gquery(args):
-    try:
-        proc = subprocess.call(args)
-    except OSError,e:
-        print("call_gquery failed with : %s"%e)
-        raise e
+def call_gquery(args, dry_run):
+    if dry_run:
+        print("""*** dry run ***
+gquery command would be
+%s
+
+(to run that , you will need to quote the -p argument. Suggest also adding --explain option for
+a detailed log of what was done, and some important notes about limitations when linking 
+genophyle metadata with keyfiles)
+"""%" ".join(args))
+    else:
+        try:
+            proc = subprocess.call(args)
+        except OSError,e:
+            print("call_gquery failed with : %s"%e)
+            raise e
 
 
 def parse_SQ(arg):
@@ -101,16 +113,38 @@ def main():
     options = get_options()
 
 
-    if options["template"] in ("tassel"):
+    if options["template"] in ("tassel", "qc"):
+        # extract keyfile. qc template uses the safe sampleid , qc_sampleid
+        params = {
+            "sample_phrase" : "sample"
+        }
+
+        if options["template"] == "qc":
+            params["sample_phrase"] = "qc_sampleid as sample"
+
+        # extract may be in tassel 3 or 5 format                                           
+        columns_phrase = "columns=flowcell,lane,barcode,%(sample_phrase)s,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link,animalid,stud,uidtag,labid,breed"
+        if options["client_version"] == "5":
+            columns_phrase = "columns=Flowcell,Lane,Barcode,%(sample_phrase)s,PlateName,platerow as Row,platecolumn as Column,LibraryPrepID,Counter,Comment,Enzyme,Species,NumberOfBarcodes,Bifo,Control,Fastq_link,FullSampleName,animalid,stud,uidtag,labid,breed"
+
+        columns_phrase=columns_phrase%params
+
+        predicate_string=columns_phrase
+
+        
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)
+            
+            
+           
         if options["sample"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", "columns=flowcell,lane,barcode,sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link,animalid,stud,uidtag,labid,breed" , parse_SQ(options["sample"])])            
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , parse_SQ(options["sample"])], options["dry_run"])            
         elif options["species_moniker"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "taxname", "-p", "columns=flowcell,lane,barcode,sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link,animalid,stud,uidtag,labid,breed",  options["species_moniker"]])            
+            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
         else:
             print("expected something more ! please specify what to extract")
             exit(1)
-    
-
                 
 if __name__=='__main__':
     sys.exit(main())    
