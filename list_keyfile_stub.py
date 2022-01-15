@@ -77,6 +77,7 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
     parser.add_argument('-x','--excluded', dest='excluded', action='store_const', default = False, const=True, help='also extract excluded records')
     parser.add_argument('-q','--qc_cohort', dest='qc_cohort', type=str, default=None, help='qc_cohort')
     parser.add_argument('-n','--dry_run', dest='dry_run', action='store_const', default = False, const=True, help='dry run - just emit gquery command')
+    parser.add_argument('--explain', dest='explain', action='store_const', default = False, const=True, help='explain what was done')
 
 
     args = vars(parser.parse_args())
@@ -84,8 +85,24 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
     return args
 
 
-def call_gquery(args, dry_run):
-    if dry_run:
+def call_gquery(options, predicate_string):
+
+
+    if options["sample"] is not None:
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]]           
+    elif options["species_moniker"] is not None:
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]]
+    elif options["gbs_cohort"] is not None:
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string,  options["gbs_cohort"]]
+    else:
+        print("expected something more ! please specify what to extract")
+        exit(1)
+
+
+    if options["explain"]:
+        args.insert(1,"--explain")
+
+    if options["dry_run"]:
         # quote the predicate arg in this note
         p_index=1+args.index("-p")
         quoted_args =  [item for item in args]
@@ -144,27 +161,37 @@ def main():
             predicate_string="%s;%s"%(predicate_string, enzyme_phrase)
 
         predicate_string="%s;distinct"%predicate_string
-                       
-        if options["sample"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]], options["dry_run"])            
-        elif options["species_moniker"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
-        else:
-            print("expected something more ! please specify what to extract")
-            exit(1)
+
+        call_gquery(options, predicate_string)
 
     elif options["template"] == "unblind_script":
 
         predicate_string = "unblinding;columns=qc_sampleid,sample;noheading"
-        
+        call_gquery(options, predicate_string)
 
-        if options["sample"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]], options["dry_run"])            
-        elif options["species_moniker"] is not None:
-            call_gquery(["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]], options["dry_run"])            
+    elif options["template"] == "files":
+
+        predicate_string = "columns=lane,fastq_link;distinct;noheading"
+        call_gquery(options, predicate_string)
+
+    elif options["template"] == "method":
+
+        predicate_string = "columns=flowcell,lane,geno_method;distinct;noheading"
+        call_gquery(options, predicate_string)
+
+    elif options["template"] in ("bwa_index_paths","blast_index_paths"):
+
+        if options["template"] == "bwa_index_paths":
+            predicate_string = "columns=gbs_cohort,refgenome_bwa_indexes;distinct;noheading"
         else:
-            print("expected something more ! please specify what to extract")
-            exit(1)
+            predicate_string = "columns=gbs_cohort,refgenome_blast_indexes;distinct;noheading"
+            
+        call_gquery(options, predicate_string)
+
+    elif options["template"] in ("list_species"):
+
+        predicate_string = "columns=species;group;noheading"
+        call_gquery(options, predicate_string)
 
     else:
         print("""
