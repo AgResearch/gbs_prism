@@ -92,10 +92,14 @@ def call_gquery(options, predicate_string):
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]]           
     elif options["species_moniker"] is not None:
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]]
-    elif options["gbs_cohort"] is not None:
+    elif options["gbs_cohort"] is not None and options["flowcell"] is None:
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string,  options["gbs_cohort"]]
-    elif options["flowcell"] is not None:
+    elif options["flowcell"] is not None and options["gbs_cohort"] is None:
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "flowcell", "-p", predicate_string,  options["flowcell"]]
+    elif options["flowcell"] is not None and options["gbs_cohort"] is not None:
+        flowcell_phrase = "flowcell=%(flowcell)s"%options
+        predicate_string_plus="%s;%s"%(predicate_string, flowcell_phrase)
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string_plus,  options["gbs_cohort"]]        
     else:
         print("expected something more ! please specify what to extract")
         exit(1)
@@ -169,16 +173,25 @@ def main():
     elif options["template"] == "unblind_script":
 
         predicate_string = "unblinding;columns=qc_sampleid,sample;noheading"
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     elif options["template"] == "files":
 
         predicate_string = "columns=lane,fastq_link;distinct;noheading"
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     elif options["template"] == "method":
 
         predicate_string = "columns=flowcell,lane,geno_method;distinct;noheading"
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     elif options["template"] in ("bwa_index_paths","blast_index_paths"):
@@ -187,12 +200,19 @@ def main():
             predicate_string = "columns=gbs_cohort,refgenome_bwa_indexes;distinct;noheading"
         else:
             predicate_string = "columns=gbs_cohort,refgenome_blast_indexes;distinct;noheading"
+
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)            
             
         call_gquery(options, predicate_string)
 
     elif options["template"] in ("list_species"):
 
         predicate_string = "columns=species;group;noheading"
+        if options["enzyme"] is not None:
+            enzyme_phrase = "enzyme=%(enzyme)s"%options
+            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     else:
