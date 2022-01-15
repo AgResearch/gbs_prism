@@ -94,6 +94,8 @@ def call_gquery(options, predicate_string):
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]]
     elif options["gbs_cohort"] is not None:
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string,  options["gbs_cohort"]]
+    elif options["flowcell"] is not None:
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "flowcell", "-p", predicate_string,  options["flowcell"]]
     else:
         print("expected something more ! please specify what to extract")
         exit(1)
