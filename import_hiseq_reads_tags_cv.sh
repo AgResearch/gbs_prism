@@ -18,14 +18,18 @@ help_text="\n
 DRY_RUN=no
 RUN_NAME=""
 BUILD_ROOT=/dataset/gseq_processing/scratch/gbs
+MACHINE=novaseq
 
-while getopts ":nhr:d:" opt; do
+while getopts ":nhr:d:m:" opt; do
   case $opt in
     n)
       DRY_RUN=yes
       ;;
     r)
       RUN_NAME=$OPTARG
+      ;;
+    m)
+      MACHINE=$OPTARG
       ;;
     d)
       BUILD_ROOT=$OPTARG
@@ -64,11 +68,19 @@ if [ ! -d $RUN_PATH ]; then
    echo $RUN_PATH not found
    exit 1
 fi
+
+# machine must be miseq , hiseq or novaseq
+if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) && ( $MACHINE != "iseq" ) ]]; then
+    echo "machine must be miseq or hiseq"
+    exit 1
+fi
+
 }
 
 function echo_opts() {
     echo "importing $RUN_NAME from $RUN_PATH"
     echo "DRY_RUN=$DRY_RUN"
+    echo "MACHINE=$MACHINE"
 }
 
 get_opts $@
@@ -94,11 +106,15 @@ for file in $files; do
    cohort=`dirname $file`
    cohort=`basename $cohort`
    run=$RUN_NAME
-   cat $file | awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=$run cohort=$cohort - >> $RUN_PATH/html/gbs_yield_import_temp.dat
+
+   $GBS_PRISM_BIN/collate_tags_reads.py --run $run --cohort $cohort --machine $MACHINE $file >> $RUN_PATH/html/gbs_yield_import_temp.dat 
+
+   #cat $file | awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=$run cohort=$cohort - >> $RUN_PATH/html/gbs_yield_import_temp.dat
    # e.g.
-#180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    sample  flowcell        lane    sq      tags    reads
-#180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    total   CCVK0ANXX       1       SQ0788          298918641
-#180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    good    CCVK0ANXX       1       SQ0788          268924508
+   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    sample  flowcell        lane    sq      tags    reads
+   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    total   CCVK0ANXX       1       SQ0788          298918641
+   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    good    CCVK0ANXX       1       SQ0788          268924508
+   
 done
 }
 

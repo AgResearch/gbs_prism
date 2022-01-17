@@ -31,7 +31,7 @@ DRY_RUN=no
 INTERACTIVE=no
 TASK=import_new_run
 RUN=all
-MACHINE=hiseq
+MACHINE=novaseq
 SAMPLE=""
 REUSE_TARGETS="no"
 RUN_BASE_PATH=/dataset/gseq_processing/scratch/gbs
@@ -97,7 +97,7 @@ if [[ ( $TASK != "import_new_run" ) && ( $TASK != "import_results" ) && ( $TASK 
 fi
 
 # machine must be miseq or hiseq 
-if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) ]]; then
+if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) ]]; then
     echo "machine must be miseq or hiseq"
     exit 1
 fi
@@ -290,7 +290,7 @@ function import_results() {
    set +x
 
    # import yield stats
-   $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -d $RUN_BASE_PATH -r $RUN
+   $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -m $MACHINE -d $RUN_BASE_PATH -r $RUN
 
    $GBS_PRISM_BIN/import_kgd_stats.sh -d $RUN_BASE_PATH -r $RUN
 }
