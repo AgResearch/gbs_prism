@@ -25,7 +25,7 @@ gform <- "uneak"
 negC <- "^GBSNEG"  
 alleles.keep <- TRUE
 functions.only <- TRUE # only load the functions from GBS-Chip-Matrix.R, do not run the standard code.
-
+mindepth.bb <- 0.1  # min sampdepth (merged) for training bb model
 
 source(file.path(Sys.getenv("SEQ_PRISMS_BIN"),"/../KGD/GBS-Chip-Gmatrix.R"))
 readGBS()
@@ -80,19 +80,21 @@ if ( geno_method == "default" ) {
     Inbs <- Gdsamp[samppos2] -1
     LaneRel <- Gsplit$G5[cbind(row=u1[match(SampleID,SampleIDsep[u1])],col=u2[match(SampleID,SampleIDsep[u2])])]
     
-    coldepth <- colourby(sampdepth,nbreaks=40,hclpals="Teal",rev=TRUE, col.name="Depth")
+    ubb <- which(sampdepth>mindepth.bb)
+    cat(length(ubb),"of",length(sampdepth),"samples with depth >",mindepth.bb,"used for BB model fitting\n")
+    coldepth <- colourby(sampdepth[ubb],nbreaks=40,hclpals="Teal",rev=TRUE, col.name="Depth")
     colkey(coldepth,horiz=FALSE,sfx="depth")
     bbopt <- optimise(ssdInb,lower=0,upper=200, tol=0.01,Inbtarget=Inbs,dmodel="bb", snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
     NInb <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)-1
     
     png(paste0("InbCompare",".png"))
-    pairs(cbind(Inbc,NInb,Inbs,LaneRel-1),cex.labels=1.5, cex=1.2,
-          labels=c(paste0("Combined\nmean=",signif(mean(Inbc,na.rm=TRUE),3)),
-                   paste0("Combined\nalpha=",signif(bbopt$min,2),"\nmean=",signif(mean(NInb,na.rm=TRUE),3)),
-                   paste0("Sampled\n1 read/lane\nmean=",signif(mean(Inbs,na.rm=TRUE),3)),
-                   paste0("Between\nlane\nmean=",signif(mean(LaneRel,na.rm=TRUE)-1,3))),
+    pairs(cbind(Inbc,NInb,Inbs,LaneRel-1)[ubb,],cex.labels=1.5, cex=1.2,
+          labels=c(paste0("Combined\nmean=",signif(mean(Inbc[ubb],na.rm=TRUE),3)),
+                   paste0("Combined\nalpha=",signif(bbopt$min,2),"\nmean=",signif(mean(NInb[ubb],na.rm=TRUE),3)),
+                   paste0("Sampled\n1 read/lane\nmean=",signif(mean(Inbs[ubb],na.rm=TRUE),3)),
+                   paste0("Between\nlane\nmean=",signif(mean(LaneRel[ubb],na.rm=TRUE)-1,3))),
           gap=0,col=coldepth$sampcol, pch=16, lower.panel=plotpanel,upper.panel=regpanel, text.panel=legendpanel, 
-          main=paste("Inbreeding",""))
+          main=paste("Inbreeding where depth >",mindepth.bb))
     dev.off()
     
     depth2K <<- depth2Kchoose (dmodel="bb", param=Inf)
