@@ -882,8 +882,10 @@ function html() {
       done
 
 
-      # summarise overall SNP yield in cohort
+      # summarise overall SNP yield and information efficiency in cohort
       $GBS_PRISM_BIN/get_snp_yield.py $OUT_ROOT/$cohort/*.FastqToTagCount.stdout $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt  > $OUT_ROOT/$cohort/overall_snp_yield.txt
+      $GBS_PRISM_BIN/snp_info_from_vcf.py $OUT_ROOT/$cohort/KGD/GHW05.vcf > $OUT_ROOT/$cohort/information_efficiency.txt
+
 
       # locate and summarise the deduplication counts.
       # currently this is done as follows:
