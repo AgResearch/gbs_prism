@@ -24,7 +24,12 @@ def get_options():
 * To see the gquery equivalent of any command using this interface, run your command with the *
 * -n (dry run) option - e.g.                                                                  *
 *                                                                                             *
-* listDBKeyfile.sh -n -s SQ0566                                                               * 
+* listDBKeyfile.sh -n -s SQ0566                                                               *                                                              *
+*                                                                                             *
+* To access a detailed explanation of how the extract was prepared (including the SQL code    *
+* that was generated ) , include the --explain option - e.g.                                  *
+*                                                                                             *
+* listDBKeyfile.sh --explain -s SQ0566                                                        *
 *                                                                                             *
 * (this interface is now just a stub and calls gquery under the hood                          *
 ***********************************************************************************************
@@ -32,35 +37,28 @@ def get_options():
 Examples : 
 
 e.g.
-list_keyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format
-list_keyfile.sh  -s SQ0566 -v 5             # extract everything for SQ0566, default tassel 5 format
-list_keyfile.sh  -s SQ0566 -v 5 -t all      # extract everything for SQ0566, extended tassel 5 format (also include subject name)
-list_keyfile.sh  -s SQ0566 -t gbsx          # extract everything for SQ0566, GBSX format (only include sample, barcode, enzyme)
-list_keyfile.sh  -s SQ0566 -t qc            # internal primary key used instead of sampleid
-list_keyfile.sh  -s SQ0566 -t unblind       # dump a mapping between qc_sampleid and lab sampleid 
-list_keyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid. Save output to a file and then run as sed -f script_file raw_file > patched_file 
-list_keyfile.sh  -s SQ1131 -t historical_unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid - including historical qc_sampleids (e.g. if keyfile was reloaded) . Save output to a file and then run as sed -f script_file raw_file > patched_file 
-list_keyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)
-list_keyfile.sh  -s SQ1014 -t method         # extract distinct geno_method for SQ1014
-list_keyfile.sh  -s SQ0566 -t bwa_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566
-list_keyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566
-list_keyfile.sh  -s SQ0566 -t list_species  # extract distinct cohort + path to bwa index for cohort species for SQ0566
-list_keyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs, not case sensitive e.g. will include DEER)
-list_keyfile.sh  -m bee                     # extract everything that has species field deer (across all runs , not case sensitive e.g. will include BEE)
-list_keyfile.sh  -m goat -x                     # extract everything that has species field goat , that has been excluded 
-list_keyfile.sh  -m bee -t gbsx             # as above, GBSX format 
-list_keyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)
-list_keyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format 
-list_keyfile.sh  -t files -g deer -e PstI   # as above, report lane + file
-list_keyfile.sh  -t missing_files -g deer -e PstI   # as above, but report lane and any samples where the fastq file is missing
-list_keyfile.sh  -g deer  -f CA95UANXX      # all deer , but only in flowcell CA95UANXX
-list_keyfile.sh  -f CA95UANXX               # extract everything on flowcell CA95UANXX
-list_keyfile.sh  -s SQ2701 -q uncontaminated      # all the samples flagged as uncontaminated in SQ2701 
-list_keyfile.sh -s SQ2701 -f CC5V9ANXX -e ApeKI -g Ryegrass -q contaminated_xanthomonas_translucens 
-list_keyfile.sh                             # don't be greedy ! (extract entire keyfile database, ~ 200,000 records)
+listDBKeyfile.sh  -s SQ0566                  # extract everything for SQ0566, default tassel 3 format
+listDBKeyfile.sh  -s SQ0566 -v 5             # extract everything for SQ0566, default tassel 5 format
+listDBKeyfile.sh  -s SQ0566 -t gbsx          # extract everything for SQ0566, GBSX format (only include sample, barcode, enzyme)
+listDBKeyfile.sh  -s SQ0566 -t qc            # internal primary key used instead of sampleid
+listDBKeyfile.sh  -s SQ0566 -t unblind_script       # dump a sed script to patch qc_sampleid to lab sampleid. Save output to a file and then run as sed -f script_file raw_file > patched_file 
+listDBKeyfile.sh  -s SQ0566 -t files         # extract distinct lane + fastq file name for SQ0566 (e.g. to help build GBSX command)
+listDBKeyfile.sh  -s SQ1014 -t method         # extract distinct geno_method for SQ1014
+listDBKeyfile.sh  -s SQ0566 -t bwa_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566
+listDBKeyfile.sh  -s SQ0566 -t blast_index_paths  # extract distinct cohort + path to bwa index for cohort species for SQ0566
+listDBKeyfile.sh  -s SQ0566 -t list_species  # extract distinct cohort + path to bwa index for cohort species for SQ0566
+listDBKeyfile.sh  -g deer                    # extract everything that has gbs_cohort = deer (across all runs, not case sensitive e.g. will include DEER)
+listDBKeyfile.sh  -m bee                     # extract everything that has species field deer (across all runs , not case sensitive e.g. will include BEE)
+listDBKeyfile.sh  -m bee -t gbsx             # as above, GBSX format 
+listDBKeyfile.sh  -g deer -e PstI            # extract everything that has gbs_cohort = deer , and enzyme = PstI (across all runs)
+listDBKeyfile.sh  -t gbsx -g deer -e PstI    # as above, GBSX format 
+listDBKeyfile.sh  -t files -g deer -e PstI   # as above, report lane + file
+listDBKeyfile.sh  -m Argentine_stem_weevil -t missing_files   # report lane and flowcell for any samples where the fastq file is missing
+listDBKeyfile.sh  -g deer  -f CA95UANXX      # all deer , but only in flowcell CA95UANXX
+listDBKeyfile.sh  -f CA95UANXX               # extract everything on flowcell CA95UANXX
+listDBKeyfile.sh  -s SQ1471 -q good      # all the samples flagged as good in SQ1471 
+listDBKeyfile.sh -s SQ1471 -f CD5F7ANXX -e PstI -g PstI -q good 
 """
-
-
 
     parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-v', '--client_version' , dest='client_version', required=False, default="3",type=str,choices=["5", "3"], help="tassel version this keyfile is for")
@@ -77,7 +75,7 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
     parser.add_argument('-x','--excluded', dest='excluded', action='store_const', default = False, const=True, help='also extract excluded records')
     parser.add_argument('-q','--qc_cohort', dest='qc_cohort', type=str, default=None, help='qc_cohort')
     parser.add_argument('-n','--dry_run', dest='dry_run', action='store_const', default = False, const=True, help='dry run - just emit gquery command')
-    parser.add_argument('--explain', dest='explain', action='store_const', default = False, const=True, help='explain what was done')
+    parser.add_argument('-E','--explain', dest='explain', action='store_const', default = False, const=True, help='explain what was done')
 
 
     args = vars(parser.parse_args())
@@ -85,11 +83,24 @@ list_keyfile.sh                             # don't be greedy ! (extract entire 
     return args
 
 
-def call_gquery(options, predicate_string):
+def call_gquery(options, base_predicate_string):
 
+    predicate_string = base_predicate_string
 
+    if options["enzyme"] is not None:
+        enzyme_phrase = "enzyme=%(enzyme)s"%options
+        predicate_string="%s;%s"%(predicate_string, enzyme_phrase)
+    if options["qc_cohort"] is not None:
+        qc_cohort_phrase = "qc_cohort=%(qc_cohort)s"%options
+        predicate_string="%s;%s"%(predicate_string, qc_cohort_phrase)
     if options["sample"] is not None:
-        args = ["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]]           
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "library", "-p", predicate_string , options["sample"]]
+        if options["gbs_cohort"] is not None:
+            gbs_cohort_phrase = "gbs_cohort=%(gbs_cohort)s"%options
+            predicate_string="%s;%s"%(predicate_string, gbs_cohort_phrase)
+        if options["flowcell"] is not None:
+            flowcell = "flowcell=%(flowcell)s"%options
+            predicate_string="%s;%s"%(predicate_string, flowcell)        
     elif options["species_moniker"] is not None:
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_taxname", "-p", predicate_string,  options["species_moniker"]]
     elif options["gbs_cohort"] is not None and options["flowcell"] is None:
@@ -98,8 +109,8 @@ def call_gquery(options, predicate_string):
         args = ["gquery", "-t", "gbs_keyfile", "-b" , "flowcell", "-p", predicate_string,  options["flowcell"]]
     elif options["flowcell"] is not None and options["gbs_cohort"] is not None:
         flowcell_phrase = "flowcell=%(flowcell)s"%options
-        predicate_string_plus="%s;%s"%(predicate_string, flowcell_phrase)
-        args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string_plus,  options["gbs_cohort"]]        
+        predicate_string="%s;%s"%(base_predicate_string, flowcell_phrase)
+        args = ["gquery", "-t", "gbs_keyfile", "-b" , "gbs_cohort", "-p", predicate_string,  options["gbs_cohort"]]        
     else:
         print("expected something more ! please specify what to extract")
         exit(1)
@@ -160,38 +171,28 @@ def main():
             
         columns_phrase=columns_phrase%params
 
-        predicate_string=columns_phrase
-
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)
-
-        predicate_string="%s;distinct"%predicate_string
+        predicate_string="%s;distinct"%columns_phrase
 
         call_gquery(options, predicate_string)
 
     elif options["template"] == "unblind_script":
 
         predicate_string = "unblinding;columns=qc_sampleid,sample;noheading"
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     elif options["template"] == "files":
 
         predicate_string = "columns=lane,fastq_link;distinct;noheading"
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
+
+    elif options["template"] == "missing_files":
+
+        predicate_string = "columns=flowcell,lane,fastq_link;fastq_link=* fastq_link is missing *;distinct;noheading"
+        call_gquery(options, predicate_string)        
 
     elif options["template"] == "method":
 
         predicate_string = "columns=flowcell,lane,geno_method;distinct;noheading"
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     elif options["template"] in ("bwa_index_paths","blast_index_paths"):
@@ -200,19 +201,12 @@ def main():
             predicate_string = "columns=gbs_cohort,refgenome_bwa_indexes;distinct;noheading"
         else:
             predicate_string = "columns=gbs_cohort,refgenome_blast_indexes;distinct;noheading"
-
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)            
             
         call_gquery(options, predicate_string)
 
     elif options["template"] in ("list_species"):
 
         predicate_string = "columns=species;group;noheading"
-        if options["enzyme"] is not None:
-            enzyme_phrase = "enzyme=%(enzyme)s"%options
-            predicate_string="%s;%s"%(predicate_string, enzyme_phrase)        
         call_gquery(options, predicate_string)
 
     else:
