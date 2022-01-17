@@ -173,11 +173,11 @@ def generate_run_plot(options):
         #        'KGD/Co-call-.png', 'KGD/Gdiagdepth.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/MAFHWdgm.05.png', 'KGD/SampDepthHist.png', 'KGD/SNPDepthHist.png'],
         "Demultiplex (text file links)" :  ["TagCount.csv","FastqToTagCount.stdout"],
         "Deduplication" :  ["dedupe_summary.txt"],        
-        "Overall SNP yields" :  ["overall_snp_yield.txt"],
+        "Overall SNP yields" :  ["overall_snp_yield.txt", "information_efficiency.txt"],
         "KGD stdout" :  ["KGD.stdout"],
         "KGD (plots)" : ['KGD/AlleleFreq.png', 'KGD/CallRate.png', 'KGD/Co-call-HWdgm.05.png', 'KGD/Co-call-.png', 'KGD/finplot.png', \
-                         'KGD/GcompareHWdgm.05.png', 'KGD/Gcompare.png', 'KGD/Gdiagdepth.png', 'KGD/G-diag.png', 'KGD/GHWdgm.05diagdepth.png', \
-                         'KGD/GHWdgm.05-diag.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/HWdisMAFsig.png', 'KGD/LRT-hist.png', 'KGD/LRT-QQ.png', \
+                         'KGD/GcompareHWdgm.05.png', 'KGD/Gcompare.png', 'KGD/Gdiagdepth.png', 'KGD/GHWdgm.05diagdepth.png', \
+                         'KGD/InbCompare.png','KGD/Heatmap-G5HWdgm.05.png', 'KGD/HWdisMAFsig.png', \
                          'KGD/MAFHWdgm.05.png', 'KGD/MAF.png', 'KGD/PC1v2G5HWdgm.05.png', 'KGD/SampDepthCR.png', 'KGD/SampDepthHist.png', \
                          'KGD/SampDepth.png', 'KGD/SampDepth-scored.png', 'KGD/SNPCallRate.png', 'KGD/SNPDepthHist.png', 'KGD/SNPDepth.png', \
                          'KGD/X2star-QQ.png', 'KGD/PlateDepth.png', 'KGD/PlateInb.png', 'KGD/SubplateDepth.png', 'KGD/SubplateInb.png'],
