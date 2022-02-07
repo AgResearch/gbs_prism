@@ -196,6 +196,16 @@ def generate_run_plot(options):
         "Low depth tag nt blast summary (text file links)" : [ 'blast/locus_freq.txt', 'blast/frequency_table.txt', 'blast/taxonomy_summary_profiles.heatmap_clusters.txt', 'blast/taxonomy_summary_variable.heatmap_clusters.txt']
     }
 
+    narratives = {
+        'KGD/InbCompare.png' : """
+Check clumpify normalisation (deduplication) by comparing four estimates of inbreeding: a) production estimate
+ b) adjust using fitted beta-binomial c) sampling one read per lane to remove duplication effect
+ d) treat two lanes as two individuals. If the points are below the line in the first column (a .v. b,c,d), or alpha
+ is low, our normalisation may not be aggressive enough, as production inbreeding estimate is thus higher than these other
+ three methods (each of which should provide a robust estimate of inbreeding, even with un-normalised data)
+"""
+    } 
+
     
     with open(options["output_filename"],"w") as out_stream:
 
@@ -233,7 +243,10 @@ def generate_run_plot(options):
                         image_relpath=os.path.join(cohort, file_name)
 
                         if os.path.exists(file_path):
-                            print >> out_stream, "<td> <img src=%s title=%s height=300 width=300/> </td>\n"%(image_relpath, file_path)
+                            title = file_path
+                            if file_name in narratives:
+                                title = "\"%s (%s)\""%(file_path, narratives[file_name].replace('\n',''))
+                            print >> out_stream, "<td> <img src=%s title=%s height=300 width=300/> </td>\n"%(image_relpath, title)
                         else:
                             print >> out_stream, "<td> unavailable </td>\n"
                     elif file_type == "link":
