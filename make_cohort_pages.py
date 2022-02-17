@@ -203,7 +203,21 @@ Check clumpify normalisation (deduplication) by comparing four estimates of inbr
  d) treat two lanes as two individuals. If the points are below the line in the first column (a .v. b,c,d), or alpha
  is low, our normalisation may not be aggressive enough, as production inbreeding estimate is thus higher than these other
  three methods (each of which should provide a robust estimate of inbreeding, even with un-normalised data)
-"""
+""",
+        'KGD/SampDepthHist.png' : """
+Distribution of sample depths. If it is not roughly unimodal, there may be contamination or a mix of different species or breeds. Also, some downstream
+ pipelines use a sample-depth cutoff to filter the data, which could be confused by a multi-modal sample-depth distribution.
+""",
+        'KGD/Gdiagdepth.png' : """
+In theory self-relatedness estimated from GBS data should be uncorrelated with sample depth, so there should be neither negative nor positive trend
+ in this plot. A negatively sloping trend has been nick-named a slippery slope, and means something is not quite right somewhere (with either the make-up of the original sample
+ -e.g. some kind of contamination, or the enzyme digest, or size selection, or sequencing, or downstream processing). If they persist, slippery slopes need to be investigated and
+ resolved
+""",
+        'KGD/GHWdgm.05diagdepth.png' : """
+This is similar to the Gdiagdepth.png plot, but based on a smaller set of SNP's (net of the Hardy-Weinberg + depth filter), which eliminates some potential sources of
+ correlation between self-relatedness estimates and sample depth. So this plot should exhibit less than (or the same) correlation as that plot
+"""     
     } 
 
     
