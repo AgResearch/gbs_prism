@@ -211,7 +211,7 @@ Comparisons SNP reference allele frequencies calculated 3 different ways: 1) aft
 Histogram of call rate (proportion of SNPs scored) for each sample.
 """,
         'KGD/Co-call-HWdgm.05.png' : """
-Shows the co-call distribution (see Co-call-.png) after applying the Hardy-Weinberg filter to SNPs.
+Shows the co-call distribution (see Co-call-.png) after applying the Hardy-Weinberg filter to SNPs and combining lanes (if relevant).
 """,
         'KGD/Co-call-.png' : """
 The co-call plot shows the distribution (over all possible pairs) of the proportion of SNPs called in a pair of individuals.
@@ -227,7 +227,7 @@ The Hardy-Weinberg filter, HWdgm.05 (Hardy-Weinberg disequilibium > -0.05) used 
 Comparisons of different methods for calculating off-diagonals of the GRM. G5=KGD method, G3=KGD with single allele per genotype, G1=unadjusted (biased towards 0).
 """,
         'KGD/GcompareHWdgm.05.png' : """
-Same as Gcompare.png plot but using only those SNPs passing the Hardy-Weinberg filter.
+Same as Gcompare.png plot but using only those SNPs passing the Hardy-Weinberg filter and combining lanes (if relevant)
 """,
         'KGD/SampDepthHist.png' : """
 Distribution of sample depths. If it is not roughly unimodal, there may be contamination or a mix of different species or breeds. Also, some downstream
@@ -240,12 +240,13 @@ In theory self-relatedness estimated from GBS data should be uncorrelated with s
  resolved
 """,
         'KGD/GHWdgm.05diagdepth.png' : """
-This is similar to the Gdiagdepth.png plot, but based on a smaller set of SNPs (net of the Hardy-Weinberg filter), which eliminates some potential sources of
- correlation between self-relatedness estimates and sample depth. So this plot should exhibit less than (or the same) correlation as that plot
+This is similar to the Gdiagdepth.png plot, but 1) combining lanes (if relevant) and 2) based on a smaller set of SNPs (net of the Hardy-Weinberg filter), which eliminates some potential sources of
+ correlation between self-relatedness estimates and sample depth. So this plot should exhibit less than (or the same) correlation as that plot. 
 """,
         'KGD/Heatmap-G5HWdgm.05.png' : """
 Heatmap representation of the G5 GRM.
 Relatedness values are coloured from white to red (lowest to highest relatedness). Samples are ordered by a dendrogram from hierarchically clustering a distance matrix of the GRM.
+SNPs have been Hardy-Weinberg filterd and and lanes combined (if relevant)
 """,
         'KGD/HWdisMAFsig.png' : """
 SNPs plotted as in finplot.png but coloured by an approximate depth-adjusted significance value.
@@ -254,10 +255,11 @@ SNPs plotted as in finplot.png but coloured by an approximate depth-adjusted sig
 MAF distribution. Diverse populations tend to have a peak at low values of MAF.
 """,
         'KGD/MAFHWdgm.05.png' : """
-MAF distribution of Hardy-Weinberg filtered SNPs.
+MAF distribution of Hardy-Weinberg filtered SNPs after combining lanes (if relevant)
 """,
         'KGD/PC1v2G5HWdgm.05.png' : """
 Principal components plot (1st 2 coordinates) of samples, based on the G5 GRM.
+SNPs have been Hardy-Weinberg filterd and and lanes combined (if relevant)
 """,
         'KGD/SampDepthCR.png' : """
 Plot of depth vs call rate for samples. This is usually a fairly tight upwardly curving line.
