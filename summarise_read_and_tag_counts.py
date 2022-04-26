@@ -26,7 +26,7 @@ F1506080	C89NRANXX	2	170	301157	1083759
 .
 .
 .
-and return a flat tabular listing of the data which can be summarised
+and return a flat tabular listing of the data which can be input to e.g. R boxplot function.
     """
     print "parsing %s"%filename
     (tuple_stream, exclusions_stream)= itertools.tee(from_csv_file(filename))
@@ -94,13 +94,25 @@ def get_options():
     ./summarise_read_and_tag_counts.py -f csv -o /dataset/gseq_processing/scratch/gbs/200407_D00390_0541_BCE3EWANXX/html/tags_reads_summary.csv /dataset/gseq_processing/scratch/gbs/200407_D00390_0541_BCE3EWANXX/*/TagCount.csv 
 
 
-output looks like 
+summarised output looks like 
 
 flowcell_sq_cohort      mean_tag_count  std_tag_count   min_tag_count   max_tag_count   mean_read_count std_read_count  min_read_count  max_read_count
 SQ1257.all.PstI.PstI_CE3EWANXX_SQ1257   253258.066845   29503.126706    41196   333481  700922.302139   175178.466915   50064   1315737
 SQ1258.all.PstI.PstI_CE3EWANXX_SQ1258   243487.630319   19029.8927137   40472   324748  696395.071809   115029.175347   49835   1314941
 SQ1259.all.PstI.PstI_CE3EWANXX_SQ1259   242148.553191   57613.3610063   39672   368608  689894.276596   281653.607972   54937   1606162
 SQ1260.all.cattle.PstI_CE3EWANXX_SQ1260 241946.8        44441.8022528   90710   332085  763308.06       275784.635112   170440  1601096
+
+unsummarised output looks like
+
+cohort  tags    reads
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  453504  3152385
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  372649  1970833
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  371581  1716903
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  502575  3584086
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  611153  4530506
+SQ1263.all.takahe.PstI-MspI_CE3EWANXX_SQ1263(n=49)  384775  2235164
+
+(and is input to box plot R script) 
 
 OR
 
