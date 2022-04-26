@@ -236,14 +236,14 @@ elif [[ ( $MACHINE == "miseq" ) || ( $MACHINE == "novaseq" ) || ( $MACHINE == "i
    echo "
    insert into bioSampleList (xreflsid, listName, listComment)
    select 
-      :run_name,:run_name,'AgResearch Miseq Run'
+      :run_name,:run_name,'AgResearch Illumina Run'
    except
    select 
       xreflsid, listName, listComment from bioSampleList 
    where
       xreflsid = :run_name and 
       listName = :run_name and 
-      listComment = 'AgResearch Miseq Run';
+      listComment = 'AgResearch Illumina Run';
    " > /tmp/${RUN_NAME}.psql
 
    # if a sample lib provided on command line, add setup of that as well

@@ -98,7 +98,7 @@ fi
 
 # machine must be miseq or hiseq 
 if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) ]]; then
-    echo "machine must be miseq or hiseq"
+    echo "machine must be miseq, hiseq or novaseq"
     exit 1
 fi
 
@@ -106,6 +106,12 @@ fi
 if [ ! -d $RUN_BASE_PATH ]; then
    echo "$RUN_BASE_PATH not found"
    exit 1
+fi
+
+# set keyfile dir
+KEYFILE_DIR=$MACHINE
+if [ $MACHINE == "novaseq" ]; then
+   KEYFILE_DIR=hiseq
 fi
 
 }
@@ -176,9 +182,9 @@ function import_keyfiles() {
    set -x
    for sample_moniker in $sample_monikers; do
       if [ $DRY_RUN == "no" ]; then
-         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker -D /dataset/${MACHINE}/active/key-files
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -k $sample_moniker -s $sample_moniker -D /dataset/${KEYFILE_DIR}/active/key-files
       else
-         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker -D /dataset/${MACHINE}/active/key-files
+         $GBS_PRISM_BIN/importOrUpdateKeyfile.sh -n -k $sample_moniker -s $sample_moniker -D /dataset/${KEYFILE_DIR}/active/key-files
       fi
       if [ $? != "0" ]; then
           echo "warning  - importOrUpdateKeyfile.sh  exited with $? for $sample_moniker - do you want to continue ? (y/n default y)"
