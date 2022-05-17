@@ -111,9 +111,9 @@ overview_section="""
 <tr id=trimmed_kmer>
 <td> 6-mer distributions (GBS-adapter-trimmed data)</td>
 <td>
-<img src=trimmed_kmer_analysis/kmer_entropy.k6.jpg title=kmer_entropy.k6.jpg height=600 width=600/>
-<img src=trimmed_kmer_analysis/kmer_zipfian_comparisons.k6.jpg title=kmer_zipfian_comparisons.k6.jpg  height=400 width=400/>
-<a href=trimmed_kmer_analysis/heatmap_sample_clusters.k6.txt> Clusters  </a>
+<img src=trimmed_kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg height=600 width=600/>
+<img src=trimmed_kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
+<a href=trimmed_kmer_analysis/heatmap_sample_clusters.k6A.txt> Clusters  </a>
 </td>
 </tr>
 </table>
