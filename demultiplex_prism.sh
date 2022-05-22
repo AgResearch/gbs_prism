@@ -5,6 +5,10 @@
 # 
 #
 
+# references : 
+#
+# https://biohpc.cornell.edu/lab/doc/TasselPipelineGBS20120215.pdf
+
 declare -a files_array
 
 function get_opts() {
