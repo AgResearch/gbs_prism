@@ -794,7 +794,7 @@ function trimmed_kmer_analysis() {
       echo "*** please run bwa mapping before trimmed kmer analysis - unable to run trimmed kmer analysis as no trimmed fastq available yet ***"
    else
       cp -fs $OUT_ROOT/bwa_mapping/*/*.trimmed.fastq $OUT_ROOT/trimmed_kmer_analysis   # this step eliminates duplicate filenames 
-      $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p "-k 6" -O $OUT_ROOT/trimmed_kmer_analysis $OUT_ROOT/trimmed_kmer_analysis/*.trimmed.fastq  > $OUT_ROOT/trimmed_kmer_analysis/kmer_analysis.log
+      $SEQ_PRISMS_BIN/kmer_prism.sh -C $HPC_TYPE -j $NUM_THREADS -a fastq -p "-k 6 -A" -O $OUT_ROOT/trimmed_kmer_analysis $OUT_ROOT/trimmed_kmer_analysis/*.trimmed.fastq  > $OUT_ROOT/trimmed_kmer_analysis/kmer_analysis.log
    fi
 }
 
@@ -915,7 +915,7 @@ function html() {
       cp -s $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/gbs/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
    mkdir -p $OUT_ROOT/html/trimmed_kmer_analysis
-   for file in kmer_entropy.k6.jpg heatmap_sample_clusters.k6.txt kmer_zipfian_comparisons.k6.jpg ; do
+   for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
       cp -s $OUT_ROOT/trimmed_kmer_analysis/$file $OUT_ROOT/html/trimmed_kmer_analysis
    done
 
