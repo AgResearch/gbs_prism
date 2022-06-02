@@ -299,6 +299,24 @@ The same as PlateDepth.png but with a different colour gradient for each subplat
 """,
         'KGD/SubplateInb.png' : """
 The same as PlateInb.png but with a different colour gradient for each subplate within the main plate.
+""",
+        'blast/taxonomy_summary_profile.jpg' : """
+A heatmap visualisation of the estimated proportion of low-depth tags hitting Genbank taxa (blastn of an adapter-filtered random sample of tags, against nt).
+ Poor quality samples (low tag count) have an off-white background. In this plot, each row represents a cluster of taxa
+ with similar profiles, and is labelled with a representative taxname.
+""",
+        'blast/taxonomy_summary_variable.jpg' : """
+A heatmap visualisation of the estimated proportion of low-depth tags hitting a subset of Genbank taxa (the 100 most variable, from blastn of an adapter-filtered random sample of tags,
+ against nt). Poor quality samples (low tag count) have an off-white background. In this plot, each row is just one labelled taxa.
+ """,
+        'blast/locus_freq.jpg' : """
+A heatmap visualisation of the estimated proportion of low-depth tags hitting specific Genbank accessions (e.g. chromosomes) (blastn of an adapter-filtered random sample of tags, against nt).
+ Poor quality samples (low tag count) have an off-white background. In this plot, each row represents a cluster of accessions
+ with similar profiles, and is labelled with a representative accession.
+""",
+        'blast/locus_freq_abundant.jpg' : """
+A heatmap visualisation of the estimated proportion of low-depth tags hitting a subset of specific Genbank accessions (the 40 most frequenctly hit, from blastn of an adapter-filtered random sample of tags,
+ against nt). Poor quality samples (low tag count) have an off-white background. In this plot, each row is just one labelled accession.
 """
     } 
     
