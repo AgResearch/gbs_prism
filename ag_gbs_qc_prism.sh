@@ -301,7 +301,15 @@ function get_targets() {
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
       gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=gbs_cohort,refgenome_bwa_indexes;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.bwa_references 
 
-      adapter_phrase="-a AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
+      adapter_phrase="-a TCGTATGCCGTCTTCTGCTTG -a TCGTATGCCGTCTTCTGCTTG -a ATCTCGTATGCCGTCTTCTGCTTG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC -a AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCGATCTCGTATGCCGTCTTCTGCTT -a AGATCGGAAGAG -a GATCGGAAGAGCACACGTCT -a GATCGGAAGAGCACACGTCTGAACTCCAGTCAC"
+      # the first 6 from an empirical assembly of recent data which matched 
+      # Illumina NlaIII Gex Adapter 2.02 1885 TCGTATGCCGTCTTCTGCTTG
+      # Illumina DpnII Gex Adapter 2.01 1885 TCGTATGCCGTCTTCTGCTTG
+      # Illumina Small RNA 3p Adapter 1 1869 ATCTCGTATGCCGTCTTCTGCTTG
+      # Illumina Multiplexing Adapter 1 1426 GATCGGAAGAGCACACGTCT
+      # Illumina Universal Adapter 1423 AGATCGGAAGAG
+      # Illumina Multiplexing Index Sequencing Primer 1337 GATCGGAAGAGCACACGTCTGAACTCCAGTCAC
+
       bwa_alignment_parameters="-B 10"
 
       for analysis_type in all bwa_mapping demultiplex kgd filtered_kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
