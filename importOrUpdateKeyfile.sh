@@ -1,5 +1,7 @@
 #!/bin/sh
-#
+################################################################
+# THIS SCRIPT IS NO LONGER SUPPORTED, replaced by gquery/gupdate
+################################################################
 function get_opts() {
 
 help_text="\n
@@ -150,6 +152,9 @@ function echo_opts() {
     echo "DRY_RUN=$DRY_RUN"
     echo "ACTION=$ACTION"
 }
+
+echo "THIS SCRIPT (importOrUpdateKeyfile.sh) IS NO LONGER SUPPORTED, replaced by gquery/gupdate"
+exit 1
 
 get_opts $@
 
