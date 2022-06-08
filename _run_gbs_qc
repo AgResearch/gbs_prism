@@ -91,13 +91,7 @@ function run_bclconvert() {
       fi
    fi
 
-   bclconvert_phrase="-R $NOVASEQ_ROOT/$RUN -i $NOVASEQ_ROOT/$RUN/Data/Intensities/BaseCalls"
-   echo "do you want to allow missing bcls ? (y/n, default=n)"
-   read_answer_with_default n
-   if [ "$answer" == "y" ]; then
-      bclconvert_phrase="-R $NOVASEQ_ROOT/$RUN -i $NOVASEQ_ROOT/$RUN/Data/Intensities/BaseCalls --ignore-missing-bcls"
-   fi
-
+   bclconvert_phrase="" # not currently used - previously used to pass in bcl2fastq options 
 
    # set up for bclconvert run
    mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet
@@ -107,11 +101,23 @@ function run_bclconvert() {
    fi
 
    ####### ensure sample sheet used for bclconvert contains header, and includes specification of adapter
-   cat $NOVASEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCLCONVERT_ROOT/$RUN/SampleSheet.csv
+   if [ $platform == "novaseq" ]; then
+      cat $SAMPLE_SHEET | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCLCONVERT_ROOT/$RUN/SampleSheet.csv
+   else
+      cat $SAMPLE_SHEET | $GBS_PRISM_BIN/add_sample_sheet_header.py -H  $GBS_PRISM_BIN/etc/sample_sheet_header.csv  > $BCLCONVERT_ROOT/$RUN/SampleSheet.csv
+   fi
+
+   ###### ensure output folder does not exist
+   if [ -d $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert ]; then
+      echo "
+*** error *** 
+$BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert already exists - please clean up and retry"
+      exit 1
+   fi
 
    echo "about to run bclconvert using
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  > $BCLCONVERT_ROOT/$RUN/bclconvert.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  > $BCLCONVERT_ROOT/$RUN/bclconvert.log 2>&1
 
    OK ? (y/n, default=y)
    "
@@ -125,9 +131,9 @@ function run_bclconvert() {
 
    "
 
-   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv" > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv " > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -B "$bclconvert_phrase" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv >> $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B "$bclconvert_phrase" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  >> $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log 2>&1
 
    if [ $? != 0 ]; then
 
@@ -172,6 +178,9 @@ function run_fastqc() {
    mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs
    find $BCLCONVERT_ROOT/$RUN -name "*.fastq.gz" -type f -size $min_size  -print > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt
    echo "
+   export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
+   export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+
    nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1 
    nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1 
    " > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
@@ -195,6 +204,68 @@ OK ? (y/n, default=y)
    "
    source $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src &
 }
+
+function run_dedupe() {
+   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert/*.fastq.gz | grep -vi undetermined > $BCLCONVERT_ROOT/$RUN/SampleSheet/files_to_dedupe.txt
+
+   echo "
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1
+   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
+   echo "
+   About to start dedupe using : 
+
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a dedupe -D \"dedupe optical dupedist=15000 subs=0\" -T /dataset/gseq_processing/itmp/illumina -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/files_to_dedupe.txt\`  > $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe.log 2>&1
+
+OK ? (y/n, default=y)
+   "
+   read_answer_with_default y
+   if [ $answer != "y" ]; then
+      echo "OK quitting"
+      exit 1
+   fi
+   echo "
+
+   running dedupe
+
+   "
+   echo "
+   export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
+   export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
+
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a dedupe -D \"dedupe optical dupedist=15000 subs=0\" -T /dataset/gseq_processing/itmp/illumina -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/files_to_dedupe.txt\`  > $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe.log 2>&1
+   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/restart_dedupe.src
+
+   echo "
+
+   running dedupe (to restart or rerun this step , you can 
+  
+   source $BCLCONVERT_ROOT/$RUN/SampleSheet/restart_dedupe.src
+
+   -this should take about an hour 
+   "
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a dedupe -D "dedupe optical dupedist=15000 subs=0" -T /dataset/gseq_processing/itmp/illumina -O $BCLCONVERT_ROOT/$RUN/SampleSheet `cat $BCLCONVERT_ROOT/$RUN/SampleSheet/files_to_dedupe.txt`  > $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe.log 2>&1
+
+   if [ $? != 0 ]; then
+
+      if [ $INTERACTIVE != yes ]; then
+         send_mail "sorry dedupe for $RUN exited with an error code"
+      fi
+
+      echo "
+
+      dedupe has finished but received a non zero process exit code from sequencing_qc_prism - do
+      you want to continue ? (y/n, default = n)
+      "
+      read_answer_with_default n
+      if [ $answer != "y" ]; then
+         echo "OK quitting"
+         exit 1
+      fi
+   fi
+
+}
+
 
 function get_run_opts() {
 
@@ -265,6 +336,19 @@ script (which assumes novaseq data disposition)
    done
 
    echo "will process $gbs_ROOT/$RUN"
+
+
+   ####### find the sample sheet  - e.g. could be HNFW2DRXY.csv or SampleSheet.csv
+   SAMPLE_SHEET=$NOVASEQ_ROOT/$RUN/SampleSheet.csv
+   if [ ! -f $SAMPLE_SHEET ]; then
+      SAMPLE_SHEET=`ls $NOVASEQ_ROOT/$RUN/*.csv`  
+      base=`basename $SAMPLE_SHEET .csv`
+      echo $RUN | grep $base > /dev/null 2>&1
+      if [ $? != 0 ]; then
+         echo "sorry can't find the sample-sheet for this run under $NOVASEQ_ROOT/$RUN"
+      fi
+   fi
+
    ####### check whether we can find sequence data - if not confirm  bclconvert is needed 
    echo "checking sequence data (looking under  $BCLCONVERT_ROOT/$RUN)...."
    ls -lR $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert 2>/dev/null | grep "fastq.gz"   > /dev/null 2>&1 
@@ -290,6 +374,18 @@ script (which assumes novaseq data disposition)
       fi
    fi
 
+   ####### check whether we can find deduped data   - if not confirm
+   echo "checking for deduped data (looking for $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe/*.fastq.gz )...."
+   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe/*.fastq.gz > /dev/null 2>&1
+   if [ $? != 0 ]; then
+      echo "could not find deduped fastq files (i.e. $BCLCONVERT_ROOT/$RUN/SampleSheet/dedupe/*.fastq.gz) so looks like dedupe is needed - OK to run that ? (y/n, default=y)"
+      read_answer_with_default y
+      if [ "$answer" != "y" ]; then
+         echo "OK continuing..."
+      else
+         run_dedupe
+      fi
+   fi
 
    ######## continue on with GBS q/c ###########
    # set up output folder
@@ -319,9 +415,6 @@ script (which assumes novaseq data disposition)
    echo "will use output root folder $OUTPUT_ROOT
 
    "
-
-   ####### generate the edited sample sheet used for database import 
-   cat $NOVASEQ_ROOT/$RUN/SampleSheet.csv | $GBS_PRISM_BIN/sanitiseSampleSheet.py -r $RUN --supply_missing --add_header --target database | tr -d '\r' > $OUTPUT_ROOT/SampleSheet.csv 
 
    ####### check whether run is in database  - import it if not 
    echo "
@@ -404,39 +497,6 @@ should this run be queued on the compute cluster ? (y/n, default=y. If n, will b
    else
       HPC_TYPE=local
    fi
-
-
-   if [[ ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" ) && ( $ANALYSIS != "import_results" )  && ( $ANALYSIS != "clientreport" ) && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
-      ####### get and check the sample sheet and a parameters file that controls the processing 
-      ####### sample sheet:
-      SAMPLE_SHEET=""
-      if [ -f $gbs_ROOT/$RUN/SampleSheet.csv ]; then
-         echo "will use sample sheet $OUTPUT_ROOT/SampleSheet.csv , containing...(press enter for listing)..."
-         read_answer_with_default ""
-         more_with_default $OUTPUT_ROOT/SampleSheet.csv 
-         echo "
-
-         "
-         echo "is this OK ? (y/n, default=y)"
-         read_answer_with_default y
-         if [ "$answer" == "y" ]; then
-            SAMPLE_SHEET=$gbs_ROOT/$RUN/SampleSheet.csv 
-         fi
-      else
-         echo "warning - could not find a sample sheet in the usual place ( $gbs_ROOT/$RUN/SampleSheet.csv )"
-      fi
-      while [ -z "$SAMPLE_SHEET" ]; do
-         echo "please enter enter or paste in the full path to the sample sheet specifying lane contents and downstream processing"
-         read SAMPLE_SHEET
-         if [ ! -f "$SAMPLE_SHEET" ]; then 
-            SAMPLE_SHEET=""
-         fi
-      done
-
-      ####### processing parameters
-      # deprecated 
-      #get_processing_parameters  
-   fi 
 
 }
 
@@ -952,8 +1012,6 @@ function update_warehouse() {
       fi
    fi
 }
-
-
 
 get_opts "$@"
 get_run_opts
