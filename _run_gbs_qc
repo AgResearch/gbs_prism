@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# master interactive script for processing a novaseq run through bclconvert and GBS analysis
+# master interactive script for processing a novaseq run through bclconvert , database imports and GBS analysis
 #
 
 export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms 
@@ -166,29 +166,30 @@ $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert already exists - please clean up an
 }
 
 
-function run_fastqc() {
+function run_lane_qc() {
    echo "
 
    finding sequence files for fastqc..."
-   min_size="+2000000000c"
-   if [ $BCLCONVERT_ROOT == $ISEQ_BCLCONVERT_ROOT ]; then
-      min_size="+200000c"
-   fi
+   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet
+   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert/*.fastq.gz > $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt
    
-   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs
-   find $BCLCONVERT_ROOT/$RUN -name "*.fastq.gz" -type f -size $min_size  -print > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt
+   if [ $? != 0 ]; then
+      echo "run_lane_qc: oops could not find any fastq files under $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert ! giving up"
+      exit 1
+   fi  
+
    echo "
    export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
    export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1 
-   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc.log 2>&1 
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_analysis.log 2>&1 
+   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src
    echo "
 
    about to start fastqc and kmer_analysis in the background using 
 "
-   cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src 
+   cat $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src 
    echo "
 OK ? (y/n, default=y)
    "
@@ -202,16 +203,12 @@ OK ? (y/n, default=y)
    running fastqc and kmer analysis in background, then will continue with GBS q/c...
 
    "
-   source $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src &
+   source $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src &
 }
 
 function run_dedupe() {
    ls $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert/*.fastq.gz | grep -vi undetermined > $BCLCONVERT_ROOT/$RUN/SampleSheet/files_to_dedupe.txt
 
-   echo "
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/fastqc.log 2>&1
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/kmer_analysis.log 2>&1
-   " > $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/lane_qc.src
    echo "
    About to start dedupe using : 
 
@@ -277,17 +274,10 @@ function get_run_opts() {
    SNP_ENGINE=tassel        # the only one supported at this point
 
    NOVASEQ_ROOT=/dataset/hiseq/scratch
-   MISEQ_ROOT=/dataset/miseq/active
-   ISEQ_ROOT=/dataset/hiseq/active
-
-   #NOVASEQ_PROCESSING_ROOT=/dataset/gseq_processing/scratch/gbs
    NOVASEQ_PROCESSING_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
-   # there is no MISEQ version of that as processing miseq using this script not supported currently 
-  
-   #NOVASEQ_BCLCONVERT_ROOT=/dataset/gseq_processing/scratch/illumina/novaseq
    NOVASEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/novaseq
-   ISEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/iseq
-   # there is no MISEQ version of that as processing miseq using this script not supported currently 
+   mkdir -p $NOVASEQ_PROCESSING_ROOT
+   mkdir -p $NOVASEQ_BCLCONVERT_ROOT
 
 
    echo "*** gbs analysis version $gbs_version (KGD version $kgd_version) (using SNP engine = $SNP_ENGINE) ***
@@ -314,22 +304,8 @@ please give the full name of gbs run you would like to process (e.g. 210712_A014
             PROCESSING_ROOT=$NOVASEQ_PROCESSING_ROOT
             BCLCONVERT_ROOT=$NOVASEQ_BCLCONVERT_ROOT
             break
-         elif [ -d $ISEQ_ROOT/$RUN ]; then
-            platform=iseq
-            gbs_ROOT=$NOVASEQ_ROOT
-            PROCESSING_ROOT=$NOVASEQ_PROCESSING_ROOT
-            BCLCONVERT_ROOT=$ISEQ_BCLCONVERT_ROOT
-            break
-         elif [ -d $MISEQ_ROOT/$RUN ]; then
-            platform=miseq
-            echo "
-to process miseq data, you will need to run the underlying scripts
-demultiplex_prism.sh and genotype_prism.sh , rather than this master
-script (which assumes novaseq data disposition)
-"
-            exit 1
          else 
-            echo "sorry can't find $RUN under either $NOVASEQ_ROOT or $MISEQ_ROOT "
+            echo "sorry can't find $RUN under $NOVASEQ_ROOT"
          fi
       fi
 
@@ -362,15 +338,15 @@ script (which assumes novaseq data disposition)
       fi
    fi
 
-   ####### check whether we can find fastqc results  - if not confirm 
-   echo "checking for fastqc results (looking for $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt)...."
-   if [ ! -f $BCLCONVERT_ROOT/$RUN/SampleSheet/gbs/sequence_files.txt ]; then 
+   ####### check whether we can find lane q/c landmark - if not confirm 
+   echo "checking for fastqc results (looking for $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt)...."
+   if [ ! -f $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt ]; then 
       echo "could not find fastqc landmark so looks like fastqc is needed - OK to run that ? (y/n, default=y)"
       read_answer_with_default y
       if [ "$answer" != "y" ]; then
          echo "OK continuing..."
       else
-         run_fastqc
+         run_lane_qc
       fi
    fi
 
@@ -416,19 +392,17 @@ script (which assumes novaseq data disposition)
 
    "
 
-   ####### check whether run is in database  - import it if not 
+   ####### check whether run is in database  - import it if not (this also generates keyfiles)
    echo "
 
 checking if run is in the database... 
 
 "
-   in_db=`$GBS_PRISM_BIN/is_run_in_database.sh $RUN | sed 's/\s//g' -`
-   if [ $in_db == "0" ]; then
-      echo "$RUN is not in the database - will run database import first , about to execute 
+   gquery  -t lab_report -p name=illumina_run_details $RUN  > /dev/null 2>&1
+   if [ $? != "0" ]; then
+      echo "$RUN is not in the database - will generate keyfiles and set up run in the database first. About to execute  
 
-$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a $OUTPUT_ROOT/database_prism.log
-
-logging to $OUTPUT_ROOT/database_prism.log 
+gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all
 
 OK ? (y/n, default = y)
 "
@@ -436,12 +410,12 @@ OK ? (y/n, default = y)
       if [ "$answer" != "n" ]; then
          echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
          psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
-         echo "running $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $OUTPUT_ROOT -t import_new_run -r $RUN" >> $OUTPUT_ROOT/database_prism.log
-         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $OUTPUT_ROOT -t import_new_run -r $RUN | tee -a  $OUTPUT_ROOT/database_prism.log 
+         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all"
+         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET" all
          if [ $? != 0 ]; then
             echo "
 
-sorry - quitting after received bad return code from database import -try looking at
+sorry - quitting after received bad return code from database import -try looking at the log file shown above
 
 $OUTPUT_ROOT/database_prism.log
 
@@ -449,7 +423,11 @@ $OUTPUT_ROOT/database_prism.log
             exit 1
          fi
       else
-         echo "OK quitting - can't run GBS q/c until run has been imported to database"
+         echo "OK quitting - can't run GBS q/c until run setup has been completed. Most likely problem is an unexpected sample sheet format - after fixing, you can just retry setup with
+
+gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all
+
+"
          exit 1
       fi
    fi
