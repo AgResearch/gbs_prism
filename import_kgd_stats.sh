@@ -4,19 +4,14 @@ function get_opts() {
 
 help_text="\n
       usage : import_kgd_stats.sh -r run_name\n
-      example (dry run) : ./import_kgd_stats.sh -n -r 170224_D00390_0285_ACA62JANXX\n
       example           : ./import_kgd_stats.sh -r 170224_D00390_0285_ACA62JANXX\n
 "
 
-DRY_RUN=no
 RUN_NAME=""
-BUILD_ROOT=/dataset/gseq_processing/scratch/gbs 
+BUILD_ROOT=/dataset/hiseq/scratch/postprocessing/gbs 
 
-while getopts ":nhr:d:" opt; do
+while getopts "hr:d:" opt; do
   case $opt in
-    n)
-      DRY_RUN=yes
-      ;;
     r)
       RUN_NAME=$OPTARG
       ;;
@@ -61,7 +56,6 @@ fi
 
 function echo_opts() {
     echo "importing $RUN_NAME from $RUN_PATH"
-    echo "DRY_RUN=$DRY_RUN"
 }
 
 get_opts $@
@@ -112,23 +106,7 @@ done
 
 function import_data() {
    cd $RUN_PATH/html
-   if [ $DRY_RUN == "yes" ]; then
-      echo " dry run 
-      psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/import_kgd_stats.psql"
-   else 
-      psql -U agrbrdf -d agrbrdf -h postgres  -f $GBS_PRISM_BIN/import_kgd_stats.psql
-   fi
+   gupdate --explain -t lab_report -p "name=import_gbs_kgd_stats;file=kgd_import_temp.dat" $RUN_NAME
 }
-
-function update_data() {
-   if [ $DRY_RUN == "yes" ]; then
-      echo " dry run
-      psql -U agrbrdf -d agrbrdf -h postgres  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql"
-   else
-      psql -U agrbrdf -d agrbrdf -h postgres  -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_kgd_stats.psql
-   fi
-}
-
 collate_data
 import_data
-update_data

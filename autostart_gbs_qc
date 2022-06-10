@@ -74,20 +74,20 @@ function get_pipeline() {
 
 function send_mail() {
    echo "sending mail to vanstijnt , mccullocha, bairdh "
-   echo "" | mutt -s "FYI - looks like upload of $RUN is complete so auto-starting processing" vanstijnt , mccullocha, bairdh
+   echo "" | mutt -s "FYI - looks like upload of $RUN is complete so auto-starting processing" vanstijnt , mccullocha, bairdh, perrybe
 }
 
 function get_landmark() {
    RUN=$1
    landmark=""
-   if [ -f /dataset/hiseq/active/$RUN/RTAComplete.txt ]; then
-      landmark=/dataset/hiseq/active/$RUN/RTAComplete.txt
+   if [ -f /dataset/hiseq/scratch/$RUN/RTAComplete.txt ]; then
+      landmark=/dataset/hiseq/scratch/$RUN/RTAComplete.txt
    fi
 }
 
 function get_digest() {
    RUN=$1
-   digest=`ls -lR /dataset/hiseq/active/$RUN/ | md5sum -b `
+   digest=`ls -lR /dataset/hiseq/scratch/$RUN/ | md5sum -b `
    echo $digest
 }
 

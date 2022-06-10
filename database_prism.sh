@@ -301,6 +301,12 @@ function import_results() {
    $GBS_PRISM_BIN/import_kgd_stats.sh -d $RUN_BASE_PATH -r $RUN
 }
 
+echo "
+###################################
+# this script has been deprecated #
+###################################
+exit 1
+
 
 get_opts $@
 

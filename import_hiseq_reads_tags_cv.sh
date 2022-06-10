@@ -11,25 +11,17 @@ function get_opts() {
 
 help_text="\n
       usage : import_hiseq_reads_tags_cv.sh -r run_name\n
-      example (dry run) : ./import_hiseq_reads_tags_cv.sh -n -r 170224_D00390_0285_ACA62JANXX\n
-      example           : ./import_hiseq_reads_tags_cv.sh -r 170224_D00390_0285_ACA62JANXX\n
+      example           : ./import_hiseq_reads_tags_cv.sh -r 220407_A01439_0064_BHY3WWDRXY\n
 "
 
 DRY_RUN=no
 RUN_NAME=""
-BUILD_ROOT=/dataset/gseq_processing/scratch/gbs
-MACHINE=novaseq
+BUILD_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
 
-while getopts ":nhr:d:m:" opt; do
+while getopts "hr:d:" opt; do
   case $opt in
-    n)
-      DRY_RUN=yes
-      ;;
     r)
       RUN_NAME=$OPTARG
-      ;;
-    m)
-      MACHINE=$OPTARG
       ;;
     d)
       BUILD_ROOT=$OPTARG
@@ -69,18 +61,10 @@ if [ ! -d $RUN_PATH ]; then
    exit 1
 fi
 
-# machine must be miseq , hiseq or novaseq
-if [[ ( $MACHINE != "hiseq" ) && ( $MACHINE != "miseq" ) && ( $MACHINE != "novaseq" ) && ( $MACHINE != "iseq" ) ]]; then
-    echo "machine must be miseq or hiseq"
-    exit 1
-fi
-
 }
 
 function echo_opts() {
     echo "importing $RUN_NAME from $RUN_PATH"
-    echo "DRY_RUN=$DRY_RUN"
-    echo "MACHINE=$MACHINE"
 }
 
 get_opts $@
@@ -107,7 +91,7 @@ for file in $files; do
    cohort=`basename $cohort`
    run=$RUN_NAME
 
-   $GBS_PRISM_BIN/collate_tags_reads.py --run $run --cohort $cohort --machine $MACHINE $file >> $RUN_PATH/html/gbs_yield_import_temp.dat 
+   $GBS_PRISM_BIN/collate_tags_reads.py --run $run --cohort $cohort --machine novaseq $file >> $RUN_PATH/html/gbs_yield_import_temp.dat 
 
    #cat $file | awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=$run cohort=$cohort - >> $RUN_PATH/html/gbs_yield_import_temp.dat
    # e.g.
@@ -120,15 +104,10 @@ done
 
 function import_data() {
    cd $RUN_PATH/html
-   psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.psql
-}
-
-function update_data() {
-   psql -U agrbrdf -d agrbrdf -h postgres -v run_name=\'${RUN_NAME}\' -f $GBS_PRISM_BIN/update_hiseq_reads_tags_cv.psql 
+   gupdate --explain -t lab_report -p "name=import_gbs_read_tag_counts;file=gbs_yield_import_temp.dat" $RUN_NAME
 }
 
 set -x
 collate_data
 import_data
-update_data
 set +x

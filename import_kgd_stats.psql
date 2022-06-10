@@ -1,3 +1,4 @@
+**** DEPRECATED ****
 delete from gbs_yield_import_temp;
 
 \copy gbs_yield_import_temp( run , cohort , seqid, callrate, sampdepth ) from kgd_import_temp.dat with NULL as ''

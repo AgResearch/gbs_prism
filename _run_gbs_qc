@@ -10,7 +10,7 @@ BCLCONVERT_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 function send_mail() {
    message="$1"
    echo "sending mail"
-   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh
+   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh, perrybe
 }
 
 
@@ -182,8 +182,8 @@ function run_lane_qc() {
    export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
    export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc.log 2>&1 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_analysis.log 2>&1 
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc.log 2>&1  &
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_analysis.log 2>&1  &
    " > $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src
    echo "
 
@@ -203,7 +203,7 @@ OK ? (y/n, default=y)
    running fastqc and kmer analysis in background, then will continue with GBS q/c...
 
    "
-   source $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src &
+   source $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src 
 }
 
 function run_dedupe() {
@@ -339,9 +339,10 @@ please give the full name of gbs run you would like to process (e.g. 210712_A014
    fi
 
    ####### check whether we can find lane q/c landmark - if not confirm 
-   echo "checking for fastqc results (looking for $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt)...."
-   if [ ! -f $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt ]; then 
-      echo "could not find fastqc landmark so looks like fastqc is needed - OK to run that ? (y/n, default=y)"
+   echo "checking for lane q/c results (looking for landmarks $BCLCONVERT_ROOT/$RUN/SampleSheet/*.fastqc and $BCLCONVERT_ROOT/$RUN/SampleSheet/qc.kmer_analysis )...."
+   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/*.fastqc  $BCLCONVERT_ROOT/$RUN/SampleSheet/qc.kmer_analysis > /dev/null 2>&1
+   if [ $? != 0 ]; then 
+      echo "could not find all lane q/c landmarks so looks like lane q/c is needed - OK to run that ? (y/n, default=y)"
       read_answer_with_default y
       if [ "$answer" != "y" ]; then
          echo "OK continuing..."
@@ -402,22 +403,20 @@ checking if run is in the database...
    if [ $? != "0" ]; then
       echo "$RUN is not in the database - will generate keyfiles and set up run in the database first. About to execute  
 
-gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all
+gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all
 
 OK ? (y/n, default = y)
 "
       read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" > $OUTPUT_ROOT/database_prism.log
-         psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_prism.log 2>&1
-         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all"
-         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET" all
+         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" 
+         psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_backup.log 2>&1
+         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all"
+         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" all
          if [ $? != 0 ]; then
             echo "
 
 sorry - quitting after received bad return code from database import -try looking at the log file shown above
-
-$OUTPUT_ROOT/database_prism.log
 
 "
             exit 1
@@ -484,27 +483,32 @@ function get_cohort_opts() {
 
    "
 
-   LIBRARY_MONIKERS=`psql -U agrbrdf -d agrbrdf -h postgres -v run=\'$RUN\' -f $GBS_PRISM_BIN/get_run_samples.psql -q`
+   LIBRARY_MONIKERS=`gquery -t lab_report -p "name=illumina_run_details;samples"  $RUN`
+   # e.g. returns
+   # SQ1838
+   # SQ1839
+   # SQ1840
+
    echo "please enter libraries to run (default = $LIBRARY_MONIKERS)"
+
    read_answer_with_default $LIBRARY_MONIKERS
    LIBRARY_MONIKERS=$answer
 
    # check that each library has been imported, in case we are re-running this, e.g. completing a run afer missing
    # keyfiles have been supplied
    to_import=""
-   echo "checking keyfiles for libraries have been imported . . . "
+   echo "checking keyfiles for libraries have been generated/imported . . . "
    for library_moniker in $LIBRARY_MONIKERS; do
        echo "checking $library_moniker . . ."
-       flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $library_moniker  | sed 's/\s//g' - `
-       library_cohorts=`psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
+       library_cohorts=`gquery -t lab_report -p "name=illumina_run_details;cohorts;sample_id=$library_moniker" $RUN`
        if [ -z "$library_cohorts" ]; then
-          echo "looks like $library_moniker needs importing - OK to import ? (y/n, default=y)"
+          echo "looks like $library_moniker needs generating/importing - OK to import ? (y/n, default=y)"
           read_answer_with_default y
           if [ $answer != "y" ]; then
-             echo "ok will not import keyfile for $library_moniker"
+             echo "ok will not generate/import keyfile for $library_moniker"
           else
              to_import="$to_import $library_moniker"
-             echo "ok will import keyfile for $library_moniker"
+             echo "ok will generate/import keyfile for $library_moniker"
           fi
        fi
    done
@@ -534,13 +538,13 @@ function get_cohort_opts() {
                 to_do="$to_do $library_moniker"
                 echo "ok will reprocess $library_moniker "
                 if [[ ( $ANALYSIS != "import_results" ) && ( $ANALYSIS != "html" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "warehouse" ) && ( $ANALYSIS != "historical_unblind" ) ]]; then 
-                   echo "do you need the keyfile re-imported ? (y/n, default =y)"
+                   echo "do you need the keyfile re-generated/imported ? (y/n, default =y)"
                    read_answer_with_default y
                    if [ $answer != "y" ]; then
-                      echo "ok will not reimport keyfile"
+                      echo "ok will not re-generate/import keyfile"
                    else
                        to_import="$to_import $library_moniker"
-                       echo "ok will reimport keyfile"
+                       echo "ok will re-generate/import keyfile"
                    fi
                 fi
              fi
@@ -568,8 +572,7 @@ function get_cohort_opts() {
    gbs_cohorts=""
    for library_moniker in $LIBRARY_MONIKERS; do
        echo "from $library_moniker . . ."
-       flowcell=`$GBS_PRISM_BIN/get_flowcellid_from_database.sh $RUN  $library_moniker  | sed 's/\s//g' - `
-       library_cohorts=`psql -U agrbrdf -d agrbrdf -h postgres -v flowcell="'$flowcell'" -v run_name="'$RUN'" -v sample_name="'$library_moniker'" -f get_flowcell_cohorts.psql -q`
+       library_cohorts=`gquery -t lab_report -p "name=illumina_run_details;cohorts;sample_id=$library_moniker" $RUN`
        for library_cohort in $library_cohorts; do
           gbs_cohorts="$gbs_cohorts ${library_moniker}.${library_cohort} "
        done
@@ -606,20 +609,20 @@ function do_extra_library_imports() {
    import_type=$1
    extra_imports=$2
    if [ ! -z "$extra_imports" ]; then
-      echo "about to import keyfiles for $extra_imports - ok ? (y/n, default = y)"
+      echo "about to re-generate/import keyfiles for $extra_imports - ok ? (y/n, default = y)"
       read_answer_with_default y
       if [ $answer != "y" ]; then
          echo "ok quitting"
          exit 1
       fi
       for library in $extra_imports; do
-         echo "running $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -t $import_type -r $RUN -s $library "
+         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" $library "
          echo "press Enter to continue. . ."
          read_answer_with_default ""
-         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -t $import_type -r $RUN -s $library >> $OUTPUT_ROOT/reimport.log 2>&1
+         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" $library
          return_code=$?
          if [ $return_code != 0 ]; then
-            echo "looks like there was a problem with the import (exit code $return_code)  - check $OUTPUT_ROOT/reimport.log - quitting"
+            echo "looks like there was a problem with the import (exit code $return_code)  - check the above log - quitting"
             exit 1
          fi
       done
@@ -751,8 +754,8 @@ function import_results() {
 
 looks like there may have been a problem with the q/c (non-zero exit code from ag_gbs_qc_prism.sh )  - 
 suggest you check  $OUTPUT_ROOT/run_gbs_qc.log. You can manually run the import later using : 
-  
-$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN
+
+$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh  -d $NOVSEQ_PROCESSING_ROOT -r $RUN
 
 "
       exit 1
