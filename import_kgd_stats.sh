@@ -108,5 +108,8 @@ function import_data() {
    cd $RUN_PATH/html
    gupdate --explain -t lab_report -p "name=import_gbs_kgd_stats;file=kgd_import_temp.dat" $RUN_NAME
 }
+
+set -x
 collate_data
 import_data
+set +x

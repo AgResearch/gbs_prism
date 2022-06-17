@@ -755,7 +755,8 @@ function import_results() {
 looks like there may have been a problem with the q/c (non-zero exit code from ag_gbs_qc_prism.sh )  - 
 suggest you check  $OUTPUT_ROOT/run_gbs_qc.log. You can manually run the import later using : 
 
-$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh  -d $NOVSEQ_PROCESSING_ROOT -r $RUN
+$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+$GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
 
 "
       exit 1
@@ -766,7 +767,8 @@ looks like q/c completed OK
 
 Ready to summarise and import yield stats using :
 
-$GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN
+$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+$GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
 
 OK to continue ? (y/n , default = y)"
 
@@ -777,16 +779,29 @@ OK to continue ? (y/n , default = y)"
          echo "
       running
 
-      $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform  -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
+$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+$GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
 
       " >> $OUTPUT_ROOT/run_gbs_qc.log
-         $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN > $OUTPUT_ROOT/database_results_import.log 2>&1 
-         return_code=$?
-         if [ $return_code != 0 ]; then
+         rm -f $OUTPUT_ROOT/database_results_import.log
+         $GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN >> $OUTPUT_ROOT/database_results_import.log 2>&1
+         return_code1=$?
+         if [ $return_code1 == 0 ]; then
+            $GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN >> $OUTPUT_ROOT/database_results_import.log 2>&1
+            return_code2=$?
+         else
+            return_code2=1
+         fi
+
+         if [[ ( $return_code1 != 0 ) || ( $return_code2 != 0 ) ]]; then
             echo "
 
-** looks like there was a problem with the import (non-zero return code from database_prism) - check $OUTPUT_ROOT/database_results_import.log  **
-( you can run manually using : $GBS_PRISM_BIN/database_prism.sh $INTERACTIVE_OPT -m $platform -d $NOVASEQ_PROCESSING_ROOT -t import_results -r $RUN )
+** looks like there was a problem with one of the import(non-zero return code) - check $OUTPUT_ROOT/database_results_import.log  **
+( you can run manually using : 
+
+$GBS_PRISM_BIN/import_hiseq_reads_tags_cv.sh -r $RUN
+$GBS_PRISM_BIN/import_kgd_stats.sh -r $RUN
+)
 
 "
             exit 1
