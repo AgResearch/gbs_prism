@@ -263,6 +263,7 @@ function get_targets() {
       fi
 
       base=`basename $file`
+      sample_info_base=`basename $SAMPLE_INFO`
 
       if [ $ENGINE == "tassel3" ]; then
          # we only generate a single target , even if there are multiple files. The setup
@@ -270,7 +271,6 @@ function get_targets() {
          # structure , so set this up 
          if [ ! -d ${OUT_DIR}/key ] ; then 
             mkdir -p ${OUT_DIR}/key
-            sample_info_base=`basename $SAMPLE_INFO`
             cp -fs  $OUT_DIR/$sample_info_base ${OUT_DIR}/key
          fi
          if [ ! -d ${OUT_DIR}/Illumina ]; then
@@ -313,7 +313,6 @@ fi
          # as above - but this one also runs downstream processsing as a convenience 
          if [ ! -d ${OUT_DIR}/key ] ; then 
             mkdir -p ${OUT_DIR}/key
-            sample_info_base=`basename $SAMPLE_INFO`
             cp -fs  $OUT_DIR/$sample_info_base ${OUT_DIR}/key
          fi
          if [ ! -d ${OUT_DIR}/Illumina ]; then
@@ -333,7 +332,37 @@ fi
 cd $OUT_DIR  
 if [ ! -f tagCounts.done ]; then 
    mkdir tagCounts 
-   tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+
+   #check whether the keyfile contains multiple flowcell-library-fastqfile combinations, if so need to demultiplex each combination separately
+   # the ramify_tassel_keyfile.py script will set up a tassel demultiplexing environment in subfolders of tagCounts_parts. These will be called e.g.
+   # tagCounts_parts/part_<digest> 
+   # where <digest> is a hash of flowcell-library-fastqfile 
+   # so the structure will be 
+   # tagCounts_parts/part<digest>/tagCounts
+   #                        /key
+   #                        /Illumina
+   mkdir tagCounts_parts
+   $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t ramify -o ${OUT_DIR}/tagCounts_parts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base
+   number_of_parts=\`ls ${OUT_DIR}/tagCounts_parts | wc -l\`
+
+   if [ \$number_of_parts == 1 ]; then
+      rm -rf tagCounts_parts
+      tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+   elif [ \$number_of_parts > 1 ]; then
+      # make a command file to demultiplex each part , and launch on the cluster
+      rm -f tagCounts_parts/demultiplex_parts_commands.src
+      for part_folder in tagCounts_parts/part*; do
+         part_base=\`basename \$part_folder\`
+         echo \"cd $OUT_DIR/tagCounts_parts/\$part_base; run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/tagCounts_parts/\$part_base/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/tagCounts_parts/\$part_base/${demultiplex_moniker}.FastqToTagCount.stderr\" >> tagCounts_parts/demultiplex_parts_commands.src
+      done
+      # launch the command-file
+      tardis --hpctype $HPC_TYPE -c 1 -k -d $OUT_DIR  --shell-include-file $OUT_DIR/tassel3_env.src source _condition_text_input_tagCounts_parts/demultiplex_parts_commands.src
+      #
+      # merge the outputs into the top level folder
+      $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t merge_results -o  ${OUT_DIR}/tagCounts_parts -m ${OUT_DIR}/tagCounts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base
+   else
+      echo "demultiplex_prism : error analysing keyfile"
+   fi
 fi
 if [ \$? != 0 ]; then
    echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
@@ -397,7 +426,6 @@ fi
         " > $script 
          chmod +x $script
       elif [ $ENGINE == "gbsx" ]; then 
-         sample_info_base=`basename $SAMPLE_INFO`
          if [ -f "$ENZYME_INFO" ]; then
             ENZYME_PHRASE="-ea $ENZYME_INFO"
          fi
