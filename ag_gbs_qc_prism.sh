@@ -174,7 +174,6 @@ function configure_env() {
    cp ag_gbs_qc_prism.mk $OUT_ROOT
    cp demultiplex_prism.sh $OUT_ROOT
    cp genotype_prism.sh $OUT_ROOT
-   cp get_reads_tags_per_sample.py $OUT_ROOT
 
    echo "
 max_tasks=50
@@ -340,8 +339,6 @@ if [ \$? != 0 ]; then
    echo \"warning demultiplex of $OUT_ROOT/${cohort_moniker}.key returned an error code\"
    exit 1
 fi
-# summarise the tag counts
-cat $cohort/*.FastqToTagCount.stdout | ./get_reads_tags_per_sample.py > $cohort/TagCount.csv
       " > $OUT_ROOT/${cohort_moniker}.demultiplex.sh
       chmod +x $OUT_ROOT/${cohort_moniker}.demultiplex.sh
 

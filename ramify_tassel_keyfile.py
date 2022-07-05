@@ -32,15 +32,22 @@ examples:
 /dataset/gseq_processing/active/bin/gbs_prism/ramify_tassel_keyfile.py -t ramify -o /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/tagCounts_parts --sub_tassel_prefix part /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/key/sample_info.key
 
 # merge the outputs into the top level folder
-/dataset/gseq_processing/active/bin/gbs_prism/ramify_tassel_keyfile.py -t merge_results -o  /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/tagCounts --sub_tassel_prefix part
-number_of_parts=`cat ${OUT_DIR}/tagCounts_parts/number_of_keyfile_parts.txt`
+/dataset/gseq_processing/active/bin/gbs_prism/ramify_tassel_keyfile.py -t merge_results
+-o  /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/tagCounts_parts
+-m /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/tagCounts
+--sub_tassel_prefix part /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/key/sample_info.key
+
+# get merged tag counts 
+/dataset/gseq_processing/active/bin/gbs_prism/ramify_tassel_keyfile.py -t merge_counts
+-o  /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/tagCounts_parts
+--sub_tassel_prefix part /dataset/gseq_processing/itmp/Gqueries/uneak_kgd/test_custom_demultiplex/MspI-ApeKI/key/sample_info.key
 
 
 """
 
     parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
     parser.add_argument('keyfile', type=str, nargs=1,help='keyfile to ramify')
-    parser.add_argument('-t', '--task' , dest='task', required=False, type=str, choices=["ramify", "merge_results"], default = "exclude_tiles", help="what you want to get / do")
+    parser.add_argument('-t', '--task' , dest='task', required=False, type=str, choices=["ramify", "merge_results", "merge_counts"], default = "exclude_tiles", help="what you want to get / do")
     parser.add_argument('-o','--output_folder', dest='output_folder', type=str, default=None, help='output folder')
     parser.add_argument('-m','--merge_folder', dest='merge_folder', type=str, default=None, help='merge folder')    
     parser.add_argument('-p','--sub_tassel_prefix', dest='sub_tassel_prefix', type=str, default="part", required=False, help='min pass filter')
@@ -167,10 +174,61 @@ HN7WGDRXY       2       GAGAATC 957002  JCM.4464        B       1       1793    
                 raise Exception("error - encountered two copies of %s - bailing out, please check sample sheets and keyfiles"%base)
             unique_count_files.add(base)
             target = os.path.join(options["merge_folder"], base)
-            os.symlink(count_file, target)
-            
+            source = os.path.join(part_folder,"tagCounts", base)
+            os.symlink(source, target)
 
-                
+def merge_counts(options):
+    # based on /dataset/gseq_processing/active/bin/gbs_prism/get_reads_tags_per_sample.py
+
+    outline = ""
+
+    print("sample,flowcell,lane,sq,tags,reads")
+
+    part_folders = os.listdir(options["output_folder"])
+    part_folders = [ os.path.join(options["output_folder"] , content) for content in part_folders if re.match(options["sub_tassel_prefix"],content) is not None ]
+    part_folders = [ folder for folder in part_folders if os.path.isdir(folder)]
+
+    for part_folder in part_folders:
+        fastq_stdout_files = [stdout_file for stdout_file in os.listdir(part_folder) if re.search("\.FastqToTagCount\.stdout$", stdout_file) is not None]
+        if len(fastq_stdout_files) != 1:
+            raise Exception("could not find exactly one FastqToTagCount.stdout file in %s"%part_folder)
+
+        with open(os.path.join(part_folder, fastq_stdout_files[0])) as stdout_in:
+            for line in stdout_in:
+                    line = line.strip()
+                    if "Reading FASTQ file:" in line:
+                            line = line.split("/")
+                            line = line[-1]
+                            line = line.split("_")
+                            sq = line[0].replace("SQ00", "")
+                            flowcell = line[1]
+                            lane = line[3]
+                            cellline = "%s,%s,%s" %(flowcell, lane, sq)
+                    elif "Total number of reads in lane" in line:
+                            line = line.split("=")
+                            total_line = "total,%s,,%s" %(cellline, line[-1])
+                            print(total_line)
+                    elif "Total number of good barcoded reads" in line:
+                            line = line.split("=")
+                            good_line = "good,%s,,%s" %(cellline, line[-1])
+                            print(good_line)
+                            cellline = ""
+                            total_line = ""
+                            good_line = ""
+                    elif "will be output to" in line:
+                            sample = line.split('tagCounts/')[-1]
+                            sampleID = sample.split('_')[0]
+                            flowcell = sample.split('_')[1]
+                            lane = sample.split('_')[2]
+                            sq = sample.split('_')[3]
+                            outline = "%s,%s,%s,%s" %(sampleID, flowcell, lane, sq)
+                    elif not outline == "":
+                            line = line.split()
+                            outline += ",%s,%s" %(line[1], line[6])
+                            print(outline)
+                            outline = ""
+                    else:
+                            pass    
          
 def main():    
     options = get_options()
@@ -178,7 +236,9 @@ def main():
     if options["task"] == "ramify":
         ramify(options)
     elif options["task"] == "merge_results":
-        merge_results(options) 
+        merge_results(options)
+    elif options["task"] == "merge_counts":
+        merge_counts(options)         
         
     
             

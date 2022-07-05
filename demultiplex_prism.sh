@@ -184,6 +184,7 @@ function configure_env() {
    cd $GBS_PRISM_BIN
    cp demultiplex_prism.sh $OUT_DIR
    cp demultiplex_prism.mk $OUT_DIR
+   cp get_reads_tags_per_sample.py $OUT_DIR
    cp $SAMPLE_INFO $OUT_DIR
    if [ -f $ENZYME_INFO ]; then
       cp $ENZYME_INFO $OUT_DIR
@@ -303,7 +304,7 @@ if [ ! -f tagCounts.done ]; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin -p $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - check log files. check log files. quitting\"; exit 1
 else
    date > tagCounts.done
 fi
@@ -343,11 +344,18 @@ if [ ! -f tagCounts.done ]; then
    #                        /Illumina
    mkdir tagCounts_parts
    $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t ramify -o ${OUT_DIR}/tagCounts_parts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base
+   
+   if [ \$? != 0 ]; then
+      echo \"ramify_tassel_keyfile.py: error code returned - check log files. quitting\"; exit 1
+      exit $1
+   fi
+
    number_of_parts=\`ls ${OUT_DIR}/tagCounts_parts | wc -l\`
 
    if [ \$number_of_parts == 1 ]; then
       rm -rf tagCounts_parts
       tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
+      cat $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout | $OUT_DIR/get_reads_tags_per_sample.py > $OUT_DIR/TagCount.csv
    elif [ \$number_of_parts > 1 ]; then
       # make a command file to demultiplex each part , and launch on the cluster
       rm -f tagCounts_parts/demultiplex_parts_commands.src
@@ -360,12 +368,15 @@ if [ ! -f tagCounts.done ]; then
       #
       # merge the outputs into the top level folder
       $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t merge_results -o  ${OUT_DIR}/tagCounts_parts -m ${OUT_DIR}/tagCounts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base
+
+      # merge the tag counts into a single tag count file 
+      $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t merge_counts -o  ${OUT_DIR}/tagCounts_parts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base > $OUT_DIR/TagCount.csv
    else
       echo "demultiplex_prism : error analysing keyfile"
    fi
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - quitting\"; exit 1
+   echo \"demultplex_prism.sh: error code returned from FastqToTagCount process - check log files. quitting\"; exit 1
 else
    date > tagCounts.done
 fi
@@ -375,7 +386,7 @@ if [ ! -f mergedTagCounts.done ]; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMergeTaxaTagCountPlugin $p_MergeTaxaTagCount -w ./ -m 600000000 -x 100000000 -c 5 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MergeTaxaTagCount.stderr
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - quitting\"; exit 2
+   echo \"demultplex_prism.sh: error code returned from MergeTaxaTagCount process - check log files. quitting\"; exit 2
 else
    date > mergedTagCounts.done 
 fi
@@ -385,7 +396,7 @@ if [ ! -f tagPair.done ]; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagCountToTagPairPlugin $p_TagCountToTagPair -w ./ -e 0.03 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagCountToTagPair.stderr 
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from TagCountToTagPair process - quitting\"; exit 3
+   echo \"demultplex_prism.sh: error code returned from TagCountToTagPair process - check log files. quitting\"; exit 3
 else
    date > tagPair.done
 fi
@@ -395,7 +406,7 @@ if [ ! -f tagsByTaxa.done ]; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTagPairToTBTPlugin $p_TagPairToTBT -w ./ -endPlugin -runfork1  \> $OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TagPairToTBT.stderr 
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from TagPairToTBT process - quitting\"; exit 4
+   echo \"demultplex_prism.sh: error code returned from TagPairToTBT process - check log files. quitting\"; exit 4
 else
    date > tagsByTaxa.done
 fi
@@ -405,7 +416,7 @@ if [ ! -f mapInfo.done ] ; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UTBTToMapInfoPlugin $p_TBTToMapInfo -w ./ -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stdout  2\>$OUT_DIR/${demultiplex_moniker}.TBTToMapInfo.stderr 
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from TBTToMapInfo process - quitting\"; exit 5
+   echo \"demultplex_prism.sh: error code returned from TBTToMapInfo process - check log files. quitting\"; exit 5
 else
    date > mapInfo.done
 fi
@@ -415,13 +426,13 @@ if [ ! -f hapMap.done ]; then
    tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src	run_pipeline.pl -Xms512m -Xmx500g -fork1 -UMapInfoToHapMapPlugin $p_MapInfoToHapMap -w ./ -mnMAF 0.03 -mxMAF 0.5 -mnC 0.1 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stdout  2\>$OUT_DIR/${demultiplex_moniker}.MapInfoToHapMap.stderr 
 fi
 if [ \$? != 0 ]; then
-   echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - quitting\"; exit 6
+   echo \"demultplex_prism.sh: error code returned from MapInfoToHapMap process - check log files. quitting\"; exit 6
 else
    date > hapMap.done
 fi
 
 if [ ! -f hapMap.done ]; then
-   echo \"demultplex_prism.sh: didn't find hapMap.done - something went wrong - quitting\"; exit 7
+   echo \"demultplex_prism.sh: didn't find hapMap.done - something went wrong - check log files. quitting\"; exit 7
 fi
         " > $script 
          chmod +x $script
