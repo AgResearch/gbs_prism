@@ -37,7 +37,8 @@ keypath <-  paste0(dirname(dirname(genofile)),"/key")
 seqinfo <- read.table(paste0(keypath,"/",dir(keypath)[1]),stringsAsFactors=FALSE,header=TRUE,sep="\t")
 samppos <- match(seqinfo$sample,seq2samp(seqID,nparts=npartsID))
 
-if(any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded)
+DO_KGD_PLATE_PLOTS <- Sys.getenv("DO_KGD_PLATE_PLOTS",unset="yes")
+if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded), and it is not suppressed
   #assume only one platename
   keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if(length(table(seqinfo$platename[keypos]))==1) {
@@ -48,8 +49,12 @@ if(any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded)
    cat("Multiple plates - plate plots not produced\n")
    }
 } else {
-  print("** unable to do plate plots as if(any(!is.na(samppos))) fails , from below seqinfo**")
-  print(seqinfo)
+  if ( DO_KGD_PLATE_PLOTS == "yes" ) {
+     print("** unable to do plate plots as if(any(!is.na(samppos))) fails , from below seqinfo**")
+     print(seqinfo)
+  } else {
+     print("** skipped plate plots as environment variable DO_KGD_PLATE_PLOTS was not set to yes **")
+  }
 }
 
 if ( geno_method == "default" ) {
