@@ -39,9 +39,13 @@ samppos <- match(seqinfo$sample,seq2samp(seqID,nparts=5))
 if(any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded)
   #assume only one platename
   keypos <- match(seq2samp(seqID,nparts=5),seqinfo$sample)
-  seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
-  negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
-  plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
+  if(length(table(seqinfo$platename[keypos]))==1) {
+   seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
+   negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
+   plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
+   } else {
+   cat("Multiple plates - plate plots not produced\n")
+   }
 } else {
   print("** unable to do plate plots as if(any(!is.na(samppos))) fails , from below seqinfo**")
   print(seqinfo)
