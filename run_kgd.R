@@ -34,11 +34,11 @@ GBSsummary()
 
 keypath <-  paste0(dirname(dirname(genofile)),"/key")
 seqinfo <- read.table(paste0(keypath,"/",dir(keypath)[1]),stringsAsFactors=FALSE,header=TRUE,sep="\t")
-samppos <- match(seqinfo$sample,seq2samp(seqID))
+samppos <- match(seqinfo$sample,seq2samp(seqID,nparts=5))
 
 if(any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded)
   #assume only one platename
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
+  keypos <- match(seq2samp(seqID,nparts=5),seqinfo$sample)
   seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
   negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
   plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
@@ -67,14 +67,14 @@ if ( geno_method == "default" ) {
     depth <- 1*!is.na(samples)
     genon <- samples
     mg2 <- mergeSamples(SampleIDsep, replace=TRUE)
-    SampleIDsamp <- seq2samp()
+    SampleIDsamp <- seq2samp(seqID,nparts=5)
     Gdsamp <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
     
     activateGBS(GBSsplit)
     mg1 <- mergeSamples(SampleIDsep,replace=TRUE)
     GBSsummary()
     GHWdgm.05 <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx="HWdgm.05",npc=4,puse=p.sep)
-    SampleID <- seq2samp()
+    SampleID <- seq2samp(seqID,nparts=5)
     samppos2 <- match(SampleID,SampleIDsamp)
     Inbc <- diag(GHWdgm.05$G5) -1
     Inbs <- Gdsamp[samppos2] -1
@@ -103,13 +103,13 @@ if ( geno_method == "default" ) {
   }
   writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
   writeVCF(outname="GHW05", ep=.001)
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
+  keypos <- match(seq2samp(seqID,nparts=5),seqinfo$sample)
   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
 } else if ( geno_method == "pooled" ) {
   Gfull <- calcG(samptype=geno_method, npc=4)
   writeG(Gfull, "GFULL", outtype=c(1, 2, 3, 4, 5, 6))
   writeVCF(outname="GFULL", ep=.001)
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
+  keypos <- match(seq2samp(seqID,nparts=5),seqinfo$sample)
   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
   print("(not running HWdgm.05 filtering on pooled data)")
 } else {
