@@ -26,6 +26,7 @@ negC <- "^GBSNEG"
 alleles.keep <- TRUE
 functions.only <- TRUE # only load the functions from GBS-Chip-Matrix.R, do not run the standard code.
 mindepth.bb <- 0.1  # min sampdepth (merged) for training bb model
+npartsID <- 5  ## number of parts (sep by _) in a seqID
 
 source(file.path(Sys.getenv("SEQ_PRISMS_BIN"),"/../KGD/GBS-Chip-Gmatrix.R"))
 readGBS()
@@ -34,14 +35,18 @@ GBSsummary()
 
 keypath <-  paste0(dirname(dirname(genofile)),"/key")
 seqinfo <- read.table(paste0(keypath,"/",dir(keypath)[1]),stringsAsFactors=FALSE,header=TRUE,sep="\t")
-samppos <- match(seqinfo$sample,seq2samp(seqID))
+samppos <- match(seqinfo$sample,seq2samp(seqID,nparts=npartsID))
 
 if(any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded)
   #assume only one platename
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
-  seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
-  negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
-  plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
+  keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
+  if(length(table(seqinfo$platename[keypos]))==1) {
+   seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
+   negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
+   plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
+   } else {
+   cat("Multiple plates - plate plots not produced\n")
+   }
 } else {
   print("** unable to do plate plots as if(any(!is.na(samppos))) fails , from below seqinfo**")
   print(seqinfo)
@@ -55,7 +60,7 @@ if ( geno_method == "default" ) {
   
   Gfull <- calcG()
   p.sep <- p; HWdis.sep <- HWdis
-  seqinfosep <- seq2samp(nparts=5,dfout=TRUE); colnames(seqinfosep) <- c("SampleID","Flowcell","Lane","SQ","X")
+  seqinfosep <- seq2samp(nparts=npartsID,dfout=TRUE); colnames(seqinfosep) <- c("SampleID","Flowcell","Lane","SQ","X")
   SampleIDsep <- seqinfosep$SampleID
   u1 <- which(seqinfosep$Lane==1)
   u2 <- which(seqinfosep$Lane==2)
@@ -67,14 +72,14 @@ if ( geno_method == "default" ) {
     depth <- 1*!is.na(samples)
     genon <- samples
     mg2 <- mergeSamples(SampleIDsep, replace=TRUE)
-    SampleIDsamp <- seq2samp()
+    SampleIDsamp <- seq2samp(seqID,nparts=npartsID)
     Gdsamp <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
     
     activateGBS(GBSsplit)
     mg1 <- mergeSamples(SampleIDsep,replace=TRUE)
     GBSsummary()
     GHWdgm.05 <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx="HWdgm.05",npc=4,puse=p.sep)
-    SampleID <- seq2samp()
+    SampleID <- seq2samp(seqID,nparts=npartsID)
     samppos2 <- match(SampleID,SampleIDsamp)
     Inbc <- diag(GHWdgm.05$G5) -1
     Inbs <- Gdsamp[samppos2] -1
@@ -103,13 +108,13 @@ if ( geno_method == "default" ) {
   }
   writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
   writeVCF(outname="GHW05", ep=.001)
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
+  keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
 } else if ( geno_method == "pooled" ) {
   Gfull <- calcG(samptype=geno_method, npc=4)
   writeG(Gfull, "GFULL", outtype=c(1, 2, 3, 4, 5, 6))
   writeVCF(outname="GFULL", ep=.001)
-  keypos <- match(seq2samp(seqID),seqinfo$sample)
+  keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if(any(!is.na(samppos)))  plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
   print("(not running HWdgm.05 filtering on pooled data)")
 } else {
