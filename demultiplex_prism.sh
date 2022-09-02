@@ -469,7 +469,7 @@ END_SPLIT
          else
             # see if file is compressed  and set gzip option
             gzip_phrase="-gzip TRUE"
-            gunzip -qt $file > /dev/null 2>&1
+            gunzip -l $file > /dev/null 2>&1
             if [ $? != 0 ]; then
                gzip_phrase=""
             fi
