@@ -862,7 +862,7 @@ function html() {
 
       mkdir -p  $OUT_ROOT/html/$cohort/hapMap
       rm $OUT_ROOT/html/$cohort/hapMap 
-      for file in $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt; do
+      for file in $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.fas.txt; do
          cp -s $file $OUT_ROOT/html/$cohort/hapMap
       done
 

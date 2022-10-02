@@ -68,7 +68,7 @@ def generate_run_plot(options):
     file_iters = {
         "KGD (plots)" : ['AlleleFreq.png', 'CallRate.png', 'Co-call-HWdgm.05.png', 'Co-call-.png', 'finplot.png', 'GcompareHWdgm.05.png', 'Gcompare.png', 'Gdiagdepth.png', 'GHWdgm.05diagdepth.png', 'InbCompare.png', 'Heatmap-G5HWdgm.05.png', 'HWdisMAFsig.png', 'MAFHWdgm.05.png', 'MAF.png', 'PC1v2G5HWdgm.05.png', 'SampDepthCR.png', 'SampDepthHist.png', 'SampDepth.png', 'SampDepth-scored.png', 'SNPCallRate.png', 'SNPDepthHist.png', 'SNPDepth.png', 'X2star-QQ.png'],
         "KGD (text file links)" : ['GHW05.csv', 'GHW05-Inbreeding.csv', 'GHW05-long.csv', 'GHW05-pca_metadata.tsv', 'GHW05-pca_vectors.tsv', 'GHW05-PC.csv', 'GHW05.RData', 'GHW05.vcf', 'HeatmapOrderHWdgm.05.csv', 'HeatmapOrderHWdgm.05.csv.blinded', 'PCG5HWdgm.05.pdf', 'SampleStats.csv', 'SampleStats.csv.blinded', 'seqID.csv', 'seqID.csv.blinded'],
-        "Hapmap files" : ['HapMap.hmc.txt','HapMap.hmp.txt']
+        "Hapmap files" : ['HapMap.hmc.txt','HapMap.fas.txt']
     }
     file_iters["KGD (plots)"] = [ os.path.join(options["kgd_subfolder_name"], item) for item in file_iters["KGD (plots)"] ]
     file_iters["KGD (text file links)"] = [ os.path.join(options["kgd_subfolder_name"], item) for item in file_iters["KGD (text file links)"] ]
