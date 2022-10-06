@@ -929,7 +929,7 @@ function generate_html() {
 
 function generate_special() {
    echo "do you want to (re)generate the slippery slope plot ? (y/n default y)"
-   read_answer_with_default y
+   read_answer_with_default n
    if [ $answer == "y" ]; then
       set -x
       $GBS_PRISM_BIN/SelfRelDepth.sh -I
