@@ -483,7 +483,7 @@ function get_cohort_opts() {
 
    "
 
-   LIBRARY_MONIKERS=`gquery -t lab_report -p "name=illumina_run_details;samples"  $RUN`
+   LIBRARY_MONIKERS=`gquery -t lab_report -p "name=illumina_run_details;samples"  $RUN | sort -u`
    # e.g. returns
    # SQ1838
    # SQ1839
