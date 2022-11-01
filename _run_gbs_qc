@@ -92,6 +92,7 @@ function run_bclconvert() {
    fi
 
    bclconvert_phrase="" # not currently used - previously used to pass in bcl2fastq options 
+   samplesheet_to_fastqnames_phrase="-I 1,2 -t single_end"
 
    # set up for bclconvert run
    mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet
@@ -117,7 +118,7 @@ $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert already exists - please clean up an
 
    echo "about to run bclconvert using
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  > $BCLCONVERT_ROOT/$RUN/bclconvert.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -Q \"$samplesheet_to_fastqnames_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log  2>&1
 
    OK ? (y/n, default=y)
    "
@@ -131,9 +132,9 @@ $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert already exists - please clean up an
 
    "
 
-   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv " > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log
+   echo "running $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B \"$bclconvert_phrase\" -Q \"$samplesheet_to_fastqnames_phrase\"  -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv " > $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log
 
-   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B "$bclconvert_phrase" -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  >> $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log 2>&1
+   $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a bclconvert -I $NOVASEQ_ROOT/$RUN -B "$bclconvert_phrase" -Q "$samplesheet_to_fastqnames_phrase"  -O $BCLCONVERT_ROOT/$RUN/SampleSheet $BCLCONVERT_ROOT/$RUN/SampleSheet.csv  >> $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert.log 2>&1
 
    if [ $? != 0 ]; then
 
