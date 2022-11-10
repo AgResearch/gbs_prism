@@ -106,7 +106,16 @@ done
 
 function import_data() {
    cd $RUN_PATH/html
+   # import sample level stats as collated by collate_data
    gupdate --explain -t lab_report -p "name=import_gbs_kgd_stats;file=kgd_import_temp.dat" $RUN_NAME
+
+
+   # import cohort level data 
+   # currently just from the KGD stdout file - e.g. /dataset/hiseq/scratch/postprocessing/gbs/221020_A01439_0127_AHMKVMDRX2/SQ1951.all.deer.PstI/SQ1951.all.deer.PstI.KGD_tassel3.KGD.stdout
+   files=`ls $RUN_PATH/*/*.KGD_tassel3.KGD.stdout | egrep -v "\/OLD|_OLD"`
+   for kgd_stdout in $files; do
+      gupdate --explain -t lab_report -p "name=import_gbs_kgd_cohort_stats;file=$kgd_stdout" $RUN_NAME 
+   done
 }
 
 set -x
