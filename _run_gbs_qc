@@ -436,7 +436,7 @@ gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/k
    ####### get and check the analysis type 
    while [ 1 ] ; do
       echo "
-please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse, special) (or just press enter to run all)  
+please give which q/c analysis you want (clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, fasta_demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse, special) (or just press enter to run all)  
 (notes:
 
 * entering kgd implies demultiplex will also be run (unless already done); annotation implies also kgd will be 
@@ -450,8 +450,8 @@ run (unless already done), etc.)
       read_answer_with_default all
       ANALYSIS=$answer
 
-      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "warehouse" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "filtered_kgd" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) && ( "$ANALYSIS" != "special" ) ]]; then
-         echo "analysis must be one of demultiplex, html, trimmed_kmer_analysis, clientreport, warehouse, import_results, kgd, filtered_kgd, historical_unblind, unblind, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots,special or all"
+      if [[ ( "$ANALYSIS" != "demultiplex" ) && ( "$ANALYSIS" != "html" ) && ( "$ANALYSIS" != "trimmed_kmer_analysis" ) && ( "$ANALYSIS" != "clientreport" ) && ( "$ANALYSIS" != "warehouse" ) && ( "$ANALYSIS" != "import_results" ) && ( "$ANALYSIS" != "kgd" ) && ( "$ANALYSIS" != "filtered_kgd" ) &&  ( "$ANALYSIS" != "fasta_demultiplex" ) && ( "$ANALYSIS" != "historical_unblind" ) && ( "$ANALYSIS" != "unblind" ) && ( "$ANALYSIS" != "kmer_analysis" ) && ( "$ANALYSIS" != "allkmer_analysis" ) && ( "$ANALYSIS" != "bwa_mapping" ) && ( "$ANALYSIS" != "fasta_sample" ) && ( "$ANALYSIS" != "annotation" ) && ( "$ANALYSIS" != "fastq_sample" ) && ( "$ANALYSIS" != "all" ) && ( "$ANALYSIS" != "common_sequence" )  && ( "$ANALYSIS" != "unblinded_plots" ) && ( "$ANALYSIS" != "special" ) ]]; then
+         echo "analysis must be one of demultiplex, html, trimmed_kmer_analysis, clientreport, warehouse, import_results, kgd, filtered_kgd, fasta_demultiplex, historical_unblind, unblind, kmer_analysis, allkmer_analysis, bwa_mapping , annotation, fasta_sample , fastq_sample , common_sequence , unblinded_plots,special or all"
       else
          break
       fi

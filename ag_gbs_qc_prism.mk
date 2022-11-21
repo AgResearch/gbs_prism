@@ -61,6 +61,10 @@
 	$@.sh > $@.mk.log 2>&1
 	date > $@
 
+%.fasta_demultiplex:
+	$@.sh > $@.mk.log 2>&1
+	date > $@
+
 %.bwa_mapping:
 	$@.sh > $@.mk.log 2>&1
 	date > $@

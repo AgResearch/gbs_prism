@@ -23,7 +23,7 @@ function get_opts() {
 
    help_text="
 usage :\n 
-./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|kgd|filtered_kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
+./ag_gbs_qc_prism.sh  [-h] [-n] [-d] [-f] [-C hpctype] [-j num_threads] [-a demultiplex|fasta_demultiplex|kgd|filtered_kgd|unblind|historical_unblind|fasta_sample|fastq_sample|kmer_analysis|allkmer_analysis|blast_analysis|bwa_mapping|all|html|trimmed_kmer_analysis|common_sequence|unblinded_plots|clean] -O outdir -r run cohort [.. cohort] \n
 example:\n
 ./ag_gbs_qc_prism.sh -n -O /dataset/novaseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI  SQ2745.all.PstI.PstI  SQ2746.all.PstI.PstI  SQ0756.all.DEER.PstI  SQ0756.all.GOAT.PstI  SQ2743.all.PstI-MspI.PstI-MspI \n
 ./ag_gbs_qc_prism.sh -n -f -O /dataset/novaseq/scratch/postprocessing/gbs/180718_D00390_0389_ACCRDYANXX -r 180718_D00390_0389_ACCRDYANXX SQ2744.all.PstI-MspI.PstI-MspI SQ2745.all.PstI.PstI SQ2746.all.PstI.PstI SQ0756.all.DEER.PstI SQ0756.all.GOAT.PstI SQ2743.all.PstI-MspI.PstI-MspI\n
@@ -128,7 +128,7 @@ function check_opts() {
       exit 1
    fi
 
-   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) && ( $ANALYSIS != "warehouse" ) ]]; then
+   if [[ ( $ANALYSIS != "all" ) && ( $ANALYSIS != "demultiplex" ) && ( $ANALYSIS != "kgd" ) && ( $ANALYSIS != "filtered_kgd" ) &&  ( $ANALYSIS != "fasta_demultiplex" ) && ( $ANALYSIS != "clean" ) && ( $ANALYSIS != "unblind" ) && ( $ANALYSIS != "historical_unblind" ) && ( $ANALYSIS != "fasta_sample" ) && ( $ANALYSIS != "allkmer_analysis" ) && ( $ANALYSIS != "kmer_analysis" ) && ( $ANALYSIS != "blast_analysis" ) && ( $ANALYSIS != "annotation" )  && ( $ANALYSIS != "bwa_mapping" ) && ( $ANALYSIS != "html" ) && ( $ANALYSIS != "trimmed_kmer_analysis" )  && ( $ANALYSIS != "clientreport" )  && ( $ANALYSIS != "fastq_sample" ) && ( $ANALYSIS != "common_sequence" ) && ( $ANALYSIS != "unblinded_plots" ) && ( $ANALYSIS != "warehouse" ) ]]; then
       echo "analysis must be one of clientreport, html, trimmed_kmer_analysis, import_results, all, demultiplex, kgd, filtered_kgd, kmer_analysis, allkmer_analysis, fasta_sample, fastq_sample, annotation , bwa_mapping, unblind, historical_unblind , common_sequence, unblinded_plots, warehouse"
       exit 1
    fi
@@ -174,6 +174,7 @@ function configure_env() {
    cp ag_gbs_qc_prism.mk $OUT_ROOT
    cp demultiplex_prism.sh $OUT_ROOT
    cp genotype_prism.sh $OUT_ROOT
+   cp $GBS_PRISM_BIN/../melseq_prism/melseq_prism.sh $OUT_ROOT
 
    echo "
 max_tasks=50
@@ -311,7 +312,7 @@ function get_targets() {
 
       bwa_alignment_parameters="-B 10"
 
-      for analysis_type in all bwa_mapping demultiplex kgd filtered_kgd clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
+      for analysis_type in all bwa_mapping demultiplex kgd filtered_kgd fasta_demultiplex clean unblind historical_unblind kmer_analysis allkmer_analysis blast_analysis fasta_sample fastq_sample annotation common_sequence unblinded_plots ; do
          echo $OUT_ROOT/$cohort_moniker.$analysis_type  >> $OUT_ROOT/${analysis_type}_targets.txt
          script=$OUT_ROOT/${cohort_moniker}.${analysis_type}.sh
          if [ -f $script ]; then
@@ -415,6 +416,26 @@ python $GBS_PRISM_BIN/make_clientcohort_pages.py -U filtered_hapMap -K filtered_
      " >  $OUT_ROOT/${cohort_moniker}.filtered_kgd.sh
      chmod +x $OUT_ROOT/${cohort_moniker}.filtered_kgd.sh
 
+     ################ fasta_demultiplex script
+     # (this should work for any cohort, but is intended for making non-redundant fasta available to the microbiome pipelines , hence the path used below)
+     echo "#!/bin/bash
+export GBS_PRISM_BIN=$GBS_PRISM_BIN
+export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
+export MELSEQ_PRISM_BIN=$GBS_PRISM_BIN/../melseq_prism
+
+DEMUX_ROOT=/dataset/sequencing_facility_replication/scratch/microbiome_fasta/qc/$libname
+mkdir -p \$DEMUX_ROOT
+
+# get keyfile needed
+$GBS_PRISM_BIN/listDBKeyfile.sh -s $libname -t gbsx  | awk '{if(NR>1) print}' - > \$DEMUX_ROOT/sample_info.txt
+
+\$MELSEQ_PRISM_BIN/_run_melseq -b -a format -O \$DEMUX_ROOT  \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
+if [ $? != 0 ]; then
+   echo \"fasta_demultiplex returned an error code ( $? )\"
+   exit 1
+fi
+     " >  $OUT_ROOT/${cohort_moniker}.fasta_demultiplex.sh
+     chmod +x $OUT_ROOT/${cohort_moniker}.fasta_demultiplex.sh
 
      ################ unblind script
      echo "#!/bin/bash
