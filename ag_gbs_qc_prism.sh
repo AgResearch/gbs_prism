@@ -992,6 +992,7 @@ function clientreport() {
 function warehouse() {
    echo "refreshing the GBS tab in genophyle. . . "
    python /dataset/genophyle_data/active/database/Ndb/bin/snp_import/geno_import.py -H invsqlpv05 -t gbs_tab /dataset/genophyle_data/scratch/import_export/genophyle_gbs_import.txt | tee $OUT_ROOT/warehouse_update.log
+   return_code=$?
 }
 
 
@@ -1019,6 +1020,9 @@ function main() {
       clientreport
    elif [ $ANALYSIS == "warehouse" ]; then
       warehouse
+      if [ $return_code != 0 ]; then
+         exit $return_code
+      fi
    else
       get_targets
       if [ $DRY_RUN != "no" ]; then
