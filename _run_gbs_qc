@@ -10,7 +10,7 @@ BCLCONVERT_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 function send_mail() {
    message="$1"
    echo "sending mail"
-   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh, perrybe
+   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh, perrybe, andersonr
 }
 
 
@@ -929,13 +929,15 @@ function generate_html() {
 }
 
 function generate_special() {
-   echo "do you want to (re)generate the slippery slope plot ? (y/n default y)"
-   read_answer_with_default n
-   if [ $answer == "y" ]; then
-      set -x
-      $GBS_PRISM_BIN/SelfRelDepth.sh -I
-      set +x
-   fi
+   echo ""
+   # used to build a mash up of all the self-relatedness plots - this deprecated 
+   #echo "do you want to (re)generate the slippery slope plot ? (y/n default y)"
+   #read_answer_with_default n
+   #if [ $answer == "y" ]; then
+   #   set -x
+   #   $GBS_PRISM_BIN/SelfRelDepth.sh -I
+   #   set +x
+   #fi
 }
 
 function generate_clientreport() {
