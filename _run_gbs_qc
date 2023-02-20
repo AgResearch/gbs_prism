@@ -17,11 +17,14 @@ function send_mail() {
 function read_answer_with_default() {
    if [ $INTERACTIVE == yes ]; then
       read answer
+      echo "User response: $answer"
       if [ -z "$answer" ]; then
          answer=$@
+         echo "Default response: $answer"
       fi
    else
       answer=$@
+      echo "Default response: $answer"
    fi
 }
 
