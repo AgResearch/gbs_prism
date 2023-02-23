@@ -1,3 +1,4 @@
+set.seed(1953) # Watson JD, Crick FH. 1953.
 print("in run_kgd.R")
 print("args  :")
 args = commandArgs(trailingOnly=TRUE)

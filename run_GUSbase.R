@@ -1,3 +1,4 @@
+set.seed(1944) # Avery OT, Macleod CM, McCarty M. 1944.
 library(GUSbase)
 print("in run_GUSbase.R")
 print("args  :")
