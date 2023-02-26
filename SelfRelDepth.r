@@ -1,3 +1,4 @@
+set.seed(2001) # Lander ES, et al. 2001.
 ##### regress self-related estimate on log sampdepth.
 sampdepth.thresh <- 0.3
 #functions.only <- TRUE
