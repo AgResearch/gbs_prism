@@ -175,7 +175,7 @@ function run_lane_qc() {
 
    finding sequence files for fastqc..."
    mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet
-   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert/*.fastq.gz > $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt
+   find $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert -name "*.fastq.gz" -size +1000c -print | grep -vi Undetermined > $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt
    
    if [ $? != 0 ]; then
       echo "run_lane_qc: oops could not find any fastq files under $BCLCONVERT_ROOT/$RUN/SampleSheet/bclconvert ! giving up"
@@ -186,8 +186,10 @@ function run_lane_qc() {
    export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
    export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc.log 2>&1  &
-   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_analysis.log 2>&1  &
+   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc_run
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a fastqc -O $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc_run \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc_run/fastqc.log 2>&1  &
+   mkdir -p $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_run
+   nohup $SEQ_PRISMS_BIN/sequencing_qc_prism.sh -a kmer_analysis -s .0002 -M 10000 -O $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_run \`cat $BCLCONVERT_ROOT/$RUN/SampleSheet/sequence_files.txt\` > $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_run/kmer_analysis.log 2>&1  &
    " > $BCLCONVERT_ROOT/$RUN/SampleSheet/lane_qc.src
    echo "
 
@@ -343,8 +345,8 @@ please give the full name of gbs run you would like to process (e.g. 210712_A014
    fi
 
    ####### check whether we can find lane q/c landmark - if not confirm 
-   echo "checking for lane q/c results (looking for landmarks $BCLCONVERT_ROOT/$RUN/SampleSheet/*.fastqc and $BCLCONVERT_ROOT/$RUN/SampleSheet/qc.kmer_analysis )...."
-   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/*.fastqc  $BCLCONVERT_ROOT/$RUN/SampleSheet/qc.kmer_analysis > /dev/null 2>&1
+   echo "checking for lane q/c results (looking for landmarks $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc_run/*.fastqc and $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_run/qc.kmer_analysis )...."
+   ls $BCLCONVERT_ROOT/$RUN/SampleSheet/fastqc_run/*.fastqc  $BCLCONVERT_ROOT/$RUN/SampleSheet/kmer_run/qc.kmer_analysis > /dev/null 2>&1
    if [ $? != 0 ]; then 
       echo "could not find all lane q/c landmarks so looks like lane q/c is needed - OK to run that ? (y/n, default=y)"
       read_answer_with_default y

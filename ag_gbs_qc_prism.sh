@@ -929,16 +929,16 @@ function html() {
    # fastqc and multiqc
    mkdir -p $OUT_ROOT/html/multiqc
    rm -rf $OUT_ROOT/html/multiqc/*
-   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc
+   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc_run/fastqc
    
-   cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc $OUT_ROOT/html/fastqc
+   cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc_run/fastqc $OUT_ROOT/html/fastqc
 
    # bclconvert
    mkdir $OUT_ROOT/html/bclconvert
    cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/bclconvert/Reports/html/* $OUT_ROOT/html/bclconvert
    mkdir -p $OUT_ROOT/html/kmer_analysis
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
-      cp -s $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
+      cp -s $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/kmer_run/kmer_analysis/$file $OUT_ROOT/html/kmer_analysis
    done
    mkdir -p $OUT_ROOT/html/trimmed_kmer_analysis
    for file in kmer_entropy.k6A.jpg heatmap_sample_clusters.k6A.txt kmer_zipfian_comparisons.k6A.jpg ; do
