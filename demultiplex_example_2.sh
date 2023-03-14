@@ -59,5 +59,5 @@ function unblind() {
    done
 }
 
-#demultiplex_kgd
+demultiplex_kgd
 unblind
