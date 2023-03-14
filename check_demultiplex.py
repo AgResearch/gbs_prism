@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 from __future__ import print_function
 #########################################################################
-# summarise SNP call rates in a VCF file like this: 
-# in a VCF for N individuals across  S SNPS 
-# "information efficiency" = (Sum [i = 1 to S] C(i) ) / ( N x S) 
-#(where C(i) = count of how many samples in which you called SNP i ) 
+# check log of FastqToTagCount step for tag count files written more than once   
+# (can happen with custom keyfiles containing libraries from same flowcell,
+# where barcode hopping has occurred )
 #########################################################################
 import sys
 import gzip
