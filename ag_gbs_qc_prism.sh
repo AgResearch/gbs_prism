@@ -387,6 +387,16 @@ if [ \$? != 0 ]; then
    echo \"warning , genotyping of $OUT_ROOT/$cohort returned an error code\"
    exit 1
 fi
+
+# create a merged tag count and sample stats file
+# note that this assumes these two files are still expressed in terms of the internal qc sampleid  - if we find landmark files indicating these files have been unblinded , skip this step 
+if [ -f $OUT_ROOT/$cohort/KGD/SampleStats.csv.blinded ]; then
+   echo \"Warning, found unblinding landmark file $OUT_ROOT/$cohort/KGD/SampleStats.csv.blinded - unable to merge unblinded tag counts and sample stats files\"
+   echo \"(you could do this manually using the following command : $GBS_PRISM_BIN/collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file $OUT_ROOT/$cohort/KGD/SampleStats.csv.blinded --run $RUN --cohort $cohort $OUT_ROOT/$cohort/TagCount.csv.blinded)\"
+else
+   $GBS_PRISM_BIN/collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file $OUT_ROOT/$cohort/KGD/SampleStats.csv --run $RUN --cohort $cohort $OUT_ROOT/$cohort/TagCount.csv > $OUT_ROOT/$cohort/TagCountsAndSampleStats.csv 
+fi
+
 python $GBS_PRISM_BIN/make_clientcohort_pages.py -U hapMap -K KGD -t \"KGD\" -o $OUT_ROOT/$cohort/KGD.html $OUT_ROOT/$cohort
      " >  $OUT_ROOT/${cohort_moniker}.kgd.sh 
       chmod +x $OUT_ROOT/${cohort_moniker}.kgd.sh 
@@ -447,7 +457,7 @@ if [ ! -d $cohort ]; then
    exit 1
 fi
 # generate unblinded output
-for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/locus*.dat $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/taxonomy*.dat $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt $OUT_ROOT/$cohort/kmer_analysis/*.dat $OUT_ROOT/$cohort/allkmer_analysis/*.txt $OUT_ROOT/$cohort/allkmer_analysis/*.dat ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/TagCountsAndSampleStats.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/locus*.dat $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/taxonomy*.dat $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt $OUT_ROOT/$cohort/kmer_analysis/*.dat $OUT_ROOT/$cohort/allkmer_analysis/*.txt $OUT_ROOT/$cohort/allkmer_analysis/*.dat ; do
    if [ -f \$file ]; then
       if [ ! -f \$file.blinded ]; then
          cp -p \$file \$file.blinded
@@ -471,7 +481,7 @@ if [ ! -d $cohort ]; then
    exit 1
 fi
 # generate unblinded output
-for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/locus*.dat $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/taxonomy*.dat $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt $OUT_ROOT/$cohort/kmer_analysis/*.dat $OUT_ROOT/$cohort/allkmer_analysis/*.txt $OUT_ROOT/$cohort/allkmer_analysis/*.dat ; do
+for file in  $OUT_ROOT/$cohort/TagCount.csv $OUT_ROOT/$cohort/TagCountsAndSampleStats.csv $OUT_ROOT/$cohort/${cohort}.KGD_tassel3.KGD.stdout $OUT_ROOT/$cohort/KGD/*.csv $OUT_ROOT/$cohort/KGD/*.tsv $OUT_ROOT/$cohort/KGD/*.vcf $OUT_ROOT/$cohort/hapMap/HapMap.hmc.txt $OUT_ROOT/$cohort/hapMap/HapMap.hmp.txt $OUT_ROOT/$cohort/blast/locus*.txt $OUT_ROOT/$cohort/blast/locus*.dat $OUT_ROOT/$cohort/blast/taxonomy*.txt $OUT_ROOT/$cohort/blast/taxonomy*.dat $OUT_ROOT/$cohort/blast/frequency_table.txt $OUT_ROOT/$cohort/blast/information_table.txt $OUT_ROOT/$cohort/kmer_analysis/*.txt $OUT_ROOT/$cohort/kmer_analysis/*.dat $OUT_ROOT/$cohort/allkmer_analysis/*.txt $OUT_ROOT/$cohort/allkmer_analysis/*.dat ; do
    if [ -f \$file ]; then
       if [ ! -f \$file.historical_blinded ]; then
          cp -p \$file \$file.historical_blinded
@@ -843,6 +853,10 @@ function html() {
          cp -s $file $OUT_ROOT/html/$cohort
       done
 
+      for file in $OUT_ROOT/$cohort/TagCountsAndSampleStats.csv; do
+         cp -s $file $OUT_ROOT/html/$cohort
+      done
+
       rm $OUT_ROOT/html/$cohort/KGD/*
       for file in $OUT_ROOT/$cohort/KGD/*; do
          cp -s $file $OUT_ROOT/html/$cohort/KGD
@@ -957,7 +971,7 @@ function html() {
    tardis --hpctype local -d $OUT_ROOT/html $GBS_PRISM_BIN/collate_barcode_yields.py $OUT_ROOT/*/*.tassel3_qc.FastqToTagCount.stdout \> $OUT_ROOT/html/barcode_yield_summary.txt
    tardis --hpctype local -d $OUT_ROOT/html --shell-include-file $OUT_ROOT/configure_bioconductor_env.src Rscript --vanilla  $GBS_PRISM_BIN/barcode_yields_plots.r datafolder=$OUT_ROOT/html
 
-   # summarise and plot tag nd read counts by cohort
+   # summarise and plot tag and read counts by cohort
    # CV
    $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -o $OUT_ROOT/html/tags_reads_summary.txt $OUT_ROOT/S*/TagCount.csv
    cat $OUT_ROOT/html/tags_reads_summary.txt | awk -F'\t' '{printf("%s\t%s\t%s\n",$1,$4,$9)}' - > $OUT_ROOT/html/tags_reads_cv.txt

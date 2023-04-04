@@ -171,7 +171,7 @@ def generate_run_plot(options):
         #        'KGD/CallRate.png', 'KGD/GcompareHWdgm.05.png', 'KGD/GHWdgm.05diagdepth.png', 'KGD/LRT-hist.png', 'KGD/PC1v2G5HWdgm.05.png', 'KGD/SampDepth-scored.png'
         #        'KGD/Co-call-HWdgm.05.png', 'KGD/Gcompare.png', 'KGD/GHWdgm.05-diag.png', 'KGD/LRT-QQ.png', 'KGD/SampDepthCR.png', 'KGD/SNPCallRate.png'
         #        'KGD/Co-call-.png', 'KGD/Gdiagdepth.png', 'KGD/Heatmap-G5HWdgm.05.png', 'KGD/MAFHWdgm.05.png', 'KGD/SampDepthHist.png', 'KGD/SNPDepthHist.png'],
-        "Demultiplex (text file links)" :  ["TagCount.csv","FastqToTagCount.stdout"],
+        "Demultiplex (text file links)" :  ["TagCount.csv","TagCountsAndSampleStats.csv","FastqToTagCount.stdout"],
         "Deduplication" :  ["dedupe_summary.txt"],        
         "Overall SNP yields" :  ["overall_snp_yield.txt", "information_efficiency.txt"],
         "KGD stdout" :  ["KGD.stdout"],
