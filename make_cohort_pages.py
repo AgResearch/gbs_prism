@@ -198,11 +198,11 @@ def generate_run_plot(options):
 
     narratives = {
         'KGD/InbCompare.png' : """
-Check clumpify normalisation (deduplication) by comparing four estimates of inbreeding: a) production estimate
- b) adjust using fitted beta-binomial (bb) c) sampling one read per lane to remove any duplication effect (used to fit bb)
- d) treat two lanes as two individuals. If the points are below the line in the first column (a .v. b,c,d), or alpha
+Check clumpify normalisation (deduplication) by comparing five estimates of inbreeding: a) production estimate
+ b) adjust using fitted beta-binomial (bb) estimated on combined lanes c) adjust using fitted beta-binomial (bb) estimated on separate lanes d) sampling one read per lane to remove any duplication effect (used to fit bb)
+ e) treat two lanes as two individuals. If the points are below the line in the first column (a .v. b,c,d,e), or alpha
  is low, our normalisation may not be aggressive enough, as production inbreeding estimate is thus higher than these other
- three methods (each of which should provide a robust estimate of inbreeding, even with un-normalised data)
+ four methods (each of which should provide a robust estimate of inbreeding, even with un-normalised data)
 """,
         'KGD/AlleleFreq.png' : """
 Comparisons SNP reference allele frequencies calculated 3 different ways: 1) after naively converting to genotypes, 2) based on allele counts (without any adjustment for multiple counts of the same allele), 3) as given by UNEAK (the same as method 2).
