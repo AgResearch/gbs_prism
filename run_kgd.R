@@ -23,7 +23,7 @@ if(length(args)==2 ){
 }
 
 gform <- "uneak"
-negC <- "^GBSNEG"  
+negC <- "^GBSNEG"  # not used in QC pipeline as ids are blinded
 alleles.keep <- TRUE
 functions.only <- TRUE # only load the functions from GBS-Chip-Matrix.R, do not run the standard code.
 mindepth.bb <- 0.1  # min sampdepth (merged) for training bb model
@@ -32,11 +32,29 @@ npartsID <- 5  ## number of parts (sep by _) in a seqID
 source(file.path(Sys.getenv("SEQ_PRISMS_BIN"),"/../KGD/GBS-Chip-Gmatrix.R"))
 readGBS()
 GBSsummary()
-
+#------- write a version fo SampleStatsRaw averaged over SampleID -------
+#file.rename(from="SampleStatsRaw.csv",to="SampleStatsRawSeparate.csv")
+ ssraw <- read.csv("SampleStatsRaw.csv")
+ ssraw$mergeID <- seq2samp(ssraw$seqID,nparts=npartsID)
+ ssrawc <- aggregate(ssraw$sampdepth,by=list(SampleID=ssraw$mergeID),mean)
+ colnames(ssrawc)[2] <- "sampdepth"
+ write.csv(ssrawc,"SampleStatsRawCombined.csv")
 
 keypath <-  paste0(dirname(dirname(genofile)),"/key")
 seqinfo <- read.table(paste0(keypath,"/",dir(keypath)[1]),stringsAsFactors=FALSE,header=TRUE,sep="\t")
-samppos <- match(seqinfo$sample,seq2samp(seqID,nparts=npartsID))
+seqinfo$keyID <- with(seqinfo,paste(sample,flowcell,lane,libraryprepid,"X4",sep="_"))
+samppos <- match(seqinfo$keyID,seqID)
+keypos <- match(seqID,seqinfo$keyID)
+if(length(seqID.removed)>0) {
+ cat("Control status of removed samples\n")
+ table(seqinfo$control[match(seqID.removed,seqinfo$keyID)],useNA="always")
+ }
+uneg <- which(seqinfo$control[keypos]=="NEGATIVE")
+if(length(uneg)>0) {
+  cat("Warning: negative controls passing initial QC filters\n")
+  neginfo <- negCreport(uneg)
+  }
+posCSampleID <- unique(seqinfo$sample[keypos][ which(seqinfo$control[keypos]=="POSITIVE")])
 
 DO_KGD_PLATE_PLOTS <- Sys.getenv("DO_KGD_PLATE_PLOTS",unset="yes")
 if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos))) { # only do it if keyfile seems to match (e.g. blinded), and it is not suppressed
@@ -70,7 +88,8 @@ if ( geno_method == "default" ) {
   SampleIDsep <- seqinfosep$SampleID
   u1 <- which(seqinfosep$Lane==1)
   u2 <- which(seqinfosep$Lane==2)
-  issplit <- (length(u1)>0 & length(u2)>0)
+  nlanespersamp <- rowSums( table(SampleIDsep,seqinfosep$Lane) > 0)
+  issplit <- all(seqinfosep$Lane %in% 1:2) & max(nlanespersamp) > 1
   if(issplit) {
     Gsplit <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx=".split",calclevel=1,puse=p.sep)
     GBSsplit <- parkGBS()
@@ -82,6 +101,31 @@ if ( geno_method == "default" ) {
     Gdsamp <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
     
     activateGBS(GBSsplit)
+    GBSsummary()  # could set outlevel lower here?
+
+# estimate bb param from single lane data compared to sampled allele from each lane  ....
+    samppos1 <- match(seqinfosep$SampleID,SampleIDsamp)
+    Inbs <- Gdsamp[samppos1] -1   # has sampled inbreeding 2x each indiv
+    ubb <- which(sampdepth >mindepth.bb & !seqinfosep$SampleID %in% posCSampleID)  # will be 2 obs per individ (lanes 1 and 2)
+    cat("Find alpha for separate lanes\n")
+    bbopt <- optimise(ssdInb,lower=0,upper=200, tol=0.05,Inbtarget=Inbs[ubb],dmodel="bb", indsubset = ubb, snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
+    bbalpha <- c(alphaSep=bbopt$minimum) 
+    # one lane at a time
+    ubb0 <- ubb
+    ubb <- intersect(ubb0,which(seqinfosep$Lane==1))
+    cat("Find alpha for lane 1\n")
+    bbopt <- optimise(ssdInb,lower=0,upper=200, tol=0.05,Inbtarget=Inbs[ubb],dmodel="bb", indsubset = ubb, snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
+    bbalpha <- c(bbalpha,alphaLane1=bbopt$minimum) 
+    ubb <- intersect(ubb0,which(seqinfosep$Lane==2))
+    cat("Find alpha for lane 2\n")
+    bbopt <- optimise(ssdInb,lower=0,upper=200, tol=0.05,Inbtarget=Inbs[ubb],dmodel="bb", indsubset = ubb, snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
+    bbalpha <- c(bbalpha,alphaLane2=bbopt$minimum) 
+    depth <- -log2(depth2Kbb(depth,alph=bbalpha[1]))  # effective depth
+    mgadjdepth <- mergeSamples(SampleIDsep,replace=TRUE) # combine lanes using effective depths
+    depth2K <- depth2Kchoose (dmodel="bb", param=Inf)
+    SepInb <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)[match(seq2samp(nparts=npartsID), SampleIDsamp)]-1
+
+    activateGBS(GBSsplit) # depths will be recalculated here (effective depths discarded)
     mg1 <- mergeSamples(SampleIDsep,replace=TRUE)
     GBSsummary()
     GHWdgm.05 <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx="HWdgm.05",npc=4,puse=p.sep)
@@ -91,24 +135,28 @@ if ( geno_method == "default" ) {
     Inbs <- Gdsamp[samppos2] -1
     LaneRel <- Gsplit$G5[cbind(row=u1[match(SampleID,SampleIDsep[u1])],col=u2[match(SampleID,SampleIDsep[u2])])]
     
-    ubb <- which(sampdepth>mindepth.bb)
-    cat(length(ubb),"of",length(sampdepth),"samples with depth >",mindepth.bb,"used for BB model fitting\n")
+    ubb <- which(sampdepth>mindepth.bb & !seq2samp(nparts=npartsID) %in% posCSampleID)
+    cat(length(ubb),"of",length(sampdepth),"non-control samples with depth >",mindepth.bb,"used for BB model fitting\n")
     coldepth <- colourby(sampdepth[ubb],nbreaks=40,hclpals="Teal",rev=TRUE, col.name="Depth")
     colkey(coldepth,horiz=FALSE,sfx="depth")
+    cat("Find alpha for combined lanes\n")
     bbopt <- optimise(ssdInb,lower=0,upper=200, tol=0.01,Inbtarget=Inbs,dmodel="bb", snpsubset=which(HWdis.sep > -0.05),puse=p.sep)
+    bbalpha <- c(bbalpha,alphaComb=bbopt$minimum) 
+    print(bbalpha)
     NInb <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)-1
     
-    png(paste0("InbCompare",".png"))
-    pairs(cbind(Inbc,NInb,Inbs,LaneRel-1)[ubb,],cex.labels=1.5, cex=1.2,
+    png(paste0("InbCompare",".png"),width=600, height=600,pointsize=cex.pointsize*13.5)
+    pairs(cbind(Inbc,NInb,SepInb,Inbs,LaneRel-1)[ubb,],cex.labels=1.5, cex=1.2,
           labels=c(paste0("Combined\nmean=",signif(mean(Inbc[ubb],na.rm=TRUE),3)),
-                   paste0("Combined\nalpha=",signif(bbopt$min,2),"\nmean=",signif(mean(NInb[ubb],na.rm=TRUE),3)),
+                   paste0("Combined\nalpha=",signif(bbalpha[4],2),"\nmean=",signif(mean(NInb[ubb],na.rm=TRUE),3)),
+                   paste0("Separate\nalpha=",signif(bbalpha[1],2),"\nmean=",signif(mean(SepInb[ubb],na.rm=TRUE),3)),
                    paste0("Sampled\n1 read/lane\nmean=",signif(mean(Inbs[ubb],na.rm=TRUE),3)),
                    paste0("Between\nlane\nmean=",signif(mean(LaneRel[ubb],na.rm=TRUE)-1,3))),
           gap=0,col=coldepth$sampcol, pch=16, lower.panel=plotpanel,upper.panel=regpanel, text.panel=legendpanel, 
           main=paste("Inbreeding where depth >",mindepth.bb))
     dev.off()
     
-    depth2K <<- depth2Kchoose (dmodel="bb", param=Inf)
+    depth2K <- depth2Kchoose (dmodel="bb", param=Inf)
   } else { # not split
     GHWdgm.05 <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx="HWdgm.05",npc=4,puse=p.sep)
   }
