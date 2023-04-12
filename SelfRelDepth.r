@@ -9,7 +9,7 @@ get_command_args <- function() {
    args=(commandArgs(TRUE))
    if(length(args)!=1 ){
       #quit with error message if wrong number of args supplied
-      print('Usage example : Rscript --vanilla  SelfRelDepth.r kgd_dir=/dataset/hiseq/scratch/postprocessing/180419_D00390_0357_ACCHG7ANXX.gbs/SQ0673.processed_sample/uneak/KGD')
+      print('Usage example : Rscript --vanilla  SelfRelDepth.r kgd_dir=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/180419_D00390_0357_ACCHG7ANXX.gbs/SQ0673.processed_sample/uneak/KGD')
       print('args received were : ')
       for (e in args) {
          print(e)
@@ -30,7 +30,7 @@ get_command_args <- function() {
 
 
 
-#KGDdir <- "/dataset/hiseq/scratch/postprocessing/180419_D00390_0357_ACCHG7ANXX.gbs/SQ0673.processed_sample/uneak/KGD"
+#KGDdir <- "/dataset/2023_illumina_sequencing_a/scratch/postprocessing/180419_D00390_0357_ACCHG7ANXX.gbs/SQ0673.processed_sample/uneak/KGD"
 #windows:
 #KGDdir <- paste0("//isamba",KGDdir)
 

@@ -100,16 +100,16 @@ def get_options():
 
 examples :
 
-collate_tags_reads.py --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/hiseq/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
-collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file /dataset/hiseq/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/KGD/SampleStats.csv.blinded --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/hiseq/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
+collate_tags_reads.py --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
+collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/KGD/SampleStats.csv.blinded --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
 
 # for testing 
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1705.all.salmon.PstI-MspI --machine hiseq /dataset/hiseq/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1705.all.salmon.PstI-MspI/TagCount.csv.blinded
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.chinook_salmon.PstI-MspI --machine hiseq /dataset/hiseq/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.chinook_salmon.PstI-MspI/TagCount.csv.blinded
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.salmon.PstI-MspI --machine hiseq /dataset/hiseq/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
+./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1705.all.salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1705.all.salmon.PstI-MspI/TagCount.csv.blinded
+./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.chinook_salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.chinook_salmon.PstI-MspI/TagCount.csv.blinded
+./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
 
 
--rw-rw-r-- 1 mccullocha hiseq_users 32029 Oct 22 10:30 /dataset/hiseq/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
+-rw-rw-r-- 1 mccullocha hiseq_users 32029 Oct 22 10:30 /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
 
 
 
@@ -121,7 +121,7 @@ collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file /datas
    #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    good    CCVK0ANXX       1       SQ0788          268924508
 
 + awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=211217_A01439_0043_BH2TTCDMXY cohort=SQ1744.all.PstI-MspI.PstI-MspI -
-+ cat /dataset/hiseq/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
++ cat /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
    
 
 

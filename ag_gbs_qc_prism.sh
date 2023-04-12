@@ -283,21 +283,6 @@ function get_targets() {
          exit 1
       fi
 
-      # check for missing fastq files and bail out if anything missing  - this shouldn't happen and there may have been an unsupported 
-      # keyfile import that will need to be manually patched (e.g. previously importing a future flowcell as well as current flowcell. The 
-      # former future is now current , but fastq link probably not updated )
-      missing_message=`$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t missing_files | grep "fastq_link missing"`
-      if [ ! -z "$missing_message" ]; then
-         echo "*** !!!! ERROR !!!! there are missing fastq_links for lib: $libname fcid: $fcid enzyme: $enzyme cohort: $gbs_cohort qccohort: $qc_cohort ***"
-         echo "(was this flowcell previously imported in one or more keyfiles as a future flowcell  ?)"
-         echo "suggest try manual update of fastq location using : 
-
-"
-         for lane in `$GBS_PRISM_BIN/get_lane_from_database.sh $RUN $libname`; do
-            echo "$GBS_PRISM_BIN/updateFastqLocations.sh -s $libname -k $libname -r $RUN -f $fcid -l $lane "
-         done
-      fi
-
       #$GBS_PRISM_BIN/list_keyfile.sh -s $libname -f $fcid -e $enzyme -g $gbs_cohort -q $qc_cohort -t bwa_index_paths > $OUT_ROOT/${cohort_moniker}.bwa_references
       gquery -t gbs_keyfile -b library -p "flowcell=$fcid;enzyme=$enzyme;gbs_cohort=$gbs_cohort;columns=gbs_cohort,refgenome_bwa_indexes;noheading;distinct" $libname > $OUT_ROOT/${cohort_moniker}.bwa_references 
 

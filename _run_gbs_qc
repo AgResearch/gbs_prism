@@ -279,9 +279,9 @@ function get_run_opts() {
    OUT_ROOT=""
    SNP_ENGINE=tassel        # the only one supported at this point
 
-   NOVASEQ_ROOT=/dataset/hiseq/scratch
-   NOVASEQ_PROCESSING_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
-   NOVASEQ_BCLCONVERT_ROOT=/dataset/hiseq/scratch/postprocessing/illumina/novaseq
+   NOVASEQ_ROOT=/dataset/2023_illumina_sequencing_a/scratch
+   NOVASEQ_PROCESSING_ROOT=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs
+   NOVASEQ_BCLCONVERT_ROOT=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/illumina/novaseq
    mkdir -p $NOVASEQ_PROCESSING_ROOT
    mkdir -p $NOVASEQ_BCLCONVERT_ROOT
 

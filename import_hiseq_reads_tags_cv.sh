@@ -16,7 +16,7 @@ help_text="\n
 
 DRY_RUN=no
 RUN_NAME=""
-BUILD_ROOT=/dataset/hiseq/scratch/postprocessing/gbs
+BUILD_ROOT=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs
 
 while getopts "hr:d:" opt; do
   case $opt in

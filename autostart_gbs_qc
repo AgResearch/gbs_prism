@@ -80,14 +80,14 @@ function send_mail() {
 function get_landmark() {
    RUN=$1
    landmark=""
-   if [ -f /dataset/hiseq/scratch/$RUN/RTAComplete.txt ]; then
-      landmark=/dataset/hiseq/scratch/$RUN/RTAComplete.txt
+   if [ -f /dataset/2023_illumina_sequencing_a/scratch/$RUN/RTAComplete.txt ]; then
+      landmark=/dataset/2023_illumina_sequencing_a/scratch/$RUN/RTAComplete.txt
    fi
 }
 
 function get_digest() {
    RUN=$1
-   digest=`ls -lR /dataset/hiseq/scratch/$RUN/ | md5sum -b `
+   digest=`ls -lR /dataset/2023_illumina_sequencing_a/scratch/$RUN/ | md5sum -b `
    echo $digest
 }
 

@@ -6,8 +6,8 @@ import os
 
 fastq_links=sys.argv[1:]
 # e.g.
-#/dataset/hiseq/scratch/postprocessing/gbs/210823_A01439_0016_BHHYF5DRXY/SQ1671.all.PstI-MspI.PstI-MspI/Illumina/SQ1671_HHYF5DRXY_s_1_fastq.txt.gz
-#/dataset/hiseq/scratch/postprocessing/gbs/210823_A01439_0016_BHHYF5DRXY/SQ1671.all.PstI-MspI.PstI-MspI/Illumina/SQ1671_HHYF5DRXY_s_2_fastq.txt.gz
+#/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/210823_A01439_0016_BHHYF5DRXY/SQ1671.all.PstI-MspI.PstI-MspI/Illumina/SQ1671_HHYF5DRXY_s_1_fastq.txt.gz
+#/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/210823_A01439_0016_BHHYF5DRXY/SQ1671.all.PstI-MspI.PstI-MspI/Illumina/SQ1671_HHYF5DRXY_s_2_fastq.txt.gz
 
 stats_dict={}
 

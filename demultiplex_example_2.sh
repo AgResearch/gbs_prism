@@ -11,7 +11,7 @@ export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 
 
 # set up
-WORKDIR=/dataset/hiseq/scratch/postprocessing/gbs/ryegrass_check 
+WORKDIR=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/ryegrass_check 
 mkdir $WORKDIR
 echo 'MergeTaxaTagCount -t n' > $WORKDIR/demultiplexing_parameters.txt # this tassel option will be passed to the MergeTaxaTagCount plugin - keeps lanes distinct which we do for novaseq, as part of KGD normalisation
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # make an HTML page to view the output of SelfRelDepth.r together with the orginal plot
-# - the output should be sent to /bifo/scratch/hiseq/postprocessing/ so that the paths
+# - the output should be sent to /bifo/scratch/2023_illumina_sequencing_a/postprocessing/ so that the paths
 # work when opened 
 #
 import sys
@@ -106,18 +106,18 @@ def generate_run_plot():
     
     for record in record_array:
         # these are like
-        # /bifo/scratch/hiseq/postprocessing/180130_D00390_0343_BCBG7MANXX.gbs/SQ0618.processed_sample/uneak/PstI.PstI.cohort/KGD -0.06391309 2.17314e-15
+        # /bifo/scratch/2023_illumina_sequencing_a/postprocessing/180130_D00390_0343_BCBG7MANXX.gbs/SQ0618.processed_sample/uneak/PstI.PstI.cohort/KGD -0.06391309 2.17314e-15
         #/dataset/gseq_processing/scratch/gbs/140624_D00390_0044_BH9PEBADXX/SQ0001.all.PstI.PstI/KGD     -0.05257605     0.1317527       cattle  PstI    PstI    13
         #/dataset/gseq_processing/scratch/gbs/140624_D00390_0044_BH9PEBADXX/SQ0001.all.PstI.PstI/KGD.orig        -0.05257605     0.1317527       cattle  PstI    PstI    13
 
         #print record
-        #['/bifo/scratch/hiseq/postprocessing/180627_D00390_0375_BCCHBJANXX.gbs/SQ2741.processed_sample/uneak/all.ApeKI.ApeKI.cohort/KGD',
+        #['/bifo/scratch/2023_illumina_sequencing_a/postprocessing/180627_D00390_0375_BCCHBJANXX.gbs/SQ2741.processed_sample/uneak/all.ApeKI.ApeKI.cohort/KGD',
         # '-0.5114565', '1.276835e-12', 'white', 'clover', 'ApeKI', 'ApeKI', '96']
         #print "DEBUG processing %s"%record
 
         (path, slope,pval,species, gbs_cohort, enzyme, count) = record
         # need to fix up path - from this
-        # /bifo/scratch/hiseq/postprocessing/180130_D00390_0343_BCBG7MANXX.gbs/SQ0618.processed_sample/uneak/PstI.PstI.cohort/KGD
+        # /bifo/scratch/2023_illumina_sequencing_a/postprocessing/180130_D00390_0343_BCBG7MANXX.gbs/SQ0618.processed_sample/uneak/PstI.PstI.cohort/KGD
         # to this
         # 180816_D00390_0393_ACCRBRANXX.gbs/SQ0782.processed_sample/uneak/all.GOAT.PstI.cohort/KGD/GHWdgm.05diagdepth.png
         #
@@ -129,7 +129,7 @@ def generate_run_plot():
             relpath=os.path.relpath(path, "/dataset/gseq_processing/scratch/gbs")
             image_path=os.path.join(relpath, "GHWdgm.05diagdepth.png")
         else:
-            relpath=os.path.relpath(path, "/dataset/hiseq/scratch/postprocessing")
+            relpath=os.path.relpath(path, "/dataset/2023_illumina_sequencing_a/scratch/postprocessing")
             image_path=os.path.join("old_plots", relpath,"GHWdgm.05diagdepth.png")
 
 
@@ -138,16 +138,16 @@ def generate_run_plot():
         
         run_match=re.search("/dataset/gseq_processing/scratch/gbs/([^\/]+)/",path)
         if run_match is None:
-            run_match=re.search("/dataset/hiseq/scratch/postprocessing/([^\/]+)\.gbs/",path)
+            run_match=re.search("/dataset/2023_illumina_sequencing_a/scratch/postprocessing/([^\/]+)\.gbs/",path)
             if run_match is None:
                 print "Error could not parse run from %s"%path
                 continue
 
         run=run_match.groups()[0]
 
-        if os.path.exists(os.path.join("/dataset/hiseq/scratch/postprocessing/", "%s_plots.html"%run)):
-            plots_page="\\\\isamba\\dataset\\hiseq\\scratch\\postprocessing\\%s_plots.html"%run
-            path="<a href=\"%s\" target=plots_page>%s</a>"%(plots_page, os.path.join("/dataset/hiseq/scratch/postprocessing/", "%s_plots.html"%run))
+        if os.path.exists(os.path.join("/dataset/2023_illumina_sequencing_a/scratch/postprocessing/", "%s_plots.html"%run)):
+            plots_page="\\\\isamba\\dataset\\2023_illumina_sequencing_a\\scratch\\postprocessing\\%s_plots.html"%run
+            path="<a href=\"%s\" target=plots_page>%s</a>"%(plots_page, os.path.join("/dataset/2023_illumina_sequencing_a/scratch/postprocessing/", "%s_plots.html"%run))
         else:
             plots_page="file:///\\\\isamba\\" + path[1:].replace("/","\\")
             path="<a href=\"%s\" target=plots_page>%s</a>"%(plots_page, path)
