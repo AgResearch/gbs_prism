@@ -182,7 +182,11 @@ The same as PlateDepth.png but with a different colour gradient for each subplat
 """,
         'SubplateInb.png' : """
 The same as PlateInb.png but with a different colour gradient for each subplate within the main plate.
-"""
+""",
+        'GUSbase_comet.jpg' : """
+Plot to assess the validity of the binomial model for read count data generated using high-throughput sequencing technology. 
+SNPs tracking an intermediate slope (observed) may be due to non-diploid genome.  A downward diagonal streak (expected) is due to an internal cutoff and is associated with the presence of high depth SNPs
+"""       
     } 
     
     

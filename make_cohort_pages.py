@@ -300,6 +300,10 @@ The same as PlateDepth.png but with a different colour gradient for each subplat
         'KGD/SubplateInb.png' : """
 The same as PlateInb.png but with a different colour gradient for each subplate within the main plate.
 """,
+        'KGD/GUSbase_comet.jpg' : """
+Plot to assess the validity of the binomial model for read count data generated using high-throughput sequencing technology. 
+SNPs tracking an intermediate slope (observed) may be due to non-diploid genome.  A downward diagonal streak (expected) is due to an internal cutoff and is associated with the presence of high depth SNPs
+""",
         'blast/taxonomy_summary_profile.jpg' : """
 A heatmap visualisation of the estimated proportion of low-depth tags hitting Genbank taxa (blastn of an adapter-filtered random sample of tags, against nt).
  Poor quality samples (low tag count) have an off-white background. In this plot, each row represents a cluster of taxa
