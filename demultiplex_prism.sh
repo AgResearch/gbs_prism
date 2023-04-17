@@ -356,6 +356,8 @@ if [ ! -f tagCounts.done ]; then
       rm -rf tagCounts_parts
       tardis --hpctype $HPC_TYPE -k -d $OUT_DIR --shell-include-file $OUT_DIR/tassel3_env.src run_pipeline.pl -Xms512m -Xmx5g -fork1 -UFastqToTagCountPlugin $p_FastqToTagCount -w ./ -c 1 -e $enzyme_for_uneak  -s 900000000 -endPlugin -runfork1 \> $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout 2\>$OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stderr
       cat $OUT_DIR/${demultiplex_moniker}.FastqToTagCount.stdout | $OUT_DIR/get_reads_tags_per_sample.py > $OUT_DIR/TagCount.csv
+      $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -o $OUT_DIR/tags_reads_summary.txt $OUT_DIR/TagCount.csv
+      cat $OUT_DIR/tags_reads_summary.txt | awk -F'\\t' '{printf(\"%s\\t%s\\t%s\\n\",\$1,\$4,\$9)}' -  > $OUT_DIR/tags_reads_cv.txt
    elif [ \$number_of_parts > 1 ]; then
       # make a command file to demultiplex each part , and launch on the cluster
       rm -f tagCounts_parts/demultiplex_parts_commands.src
@@ -371,6 +373,8 @@ if [ ! -f tagCounts.done ]; then
 
       # merge the tag counts into a single tag count file 
       $GBS_PRISM_BIN/ramify_tassel_keyfile.py -t merge_counts -o  ${OUT_DIR}/tagCounts_parts --sub_tassel_prefix part ${OUT_DIR}/key/$sample_info_base > $OUT_DIR/TagCount.csv
+      $GBS_PRISM_BIN/summarise_read_and_tag_counts.py -o $OUT_DIR/tags_reads_summary.txt $OUT_DIR/TagCount.csv
+      cat $OUT_DIR/tags_reads_summary.txt | awk -F'\\t' '{printf(\"%s\\t%s\\t%s\\n\",\$1,\$4,\$9)}' -  > $OUT_DIR/tags_reads_cv.txt
    else
       echo "demultiplex_prism : error analysing keyfile"
    fi
