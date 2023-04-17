@@ -496,8 +496,9 @@ $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s 
 $SEQ_PRISMS_BIN/sample_prism.sh -C $HPC_TYPE  -a tag_count_unique -t 2 -T 50 -s .05 -O $OUT_ROOT/$cohort/fasta_medium_lowdepthsample $OUT_ROOT/$cohort/tagCounts/*.cnt
 
 # trim the samples that will be used by blast
-for fasta_sample in $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.fasta ; do
-   outbase=\`basename \$fasta_sample .fasta\`
+for landmark in $OUT_ROOT/$cohort/fasta_small_lowdepthsample/*.sample_prism ; do
+   outbase=\`basename \$landmark .sample_prism\`
+   fasta_sample=$OUT_ROOT/$cohort/fasta_small_lowdepthsample/\${outbase}.fasta
    outdir=\`dirname \$fasta_sample\`
    tardis -d $OUT_ROOT/$cohort --hpctype $HPC_TYPE --shell-include-file $OUT_ROOT/bifo-essential_env.inc cutadapt -f fasta -m 1 $adapter_phrase \$fasta_sample 1\>\$outdir/\${outbase}.trimmed.fasta 2\>\$outdir/\${outbase}.trimmed.fasta.report
 done
