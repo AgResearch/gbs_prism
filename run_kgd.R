@@ -32,13 +32,13 @@ npartsID <- 5  ## number of parts (sep by _) in a seqID
 source(file.path(Sys.getenv("SEQ_PRISMS_BIN"),"/../KGD/GBS-Chip-Gmatrix.R"))
 readGBS()
 GBSsummary()
-#------- write a version fo SampleStatsRaw averaged over SampleID -------
+#------- write a version of SampleStatsRaw summed over SampleID -------
 #file.rename(from="SampleStatsRaw.csv",to="SampleStatsRawSeparate.csv")
  ssraw <- read.csv("SampleStatsRaw.csv")
  ssraw$mergeID <- seq2samp(ssraw$seqID,nparts=npartsID)
- ssrawc <- aggregate(ssraw$sampdepth,by=list(SampleID=ssraw$mergeID),mean)
+ ssrawc <- aggregate(ssraw$sampdepth,by=list(SampleID=ssraw$mergeID),sum)
  colnames(ssrawc)[2] <- "sampdepth"
- write.csv(ssrawc,"SampleStatsRawCombined.csv")
+ write.csv(ssrawc,"SampleStatsRawCombined.csv",row.names=FALSE)
 
 keypath <-  paste0(dirname(dirname(genofile)),"/key")
 seqinfo <- read.table(paste0(keypath,"/",dir(keypath)[1]),stringsAsFactors=FALSE,header=TRUE,sep="\t")
