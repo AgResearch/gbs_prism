@@ -5,11 +5,11 @@ The Novaseq 6000 platform uses patterned flowcells. Some of the reads represent 
 
 There are two complementary ways of adjusting for this effect:
 
-1. Deduplicate reads from a sequencing lane. This process ensures that only one identical read is retained within a given distance. Currently deduplication is applied with a distance parameter of 2000 (?check).
+1. Deduplicate reads from a sequencing lane. This process ensures that only one identical read is retained within a given distance. 
 2. Apply a statistical model that allows greater variance (but same mean) as the binomial model. One such model is the beta-binomial (BB) model with parameters α and β=α (to ensure the probability of sampling a particular allele is 0.5).
 
-## QC pipeline
-The QC pipeline is run for each flowcell × species combination. Within the GBS QC pipeline there is a step investigating potential BB adjustments. This is based on there being two lanes of data for each sample, which are assumed independent (in particular, no ExAmp duplicates across the lanes). The results from these analyses are reported in InbCompare.png.
+## gbs_prism QC pipeline
+The QC pipeline does [KGD Genotyping](https://github.com/AgResearch/KGD) for each flowcell × species combination, and this includes a step investigating potential BB adjustments. This is based on there being two lanes of data for each sample, which are assumed independent (in particular, no ExAmp duplicates across the lanes). The results from these analyses are reported in teh KGD plot InbCompare.png.
 
 This plot contains inbreeding estimates calculated four different ways:
 |Label|Description|
@@ -25,15 +25,17 @@ The α parameter is estimated by comparing the Sampled results with Combined alp
 An alternative would be to use the between lane relatedness instead of the sampled lanes estimates. 
 
 ## GBS data analysis workflows
-The analysis workflows operate by adjusting result depths to an equivalent depth, i.e. the depth that gives the same P(AA|AB) under the binomial model. Then, for example, depths can be combined across any repeated genotyping of the same individual. The equivalent depths are used in downstream analyses with the binomial model.
+These could use pre-calculated α values or calculate them as part of the analysis. It is assumed that each flowcell × species should have its own α.
+
+The beta-binomial adjustment is made by recalibrating allele depths to an equivalent depth, i.e. the depth that gives the same P(AA|AB) under the binomial model. Then, for example, depths can be combined across any repeated genotyping of the same individual. The standard binomial model can then be used with the equivalent depths, in downstream analysis.
 
 `Equivalent depth = -log2 (depth2Kbb(depth, α ))`
 (depth2Kbb is a KGD function)
 
-Applying the adjustment for all results from a flowcell is much more efficient (in R) than applying it to each genotype result.
+Applying the recalibration for all results from a flowcell is much more efficient (in R) than applying it to each genotype result.
 
 ### Pre-calculated α
-α values are obtained from a key files. These are combined lanes αs (currently).
+α values are obtained from a key file. These are combined lanes αs (currently).
 
 1. Combine separate lane data if present in the data.
 2. Ascertain the flowcells used and obtain their α.
@@ -41,6 +43,7 @@ Applying the adjustment for all results from a flowcell is much more efficient (
 
 ### Calculate α within workflow
 Assume that we wish to calculate α on a separate lanes basis.
+
 1. Calculate inbreeding using a sampled allele from each lane (for each sample × Flowcell × SNP)
 2. For each Novaseq flowcell estimate α by comparing the inbreeding for each sample × lane to the inbreeding for that sample from the previous step (minimize the sums of squared differences)
 3. For each flowcell, calculate the equivalent depth for the data from that flowcell. Then use equivalent depths in place of the actual depths for the remainder of the analysis (including combining data from the different lanes of a flowcell).
