@@ -22,6 +22,9 @@ examples :
 cat /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/adapter_list.txt /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/contaminant_list.txt | ./reconcile_contaminants.py /dataset/gseq_processing/scratch/illumina/novaseq/210702_A01439_0005_AHCC27DRXY/kmer_analysis/*.k6A.log
 cat /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/adapter_list.txt /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/contaminant_list.txt | ./reconcile_contaminants.py /dataset/gseq_processing/scratch/illumina/hiseq/210628_D00390_0628_ACD9AUANXX/SampleSheet/gbs/kmer_analysis/*.k6A.log > hiseq_adapters_example.txt
 
+cat /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/adapter_list.txt /stash/miniconda3/envs/bifo-essential/opt/fastqc-0.11.8/Configuration/contaminant_list.txt /dataset/gseq_processing/active/bin/gquery/database/t_BarcodePlates.csv  | /dataset/gseq_processing/active/bin/gbs_prism/reconcile_contaminants.py /dataset/2023_illumina_sequencing_a/scratch/postprocessing/illumina/novaseq/20230504_FS10001778_51_BSB09412-3119/SampleSheet/kmer_run/kmer_analysis/*.k6A.log | head -30
+
+
 """
 
     parser = argparse.ArgumentParser(description=description, epilog=long_description, formatter_class = argparse.RawDescriptionHelpFormatter)
@@ -46,6 +49,33 @@ def get_fastqc_seqs():
         seqs[seq] = re.split("#", seqs[seq])[0]
         
     return seqs
+
+def safe_print(content, end='\n', outfile=sys.stdout):
+    """
+    workaround for having to run this currently under python 2 , and
+    the lack of a flush option in the python 2 print function. This
+    means that piping the output of print() statements (to e.g. head ) causes an exception:
+
+    Example:
+       ::
+
+          print("\t".join([str(item) for item in result_tuple]))
+          IOError: [Errno 32] Broken pipe
+          close failed in file object destructor:
+          sys.excepthook is missing
+          lost sys.stderr
+
+    """
+    try:
+        print(content, end=end, file=outfile)
+        outfile.flush()
+        sys.stderr.flush()
+    except IOError as i:
+        if i.errno != 32:
+            raise
+        else:
+            outfile.flush()
+            sys.stderr.flush()
 
 
 def get_most_common_seqs(options, fastqc_seqs):
@@ -81,19 +111,13 @@ def get_most_common_seqs(options, fastqc_seqs):
     fastqc_names_sorted = sorted( fastqc_names , lambda n1,n2 : cmp( fastqc_seq_counts[n1][1], fastqc_seq_counts[n2][1]), reverse = True)
 
     for name in fastqc_names_sorted:
-        print("%s\t\t\t\t%s\t%s"%(name, fastqc_seq_counts[name][1], fastqc_seq_counts[name][0]))
+        safe_print("%s\t\t\t\t%s\t%s"%(name, fastqc_seq_counts[name][1], fastqc_seq_counts[name][0]))
         
-                
-        
-         
 def main():    
     options = get_options()
     fastqc_seqs = get_fastqc_seqs()
+
     get_most_common_seqs(options, fastqc_seqs) 
-
-    #print(options) 
-
-    
             
 if __name__=='__main__':
     sys.exit(main())    
