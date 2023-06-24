@@ -202,7 +202,7 @@ conda activate /dataset/gseq_processing/active/bin/gbs_prism/conda/gbs_prism
 conda activate /dataset/bioinformatics_dev/active/conda-env/blast2.9
 " > $OUT_ROOT/blast_env.inc
 
-   NT_BLAST_DB=/dataset/blastdata/active/mirror/v5/nt
+   NT_BLAST_DB=/dataset/blastdata/active/mirror/nt
 
    cd $OUT_ROOT
 }
@@ -418,7 +418,7 @@ export GBS_PRISM_BIN=$GBS_PRISM_BIN
 export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
 export MELSEQ_PRISM_BIN=$GBS_PRISM_BIN/../melseq_prism
 
-DEMUX_ROOT=/dataset/sequencing_facility_replication/scratch/microbiome_fasta/qc/$libname
+DEMUX_ROOT=/dataset/2023_illumina_sequencing_a/scratch/microbiome_fasta/qc/$libname
 mkdir -p \$DEMUX_ROOT
 
 # get keyfile needed
