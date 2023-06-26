@@ -279,9 +279,9 @@ function get_run_opts() {
    OUT_ROOT=""
    SNP_ENGINE=tassel        # the only one supported at this point
 
-   NOVASEQ_ROOT=/dataset/2023_illumina_sequencing_a/scratch
-   NOVASEQ_PROCESSING_ROOT=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs
-   NOVASEQ_BCLCONVERT_ROOT=/dataset/2023_illumina_sequencing_a/scratch/postprocessing/illumina/novaseq
+   NOVASEQ_ROOT=/dataset/2023_illumina_sequencing_b/active
+   NOVASEQ_PROCESSING_ROOT=/dataset/2023_illumina_sequencing_b/scratch/postprocessing/gbs
+   NOVASEQ_BCLCONVERT_ROOT=/dataset/2023_illumina_sequencing_b/scratch/postprocessing/illumina/novaseq
    mkdir -p $NOVASEQ_PROCESSING_ROOT
    mkdir -p $NOVASEQ_BCLCONVERT_ROOT
 
@@ -409,7 +409,7 @@ checking if run is in the database...
    if [ $? != "0" ]; then
       echo "$RUN is not in the database - will generate keyfiles and set up run in the database first. About to execute  
 
-gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all
+gupdate --explain -t create_gbs_keyfiles -p \"fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all
 
 OK ? (y/n, default = y)
 "
@@ -417,8 +417,8 @@ OK ? (y/n, default = y)
       if [ "$answer" != "n" ]; then
          echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" 
          psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_backup.log 2>&1
-         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all"
-         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" all
+         echo "running gupdate --explain -t create_gbs_keyfiles -p \"fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all"
+         gupdate --explain -t create_gbs_keyfiles -p "fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" all
          if [ $? != 0 ]; then
             echo "
 
@@ -430,7 +430,7 @@ sorry - quitting after received bad return code from database import -try lookin
       else
          echo "OK quitting - can't run GBS q/c until run setup has been completed. Most likely problem is an unexpected sample sheet format - after fixing, you can just retry setup with
 
-gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all
+gupdate --explain -t create_gbs_keyfiles -p \"fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET\" all
 
 "
          exit 1
@@ -622,10 +622,10 @@ function do_extra_library_imports() {
          exit 1
       fi
       for library in $extra_imports; do
-         echo "running gupdate --explain -t create_gbs_keyfiles -p \"out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" $library "
+         echo "running gupdate --explain -t create_gbs_keyfiles -p \"fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" $library "
          echo "press Enter to continue. . ."
          read_answer_with_default ""
-         gupdate --explain -t create_gbs_keyfiles -p "out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" $library
+         gupdate --explain -t create_gbs_keyfiles -p "fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" $library
          return_code=$?
          if [ $return_code != 0 ]; then
             echo "looks like there was a problem with the import (exit code $return_code)  - check the above log - quitting"

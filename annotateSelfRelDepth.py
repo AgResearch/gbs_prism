@@ -20,14 +20,14 @@ def annotate():
     #/dataset/gseq_processing/scratch/gbs/181005_D00390_0407_BCCV91ANXX/SQ0807.all.DEER.PstI/KGD -0.02888578 0.3695895
     #/dataset/gseq_processing/scratch/gbs/181005_D00390_0407_BCCV91ANXX/SQ2766.all.ApeKI.ApeKI/KGD -0.1362936 0.2429048
 
-    #/bifo/scratch/2023_illumina_sequencing_a/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0772.processed_sample/uneak/all.DEER.PstI.cohort/KGD -2.523152 5.655549e-05
-    #/bifo/scratch/2023_illumina_sequencing_a/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0772.processed_sample/uneak/all.GOAT.PstI.cohort/KGD -0.03751884 0.002106262
-    #/bifo/scratch/2023_illumina_sequencing_a/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0775.processed_sample/uneak/all.Cattle.PstI.cohort/KGD 0.007961025 0.7796325
+    #/bifo/scratch/2023_illumina_sequencing_b/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0772.processed_sample/uneak/all.DEER.PstI.cohort/KGD -2.523152 5.655549e-05
+    #/bifo/scratch/2023_illumina_sequencing_b/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0772.processed_sample/uneak/all.GOAT.PstI.cohort/KGD -0.03751884 0.002106262
+    #/bifo/scratch/2023_illumina_sequencing_b/postprocessing/180810_D00390_0392_BCCR4LANXX.gbs/SQ0775.processed_sample/uneak/all.Cattle.PstI.cohort/KGD 0.007961025 0.7796325
     #
     # and
-    # /bifo/scratch/2023_illumina_sequencing_a/postprocessing/171218_D00390_0337_BCBG3AANXX.gbs/SQ0575.processed_sample/uneak/PstI.PstI.cohort
+    # /bifo/scratch/2023_illumina_sequencing_b/postprocessing/171218_D00390_0337_BCBG3AANXX.gbs/SQ0575.processed_sample/uneak/PstI.PstI.cohort
     # and
-    # /dataset/2023_illumina_sequencing_a/scratch/postprocessing/150224_D00390_0217_AC4UAUACXX.gbs/SQ0056.processed_sample/uneak/all.PstI.PstI.cohort/KGD -0.2113675 2.645513e-25
+    # /dataset/2023_illumina_sequencing_b/scratch/postprocessing/150224_D00390_0217_AC4UAUACXX.gbs/SQ0056.processed_sample/uneak/all.PstI.PstI.cohort/KGD -0.2113675 2.645513e-25
     # from this :
     # flowcell = CCR4LANXX
     # libraryprepid = 772 etc

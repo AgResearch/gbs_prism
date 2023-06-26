@@ -57,7 +57,7 @@ def get_cohorts(options):
     
     
 def generate_run_plot(options):
-    BASEDIR=options["basedir"]   # e.g. /bifo/scratch/2023_illumina_sequencing_a/postprocessing/gbs    
+    BASEDIR=options["basedir"]   # e.g. /bifo/scratch/2023_illumina_sequencing_b/postprocessing/gbs    
     stats = {
         "found file count" : 0,
         "no file count" : 0,
@@ -308,7 +308,7 @@ python ../gbs_prism/make_clientcohort_pages.py -U discarded_hapMap -K discarded_
     parser.add_argument('-o', '--output_filename' , dest='output_filename', default="peacock.html", type=str, help="name of output file")
     parser.add_argument('-U', '--hapmap_subfolder_name' , dest='hapmap_subfolder_name', default="hapMap", type=str, help="name of hapmap subfolder")
     parser.add_argument('-K', '--kgd_subfolder_name' , dest='kgd_subfolder_name', default="KGD", type=str, help="name of KGD sub-folder name")
-    parser.add_argument('-b', '--basedir' , dest='basedir', default="/dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs", type=str, help="base dir of original output")
+    parser.add_argument('-b', '--basedir' , dest='basedir', default="/dataset/2023_illumina_sequencing_b/scratch/postprocessing/gbs", type=str, help="base dir of original output")
     
     
     

@@ -418,7 +418,7 @@ export GBS_PRISM_BIN=$GBS_PRISM_BIN
 export SEQ_PRISMS_BIN=$SEQ_PRISMS_BIN
 export MELSEQ_PRISM_BIN=$GBS_PRISM_BIN/../melseq_prism
 
-DEMUX_ROOT=/dataset/2023_illumina_sequencing_a/scratch/microbiome_fasta/qc/$libname
+DEMUX_ROOT=/dataset/2023_illumina_sequencing_b/scratch/microbiome_fasta/qc/$libname
 mkdir -p \$DEMUX_ROOT
 
 # get keyfile needed
