@@ -425,8 +425,8 @@ mkdir -p \$DEMUX_ROOT
 $GBS_PRISM_BIN/listDBKeyfile.sh -s $libname -t gbsx  | awk '{if(NR>1) print}' - > \$DEMUX_ROOT/sample_info.txt
 
 \$MELSEQ_PRISM_BIN/_run_melseq -b -a format -O \$DEMUX_ROOT  \`cat $OUT_ROOT/${cohort_moniker}.filenames | awk '{print \$2}' -\` 
-if [ $? != 0 ]; then
-   echo \"fasta_demultiplex returned an error code ( $? )\"
+if [ \$? != 0 ]; then
+   echo \"fasta_demultiplex returned an error code ( \$? )\"
    exit 1
 fi
      " >  $OUT_ROOT/${cohort_moniker}.fasta_demultiplex.sh
