@@ -22,8 +22,18 @@
 	date > $@
 
 ########## standard analysis 
-%.all:  %.allkmer_analysis %.common_sequence 
+########## minimal standard analysis
+# this is a minimal "all" e.g. enough to get results imported to database. If needing to catch up or do minimal processing, uncomment this
+# and comment out the next definition of "all"
+%.all:  %.unblind  %.bwa_mapping
 	date > $@
+
+
+######### full standard analysis
+# this is the full "all" which is usually in force. If , say, processing is behind (e.g. fault with compute or sequencing) and you are in a hurry,
+# comment out this definition of "all" and uncomment the above minimal standard analysis
+#%.all:  %.allkmer_analysis %.common_sequence 
+#	date > $@
 
 %.allkmer_analysis:   %.kmer_analysis
 	$@.sh > $@.mk.log 2>&1
