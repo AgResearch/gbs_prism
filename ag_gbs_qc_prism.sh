@@ -929,7 +929,7 @@ function html() {
    # fastqc and multiqc
    mkdir -p $OUT_ROOT/html/multiqc
    rm -rf $OUT_ROOT/html/multiqc/*
-   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc_run/fastqc
+   tardis -d $OUT_ROOT --hpctype local --shell-include-file $OUT_ROOT/multiqc_env.inc  multiqc --interactive -i \"multifastqc for $RUN\" -o $OUT_ROOT/html/multiqc $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc_run/fastqc
    
    cp -pR $OUT_ROOT/../../illumina/$PLATFORM/$RUN/*/fastqc_run/fastqc $OUT_ROOT/html/fastqc
 
