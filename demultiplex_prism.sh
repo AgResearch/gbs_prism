@@ -488,6 +488,20 @@ base=`basename $file`
 mkdir ${OUT_DIR}/${base}.demultiplexed
 cd ${OUT_DIR}
 tardis --hpctype $HPC_TYPE -k -d $OUT_DIR java -jar $SEQ_PRISMS_BIN/../bin/GBSX_v1.3.jar --Demultiplexer $ENZYME_PHRASE -f1 $file -i $OUT_DIR/$sample_info_base  -o $OUT_DIR/${base}.demultiplexed -lf TRUE $gzip_phrase -mb 0 -me 0 -n false -t 8 \> $OUT_DIR/${demultiplex_moniker}.stdout 2\> $OUT_DIR/${demultiplex_moniker}.stderr
+#
+# test all output gzip files for integrity - e.g. gbsx does not detect problems like running out of disk space
+test_ok=yes
+for gzfile in $OUT_DIR/${base}.demultiplexed/*.fastq.gz; do
+   gzip -t \$gzfile 
+   if [ \$? != 0 ]; then
+      test_ok=no
+      echo "error : \$gzfile failed compression integrity test" 2>&1
+   fi
+done
+if [ \$test_ok != yes ]; then
+   echo "error one or more fastq.gz files failed compression integrity test (did you run out of disk space ?)" 
+   exit 1
+fi
 END_NOSPLIT
          fi
          chmod +x $script
