@@ -10,7 +10,7 @@ BCLCONVERT_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 function send_mail() {
    message="$1"
    echo "sending mail"
-   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh, perrybe, andersonr
+   echo "" | mutt -s "$message" vanstijnt , mccullocha, bairdh, perrybe, andersonr, andrewsa, henryh, frenchm, hicklandm
 }
 
 
