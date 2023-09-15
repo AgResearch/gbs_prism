@@ -505,7 +505,7 @@ function get_cohort_opts() {
    to_import=""
    echo "checking keyfiles for libraries have been generated/imported . . . "
    for library_moniker in $LIBRARY_MONIKERS; do
-       echo "checking $library_moniker . . ."
+       echo "checking $library_moniker (using gquery -t lab_report -p \"name=illumina_run_details;cohorts;sample_id=$library_moniker\" $RUN ). . ."
        library_cohorts=`gquery -t lab_report -p "name=illumina_run_details;cohorts;sample_id=$library_moniker" $RUN`
        if [ -z "$library_cohorts" ]; then
           echo "looks like $library_moniker needs generating/importing - OK to import ? (y/n, default=y)"

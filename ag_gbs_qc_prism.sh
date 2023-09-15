@@ -279,7 +279,7 @@ function get_targets() {
       # check there is only one method for a cohort
       method_count=`wc -l $OUT_ROOT/${cohort_moniker}.method | awk '{print $1}' -`
       if [ $method_count != "1" ]; then
-         echo "*** Bailing out as more than one genotyping method has been specified for cohort ${cohort_moniker} - can only use one method in a cohort. Change cohort defn or method geno_method col ! ***"
+         echo "*** Bailing out as found $method_count distinct genotyping methods for cohort ${cohort_moniker} - should be exactly one. Has the keyfile for this cohort been imported ? If so check and change cohort defn or method geno_method col  ***"
          exit 1
       fi
 
