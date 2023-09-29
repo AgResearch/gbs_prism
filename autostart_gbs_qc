@@ -73,8 +73,8 @@ function get_pipeline() {
 }
 
 function send_mail() {
-   echo "sending mail to vanstijnt , mccullocha, bairdh "
-   echo "" | mutt -s "FYI - looks like upload of $RUN is complete so auto-starting processing" vanstijnt , mccullocha, bairdh, perrybe
+   echo "sending mail to vanstijnt , mccullocha, bairdh, perrybe, andersonr, andrewsa, henryh, frenchm, hicklandm "
+   echo "" | mutt -s "FYI - looks like upload of $RUN is complete so auto-starting processing" vanstijnt , mccullocha, bairdh, perrybe, andersonr, andrewsa, henryh, frenchm, hicklandm
 }
 
 function get_landmark() {
