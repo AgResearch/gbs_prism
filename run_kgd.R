@@ -146,7 +146,7 @@ if ( geno_method == "default" ) {
     NInb <- calcGdiag(snpsubset=which(HWdis.sep > -0.05),puse=p.sep)-1
     
     png(paste0("InbCompare",".png"),width=600, height=600,pointsize=cex.pointsize*13.5)
-    pairs(cbind(Inbc,NInb,SepInb,Inbs,LaneRel-1)[ubb,],cex.labels=1.5, cex=1.2,
+    pairs(cbind(Inbc,NInb,SepInb,Inbs,LaneRel-1)[ubb,,drop=FALSE],cex.labels=1.5, cex=1.2,
           labels=c(paste0("Combined\nmean=",signif(mean(Inbc[ubb],na.rm=TRUE),3)),
                    paste0("Combined\nalpha=",signif(bbalpha[4],2),"\nmean=",signif(mean(NInb[ubb],na.rm=TRUE),3)),
                    paste0("Separate\nalpha=",signif(bbalpha[1],2),"\nmean=",signif(mean(SepInb[ubb],na.rm=TRUE),3)),
