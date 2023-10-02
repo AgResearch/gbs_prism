@@ -17,7 +17,7 @@ RUN_MONIKER=$1
 FLOWCELL=$2
 
 # set up
-BASE=/dataset/2023_illumina_sequencing_b/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER  
+BASE=/dataset/2023_illumina_sequencing_c/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER  
 LIBS="SQ3005 SQ3006 SQ3007 SQ3008 SQ3009 SQ3010 SQ3011 SQ3012 SQ3013 SQ3014" 
 FASTQDIR=/dataset/hiseq/active/fastq-link-farm-b # this is usually used to point at the un-deduplicated data 
 FLOWCELL=HLTTWDMXY
@@ -83,12 +83,12 @@ function unblind() {
 function compare_and_contrast() {
    for LIB in $LIBS; do
       filtered_SNP_count=`grep -h "Analysing" /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/$RUN_MONIKER/${LIB}.*/${LIB}.*.KGD.stdout | tail -1`
-      unfiltered_SNP_count=`grep -h "Analysing" /dataset/2023_illumina_sequencing_b/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER/${LIB}/PstI-MspI/PstI-MspI.KGD_tassel3.KGD.stdout | tail -1`
+      unfiltered_SNP_count=`grep -h "Analysing" /dataset/2023_illumina_sequencing_c/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER/${LIB}/PstI-MspI/PstI-MspI.KGD_tassel3.KGD.stdout | tail -1`
       echo $LIB ": Un-Filtered - " $unfiltered_SNP_count " : Filtered - " $filtered_SNP_count
    done
 
    echo "Good reads un-filtered : "
-   grep -h good /dataset/2023_illumina_sequencing_b/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER/*/PstI-MspI/TagCount.csv
+   grep -h good /dataset/2023_illumina_sequencing_c/scratch/postprocessing/gbs_sandbox/$RUN_MONIKER/*/PstI-MspI/TagCount.csv
   
    echo "
 Good reads filtered : "
