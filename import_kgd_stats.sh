@@ -70,7 +70,7 @@ echo_opts
 
 function collate_data() {
 rm -f $RUN_PATH/html/kgd_import_temp.dat
-files=`ls $RUN_PATH/*/KGD/SampleStats.csv.blinded | egrep -v "\/OLD|_OLD"`
+files=`ls $RUN_PATH/SQ*/KGD/SampleStats.csv.blinded | egrep -v "\/OLD|_OLD"`
 for file in $files; do
    # e.g. 
    #"seqID","callrate","sampdepth"
