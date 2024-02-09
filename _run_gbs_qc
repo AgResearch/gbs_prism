@@ -327,9 +327,37 @@ please give the full name of gbs run you would like to process (e.g. 210712_A014
       base=`basename $SAMPLE_SHEET .csv`
       echo $RUN | grep $base > /dev/null 2>&1
       if [ $? != 0 ]; then
-         echo "sorry can't find the sample-sheet for this run under $NOVASEQ_ROOT/$RUN"
+         echo "sorry can't find exactly one sample-sheet for this run under $NOVASEQ_ROOT/$RUN"
       fi
    fi
+
+   ####### try to find the design-time sample sheet, and compare 
+   DESIGN_TIME_PATH=$NOVASEQ_ROOT/SampleSheets/${base}.csv 
+   if [ ! -f $DESIGN_TIME_PATH ]; then
+      echo "(warning , could not find design-time sample sheet where expected ( $DESIGN_TIME_PATH ) , so unable to check for changes)"
+   else
+      diff $DESIGN_TIME_PATH $SAMPLE_SHEET > /dev/null
+      if [ $? != 0 ]; then
+         echo "
+
+***** WARNING ******
+There are some differences between the design-time sample sheet at $DESIGN_TIME_PATH and the run-time sample-sheet at $SAMPLE_SHEET .
+
+Press any key to list differences
+"
+         read_answer_with_default y 
+         diff $DESIGN_TIME_PATH $SAMPLE_SHEET
+         echo "
+
+are you OK to continue with the run-time version (i.e. the one having differences prefixed with > ) ? (y/n default y)"
+         read_answer_with_default y
+         if [ $answer != "y" ]; then
+            echo "OK quitting"
+            exit 1
+         fi
+      fi
+   fi
+
 
    ####### check whether we can find sequence data - if not confirm  bclconvert is needed 
    echo "checking sequence data (looking under  $BCLCONVERT_ROOT/$RUN)...."
