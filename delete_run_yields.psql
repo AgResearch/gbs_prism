@@ -1,6 +1,0 @@
-/*
-* this script deletes yields for a run 
-*/
-delete from gbsyieldfact
-where
-   flowcell = ( select max(fcid) from hiseqsamplesheetfact h join biosamplelist b on h.biosamplelist = b.obid where b.listname = :run_name )   
