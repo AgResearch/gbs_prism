@@ -24,3 +24,4 @@ replace_hiseq_samplesheet
 .nfs*
 data_prism.py
 trash/
+*.pyc

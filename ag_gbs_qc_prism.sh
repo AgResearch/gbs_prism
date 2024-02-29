@@ -204,6 +204,9 @@ conda activate /dataset/bioinformatics_dev/active/conda-env/blast2.9
 
    NT_BLAST_DB=/dataset/blastdata/active/mirror/nt
 
+   GENO_IMPORT_EXTENSION_DIR=/dataset/genophyle_data/active/database/Ndb/bin/snp_import
+   GENO_IMPORT_SCRATCH_DIR=/dataset/genophyle_data/scratch/import_export
+
    cd $OUT_ROOT
 }
 
@@ -974,7 +977,8 @@ function clientreport() {
    fi
 
    echo "refreshing GBS tab extract. . . "
-   psql -U agrbrdf -d agrbrdf -h postgres -f /dataset/genophyle_data/active/database/Ndb/bin/get_genophyle_export.psql
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" $GBS_PRISM_BIN/get_genophyle_export.sql > $GENO_IMPORT_SCRATCH_DIR/genophyle_gbs_import.txt
+
 
    echo "generating client reports. . . "
    $GBS_PRISM_BIN/make_clientcohort_pages.py -r $RUN -o report.html
@@ -991,7 +995,7 @@ function clientreport() {
 
 function warehouse() {
    echo "refreshing the GBS tab in genophyle. . . "
-   python /dataset/genophyle_data/active/database/Ndb/bin/snp_import/geno_import.py -H invsqlpv05 -t gbs_tab /dataset/genophyle_data/scratch/import_export/genophyle_gbs_import.txt | tee $OUT_ROOT/warehouse_update.log
+   python $GENO_IMPORT_EXTENSION_DIR/geno_import.py -H invsqlpv05 -t gbs_tab $GENO_IMPORT_SCRATCH_DIR/genophyle_gbs_import.txt | tee $OUT_ROOT/warehouse_update.log
    return_code=$?
 }
 
