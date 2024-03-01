@@ -7,6 +7,8 @@ export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
 export GBS_PRISM_BIN=/dataset/gseq_processing/active/bin/gbs_prism
 BCLCONVERT_NODE=invbfopp10.agresearch.co.nz   # iramohio-01
 
+GBS_BACKUP_DIR=/dataset/gseq_processing/archive/backups
+
 function send_mail() {
    message="$1"
    echo "sending mail"
@@ -443,8 +445,9 @@ OK ? (y/n, default = y)
 "
       read_answer_with_default y
       if [ "$answer" != "n" ]; then
-         echo "backing up GBS tables using psql -U agrbrdf -d agrbrdf -h postgres -f dump_gbs_tables.psql" 
-         psql -U agrbrdf -d agrbrdf -h postgres -f $GBS_PRISM_BIN/dump_gbs_tables.psql >> $OUTPUT_ROOT/database_backup.log 2>&1
+         echo "backing up GBS tables " 
+         dump_gbs_tables
+
          echo "running gupdate --explain -t create_gbs_keyfiles -p \"fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import\" all"
          gupdate --explain -t create_gbs_keyfiles -p "fastq_folder_root=$NOVASEQ_BCLCONVERT_ROOT;run_folder_root=$NOVASEQ_ROOT;out_folder=/dataset/hiseq/active/key-files;sample_sheet=$SAMPLE_SHEET;import" all
          if [ $? != 0 ]; then
@@ -711,6 +714,23 @@ default path /dataset/hiseq/active/fastq-link-farm )
       fi
    done
    custom_fastq_path=$answer
+}
+
+function dump_gbs_tables() {
+   # ensure we have a dump of the current state of the GBS keyfile table 
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" "select * from gbskeyfilefact" >  $GBS_BACKUP_DIR/keyfile_dump.dat
+
+   # dump of historical qc_sampleid (generated when a keyfile is *re*imported) 
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" "select * from gbs_sampleid_history_fact" >  $GBS_BACKUP_DIR/qcsampleid_history.dat
+
+   # dump of the brdf table that has sample-sheet details in it 
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" "select * from hiseqsamplesheetfact" >  $GBS_BACKUP_DIR/sample_sheet_dump.dat
+
+   # dump of the brdf table which has GBS yield stats (sample depth etc)
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" "select * from gbsyieldfact" >  $GBS_BACKUP_DIR/yield_dump.dat
+
+   # dump of the brdf model of flowcell x library ( = biosample list x biosample) 
+   gquery -t sql -p "interface_type=postgres;host=postgres_readonly" $GBS_PRISM_BIN/runs_libraries_dump.sql >  $GBS_BACKUP_DIR/runs_libraries_dump.dat
 }
 
 
