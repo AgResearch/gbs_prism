@@ -4,7 +4,7 @@
 #
 if [ -z "$1" ]; then
    echo "examples : 
-debug_barcodes.sh /bifo/scratch/2023_illumina_sequencing_c/postprocessing/gbs/230623_A01439_0188_AHFFGNDRX3/SQ2128.all.microbes.PstI/./Illumina/SQ2128_HFFGNDRX3_s_1_fastq.txt.gz
+debug_barcodes.sh /bifo/scratch/2024_illumina_sequencing_d/postprocessing/gbs/230623_A01439_0188_AHFFGNDRX3/SQ2128.all.microbes.PstI/./Illumina/SQ2128_HFFGNDRX3_s_1_fastq.txt.gz
 "
    exit 1
 elif [ ! -f $1 ]; then
