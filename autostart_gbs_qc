@@ -15,7 +15,7 @@ This is used to auto-start a run. It will poll for a landmark file indicating up
 \n
 usage example (currently run in a screen session) :\n
 \n
-autostart_gbs_qc 200511_D00390_0545_BHFMY3BCX3 2>&1 | tee /dataset/2023_illumina_sequencing_c/scratch/postprocessing/autostart_logs/200511_D00390_0545_BHFMY3BCX3.log \n
+autostart_gbs_qc 200511_D00390_0545_BHFMY3BCX3 2>&1 | tee /dataset/2024_illumina_sequencing_d/scratch/postprocessing/autostart_logs/200511_D00390_0545_BHFMY3BCX3.log \n
 "
    while getopts ":h" opt; do
    case $opt in
@@ -82,14 +82,14 @@ function send_mail() {
 function get_landmark() {
    RUN=$1
    landmark=""
-   if [ -f /dataset/2023_illumina_sequencing_c/active/$RUN/RTAComplete.txt ]; then
-      landmark=/dataset/2023_illumina_sequencing_c/active/$RUN/RTAComplete.txt
+   if [ -f /dataset/2024_illumina_sequencing_d/active/$RUN/RTAComplete.txt ]; then
+      landmark=/dataset/2024_illumina_sequencing_d/active/$RUN/RTAComplete.txt
    fi
 }
 
 function get_digest() {
    RUN=$1
-   digest=`ls -lR /dataset/2023_illumina_sequencing_c/active/$RUN/ | md5sum -b `
+   digest=`ls -lR /dataset/2024_illumina_sequencing_d/active/$RUN/ | md5sum -b `
    echo $digest
 }
 

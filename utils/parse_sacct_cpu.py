@@ -87,7 +87,7 @@ examples :
 
 cat 2023-08-01.sacct.txt  | ./parse_sacct_cpu.py  --sequencing_platform hiseq -H  /dataset/gseq_processing/active/bin/gbs_prism/etc/sample_sheet_header.csv
 
-cat /dataset/2023_illumina_sequencing_c/scratch/220426_A01439_0069_BHNFW2DRXY/HNFW2DRXY.csv | ./add_sample_sheet_header.py
+cat /dataset/2024_illumina_sequencing_d/scratch/220426_A01439_0069_BHNFW2DRXY/HNFW2DRXY.csv | ./add_sample_sheet_header.py
 
 
 """
