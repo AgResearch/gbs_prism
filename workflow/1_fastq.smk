@@ -10,7 +10,5 @@ rule await_rta_complete:
   input:
       expand("{run_info_path}", run_info_path=run_info_path)
   run:
-      import time
-      while not os.path.exists(rta_complete_path):
-          print("%s not found, waiting ..." % rta_complete_path, file=sys.stderr)
-          time.sleep(10)
+      from agr.sequencer_run import SequencerRun
+      SequencerRun(in_root).await_complete()
