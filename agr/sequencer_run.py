@@ -14,9 +14,14 @@ class SequencerRunError(Exception):
 
 class SequencerRun(object):
     def __init__(self, rootdir):
-        if not os.path.exists(rootdir):
+        if not os.path.isdir(rootdir):
             raise SequencerRunError("no such directory %s" % rootdir)
         self.rootdir = rootdir
+
+        # validate it's a run directory
+        run_info_path = os.path.join(self.rootdir, "RunInfo.xml")
+        if not os.path.exists(run_info_path):
+            raise SequencerRunError("can't find %s, are you sure this is a run directory?" % run_info_path)
         
     def await_complete(self, poll_interval: timedelta = timedelta(minutes=5), overall_timeout: Optional[timedelta] = None):
         rta_complete_path = os.path.join(self.rootdir, "RTAComplete.txt")
