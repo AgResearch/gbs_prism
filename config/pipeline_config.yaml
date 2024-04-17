@@ -1,0 +1,4 @@
+# pipeline config for gbs_prism
+path:
+  in_root: "/dataset/2024_illumina_sequencing_d/active"
+  out_root: "/dataset/2024_illumina_sequencing_d/scratch/postprocessing/illumina/novaseq"
