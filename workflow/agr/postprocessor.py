@@ -19,9 +19,13 @@ class PostProcessor(object):
         if not os.path.isdir(postprocessing_root):
             raise PostProcessorError("no such directory %s" % postprocessing_root)
 
-    def create_run_dir(self):
+    @property
+    def sample_sheet_path(self) -> str:
+        return os.path.join(self.run_dir, "SampleSheet.csv")
+
+    def ensure_run_dir_exists(self):
         try:
-            os.mkdir(self.run_dir)
+            os.makedirs(self.run_dir, exist_ok=True)
         except Exception as e:
             raise PostProcessorError("failed to create %s" % self.run_dir, e)
         logger.info("created %s directory" % self.run_dir)

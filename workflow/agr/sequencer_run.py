@@ -14,17 +14,21 @@ class SequencerRunError(Exception):
 
 class SequencerRun(object):
     def __init__(self, seq_root: str, run: str):
-        self.rootdir = os.path.join(seq_root, run)
-        if not os.path.isdir(self.rootdir):
-            raise SequencerRunError("no such directory %s" % self.rootdir)
+        self.run_dir = os.path.join(seq_root, run)
+        if not os.path.isdir(self.run_dir):
+            raise SequencerRunError("no such directory %s" % self.run_dir)
 
         # validate it's a run directory
-        run_info_path = os.path.join(self.rootdir, "RunInfo.xml")
+        run_info_path = os.path.join(self.run_dir, "RunInfo.xml")
         if not os.path.exists(run_info_path):
             raise SequencerRunError("can't find %s, are you sure this is a run directory?" % run_info_path)
         
+    @property
+    def sample_sheet_path(self) -> str:
+        return os.path.join(self.run_dir, "SampleSheet.csv")
+
     def await_complete(self, poll_interval: timedelta = timedelta(minutes=5), overall_timeout: Optional[timedelta] = None):
-        rta_complete_path = os.path.join(self.rootdir, "RTAComplete.txt")
+        rta_complete_path = os.path.join(self.run_dir, "RTAComplete.txt")
         deadline = datetime.now() + overall_timeout if overall_timeout is not None else None
         while not os.path.exists(rta_complete_path) and (deadline is None or deadline < datetime.now()):
             print("%s does not exist, sleeping for %s" % (rta_complete_path, poll_interval))

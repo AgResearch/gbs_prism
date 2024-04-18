@@ -8,10 +8,10 @@ from functools import reduce
 
 class SampleSheet(ABC):
     @abstractmethod
-    def write_harmonised_header(self, csvpath: str):
+    def write_harmonised(self, csvpath: str):
         pass
 
-class HiseqSampleSheet(object):
+class HiseqSampleSheet(SampleSheet):
 
     standard_header = """
 [Header],,,,,,,,,,,,,
@@ -49,7 +49,7 @@ AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
         if self.header_present and not self.adapter_config_present:
             raise Exception(" error , header in the sample sheet supplied does not specify adapter")
 
-    def write_harmonised_header(self, csvpath: str):
+    def write_harmonised(self, csvpath: str):
         with open(csvpath, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
 
@@ -62,12 +62,12 @@ AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
                     csvwriter.writerow(record)
 
 
-class NovaseqSampleSheet(object):
+class NovaseqSampleSheet(SampleSheet):
     def __init__(self, csvpath: str):
         with open(csvpath) as csvfile:
             self.sample_sheet_lines = csvfile.readlines()
 
-    def write_harmonised_header(self, csvpath: str):
+    def write_harmonised(self, csvpath: str):
         with open(csvpath, 'w') as csvfile:
             settings_section = False
             for record in self.sample_sheet_lines:
@@ -79,4 +79,4 @@ class NovaseqSampleSheet(object):
                     if re.match("Adapter,", record, re.IGNORECASE) is not None:
                         record=re.sub("^Adapter,", "AdapterRead1,", record)
                         settings_section = False
-                print(record)
+                csvfile.write(record)
