@@ -1,6 +1,6 @@
-from workflow.agr.sequencer_run import SequencerRun
-from workflow.agr.postprocessor import PostProcessor
-from workflow.agr.sample_sheet import NovaseqSampleSheet
+from agr.sequencer_run import SequencerRun
+from agr.postprocessor import PostProcessor
+from agr.sample_sheet import NovaseqSampleSheet
 
 def write_sample_sheet(sequencer_run: SequencerRun, post_processor: PostProcessor):
     sample_sheet = NovaseqSampleSheet(sequencer_run.sample_sheet_path)

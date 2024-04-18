@@ -42,7 +42,7 @@ AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
         self.sample_sheet_records = [ record for record in csv.reader(csvpath)]
         self.sample_sheet_numcol = max( (len(record) for record in self.sample_sheet_records ))
 
-        # test if header already present 
+        # test if header already present
         self.header_present = reduce(lambda x,y: x or y, [ record[0] == '[Header]' for record in self.sample_sheet_records ] , False)
         self.adapter_config_present = reduce(lambda x,y: x or y, [ record[0] == 'Adapter' for record in self.sample_sheet_records ] , False)
 

@@ -5,4 +5,4 @@ from dataclasses import dataclass
 class Config:
     seq_root: str
     postprocessing_root: str
-    run: str 
+    run: str
