@@ -4,5 +4,5 @@ This branch is an embryonic port of legacy HPC [gbs_prism](https://github.com/Ag
 
 The design approach is as follows:
 - use SnakeMake instead of Tardis
-- all rule implementations use Python library code instead of shell scripts
-- the Python library [agr](agr) is based on repackaged existing Python code from legacy `gbs_prism`
+- all rule implementations use in-process invocations of Python code instead of spawning shell scripts, for richer parameter handling (rather than strings passed on command line)
+- the Python library [agr](agr) is mostly a refactoring of existing Python code from legacy `gbs_prism`
