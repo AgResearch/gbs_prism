@@ -8,15 +8,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 class SequencerRunError(Exception):
-    def __init__(self, msg: str, exc: Optional[Exception] = None):
+    def __init__(self, msg: str, e: Optional[Exception] = None):
         self.msg = msg
-        self.exc = exc
+        self.e = e
 
 class SequencerRun(object):
-    def __init__(self, rootdir):
-        if not os.path.isdir(rootdir):
-            raise SequencerRunError("no such directory %s" % rootdir)
-        self.rootdir = rootdir
+    def __init__(self, seq_root: str, run: str):
+        self.rootdir = os.path.join(seq_root, run)
+        if not os.path.isdir(self.rootdir):
+            raise SequencerRunError("no such directory %s" % self.rootdir)
 
         # validate it's a run directory
         run_info_path = os.path.join(self.rootdir, "RunInfo.xml")

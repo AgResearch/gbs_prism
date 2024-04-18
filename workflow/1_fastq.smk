@@ -1,15 +1,16 @@
 configfile: "config/pipeline_config.yaml"
 
-in_root = config["path"]["in_root"]
-out_root = config["path"]["out_root"]
-run = config["run"]
-run_root = os.path.join(in_root, run)
-run_info_path = os.path.join(in_root, run, "RunInfo.xml")
-rta_complete_path = os.path.join(in_root, run, "RTAComplete.txt.oops")
+from config import Config
+from agr.sequencer_run import SequencerRun
+from agr.postprocessor import PostProcessor
+
+c = Config(**config)
+sequencer_run = SequencerRun(c.seq_root, c.run)
+post_processor = PostProcessor(c.postprocessing_root, c.run)
 
 rule await_run_complete:
-  input:
-      expand("{run_info_path}", run_info_path=run_info_path)
+  output:
+      directory(post_processor.run_dir)
   run:
-      from agr.sequencer_run import SequencerRun
-      SequencerRun(run_root).await_complete()
+      sequencer_run.await_complete()
+      post_processor.create_run_dir()
