@@ -22,6 +22,7 @@ rule write_sample_sheet:
     log: "log/write_sample_sheet"
     output: post_processor.sample_sheet_path
     run:
+        post_processor.ensure_dirs_exist()
         w1_fastq.write_sample_sheet(sequencer_run, post_processor)
 
 rule bclconvert:
@@ -41,4 +42,5 @@ rule bclconvert:
         mem_gb = lambda wildcards, attempt: 128 + ((attempt - 1) * 32),
         time = lambda wildcards, attempt: 480 + ((attempt - 1) * 120),
     run:
+        bclconvert.ensure_dirs_exist()
         bclconvert.run()

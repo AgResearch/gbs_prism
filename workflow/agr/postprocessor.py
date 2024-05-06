@@ -5,6 +5,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 class PostProcessorError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
         self.msg = msg
@@ -13,11 +14,11 @@ class PostProcessorError(Exception):
     def __str__(self) -> str:
         return "%s: %s" % (self.msg, str(self.e))
 
+
 class PostProcessor(object):
     def __init__(self, postprocessing_root: str, run: str):
+        self.postprocessing_root = postprocessing_root
         self.dir = os.path.join(postprocessing_root, run)
-        if not os.path.isdir(postprocessing_root):
-            raise PostProcessorError("no such directory %s" % postprocessing_root)
 
     @property
     def sample_sheet_path(self) -> str:
@@ -40,6 +41,8 @@ class PostProcessor(object):
         return os.path.join(self.bclconvert_dir, "Logs", "FastqComplete.txt")
 
     def ensure_dirs_exist(self):
+        if not os.path.isdir(self.postprocessing_root):
+            raise PostProcessorError("no such directory %s" % self.postprocessing_root)
         try:
             os.makedirs(self.sample_sheet_dir, exist_ok=True)
         except Exception as e:
