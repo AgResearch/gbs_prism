@@ -2,6 +2,7 @@ configfile: "config/pipeline_config.yaml"
 
 from config import Config
 from agr.sequencer_run import SequencerRun
+from agr.sample_sheet import NovaseqSampleSheet
 from agr.postprocessor import PostProcessor
 from agr.bclconvert import BclConvert
 
@@ -10,6 +11,7 @@ import w1_fastq
 
 c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
+sample_sheet = NovaseqSampleSheet(sequencer_run.sample_sheet_path)
 post_processor = PostProcessor(c.postprocessing_root, c.run)
 bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.dir)
 
@@ -44,3 +46,4 @@ rule bclconvert:
     run:
         bclconvert.ensure_dirs_exist()
         bclconvert.run()
+        bclconvert.check_expected_fastq_filenames(sample_sheet.get_fastq_filenames())

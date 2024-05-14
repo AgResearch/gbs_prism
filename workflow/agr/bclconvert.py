@@ -14,7 +14,10 @@ class BclConvertError(Exception):
         self.e = e
 
     def __str__(self) -> str:
-        return "%s: %s" % (self.msg, str(self.e))
+        if self.e is None:
+            return self.msg
+        else:
+            return "%s: %s" % (self.msg, str(self.e))
 
 
 class BclConvert(object):
@@ -38,6 +41,19 @@ class BclConvert(object):
     @property
     def benchmark_path(self) -> str:
         return os.path.join(self.out_dir, "benchmarks", "run_bclconvert.txt")
+
+    @property
+    def fastq_filenames(self) -> set[str]:
+        if not os.path.exists(self.fastq_complete_path):
+            raise BclConvertError("attempting to get fastq_filenames before run")
+        return set(
+            [
+                filename
+                for filename in os.listdir(self.out_dir)
+                if filename.endswith(".fastq.gz")
+                and not filename.startswith("Undetermined")
+            ]
+        )
 
     def ensure_dirs_exist(self):
         if not os.path.isdir(self.in_dir):
@@ -67,3 +83,18 @@ class BclConvert(object):
             )
 
         pathlib.Path(self.fastq_complete_path).touch()
+
+    def check_expected_fastq_filenames(self, expected: set[str]):
+        actual = self.fastq_filenames
+        if actual != expected:
+            anomalies = []
+            missing = expected - actual
+            unexpected = actual - expected
+            if any(missing):
+                anomalies.append("missing %s" % ", ".join(sorted(missing)))
+            if any(unexpected):
+                anomalies.append("unexpected %s" % ", ".join(sorted(unexpected)))
+
+            raise BclConvertError(
+                "failed to find expected fastq files: %s" % "; ".join(anomalies)
+            )
