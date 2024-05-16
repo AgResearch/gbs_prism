@@ -32,8 +32,9 @@ rule bclconvert:
         sequencer_run_dir = sequencer_run.dir,
         sample_sheet = post_processor.sample_sheet_path,
     output:
+        [ os.path.join(bclconvert.out_dir, fastq_file) for fastq_file in sample_sheet.fastq_files ],
         fastq_complete = bclconvert.fastq_complete_path,
-        top_unknown = bclconvert.top_unknown_path
+        top_unknown = bclconvert.top_unknown_path,
     log:
         bclconvert_log = bclconvert.log_path
     # TODO:
@@ -46,4 +47,4 @@ rule bclconvert:
     run:
         bclconvert.ensure_dirs_exist()
         bclconvert.run()
-        bclconvert.check_expected_fastq_filenames(sample_sheet.get_fastq_filenames())
+        bclconvert.check_expected_fastq_files(sample_sheet.fastq_files)

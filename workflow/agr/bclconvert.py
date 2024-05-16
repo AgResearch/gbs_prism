@@ -43,7 +43,7 @@ class BclConvert(object):
         return os.path.join(self.out_dir, "benchmarks", "run_bclconvert.txt")
 
     @property
-    def fastq_filenames(self) -> set[str]:
+    def fastq_files(self) -> set[str]:
         if not os.path.exists(self.fastq_complete_path):
             raise BclConvertError("attempting to get fastq_filenames before run")
         return set(
@@ -67,6 +67,22 @@ class BclConvert(object):
     def run(self):
         with open(self.log_path, "a") as log_f:
             subprocess.run(
+                # TODO remove this fast fakery:
+                # [
+                #     "touch",
+                #     "Reports/Top_Unknown_Barcodes.csv",
+                #     "SQ2334_S1_L001_R1_001.fastq.gz",
+                #     "SQ2334_S1_L001_R2_001.fastq.gz",
+                #     "SQ2335_S2_L001_R1_001.fastq.gz",
+                #     "SQ2335_S2_L001_R2_001.fastq.gz",
+                #     "SQ2336_S3_L001_R1_001.fastq.gz",
+                #     "SQ2336_S3_L001_R2_001.fastq.gz",
+                #     "SQ2337_S4_L001_R1_001.fastq.gz",
+                #     "SQ2337_S4_L001_R2_001.fastq.gz",
+                #     "SQ2338_S5_L001_R1_001.fastq.gz",
+                #     "SQ2338_S5_L001_R2_001.fastq.gz",
+                # ],
+                # cwd=self.out_dir,  # TODO remove cwd, only needed for fast fakery
                 [
                     "bcl-convert",
                     "--force",
@@ -81,20 +97,23 @@ class BclConvert(object):
                 stdout=log_f,
                 stderr=log_f,
             )
-
+        # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
         pathlib.Path(self.fastq_complete_path).touch()
 
-    def check_expected_fastq_filenames(self, expected: set[str]):
-        actual = self.fastq_filenames
+    def check_expected_fastq_files(self, expected: set[str]):
+        actual = self.fastq_files
         if actual != expected:
             anomalies = []
             missing = expected - actual
             unexpected = actual - expected
             if any(missing):
-                anomalies.append("missing %s" % ", ".join(sorted(missing)))
+                anomalies.append(
+                    "failed to find expected fastq files: %s"
+                    % ", ".join(sorted(missing))
+                )
             if any(unexpected):
-                anomalies.append("unexpected %s" % ", ".join(sorted(unexpected)))
+                anomalies.append(
+                    "found unexpected fastq files: %s" % ", ".join(sorted(unexpected))
+                )
 
-            raise BclConvertError(
-                "failed to find expected fastq files: %s" % "; ".join(anomalies)
-            )
+            raise BclConvertError("; ".join(anomalies))

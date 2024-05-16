@@ -50,7 +50,7 @@ AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
                     "today": datetime.date.today().strftime("%d/%m/%Y")
                 }
 
-        self.sample_sheet_records = [record for record in csv.reader(csvpath)]
+        self.sample_sheet_records = [record for record in csv.reader(self.csvpath)]
         self.sample_sheet_numcol = max(
             (len(record) for record in self.sample_sheet_records)
         )
@@ -93,9 +93,19 @@ class SequencingType(Enum):
 
 
 class NovaseqSampleSheet(SampleSheet):
-    def __init__(self, csvpath: str):
+    def __init__(
+        self,
+        csvpath: str,
+        sequencing_type: SequencingType = SequencingType.PAIRED_END,
+        impute_lanes: Optional[list[str]] = None,
+    ):
         self.csvpath = csvpath
         self._read()
+        self._fastq_files = self._get_fastq_filenames(sequencing_type, impute_lanes)
+
+    @property
+    def fastq_files(self):
+        return self._fastq_files
 
     def _read(self):
         with open(self.csvpath) as csvfile:
@@ -115,10 +125,10 @@ class NovaseqSampleSheet(SampleSheet):
                         settings_section = False
                 csvfile.write(record)
 
-    def get_fastq_filenames(
+    def _get_fastq_filenames(
         self,
-        sequencing_type: SequencingType = SequencingType.PAIRED_END,
-        impute_lanes: Optional[list[str]] = None,
+        sequencing_type: SequencingType,
+        impute_lanes: Optional[list[str]],
     ) -> set[str]:
         """
         parse the Sample sheet and construct expected fastq filenames
