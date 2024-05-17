@@ -1,10 +1,13 @@
 configfile: "config/pipeline_config.yaml"
 
+# temporary import path until library is installed as a Python package
+sys.path.append(Path(workflow.basedir).parent.joinpath("src").as_posix())
+
 from config import Config
-from agr.sequencer_run import SequencerRun
-from agr.sample_sheet import NovaseqSampleSheet
-from agr.postprocessor import PostProcessor
-from agr.bclconvert import BclConvert
+from agr.prism.seq.sequencer_run import SequencerRun
+from agr.prism.seq.sample_sheet import NovaseqSampleSheet
+from agr.prism.seq.postprocessor import PostProcessor
+from agr.prism.seq.bclconvert import BclConvert
 
 # custom rule code lives here:
 import w1_fastq

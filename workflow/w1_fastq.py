@@ -1,6 +1,6 @@
-from agr.sequencer_run import SequencerRun
-from agr.postprocessor import PostProcessor
-from agr.sample_sheet import NovaseqSampleSheet
+from agr.prism.seq.sequencer_run import SequencerRun
+from agr.prism.seq.postprocessor import PostProcessor
+from agr.prism.seq.sample_sheet import NovaseqSampleSheet
 
 
 def write_sample_sheet(sequencer_run: SequencerRun, post_processor: PostProcessor):
