@@ -3,213 +3,303 @@
 import csv
 import datetime
 import re
-from abc import ABC, abstractmethod
 from enum import Enum
-from functools import reduce
-from typing import Optional
+from typing import Optional, Generator
 
 
-class SampleSheet(ABC):
-    @abstractmethod
-    def write_harmonised(self, csvpath: str):
-        pass
+class SampleSheetError(Exception):
+    def __init__(self, msg: str, e: Optional[Exception] = None):
+        self.msg = msg
+        self.e = e
+
+    def __str__(self) -> str:
+        if self.e is None:
+            return self.msg
+        else:
+            return "%s: %s" % (self.msg, str(self.e))
 
 
-class HiseqSampleSheet(SampleSheet):
-    standard_header = """
-[Header],,,,,,,,,,,,,
-IEMFileVersion,4,,,,,,,,,,,,
-Date,%(today)s,,,,,,,,,,,,
-Workflow,GenerateFASTQ,,,,,,,,,,,,
-Application,HiSeq FASTQ Only,,,,,,,,,,,,
-Assay,TruSeq HT,,,,,,,,,,,,
-Description,,,,,,,,,,,,,
-Chemistry,Amplicon,,,,,,,,,,,,
-,,,,,,,,,,,,,
-[Reads],,,,,,,,,,,,,
-101,,,,,,,,,,,,,
-,,,,,,,,,,,,,
-[Settings],,,,,,,,,,,,,
-ReverseComplement,0,,,,,,,,,,,,
-Adapter,AGATCGGAAGAGCACACGTCTGAACTCCAGTCA,,,,,,,,,,,,
-AdapterRead2,AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT,,,,,,,,,,,,
-[Data],,,,,,,,,,,,,
-    """
+class SampleSheetSection:
+    """A sample sheet section name is a word in square brackets."""
 
-    def __init__(self, csvpath: str):
-        self.csvpath = csvpath
-        self._read()
+    name_re = re.compile(r"^\[(\w*)\]$")
 
-    def _read(self):
-        self.header_records = [
-            record for record in csv.reader(self.standard_header.splitlines())
-        ]
-        for record in self.header_records:
-            if record[0] == "Date":
-                record[1] = record[1] % {
-                    "today": datetime.date.today().strftime("%d/%m/%Y")
-                }
+    @staticmethod
+    def name_if_section_header(row: list[str]) -> Optional[str]:
+        """Return section name if this row starts a new section, otherwise None.  The section name does not include the brackets."""
+        if len(row) > 0 and (m := SampleSheetSection.name_re.match(row[0])) is not None:
+            return m.group(1)
+        return None
 
-        self.sample_sheet_records = [record for record in csv.reader(self.csvpath)]
-        self.sample_sheet_numcol = max(
-            (len(record) for record in self.sample_sheet_records)
+    def __init__(self, name: str, rows: list[list[str]] = []):
+        self._name = name
+        self._rows = []
+        for row in rows:
+            self.append_harmonised(row)
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def rows(self) -> list[str]:
+        return self._rows
+
+    def append_harmonised(self, row: list[str]):
+        """Read a row into the sample sheet section, with on-the-fly harmonisation.
+
+        The following harmonisations are performed:
+        - any occurrence of 'Adapter' in the Settings section is replaced with `AdapterRead1`
+        """
+        harmonised = row
+        if self.name.casefold() == "Settings".casefold():
+            if len(row) >= 1 and row[0].casefold() == "Adapter".casefold():
+                harmonised = ["AdapterRead1"] + harmonised[1:]
+        self._rows.append(harmonised)
+
+    def get1(self, row_name: str):
+        """Return element 1 from row by name, or None if not found."""
+        return next(
+            (
+                row[1]
+                for row in self._rows
+                if row and row[0].casefold() == row_name.casefold() and len(row) >= 1
+            ),
+            None,
         )
 
-        # test if header already present
-        self.header_present = reduce(
-            lambda x, y: x or y,
-            [record[0] == "[Header]" for record in self.sample_sheet_records],
-            False,
-        )
-        self.adapter_config_present = reduce(
-            lambda x, y: x or y,
-            [record[0] == "Adapter" for record in self.sample_sheet_records],
-            False,
-        )
-
-        if self.header_present and not self.adapter_config_present:
-            raise Exception(
-                " error , header in the sample sheet supplied does not specify adapter"
+    # TODO this may not be required after all, consider removing
+    def set1(self, row_name: str, value: str):
+        """Set element 1 from row by name, appending a new row if not found."""
+        if (
+            row := next(
+                (
+                    row
+                    for row in self._rows
+                    if row and row[0].casefold() == row_name.casefold()
+                ),
+                None,
             )
-
-    def write_harmonised(self, csvpath: str):
-        with open(csvpath, "w", newline="") as csvfile:
-            csvwriter = csv.writer(csvfile)
-
-            # output sample sheet, adding and padding header if necessary
-            if not self.header_present:
-                for record in self.header_records + self.sample_sheet_records:
-                    csvwriter.writerow(
-                        record + (self.sample_sheet_numcol - len(record)) * [""]
-                    )
+        ) is not None:
+            if len(row) >= 1:
+                row[1] = value
             else:
-                for record in self.sample_sheet_records:
-                    csvwriter.writerow(record)
+                row.append(value)
+        else:
+            self._rows.append([row_name, value])
+
+    def _get_field_index(self, field_name: str) -> Optional[int]:
+        """Return index of named field if found in the first row, presumed to be field names, otherwise None if not found."""
+        return next(
+            (
+                i
+                for i, row in enumerate(self._rows)
+                if row[0].casefold() == field_name.casefold()
+            ),
+            None,
+        )
+
+    def get_fields(
+        self, field_names: list[str]
+    ) -> Generator[list[Optional[str]], None, None]:
+        """Return the named fields from each row, if any."""
+        field_indices = [
+            self._get_field_index(field_name) for field_name in field_names
+        ]
+        # row[0] is the field names, so start at 1 for the values
+        for row in self._rows[1:]:
+            candidate = [
+                row[i] if i is not None and len(row) > i else None
+                for i in field_indices
+            ]
+            if any(candidate):
+                yield candidate
+
+    @property
+    def num_cols(self):
+        """Return number of columns in the section, including what is required for the name."""
+        return max(1, max((len(row) for row in self._rows), default=0))
+
+    def write(self, csvwriter, num_cols):
+        """Write out the sample sheet section in `num_cols` columns, which may be greater than our `num_cols` because of other sections."""
+        csvwriter.writerow([self.name] + [""] * (num_cols - 1))
+        for row in self._rows:
+            csvwriter.writerow(row + [""] * (num_cols - len(row)))
 
 
-class SequencingType(Enum):
-    SINGLE_END = 1
-    PAIRED_END = 2
+_standard_header = [
+    SampleSheetSection(
+        "Header",
+        [
+            ["IEMFileVersion", "4"],
+            ["Date", datetime.date.today().strftime("%d/%m/%Y")],
+            ["Workflow", "GenerateFASTQ"],
+            ["Application", "HiSeq FASTQ Only"],
+            ["Assay", "TruSeq HT"],
+            ["Description", ""],
+            ["Chemistry", "Amplicon"],
+            [],
+        ],
+    ),
+    SampleSheetSection("Reads", [["101"], []]),
+    SampleSheetSection(
+        "Settings",
+        [
+            ["ReverseComplement", "0"],
+            ["Adapter", "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"],
+            ["AdapterRead2", "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"],
+            [],
+        ],
+    ),
+    SampleSheetSection("Data"),
+]
 
 
-class NovaseqSampleSheet(SampleSheet):
+class SampleSheet:
+    """Abstracted access to sample sheets, including santization.
+
+    Sanitization is performed at read time, so that first time access to a sample sheet is
+    the same as after-the-event access to the harmonized sample sheet."""
+
     def __init__(
         self,
-        csvpath: str,
-        sequencing_type: SequencingType = SequencingType.PAIRED_END,
-        impute_lanes: Optional[list[str]] = None,
+        path: str,
+        impute_lanes: Optional[list[int]] = None,
     ):
-        self.csvpath = csvpath
-        self._read()
-        self._fastq_files = self._get_fastq_filenames(sequencing_type, impute_lanes)
+        self._path = path
+        self._impute_lanes = impute_lanes
+        self._sections = self._read(path)
+        self._section_indices = {
+            s.name.casefold(): i for i, s in enumerate(self._sections)
+        }
+        self._validate(path)
+        self._infer_sequencing_type(path)
+        self._fastq_files = self._get_fastq_filenames()
+        print(
+            "SampleSheet sequencing type: %s, fastq files: %s"
+            % (self._sequencing_type, ", ".join(self._fastq_files))
+        )
 
     @property
     def fastq_files(self):
         return self._fastq_files
 
-    def _read(self):
-        with open(self.csvpath) as csvfile:
-            self.sample_sheet_lines = csvfile.readlines()
+    def _read(self, path: str):
+        """Read a sample sheet into its sections"""
+        self._line = 0
+        sections = []
+        try:
+            with open(path) as csvfile:
+                csvreader = csv.reader(csvfile)
 
-    def write_harmonised(self, csvpath: str):
-        with open(csvpath, "w") as csvfile:
-            settings_section = False
-            for record in self.sample_sheet_lines:
-                if re.match(r"\[Settings\]", record, re.IGNORECASE) is not None:
-                    settings_section = True
-                    csvfile.write(record)
-                    continue
-                if settings_section:
-                    if re.match("Adapter,", record, re.IGNORECASE) is not None:
-                        record = re.sub("^Adapter,", "AdapterRead1,", record)
-                        settings_section = False
-                csvfile.write(record)
+                for row in csvreader:
+                    self._line += 1
+                    if (
+                        name := SampleSheetSection.name_if_section_header(row)
+                    ) is not None:
+                        sections.append(SampleSheetSection(name))
+                    else:
+                        if not sections:
+                            # if there's no header then prepend a standard one, defined above
+                            sections = _standard_header
+                        sections[-1].append_harmonised(row)
+                self._line = None
+                return sections
+
+        except OSError as e:
+            raise SampleSheetError("can't read sample sheet at %s" % path, e)
+
+    def _raise_error(self, msg: str, e: Optional[Exception] = None):
+        file_location = (
+            "%s:%d" % (self._path, self._line) if self._line is not None else self._path
+        )
+        raise SampleSheetError("%s in sample sheet at %s" % (msg, file_location), e)
+
+    def _validate(self, path: str):
+        """Check certain properties in the sample sheet."""
+        if (settings := self.get_section("Settings")) is None:
+            self._raise_error("missing Settings section")
+        elif settings.get1("AdapterRead1") is None:
+            raise SampleSheetError(
+                "sample sheet at %s Settings section is missing AdapterRead1 field"
+                % path
+            )
+
+    def _infer_sequencing_type(self, path: str):
+        """Infer the sequencing type from the Reads section.
+
+        TODO confirm this logic is correct
+        """
+        if (reads := self.get_section("Reads")) is None:
+            raise SampleSheetError(
+                "missing Reads section from sample sheet at %s" % path
+            )
+        reads_values = [row[0] for row in reads.rows if row and row[0]]
+        n_reads_values = len(reads_values)
+        self._sequencing_type = (
+            SequencingType.SINGLE_END
+            if n_reads_values == 1
+            else (
+                SequencingType.PAIRED_END
+                if n_reads_values == 2
+                else self._raise_error(
+                    "unexpected number of read values: %d" % n_reads_values
+                )
+            )
+        )
 
     def _get_fastq_filenames(
         self,
-        sequencing_type: SequencingType,
-        impute_lanes: Optional[list[str]],
     ) -> set[str]:
         """
-        parse the Sample sheet and construct expected fastq filenames
+        Construct expected fastq filenames from sample sheet.
         """
-
-        seen_data = False
-        header_fields = None
-        sample_dict = {}
         predicted_files = set()
-        s_number = 0
+        reads = [1, 2] if self._sequencing_type == SequencingType.PAIRED_END else [1]
+        sample_id_number = {}
 
-        for record in self.sample_sheet_lines:
-            # [Data],,,,,,,,,,,
-            # Lane,Sample_ID,Sample_Name,Sample_Plate,Sample_Well,Index_Plate_Well,I7_Index_ID,index,I5_Index_ID,index2,Sample_Project,Description
-            # 1,P628_2,P628_2,NS0035,A1,A5,S769,TCCTCATG,S519,AGGTGTAC,Pestivirus_MethySeq,Pestivirus_MethySeq
-            # 1,P726_3,P726_3,NS0035,B1,B5,S752,AGGATAGC,S544,AACCTTGG,Pestivirus_MethySeq,Pestivirus_MethySeq
-            #
-            # generates P628_2_S1_L001_R1_001.fastq.gz etc.
-            fields = re.split(",", record.strip())
-            if not seen_data and fields[0] == "[Data]":
-                seen_data = True
-                continue
+        if (data := self.get_section("Data")) is None:
+            self._raise_error("missing Data section")
+        else:
+            for lane, sample_id in data.get_fields(["Lane", "Sample_ID"]):
+                if lane is None:
+                    lane = 1  # default lane to 1
+                isample = sample_id_number.get(sample_id, None)
+                if isample is None:
+                    isample = len(sample_id_number) + 1
+                    sample_id_number[sample_id] = isample
 
-            if seen_data:
-                if header_fields is None:
-                    header_fields = [
-                        item.lower() for item in re.split(",", record.strip())
-                    ]
-                    s_number += 1
-                else:
-                    if len(fields[0].strip()) == 0:
-                        break
-                    if fields[0][0] == "[":
-                        break
-                    if "lane" in header_fields:
-                        (ilane, isample) = (
-                            header_fields.index("lane"),
-                            header_fields.index("sample_id"),
-                        )
-                        (lane, sample) = (int(fields[ilane]), fields[isample])
-                    else:
-                        isample = header_fields.index("sample_id")
-                        (lane, sample) = (1, fields[isample])  # default lane to 1
-
-                    if sample not in sample_dict:
-                        sample_dict[sample] = s_number
-                        s_number += 1
-
-                    if impute_lanes is None:
-                        R1_filename = "%s_S%d_L%03d_R1_001.fastq.gz" % (
-                            sample,
-                            sample_dict[sample],
-                            lane,
-                        )
-                        R2_filename = "%s_S%d_L%03d_R2_001.fastq.gz" % (
-                            sample,
-                            sample_dict[sample],
-                            lane,
-                        )
-
-                        predicted_files.add(R1_filename)
-
-                        if sequencing_type == SequencingType.PAIRED_END:
-                            predicted_files.add(R2_filename)
-
-                    else:
-                        for lane in impute_lanes:
-                            R1_filename = "%s_S%d_L%03d_R1_001.fastq.gz" % (
-                                sample,
-                                sample_dict[sample],
-                                int(lane),
+                    # use the lane as in the sample sheet, unless impute-lanes has been passed in, in which case, use those
+                    lanes = [lane] if self._impute_lanes is None else self._impute_lanes
+                    for lane in lanes:
+                        for i_read in reads:
+                            predicted_files.add(
+                                "%s_S%d_L%03d_R%d_001.fastq.gz"
+                                % (
+                                    sample_id,
+                                    isample,
+                                    lane,
+                                    i_read,
+                                )
                             )
-                            R2_filename = "%s_S%d_L%03d_R2_001.fastq.gz" % (
-                                sample,
-                                sample_dict[sample],
-                                int(lane),
-                            )
-
-                            predicted_files.add(R1_filename)
-
-                            if sequencing_type == SequencingType.PAIRED_END:
-                                predicted_files.add(R2_filename)
 
         return predicted_files
+
+    def get_section(self, name: str) -> Optional[SampleSheetSection]:
+        if (i := self._section_indices[name.casefold()]) is not None:
+            return self._sections[i]
+        else:
+            return None
+
+    def write(self, path: str):
+        """Write sample sheet."""
+        with open(path, "w") as csvfile:
+            csvwriter = csv.writer(csvfile)
+            num_cols = max((section.num_cols for section in self._sections), default=0)
+            for section in self._sections:
+                section.write(csvwriter, num_cols)
+
+
+class SequencingType(Enum):
+    SINGLE_END = 1
+    PAIRED_END = 2

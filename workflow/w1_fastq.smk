@@ -5,7 +5,7 @@ sys.path.append(Path(workflow.basedir).parent.joinpath("src").as_posix())
 
 from config import Config
 from agr.prism.seq.sequencer_run import SequencerRun
-from agr.prism.seq.sample_sheet import NovaseqSampleSheet
+from agr.prism.seq.sample_sheet import SampleSheet
 from agr.prism.seq.postprocessor import PostProcessor
 from agr.prism.seq.bclconvert import BclConvert
 
@@ -14,7 +14,7 @@ import w1_fastq
 
 c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
-sample_sheet = NovaseqSampleSheet(sequencer_run.sample_sheet_path)
+sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 post_processor = PostProcessor(c.postprocessing_root, c.run)
 bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.dir)
 
@@ -28,7 +28,7 @@ rule write_sample_sheet:
     output: post_processor.sample_sheet_path
     run:
         post_processor.ensure_dirs_exist()
-        w1_fastq.write_sample_sheet(sequencer_run, post_processor)
+        sample_sheet.write(post_processor.sample_sheet_path)
 
 rule bclconvert:
     input:
