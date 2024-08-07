@@ -25,8 +25,8 @@ function get_opts() {
 usage :\n 
 ./genotype_prism.sh  [-h] [-n] [-d] [-x KGD_tassel] [-p genotyping parameters] [-m hapmap_folder] [-o outfolder] folder\n
 example:\n
-./genotype_prism.sh -x KGD_tassel3 /dataset/2024_illumina_sequencing_d/scratch/postprocessing/gbs/weevils_gbsx\n
-./genotype_prism.sh -x KGD_tassel3 -p pooled /dataset/2024_illumina_sequencing_d/scratch/postprocessing/gbs/pooled_worms\n
+./genotype_prism.sh -x KGD_tassel3 /dataset/2024_illumina_sequencing_e/scratch/postprocessing/gbs/weevils_gbsx\n
+./genotype_prism.sh -x KGD_tassel3 -p pooled /dataset/2024_illumina_sequencing_e/scratch/postprocessing/gbs/pooled_worms\n
 EOF
 )
    while getopts ":nhfC:x:p:m:o:" opt; do

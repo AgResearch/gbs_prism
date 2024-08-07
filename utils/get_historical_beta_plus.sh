@@ -11,10 +11,10 @@ export SEQ_PRISMS_BIN=/dataset/gseq_processing/active/bin/gbs_prism/seq_prisms
 
 #
 # we will do the work here - i.e. don't over-write the original GBS processing
-WORKDIR=/dataset/2024_illumina_sequencing_d/scratch/postprocessing/gbs_redo_with_latest_KGD_for_beta
+WORKDIR=/dataset/2024_illumina_sequencing_e/scratch/postprocessing/gbs_redo_with_latest_KGD_for_beta
 
 # for this lot...
-for cohort_path in /dataset/2024_illumina_sequencing_d/scratch/postprocessing/gbs/23*/SQ*; do
+for cohort_path in /dataset/2024_illumina_sequencing_e/scratch/postprocessing/gbs/23*/SQ*; do
   
    # parse the cohort and run names from the path 
    cohort=`basename $cohort_path`
@@ -28,13 +28,13 @@ for cohort_path in /dataset/2024_illumina_sequencing_d/scratch/postprocessing/gb
 
    echo "processing $cohort_path"
  
-   # patch the orignal callback - e.g. /dataset/2024_illumina_sequencing_d/scratch/postprocessing/gbs/230414_A01439_0164_AHW5YGDRX2/SQ2081.all.deer.PstI/SQ2081.all.deer.PstI.KGD_tassel3.genotype_prism.sh
+   # patch the orignal callback - e.g. /dataset/2024_illumina_sequencing_e/scratch/postprocessing/gbs/230414_A01439_0164_AHW5YGDRX2/SQ2081.all.deer.PstI/SQ2081.all.deer.PstI.KGD_tassel3.genotype_prism.sh
    original_callback=$cohort_path/${cohort}.KGD_tassel3.genotype_prism.sh
    redo_callback=$WORKDIR/$run/$cohort/${cohort}.KGD_tassel3.genotype_prism.sh
 
    echo "writing $WORKDIR/$run/$cohort/${cohort}.KGD_tassel3.genotype_prism.sh"
    mkdir -p $WORKDIR/$run/$cohort/
-   cat $original_callback | sed 's/\/hiseq\//\/2024_illumina_sequencing_d\//g' | sed 's/postprocessing\/gbs/postprocessing\/gbs_redo/g' > $redo_callback
+   cat $original_callback | sed 's/\/hiseq\//\/2024_illumina_sequencing_e\//g' | sed 's/postprocessing\/gbs/postprocessing\/gbs_redo/g' > $redo_callback
    chmod +x $redo_callback
 
    # copy over or symlink some dependencies that will be needed 
