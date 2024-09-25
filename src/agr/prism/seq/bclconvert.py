@@ -2,10 +2,9 @@ import logging
 import os.path
 import pathlib
 import subprocess
-from typing import Optional
+from typing import Optional, List
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class BclConvertError(Exception):
@@ -21,10 +20,10 @@ class BclConvertError(Exception):
 
 
 class BclConvert(object):
-    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_rootdir: str):
         self.in_dir = in_dir
         self.sample_sheet_path = sample_sheet_path
-        self.out_dir = out_dir
+        self.out_dir = os.path.join(out_rootdir, "bclconvert")
 
     @property
     def top_unknown_path(self) -> str:
@@ -64,25 +63,12 @@ class BclConvert(object):
             raise BclConvertError("failed to create %s" % self.out_dir, e)
         logger.info("created %s directory" % self.out_dir)
 
+    def fastq_path(self, fastq_file: str):
+        return os.path.join(self.out_dir, fastq_file)
+
     def run(self):
         with open(self.log_path, "a") as log_f:
             subprocess.run(
-                # TODO remove this fast fakery:
-                # [
-                #     "touch",
-                #     "Reports/Top_Unknown_Barcodes.csv",
-                #     "SQ2334_S1_L001_R1_001.fastq.gz",
-                #     "SQ2334_S1_L002_R1_001.fastq.gz",
-                #     "SQ2335_S2_L001_R1_001.fastq.gz",
-                #     "SQ2335_S2_L002_R1_001.fastq.gz",
-                #     "SQ2336_S3_L001_R1_001.fastq.gz",
-                #     "SQ2336_S3_L002_R1_001.fastq.gz",
-                #     "SQ2337_S4_L001_R1_001.fastq.gz",
-                #     "SQ2337_S4_L002_R1_001.fastq.gz",
-                #     "SQ2338_S5_L001_R1_001.fastq.gz",
-                #     "SQ2338_S5_L002_R1_001.fastq.gz",
-                # ],
-                # cwd=self.out_dir,  # TODO remove cwd, only needed for fast fakery
                 [
                     "bcl-convert",
                     "--force",

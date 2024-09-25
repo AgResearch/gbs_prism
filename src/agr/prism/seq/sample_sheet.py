@@ -122,7 +122,7 @@ class SampleSheetSection:
 
     def write(self, csvwriter, num_cols):
         """Write out the sample sheet section in `num_cols` columns, which may be greater than our `num_cols` because of other sections."""
-        csvwriter.writerow([self.name] + [""] * (num_cols - 1))
+        csvwriter.writerow(["[%s]" % self.name] + [""] * (num_cols - 1))
         for row in self._rows:
             csvwriter.writerow(row + [""] * (num_cols - len(row)))
 
@@ -175,10 +175,10 @@ class SampleSheet:
         self._validate(path)
         self._infer_sequencing_type(path)
         self._fastq_files = self._get_fastq_filenames()
-        print(
-            "SampleSheet sequencing type: %s, fastq files: %s"
-            % (self._sequencing_type, ", ".join(self._fastq_files))
-        )
+        # print(
+        #     "SampleSheet sequencing type: %s, fastq files: %s"
+        #     % (self._sequencing_type, ", ".join(self._fastq_files))
+        # )
 
     @property
     def fastq_files(self):
@@ -252,7 +252,7 @@ class SampleSheet:
         self,
     ) -> set[str]:
         """
-        Construct expected fastq filenames from sample sheet.
+        Construct expected fastq.gz filenames from sample sheet.
         """
         predicted_files = set()
         reads = [1, 2] if self._sequencing_type == SequencingType.PAIRED_END else [1]
