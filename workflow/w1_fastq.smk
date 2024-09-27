@@ -18,6 +18,7 @@ from agr.prism.seq.postprocessor import PostProcessor
 #from agr.prism.seq.bclconvert import BclConvert
 from agr.fake.seq.bclconvert import BclConvert
 from agr.prism.seq.fastqc import Fastqc
+from agr.prism.path import gunzipped
 
 # custom rule code lives here:
 import w1_fastq
@@ -32,6 +33,7 @@ fastqc = Fastqc(post_processor.sample_sheet_dir)
 rule default:
     input:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
     default_target: True
 
@@ -72,3 +74,8 @@ rule fastqc:
     run:
         for fastq_path in input:
             fastqc.run(fastq_path)
+
+rule gunzip:
+    input: "{path}.gz"
+    output: "{path}"
+    shell: "gunzip -k {wildcards.path}"
