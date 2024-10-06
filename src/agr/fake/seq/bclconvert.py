@@ -27,8 +27,8 @@ class BclConvert(RealBclConvert):
                 [
                     "fastq_generator",
                     "generate_random_fastq_PE",
-                    "100",
-                    "10",
+                    "200",
+                    "20",
                 ],
                 check=True,
                 capture_output=True,
