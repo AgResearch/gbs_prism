@@ -32,6 +32,10 @@ class PostProcessor(object):
         return os.path.join(self.sample_sheet_dir, "bclconvert")
 
     @property
+    def kmer_run_dir(self) -> str:
+        return os.path.join(self.sample_sheet_dir, "kmer_run")
+
+    @property
     def top_unknown_path(self) -> str:
         return os.path.join(self.bclconvert_dir, "Reports", "Top_Unknown_Barcodes.csv")
 

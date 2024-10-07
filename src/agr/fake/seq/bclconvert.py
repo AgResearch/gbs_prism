@@ -3,7 +3,6 @@ import logging
 import os.path
 import pathlib
 import subprocess
-from typing import Optional
 
 from agr.prism.seq.sample_sheet import SampleSheet
 from agr.prism.seq.bclconvert import BclConvert as RealBclConvert
@@ -19,7 +18,7 @@ class BclConvert(RealBclConvert):
         )
 
     def run(self):
-        logger.warn("using fake BclConvert instead of real one")
+        logger.warning("using fake BclConvert instead of real one")
         sample_sheet = SampleSheet(self.sample_sheet_path, impute_lanes=[1, 2])
 
         for fastq_file in sample_sheet.fastq_files:

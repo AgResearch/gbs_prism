@@ -41,7 +41,6 @@ class Fastqc(object):
                 for ext in ["_fastqc.html", "_fastqc.zip"]
             ]
         ]
-        logger.debug("fastqc.output(%s): %s" % (fastq_file, ",".join(output)))
         return output
 
     def run(self, fastq_path: str, num_threads: int = 8):

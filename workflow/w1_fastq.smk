@@ -18,6 +18,7 @@ from agr.prism.seq.postprocessor import PostProcessor
 #from agr.prism.seq.bclconvert import BclConvert
 from agr.fake.seq.bclconvert import BclConvert
 from agr.prism.seq.fastqc import Fastqc
+from agr.prism.seq.fastq_sample import FastqSample
 from agr.prism.path import gunzipped
 
 # custom rule code lives here:
@@ -29,12 +30,14 @@ sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 post_processor = PostProcessor(c.postprocessing_root, c.run)
 bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.sample_sheet_dir)
 fastqc = Fastqc(post_processor.sample_sheet_dir)
+kmer_run_fastq_sample = FastqSample(post_processor.kmer_run_dir, sample_rate=0.0002, minimum_sample_size=10000)
 
 rule default:
     input:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
         [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        [kmer_run_fastq_sample.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
     default_target: True
 
 rule write_sample_sheet:
@@ -79,3 +82,12 @@ rule gunzip:
     input: "{path}.gz"
     output: "{path}"
     shell: "gunzip -k {wildcards.path}"
+
+rule kmer_run_fastq_sample:
+    input:
+        bclconvert.fastq_path("{basename}.fastq.gz")
+    output:
+        kmer_run_fastq_sample.output("{basename}.fastq.gz"),
+    run:
+        for fastq_path in input:
+            kmer_run_fastq_sample.run(fastq_path)

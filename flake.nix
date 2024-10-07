@@ -45,6 +45,7 @@
                 snakemake
                 flakePkgs.bcl-convert
                 fastqc
+                seqtk
 
                 # for fake bclconvert
                 fastq_generator
