@@ -46,6 +46,7 @@
                 flakePkgs.bcl-convert
                 fastqc
                 seqtk
+                gzip
 
                 # for fake bclconvert
                 fastq_generator

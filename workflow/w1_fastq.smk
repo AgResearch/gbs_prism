@@ -19,7 +19,7 @@ from agr.prism.seq.postprocessor import PostProcessor
 from agr.fake.seq.bclconvert import BclConvert
 from agr.prism.seq.fastqc import Fastqc
 from agr.prism.seq.fastq_sample import FastqSample
-from agr.prism.path import gunzipped
+from agr.prism.path import gunzipped, gzipped
 
 # custom rule code lives here:
 import w1_fastq
@@ -37,7 +37,7 @@ rule default:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
         [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
-        [kmer_run_fastq_sample.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        [gzipped(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
     default_target: True
 
 rule write_sample_sheet:
@@ -78,11 +78,6 @@ rule fastqc:
         for fastq_path in input:
             fastqc.run(fastq_path)
 
-rule gunzip:
-    input: "{path}.gz"
-    output: "{path}"
-    shell: "gunzip -k {wildcards.path}"
-
 rule kmer_run_fastq_sample:
     input:
         bclconvert.fastq_path("{basename}.fastq.gz")
@@ -91,3 +86,21 @@ rule kmer_run_fastq_sample:
     run:
         for fastq_path in input:
             kmer_run_fastq_sample.run(fastq_path)
+
+rule gunzip:
+    input:
+        branch(lambda wildcards: not wildcards["path"].endswith(".gz"),
+               then="{path}.gz",
+               otherwise="/N/A")
+    output: "{path}"
+    shell: "gunzip -k {input}"
+
+rule gzip:
+    input:
+        branch(lambda wildcards: not wildcards["path"].endswith(".gz"),
+               then="{path}",
+               otherwise="/N/A")
+    output: "{path}.gz"
+    shell: "gzip -k {input}"
+
+ruleorder: fastqc > gunzip
