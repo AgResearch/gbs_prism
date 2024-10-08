@@ -1,21 +1,29 @@
-from __future__ import print_function
 import re
 import itertools
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool
 import pickle
 import os
-import string
 import sys
-
-if sys.version_info <= (2, 8):
-    from exceptions import Exception
 import gzip
 import csv
 import math
-from types import GeneratorType
+from functools import reduce
+from typing import TextIO, cast
 
 
 PROC_POOL_SIZE = 30
+
+
+def default_spectrum_value_provider(interval, *_):
+    """
+    the default spectrum_value_provider function is suitable when used with a stream
+    provider (e.g file_to_stream or a user-provided steam)  that yields the domain intervals of the
+    spectrum.
+    """
+    return (
+        ((1,) + interval),
+    )  # this needs to provide a tuple of 1 tuples (not just a tuple)
+    # (because some provider functions provide tuples of many tuples)
 
 
 class data_prism_exception(Exception):
@@ -38,11 +46,19 @@ class prism(object):
     if you pass in an input stream, you can't use the multithreaded build method,
     as streams can't be pickled"""
 
-    interval_locator_parameters = []
-    """array with either length zero or same length as the number of dimensions. (Specify this if you use the
-    built-in interval locators)"""
-
-    def __init__(self, input_filenames, part_count=1, input_streams=None):
+    def __init__(
+        self,
+        input_filenames,
+        interval_locator_funcs,
+        assignments_files,  # an array of functions suitable for locating which multi-dimensional interval a given value-tuple, should be same length as interval_locator_parameters
+        file_to_stream_func,  # this should yield the tuples that are the domain of the spectrum
+        file_to_stream_func_xargs,
+        spectrum_value_provider_func=default_spectrum_value_provider,
+        spectrum_value_provider_func_xargs=[],
+        interval_locator_parameters=[],  # array with either length zero or same length as the number of dimensions. (Specify this if you use the built-in interval locators)
+        part_count=1,
+        input_streams=None,
+    ):
         """
         prism constructor
 
@@ -63,22 +79,17 @@ class prism(object):
         self.part_count = part_count
         self.total_spectrum_value = 0
         self.approximate_zero = None
-        self.interval_locator_parameters = []
 
-        self.interval_locator_funcs = (
-            []
-        )  # an array of functions suitable for locating which multi-dimensional interval a given value-tuple
-        # should be assigned to. There should be same length as interval_locator_parameters
-        self.assignments_files = (
-            []
-        )  # should be same length as interval_locator_parameters
-        self.file_to_stream_func = (
-            None  # this should yield the tuples that are the domain of the spectrum
-        )
-        self.file_to_stream_func_xargs = []
-        self.spectrum_value_provider_func = default_spectrum_value_provider
-        self.spectrum_value_provider_func_xargs = []
-        self.spectrum = None
+        self.interval_locator_parameters = interval_locator_parameters
+        self.interval_locator_funcs = interval_locator_funcs
+        self.assignments_files = assignments_files
+        self.file_to_stream_func = file_to_stream_func
+        self.file_to_stream_func_xargs = file_to_stream_func_xargs
+        self.spectrum_value_provider_func = spectrum_value_provider_func
+        self.spectrum_value_provider_func_xargs = spectrum_value_provider_func_xargs
+
+        self.spectrum = {}
+        self.part_dict = {}
 
     def summary(self, details=False):
         """
@@ -190,9 +201,10 @@ class prism(object):
         return all_streams
 
     def get_containing_interval(self, interval_value):
+        apply = lambda f, value, interval: f(value, interval)
         return tuple(
             map(
-                lambda f, value, interval: f(value, interval),
+                apply,
                 self.interval_locator_funcs,
                 interval_value,
                 self.interval_locator_parameters,
@@ -343,16 +355,15 @@ class prism(object):
     def load(filename):
         return p_load(filename)
 
-    def get_spectrum_value(
-        self, interval, default_spectrum_value=0, return_interval=False
-    ):
+    def get_spectrum_value(self, interval, default_spectrum_value=0):
         interval = self.get_containing_interval(interval)
-        if return_interval:
-            return (self.spectrum.get(interval, default_spectrum_value), interval)
-        else:
-            return self.spectrum.get(interval, default_spectrum_value)
+        return self.spectrum.get(interval, default_spectrum_value)
 
-    def get_information(self, interval, method=None):
+    def get_spectrum_value_and_interval(self, interval, default_spectrum_value=0):
+        interval = self.get_containing_interval(interval)
+        return (self.spectrum.get(interval, default_spectrum_value), interval)
+
+    def get_information(self, interval):
         spectrum_value = self.get_spectrum_value(interval, 0)
         if spectrum_value > 0:
             return -1.0 * math.log(
@@ -409,8 +420,8 @@ class prism(object):
 
         args = zip(
             spectra,
-            [intervals for spectrum in spectra],
-            [return_intervals for spectrum in spectra],
+            [intervals for _ in spectra],
+            [return_intervals for _ in spectra],
         )
 
         if projection_type == "raw":
@@ -440,12 +451,12 @@ class prism(object):
         columnname_iter = [tuple([spectrum_name for spectrum_name in spectrum_names])]
 
         # this yields a row iterator, with the first row being column headings
-        row_iter = itertools.chain(columnname_iter, itertools.izip(*projections))
+        row_iter = itertools.chain(columnname_iter, zip(*projections))
 
         # make a rowname iterator , including column header
         rowname_iter = itertools.chain([("interval",)], intervals)
 
-        row_and_rowname_iter = itertools.izip(rowname_iter, row_iter)
+        row_and_rowname_iter = zip(rowname_iter, row_iter)
 
         with open(filename, "w") as outfile:
             for row in row_and_rowname_iter:
@@ -453,7 +464,7 @@ class prism(object):
                     "%s\t%s"
                     % (
                         ":".join(row[0]),
-                        string.join((str(item) for item in row[1]), "\t"),
+                        "\t".join(str(item) for item in row[1]),
                     ),
                     file=outfile,
                 )
@@ -469,13 +480,13 @@ class prism(object):
                 record_tuples = (
                     re.split("\t", record.strip())[0] for record in instream
                 )
-                record_tuples.next()
+                next(record_tuples)
                 return list(record_tuples)
             else:
                 record_tuples = (
                     re.split("\t", record.strip())[1:] for record in instream
                 )
-                record_tuples.next()
+                next(record_tuples)
                 return list(record_tuples)
 
     @staticmethod
@@ -488,7 +499,7 @@ class prism(object):
         query_results = []
         name_iter = (name for name in target_names)
         for target in target_spectra:
-            target_name = name_iter.next()
+            target_name = next(name_iter)
             for query in query_spectra:
                 query_results.append(
                     (
@@ -506,7 +517,7 @@ class prism(object):
                     )
                 )
 
-        return sorted(query_results, lambda x, y: cmp(x[1], y[1]))
+        return sorted(query_results, key=lambda x: x[1])
 
     #################################################
     # distance-related  methods
@@ -542,18 +553,8 @@ class prism(object):
                 for i in range(0, len(space_tuples)):
                     print(iinterval, i, space_tuples[i][iinterval])
 
-            ordered_index = sorted(
-                index,
-                lambda index1, index2: cmp(
-                    space_tuples[index1][iinterval], space_tuples[index2][iinterval]
-                ),
-            )
-            ranks = sorted(
-                index,
-                lambda index1, index2: cmp(
-                    ordered_index[index1], ordered_index[index2]
-                ),
-            )
+            ordered_index = sorted(index, key=lambda i: space_tuples[i][iinterval])
+            ranks = sorted(index, key=lambda i: ordered_index[i])
 
             # make 1-based ranks
             ranks = map(lambda x: 1 + x, ranks)
@@ -564,23 +565,7 @@ class prism(object):
             print("**** DEBUG ranking")
             print(ranked_columns)
 
-        return itertools.chain([interval_names], itertools.izip(*ranked_columns))
-
-    @staticmethod
-    def get_distance_matrix(space_iter, method="euclidean"):
-        """
-        this method doesn't really belong in this class but is here as a convenience.
-        This calculates the distances between column vectors of a matrix , where each
-        column is probably an entropyprojecttion - but doens't have to be.
-        Each column is headed up by a name of the column.
-        """
-
-        if method == "euclidean":
-            return get_euclidean_distance_matrix(space_iter)
-        elif method == "zipfian":
-            return get_zipfian_distance_matrix(space_iter)
-        else:
-            raise data_prism_exception("unknown distance method %s" % method)
+        return itertools.chain([interval_names], zip(*ranked_columns))
 
     @staticmethod
     def get_euclidean_distance_matrix(space_iter):
@@ -710,16 +695,15 @@ class prism(object):
     def print_distance_matrix(
         distance_matrix, interval_names_sorted, outfile=sys.stdout
     ):
-        print(string.join([""] + interval_names_sorted, "\t"), file=outfile)
+        print("\t".join([""] + interval_names_sorted), file=outfile)
         for row_interval in interval_names_sorted:
             print(
-                string.join(
+                "\t".join(
                     [row_interval]
                     + [
                         str(distance_matrix[(row_interval, col_interval)])
                         for col_interval in interval_names_sorted
                     ],
-                    "\t",
                 ),
                 file=outfile,
             )
@@ -742,8 +726,8 @@ def p_get_raw_projection(arg_tuple):
         if not return_intervals:
             projection[index] = spectrum.get_spectrum_value(interval, 0)
         else:
-            (projection[index], intervals[index]) = spectrum.get_spectrum_value(
-                interval, 0, True
+            (projection[index], intervals[index]) = (
+                spectrum.get_spectrum_value_and_interval(interval, 0)
             )
 
         # projection[total_spectrum_value] = spectrum.get_spectrum_value(interval,0)
@@ -758,7 +742,7 @@ def p_get_raw_projection(arg_tuple):
 
 def p_get_information_projection(arg_tuple):
     (spectrum, intervals, return_intervals) = arg_tuple
-    projection = len(intervals) * [None]
+    projection = len(intervals) * [0.0]
     if return_intervals:
         intervals = len(intervals) * [None]
 
@@ -766,7 +750,9 @@ def p_get_information_projection(arg_tuple):
     index = 0
     total_spectrum_value = 0
     for interval in intervals:
-        (spectrum_value, interval) = spectrum.get_spectrum_value(interval, 0, True)
+        (spectrum_value, interval) = spectrum.get_spectrum_value_and_interval(
+            interval, 0
+        )
         if not return_intervals:
             projection[index] = spectrum_value
         else:
@@ -800,7 +786,7 @@ def p_get_information_projection(arg_tuple):
 
 def p_get_signed_information_projection(arg_tuple):
     (spectrum, intervals, return_intervals) = arg_tuple
-    projection = len(intervals) * [None]
+    projection = len(intervals) * [0.0]
     if return_intervals:
         intervals = len(intervals) * [None]
 
@@ -808,7 +794,9 @@ def p_get_signed_information_projection(arg_tuple):
     index = 0
     total_spectrum_value = 0
     for interval in intervals:
-        (spectrum_value, interval) = spectrum.get_spectrum_value(interval, 0, True)
+        (spectrum_value, interval) = spectrum.get_spectrum_value_and_interval(
+            interval, 0
+        )
         if not return_intervals:
             projection[index] = spectrum_value
         else:
@@ -847,7 +835,7 @@ def p_get_signed_information_projection(arg_tuple):
 
 def p_get_unsigned_information_projection(arg_tuple):
     (spectrum, intervals, return_intervals) = arg_tuple
-    projection = len(intervals) * [None]
+    projection = len(intervals) * [0.0]
     if return_intervals:
         intervals = len(intervals) * [None]
 
@@ -855,7 +843,9 @@ def p_get_unsigned_information_projection(arg_tuple):
     index = 0
     total_spectrum_value = 0
     for interval in intervals:
-        (spectrum_value, interval) = spectrum.get_spectrum_value(interval, 0, True)
+        (spectrum_value, interval) = spectrum.get_spectrum_value_and_interval(
+            interval, 0
+        )
         if not return_intervals:
             projection[index] = spectrum_value
         else:
@@ -961,23 +951,12 @@ def bin_discrete_value(value, intervals):
 
 
 class outer_list(list):
-    def __getitem__(self, key):
-        if key >= self.__len__():
-            return None
+    def get(self, key, default=None):
+        """Return indexed item or default if out of range."""
+        if key >= len(self) or key < -len(self):
+            return default
         else:
-            return super(outer_list, self).__getitem__(key)
-
-
-def default_spectrum_value_provider(interval, *xargs):
-    """
-    the default spectrum_value_provider function is suitable when used with a stream
-    provider (e.g file_to_stream or a user-provided steam)  that yields the domain intervals of the
-    spectrum.
-    """
-    return (
-        ((1,) + interval),
-    )  # this needs to provide a tuple of 1 tuples (not just a tuple)
-    # (because some provider functions provide tuples of many tuples)
+            return self[key]
 
 
 def get_file_type(file_path):
@@ -992,15 +971,15 @@ def get_file_type(file_path):
     if os.path.exists(file_path):
         real_path = os.path.realpath(file_path)
 
-    if re.search("(\.fasta|\.fa|\.fna|\.faa|\.seq)(\.|$)", real_path, re.I) != None:
+    if re.search(r"(\.fasta|\.fa|\.fna|\.faa|\.seq)(\.|$)", real_path, re.I) != None:
         return "fasta"
-    elif re.search("(\.fastq|\.fq)(\.|$)", real_path, re.I) != None:
+    elif re.search(r"(\.fastq|\.fq)(\.|$)", real_path, re.I) != None:
         return "fastq"
     else:
         return os.path.splitext(file_path)[1].lower()
 
 
-def get_text_stream(file_path):
+def get_text_stream(file_path) -> TextIO:
     """
     this is used by most of the value providers below that use text files
     (tab seperated, csv etc)
@@ -1012,12 +991,14 @@ def get_text_stream(file_path):
         real_path = os.path.realpath(file_path)
 
     text_stream = None
-    if re.search("\.gz$", real_path, re.I) != None:
-        text_stream = gzip.open(real_path, "rb")
+    if re.search(r"\.gz$", real_path, re.I) != None:
+        text_stream = gzip.open(real_path, "rt", encoding="utf_8")
     else:
-        text_stream = open(real_path, "r")
+        text_stream = open(real_path, "r", encoding="utf_8")
 
-    return text_stream
+    # Becuase we opened the gzipfile in text mode "rt", we know we have a TextIO, not a GzipFile,
+    # but alas pyright needs to be told.
+    return cast(TextIO, text_stream)
 
 
 def from_flat_file(file_name, *xargs):
@@ -1028,13 +1009,16 @@ def from_flat_file(file_name, *xargs):
     """
     if len(xargs) == 0:
         return (
-            tuple(re.split("\s+", record.strip()))
+            tuple(re.split(r"\s+", record.strip()))
             for record in get_text_stream(file_name)
         )
     else:
         return (
             tuple(
-                [outer_list(re.split("\s+", record.strip()))[index] for index in xargs]
+                [
+                    outer_list(re.split(r"\s+", record.strip())).get(index)
+                    for index in xargs
+                ]
             )
             for record in get_text_stream(file_name)
         )
@@ -1056,7 +1040,10 @@ def from_tab_delimited_file(file_name, *xargs):
     else:
         return (
             tuple(
-                [outer_list(re.split("\t", record.strip()))[index] for index in xargs]
+                [
+                    outer_list(re.split("\t", record.strip())).get(index)
+                    for index in xargs
+                ]
             )
             for record in get_text_stream(file_name)
         )
@@ -1070,14 +1057,14 @@ def from_nonragged_tab_delimited_file(file_name, *xargs):
     """
     if len(xargs) == 0:
         return (
-            tuple(re.split("\t", record.translate(None, "\n\r")))
+            tuple(re.split("\t", record.rstrip("\n")))
             for record in get_text_stream(file_name)
         )
     else:
         return (
             tuple(
                 [
-                    outer_list(re.split("\t", record.translate(None, "\n\r")))[index]
+                    outer_list(re.split("\t", record.rstrip("\n"))).get(index)
                     for index in xargs
                 ]
             )
@@ -1095,81 +1082,9 @@ def from_csv_file(file_name, *xargs):
         return csv.reader(get_text_stream(file_name))
     else:
         return (
-            tuple([outer_list(record)[index] for index in xargs])
+            tuple([outer_list(record).get(index) for index in xargs])
             for record in csv.reader(get_text_stream(file_name))
         )
-
-
-def kmer_count_from_sequence(sequence, *args):
-    """
-    yields an interator through counts of kmers in a sequence
-    - e.g.
-    3 ACTAT
-    1 AAAAA
-    etc
-    """
-    from Bio import SeqIO
-    import itertools
-
-    reverse_complement = args[0]
-    pattern_window_length = args[
-        1
-    ]  # optional - for fixed length patterns e.g. 6-mers etc, to speed up search
-    spectrum_value = args[2]  # un-used currently
-    patterns = args[3:]
-
-    # print "DEBUG sequence%s"%str(sequence)
-    # print "DEBUG reverse_complement%s"%str(reverse_complement)
-    # print "DEBUG patterns%s"%str(patterns)
-
-    if pattern_window_length is None:
-        # search for each pattern. Note that this does not count multiple instances
-        # of a pattern that overlap - for example in TTTTTTT , the pattern TTTTTT will only count once.
-        kmer_iters = tuple(
-            (re.finditer(pattern, str(sequence.seq), re.I) for pattern in patterns)
-        )
-        kmer_iters = (match.group() for match in itertools.chain(*kmer_iters))
-        if not reverse_complement:
-            kmer_count_iter = (
-                (len(list(kmer_iter)), kmer)
-                for (kmer, kmer_iter) in itertools.groupby(
-                    kmer_iters, lambda kmer: kmer
-                )
-            )
-        else:
-            kmer_count_iter = (
-                (len(list(kmer_iter)), get_reverse_complement(kmer))
-                for (kmer, kmer_iter) in itertools.groupby(
-                    kmer_iters, lambda kmer: kmer
-                )
-            )
-    else:
-        # slide the window along the sequence and accumulate matching patterns.Note that unlike
-        # the above regexp based search, this would count multiple instances of a pattern
-        # that overlap - for example in TTTTTTT , the pattern TTTTTT would count twice.
-        # overlap_patterns is used to emulate the regexp behaviour
-        strseq = str(sequence.seq)
-        kmer_dict = {}
-        overlap_patterns = pattern_window_length * [""]
-        kmer_iter = (
-            strseq[i : i + pattern_window_length]
-            for i in range(0, 1 + len(strseq) - pattern_window_length)
-        )
-        for kmer in kmer_iter:
-            if kmer not in overlap_patterns:
-                overlap_patterns.insert(0, kmer)
-            elif overlap_patterns[-1] == kmer:
-                overlap_patterns.insert(0, kmer)
-            else:
-                overlap_patterns.insert(0, "")
-            overlap_patterns.pop()
-
-            if kmer not in overlap_patterns[1:]:
-                kmer_dict[kmer] = 1 + kmer_dict.setdefault(kmer, 0)
-
-        kmer_count_iter = ((kmer_dict[kmer], kmer) for kmer in kmer_dict)
-
-    return kmer_count_iter
 
 
 #################################################
@@ -1185,16 +1100,7 @@ def build_part(arg_tuple):
 
 def build(spectrum_instance, use="multithreads", proc_pool_size=PROC_POOL_SIZE):
 
-    if use == "cluster":
-        args = [
-            (spectrum_instance, slice_number)
-            for slice_number in range(0, spectrum_instance.part_count)
-        ]
-        spectrum_instance.part_dict = dict(pool.map(build_part, args))
-
-        return spectrum_instance.get_spectrum()
-
-    elif use == "multithreads":
+    if use == "multithreads":
         pool = Pool(proc_pool_size)
 
         args = [

@@ -9,7 +9,7 @@
     };
   };
 
-  outputs = { self, nixpkgs, flake-utils, bcl-convert, ... }:
+  outputs = { nixpkgs, flake-utils, bcl-convert, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -20,6 +20,10 @@
           flakePkgs = {
             bcl-convert = bcl-convert.packages.${system}.default;
           };
+
+          myPython = pkgs.python3.withPackages (python-pkgs: [
+            python-pkgs.biopython
+          ]);
 
           fastq_generator =
             let
@@ -47,6 +51,7 @@
                 fastqc
                 seqtk
                 gzip
+                myPython
 
                 # for fake bclconvert
                 fastq_generator

@@ -1,17 +1,14 @@
 #!/usr/bin/env python
-from __future__ import print_function
 import os
-import sys
 import re
 import itertools
-import string
-
-if sys.version_info <= (2, 8):
-    from exceptions import Exception
-from random import random
-from multiprocessing import Pool
 import subprocess
 import argparse
+from Bio import SeqIO
+from random import random
+from functools import reduce
+from typing import cast
+
 from data_prism import (
     prism,
     build,
@@ -40,17 +37,14 @@ def kmer_count_from_sequence(sequence, *args):
     1 AAAAA
     etc
     """
-    from Bio import SeqIO
-    import itertools
-
     reverse_complement = args[0]
     pattern_window_length = args[
         1
     ]  # optional - for fixed length patterns e.g. 6-mers etc, to speed up search
     if callable(args[2]):
-        weight = args[2](sequence)
+        weight = cast(float, args[2](sequence))
     else:
-        weight = args[2]
+        weight = cast(float, args[2])
 
     patterns = args[3:]
 
@@ -112,8 +106,6 @@ def seq_from_sequence_file(datafile, *args):
     """
     yields either all or a random sample of seqs from a sequence file
     """
-    from Bio import SeqIO
-
     (filetype, sampling_proportion) = args[0:2]
     seq_iter = SeqIO.parse(get_text_stream(datafile), filetype)
 
@@ -131,7 +123,7 @@ def parse_weight_from_sequence_description(sequence):
     seq_28639 count=1.004008
     """
 
-    weighting_match = re.search("count=(\d*\.*\d*)\s*$", sequence.description)
+    weighting_match = re.search(r"count=(\d*\.*\d*)\s*$", sequence.description)
     if weighting_match is not None:
         weight = float(weighting_match.groups()[0])
     else:
@@ -160,7 +152,7 @@ def tag_count_from_tag_count_file(datafile, *args):
     indicates how many of that tag there are
 
     """
-    (input_driver_config, sampling_proportion) = args[0:2]
+    input_driver_config = args[0]
 
     if input_driver_config is None:
         raise kmer_prism_exception(
@@ -175,6 +167,7 @@ cat <$f1
     else:
         remove_prefix = True  # hard coded true for now but may pass in as part of drive config at some point
         common_prefix = ""
+        common_prefix_length = 0
         cat_tag_count_command = [input_driver_config, "%s" % datafile]
 
         # if we are to remove a common prefix (e.g. TGCA in the above example), then
@@ -183,12 +176,15 @@ cat <$f1
             print("scanning tags for a common prefix to remove...")
 
             proc = subprocess.Popen(
-                cat_tag_count_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                cat_tag_count_command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf_8",
             )
             (stdout, stderr) = proc.communicate()
             if proc.returncode == 0:
                 tuple_iter = (
-                    re.split("\s+", record.strip().upper())
+                    re.split(r"\s+", record.strip().upper())
                     for record in re.split("\n", stdout)
                 )  # parse the 3 elements
                 tuple_iter = (
@@ -201,8 +197,6 @@ cat <$f1
                 )  # use the tag-length to substring the tag then throw away the numbers
                 sorted_tuples = sorted(tuple_iter)
                 # find the longest common start-string in the first and last elements
-                common_prefix_length = 0
-                match = True
                 while common_prefix_length < min(
                     len(sorted_tuples[0]), len(sorted_tuples[-1])
                 ):
@@ -231,12 +225,15 @@ cat <$f1
 
         print("summarising tags...")
         proc = subprocess.Popen(
-            cat_tag_count_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            cat_tag_count_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf_8",
         )
         (stdout, stderr) = proc.communicate()
         if proc.returncode == 0:
             tagcount_iter = (
-                re.split("\s+", record.strip().upper())
+                re.split(r"\s+", record.strip().upper())
                 for record in re.split("\n", stdout)
             )  # parse the 3 elements
             tagcount_iter = (
@@ -269,7 +266,7 @@ def kmer_count_from_tag_count(tag_count_tuple, *args):
     pattern_window_length = args[
         1
     ]  # optional - for fixed length patterns e.g. 6-mers etc, to speed up search
-    weight = args[2]  # un-used currently
+    # weight = args[2]  # un-used currently
     patterns = args[3:]
     (tag, tag_count) = tag_count_tuple
 
@@ -351,22 +348,21 @@ def build_kmer_spectrum(
         filetype = input_filetype
         if filetype is None:
             filetype = get_file_type(datafile)
-        kmer_prism = prism([datafile], num_processes)
-        kmer_prism.interval_locator_parameters = (None,)
-        kmer_prism.interval_locator_funcs = (bin_discrete_value,)
-        kmer_prism.assignments_files = ("kmer_binning.txt",)
-        kmer_prism.file_to_stream_func = seq_from_sequence_file
-        kmer_prism.file_to_stream_func_xargs = [filetype, sampling_proportion]
-        kmer_prism.spectrum_value_provider_func = kmer_count_from_sequence
+
+        # defaults
+        file_to_stream_func = seq_from_sequence_file
+        file_to_stream_func_xargs = [filetype, sampling_proportion]
+        spectrum_value_provider_func = kmer_count_from_sequence
+        spectrum_value_provider_func_xargs = []
 
         if weighting_method is None:
-            kmer_prism.spectrum_value_provider_func_xargs = [
+            spectrum_value_provider_func_xargs = [
                 reverse_complement,
                 pattern_window_length,
-                1,
+                1.0,
             ] + kmer_patterns
         elif weighting_method == "tag_count":
-            kmer_prism.spectrum_value_provider_func_xargs = [
+            spectrum_value_provider_func_xargs = [
                 reverse_complement,
                 pattern_window_length,
                 parse_weight_from_sequence_description,
@@ -374,12 +370,26 @@ def build_kmer_spectrum(
 
         if filetype == ".cnt":
             # print "DEBUG setting methods for count file"
-            kmer_prism.file_to_stream_func = tag_count_from_tag_count_file
-            kmer_prism.file_to_stream_func_xargs = [
+            file_to_stream_func = tag_count_from_tag_count_file
+            file_to_stream_func_xargs = [
                 input_driver_config,
                 sampling_proportion,
             ]
-            kmer_prism.spectrum_value_provider_func = kmer_count_from_tag_count
+            spectrum_value_provider_func = kmer_count_from_tag_count
+
+        kmer_prism = prism(
+            [datafile],
+            part_count=num_processes,
+            interval_locator_parameters=(None,),
+            interval_locator_funcs=(bin_discrete_value,),
+            assignments_files=("kmer_binning.txt",),
+            file_to_stream_func=file_to_stream_func,
+            file_to_stream_func_xargs=file_to_stream_func_xargs,
+            spectrum_value_provider_func=spectrum_value_provider_func,
+            spectrum_value_provider_func_xargs=spectrum_value_provider_func_xargs,
+        )
+
+        if filetype == ".cnt":
             spectrum_data = build(kmer_prism, use="singlethread")
         else:
             spectrum_data = build(kmer_prism, proc_pool_size=num_processes)
@@ -399,10 +409,9 @@ def build_kmer_spectrum(
         if assemble:
             print("assembling low entropy kmers (lowest %d)..." % number_to_assemble)
             kmer_list = sorted(
-                kmer_prism.spectrum.items(), lambda x, y: cmp(y[1], x[1])
-            )[
-                0:number_to_assemble
-            ]  # sort in descending order and pick the first number_to_assemble
+                kmer_prism.spectrum.items(), key=lambda x: x[1], reverse=True
+            )[0:number_to_assemble]
+            # sort in descending order and pick the first number_to_assemble
             # yields e.g.
             # [(('CGCCGC',), 26870.0), (('GCGGCG',), 25952.0),....
             print("(%s)" % str(kmer_list))
@@ -447,12 +456,12 @@ def assemble_kmer_spectrum(
                 counts_iter = (
                     int(item.strip()) for item in counts_stream if len(item.strip()) > 0
                 )
-                zsequences_counts_stream = itertools.izip(
+                zsequences_counts_stream = zip(
                     file_to_stream_func(sequence_file, *file_to_stream_func_xargs),
                     counts_iter,
                 )
         elif weighting_method == "tag_count":
-            zsequences_counts_stream = itertools.izip(
+            zsequences_counts_stream = zip(
                 file_to_stream_func(sequence_file, *file_to_stream_func_xargs),
                 itertools.repeat(1),
             )
@@ -461,7 +470,7 @@ def assemble_kmer_spectrum(
                 for sequence in zsequences_counts_stream
             )
         else:
-            zsequences_counts_stream = itertools.izip(
+            zsequences_counts_stream = zip(
                 file_to_stream_func(sequence_file, *file_to_stream_func_xargs),
                 itertools.repeat(1),
             )
@@ -475,7 +484,7 @@ def assemble_kmer_spectrum(
 
     pattern_window_length = max(len(kmer) for kmer in kmer_list)
     if pattern_window_length != min(len(kmer) for kmer in kmer_list):
-        raise trim_exception(
+        raise kmer_prism_exception(
             "error -  all kmers in supporting list mustbe the same length"
         )
 
@@ -488,7 +497,7 @@ def assemble_kmer_spectrum(
         # analyse sequence
         # slide the window along the sequence and accumulate exact matches to members of patterns.
         # print sequence, sequence_count
-        strseq = str(sequence.seq)
+        strseq = str(sequence)
         supporting_run = []
         supporting_runs = []
         kmer_iter = (
@@ -514,10 +523,7 @@ def assemble_kmer_spectrum(
 
         # if there are any supporting runs, store the longest
         if len(supporting_runs) > 0:
-            supporting_runs = sorted(
-                supporting_runs, lambda a, b: cmp(len(a), len(b)), None, True
-            )
-            best_supporting_run = tuple(supporting_runs[0])
+            best_supporting_run = tuple(max(supporting_runs, key=lambda x: len(x)))
 
             # store the supporting run in a dict with run as key, value the number of seqs with that run
             unassembled_dict[best_supporting_run] = (
@@ -570,9 +576,7 @@ def assemble_kmer_spectrum(
         "Sequences assembled from target kmers and found in the data, sorted by length descending, reporting count of containing seqs, and distinct kmer count"
     )
     container = None
-    for key in sorted(
-        assembled_dict.keys(), lambda x, y: cmp(len(x), len(y)), None, True
-    ):
+    for key in sorted(assembled_dict.keys(), key=lambda x: len(x), reverse=True):
         if container is None:
             container = key
         elif container.find(key) < 0:
@@ -583,21 +587,17 @@ def assemble_kmer_spectrum(
             % (key, container, assembled_dict[key])
         )
 
-    def cmp_length_and_distinct_kmers(s1, s2):
-        """
-        sort first by distinct kmer counts, then by length, both descending
-        """
-        if assembled_dict[s1][1] == assembled_dict[s2][1]:
-            return cmp(len(s2), len(s1))
-        else:
-            return cmp(assembled_dict[s2][1], assembled_dict[s1][1])
-
     print("\n\n\n")
     print(
         "Sequences assembled from target kmers and found in the data, sorted by count of distinct kmers in seq, and length , descending"
     )
     container = None
-    for key in sorted(assembled_dict.keys(), cmp_length_and_distinct_kmers):
+    # sort first by distinct kmer counts, then by length, both descending
+    for key in sorted(
+        assembled_dict.keys(),
+        key=lambda k: (assembled_dict[k][1], len(k)),
+        reverse=True,
+    ):
         if container is None:
             container = key
         elif container.find(key) < 0:
@@ -609,15 +609,8 @@ def assemble_kmer_spectrum(
         )
 
 
-def use_kmer_prbdf(picklefile):
-    kmer_prism = prism.load(picklefile)
-    spectrum_data = kmer_prism.get_distribution()
-    for interval, freq in spectrum_data.items():
-        print(interval, freq)
-
-
 def get_save_filename(input_filename, builddir):
-    sanitised_input_filename = re.sub("[\s\$]", "_", input_filename)
+    sanitised_input_filename = re.sub(r"[\s\$]", "_", input_filename)
     return os.path.join(
         builddir, "%s.kmerdist.pickle" % (os.path.basename(sanitised_input_filename))
     )
@@ -689,7 +682,7 @@ def summarise_spectra(distributions, options):
     sample_measures = prism.get_projections(
         distributions, kmer_intervals, measure, False, options["num_processes"]
     )
-    zsample_measures = itertools.izip(*sample_measures)
+    zsample_measures = zip(*sample_measures)
     sample_name_iter = [
         tuple(
             [
@@ -704,15 +697,13 @@ def summarise_spectra(distributions, options):
     outfile = open(options["output_filename"], "w")
 
     if options["summary_type"] in ["entropy", "frequency"]:
-        zsample_measures_with_rownames = itertools.izip(
-            interval_name_iter, zsample_measures
-        )
+        zsample_measures_with_rownames = zip(interval_name_iter, zsample_measures)
         for interval_measure in zsample_measures_with_rownames:
             print(
                 "%s\t%s"
                 % (
                     "%s" % interval_measure[0],
-                    string.join((str(item) for item in interval_measure[1]), "\t"),
+                    "\t".join(str(item) for item in interval_measure[1]),
                 ),
                 file=outfile,
             )
@@ -727,7 +718,7 @@ def summarise_spectra(distributions, options):
 
         # duplicate ranks (0 used to output; 1 used to get distances)
         ranks_dup = itertools.tee(ranks, 2)
-        ranks_with_rownames = itertools.izip(interval_name_iter_dup[0], ranks_dup[0])
+        ranks_with_rownames = zip(interval_name_iter_dup[0], ranks_dup[0])
 
         # output ranks
         print("*** ranks *** :", file=outfile)
@@ -736,14 +727,14 @@ def summarise_spectra(distributions, options):
                 "%s\t%s"
                 % (
                     "%s" % interval_rank[0],
-                    string.join((str(item) for item in interval_rank[1]), "\t"),
+                    "\t".join(str(item) for item in interval_rank[1]),
                 ),
                 file=outfile,
             )
 
         # output measures
         print("*** entropies *** :", file=outfile)
-        zsample_measures_with_rownames = itertools.izip(
+        zsample_measures_with_rownames = zip(
             interval_name_iter_dup[1], zsample_measures_dup[1]
         )
         for interval_measure in zsample_measures_with_rownames:
@@ -751,7 +742,7 @@ def summarise_spectra(distributions, options):
                 "%s\t%s"
                 % (
                     "%s" % interval_measure[0],
-                    string.join((str(item) for item in interval_measure[1]), "\t"),
+                    "\t".join(str(item) for item in interval_measure[1]),
                 ),
                 file=outfile,
             )
@@ -991,7 +982,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
 
         # parse kmer_regexps
         if args["kmer_regexps"] is not None:
-            args["kmer_regexps"] = re.split("\s*,\s*", args["kmer_regexps"])
+            args["kmer_regexps"] = re.split(r"\s*,\s*", args["kmer_regexps"])
         else:
             args["kmer_regexps"] = []
 
@@ -999,8 +990,6 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
 
 
 def test(options):
-    from Bio import SeqIO
-
     for file_name in options["file_names"]:
         filetype = get_file_type(file_name)
         seq_iter = SeqIO.parse(get_text_stream(file_name), filetype)
