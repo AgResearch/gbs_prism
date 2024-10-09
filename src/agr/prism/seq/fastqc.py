@@ -44,7 +44,7 @@ class Fastqc(object):
         return output
 
     def run(self, fastq_path: str, num_threads: int = 8):
-        with open(self.log_path, "a") as log_f:
+        with open(self.log_path, "w") as log_f:
             subprocess.run(
                 [
                     "fastqc",

@@ -21,7 +21,9 @@ from agr.prism.seq.postprocessor import PostProcessor
 from agr.fake.seq.bclconvert import BclConvert
 from agr.prism.seq.fastqc import Fastqc
 from agr.prism.seq.fastq_sample import FastqSample
+from agr.prism.kmer_analysis import KmerAnalysis
 from agr.prism.path import gunzipped, gzipped
+import agr.prism.kmer_prism as kmer_prism
 
 # custom rule code lives here:
 import w1_fastq
@@ -33,6 +35,13 @@ post_processor = PostProcessor(c.postprocessing_root, c.run)
 bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.sample_sheet_dir)
 fastqc = Fastqc(post_processor.sample_sheet_dir)
 kmer_run_fastq_sample = FastqSample(post_processor.kmer_run_dir, sample_rate=0.0002, minimum_sample_size=10000)
+kmer_prism_args = (kmer_prism.Args()
+    .input_filetype("fasta")
+    .kmer_size(6)
+    # this causes it to crash: 😩
+    #.assemble_low_entropy_kmers()
+)
+kmer_analysis = KmerAnalysis(post_processor.kmer_analysis_dir, kmer_prism_args)
 
 rule default:
     input:
@@ -40,6 +49,7 @@ rule default:
         [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
         [gzipped(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
+        [kmer_analysis.output(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files]
     default_target: True
 
 rule write_sample_sheet:
@@ -71,6 +81,7 @@ rule bclconvert:
         bclconvert.run()
         bclconvert.check_expected_fastq_files(sample_sheet.fastq_files)
 
+ruleorder: fastqc > gunzip
 rule fastqc:
     input:
         bclconvert.fastq_path("{basename}.fastq.gz")
@@ -80,6 +91,7 @@ rule fastqc:
         for fastq_path in input:
             fastqc.run(fastq_path)
 
+ruleorder: kmer_run_fastq_sample > gunzip
 rule kmer_run_fastq_sample:
     input:
         bclconvert.fastq_path("{basename}.fastq.gz")
@@ -88,6 +100,15 @@ rule kmer_run_fastq_sample:
     run:
         for fastq_path in input:
             kmer_run_fastq_sample.run(fastq_path)
+
+ruleorder: kmer_analysis > gunzip
+rule kmer_analysis:
+    input:
+        fastq_sample = kmer_run_fastq_sample.output("{basename}.fastq.gz")
+    output:
+        kmer_analysis.output(kmer_run_fastq_sample.output("{basename}.fastq.gz"))
+    run:
+        kmer_analysis.run(kmer_prism_args, input.fastq_sample)
 
 rule gunzip:
     input:
@@ -104,5 +125,3 @@ rule gzip:
                otherwise="/N/A")
     output: "{path}.gz"
     shell: "gzip -k {input}"
-
-ruleorder: fastqc > gunzip

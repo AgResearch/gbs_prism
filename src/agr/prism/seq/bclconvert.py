@@ -67,7 +67,7 @@ class BclConvert(object):
         return os.path.join(self.out_dir, fastq_file)
 
     def run(self):
-        with open(self.log_path, "a") as log_f:
+        with open(self.log_path, "w") as log_f:
             subprocess.run(
                 [
                     "bcl-convert",

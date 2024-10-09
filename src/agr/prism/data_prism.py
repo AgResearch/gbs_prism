@@ -26,12 +26,12 @@ def default_spectrum_value_provider(interval, *_):
     # (because some provider functions provide tuples of many tuples)
 
 
-class data_prism_exception(Exception):
+class DataPrismException(Exception):
     def __init__(self, args=None):
-        super(data_prism_exception, self).__init__(args)
+        super(DataPrismException, self).__init__(args)
 
 
-class prism(object):
+class Prism(object):
     """
     this class is used to build a "spectrum" data structure, which is often but not alwaysa discrete multivariate
     frequency/probability distribution, from large input data (for example an alignment file of nextgen sequence data),
@@ -67,7 +67,7 @@ class prism(object):
 
         """
 
-        super(prism, self).__init__()
+        super(Prism, self).__init__()
 
         self.name = "noname"
         self.input_filenames = input_filenames
@@ -157,7 +157,7 @@ class prism(object):
 
     def check_settings(self):
         if len(self.input_filenames) > 0 and self.file_to_stream_func is None:
-            raise data_prism_exception(
+            raise DataPrismException(
                 """
             Error - you have specified one or more input files, so you also need to set a file_to_stream_func - e.g.
             
@@ -171,7 +171,7 @@ class prism(object):
             len(self.interval_locator_funcs) != len(self.interval_locator_parameters)
             and len(self.interval_locator_parameters) > 0
         ):
-            raise data_prism_exception(
+            raise DataPrismException(
                 "Error - there are %d interval locator functions specified, but %d dimensions"
                 % (
                     len(self.interval_locator_funcs),
@@ -180,7 +180,7 @@ class prism(object):
             )
         if len(self.assignments_files) > 0:
             if len(self.assignments_files) != len(self.interval_locator_funcs):
-                raise data_prism_exception(
+                raise DataPrismException(
                     "Error - there are %d interval assignments files specified, but %d dimensions"
                     % (len(self.assignments_files), len(self.interval_locator_funcs))
                 )
@@ -242,7 +242,7 @@ class prism(object):
                     )
 
                 if len(spectrum_value_tuple) != 1 + len(self.interval_locator_funcs):
-                    raise data_prism_exception(
+                    raise DataPrismException(
                         "Error - I received a spectrum_value_tuple %s but there are %d interval locators for locating the value"
                         % (str(spectrum_value_tuple), len(self.interval_locator_funcs))
                     )
@@ -254,7 +254,7 @@ class prism(object):
                         % (spectrum_interval, spectrum_value)
                     )
                 if type(spectrum_interval) != tuple:
-                    raise data_prism_exception(
+                    raise DataPrismException(
                         "Error - I got %s from the spectrum_value provider: interval should be a tuple , instead it is %s (%s)"
                         % (
                             str(spectrum_value),
@@ -433,7 +433,7 @@ class prism(object):
         elif projection_type == "information":
             projections = pool.map(p_get_information_projection, args)
         else:
-            raise data_prism_exception(
+            raise DataPrismException(
                 "projection type %s not supported" % projection_type
             )
 
@@ -534,12 +534,12 @@ class prism(object):
         and returns the matrix
         """
         interval_names = space_iter.next()
-        if prism.DEBUG:
+        if Prism.DEBUG:
             print("**** DEBUG ranking")
             print(str(interval_names))
 
         space_tuples = list(space_iter)
-        if prism.DEBUG:
+        if Prism.DEBUG:
             print("**** DEBUG ranking")
             print(str(space_tuples))
 
@@ -547,7 +547,7 @@ class prism(object):
         for iinterval in range(0, len(interval_names)):
             index = range(0, len(space_tuples))
 
-            if prism.DEBUG:
+            if Prism.DEBUG:
                 print("**** DEBUG ranking")
                 print(index)
                 for i in range(0, len(space_tuples)):
@@ -561,7 +561,7 @@ class prism(object):
 
             ranked_columns.append(ranks)
 
-        if prism.DEBUG:
+        if Prism.DEBUG:
             print("**** DEBUG ranking")
             print(ranked_columns)
 
@@ -889,8 +889,8 @@ def p_load(filename):
     pinstance = pickle.load(preader)
     preader.close()
 
-    if not isinstance(pinstance, prism):
-        raise data_prism_exception("%s is not a spectrum object" % filename)
+    if not isinstance(pinstance, Prism):
+        raise DataPrismException("%s is not a spectrum object" % filename)
     return pinstance
 
 
@@ -950,7 +950,7 @@ def bin_discrete_value(value, intervals):
 #################################################
 
 
-class outer_list(list):
+class OuterList(list):
     def get(self, key, default=None):
         """Return indexed item or default if out of range."""
         if key >= len(self) or key < -len(self):
@@ -1016,7 +1016,7 @@ def from_flat_file(file_name, *xargs):
         return (
             tuple(
                 [
-                    outer_list(re.split(r"\s+", record.strip())).get(index)
+                    OuterList(re.split(r"\s+", record.strip())).get(index)
                     for index in xargs
                 ]
             )
@@ -1041,7 +1041,7 @@ def from_tab_delimited_file(file_name, *xargs):
         return (
             tuple(
                 [
-                    outer_list(re.split("\t", record.strip())).get(index)
+                    OuterList(re.split("\t", record.strip())).get(index)
                     for index in xargs
                 ]
             )
@@ -1064,7 +1064,7 @@ def from_nonragged_tab_delimited_file(file_name, *xargs):
         return (
             tuple(
                 [
-                    outer_list(re.split("\t", record.rstrip("\n"))).get(index)
+                    OuterList(re.split("\t", record.rstrip("\n"))).get(index)
                     for index in xargs
                 ]
             )
@@ -1082,7 +1082,7 @@ def from_csv_file(file_name, *xargs):
         return csv.reader(get_text_stream(file_name))
     else:
         return (
-            tuple([outer_list(record).get(index) for index in xargs])
+            tuple([OuterList(record).get(index) for index in xargs])
             for record in csv.reader(get_text_stream(file_name))
         )
 
@@ -1131,6 +1131,6 @@ def build(spectrum_instance, use="multithreads", proc_pool_size=PROC_POOL_SIZE):
         return spectrum_instance.get_spectrum()
 
     else:
-        raise data_prism_exception(
+        raise DataPrismException(
             "error - unknown resource specified for build : %s" % use
         )

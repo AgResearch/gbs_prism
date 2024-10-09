@@ -44,7 +44,7 @@ class FastqSample(object):
 
     def run(self, fastq_path: str):
         out_path = self.output(fastq_path)
-        with open(self.log_path, "a") as log_f:
+        with open(self.log_path, "w") as log_f:
             with open(out_path, "w") as out_f:
                 subprocess.run(
                     [
