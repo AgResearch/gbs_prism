@@ -7,7 +7,7 @@ import argparse
 from Bio import SeqIO
 from random import random
 from functools import reduce
-from typing import cast
+from typing import Literal, cast
 
 from data_prism import (
     prism,
@@ -762,7 +762,7 @@ def summarise_spectra(distributions, options):
         outfile.close()
 
 
-def get_options():
+def create_parser():
     description = """
     This script summaries kmer frequencies or entropies for multiple input files. The output is a single tab-delimited text file
     with one row per kmer and one column per input file
@@ -840,12 +840,16 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=int,
         help="kmer size (default None)",
     )
+
+    def comma_separated_list(arg: str) -> list[str]:
+        return re.split(r"\s*,\s*", arg)
+
     parser.add_argument(
         "-r",
         "--kmer_regexp_list",
         dest="kmer_regexps",
         default=None,
-        type=str,
+        type=comma_separated_list,
         help="list of regular expressions (not currently supported)",
     )
     parser.add_argument(
@@ -948,20 +952,37 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         choices=["tag_count"],
         help="weighting method",
     )
+    return parser
 
+
+def get_options():
+    parser = create_parser()
     args = vars(parser.parse_args())
+    try:
+        validate_args(args)
+    except kmer_prism_exception as e:
+        parser.error(str(e))
+    return args
+
+
+def validate_args(args):
+    """Validate args and throw kmer_prism_exception on failure."""
 
     # checks
     if args["summary_type"] != "assembly":
         if args["num_processes"] < 1 or args["num_processes"] > PROC_POOL_SIZE:
-            parser.error("num_processes must be between 1 and %d" % PROC_POOL_SIZE)
+            raise kmer_prism_exception(
+                "num_processes must be between 1 and %d" % PROC_POOL_SIZE
+            )
 
         # should specify either a kmer_size, or a list of patterns (but not both)
 
         if args["kmer_size"] is None and args["kmer_regexps"] is None:
-            parser.error("should specify either kmer_size or a list of patterns")
+            raise kmer_prism_exception(
+                "should specify either kmer_size or a list of patterns"
+            )
         elif args["kmer_size"] is not None and args["kmer_regexps"] is not None:
-            parser.error(
+            raise kmer_prism_exception(
                 "should specify either kmer_size or a list of patterns but not both"
             )
 
@@ -970,7 +991,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
             if not os.path.isfile(file_name) and not os.path.exists(
                 get_save_filename(file_name, args["builddir"])
             ):
-                parser.error(
+                raise kmer_prism_exception(
                     "could not find either %s or %s"
                     % (file_name, get_save_filename(file_name, args["builddir"]))
                 )
@@ -978,13 +999,9 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
 
         # output file should not already exist
         if os.path.exists(args["output_filename"]):
-            parser.error("error output file %(output_filename)s already exists" % args)
-
-        # parse kmer_regexps
-        if args["kmer_regexps"] is not None:
-            args["kmer_regexps"] = re.split(r"\s*,\s*", args["kmer_regexps"])
-        else:
-            args["kmer_regexps"] = []
+            raise kmer_prism_exception(
+                "error output file %(output_filename)s already exists" % args
+            )
 
     return args
 
@@ -997,11 +1014,7 @@ def test(options):
             print(seq.description)
 
 
-def main():
-
-    options = get_options()
-    print(options)
-
+def run(options):
     if options["summary_type"] == "test":
         test(options)
 
@@ -1022,7 +1035,98 @@ def main():
             options["sequence_countfile"],
         )
 
-    return
+
+def main():
+    """Command line interface"""
+    options = get_options()
+    print(options)
+    run(options)
+
+
+class kmer_prism:
+    """Programmatic interface"""
+
+    def __init__(self):
+        self.parser = create_parser()
+        self.args = vars(self.parser.parse_args([]))
+
+    def file_names(self, file_names: list[str]):
+        self.args["file_names"] = file_names
+        return self
+
+    def summary_type(
+        self,
+        summary_type: Literal[
+            "frequency", "entropy", "ranks", "zipfian", "assembly", "test"
+        ],
+    ):
+        self.args["summary_type"] = summary_type
+        return self
+
+    def kmer_size(self, kmer_size: int):
+        self.args["kmer_size"] = kmer_size
+        return self
+
+    def kmer_regexp_list(self, kmer_regexps: list[str]):
+        self.args["kmer_regexps"] = kmer_regexps
+        return self
+
+    def build_dir(self, builddir: str):
+        self.args["builddir"] = builddir
+        return self
+
+    def num_processes(self, num_processes: int):
+        self.args["num_processes"] = num_processes
+        return self
+
+    def sampling_proportion(self, sampling_proportion: float):
+        self.args["sampling_proportion"] = sampling_proportion
+        return self
+
+    def output_filename(self, output_filename: str):
+        self.args["output_filename"] = output_filename
+        return self
+
+    def reverse_complement(self, reverse_complement: bool):
+        self.args["reverse_complement"] = reverse_complement
+        return self
+
+    def assemble_low_entropy_kmers(self, assemble_low_entropy_kmers: bool):
+        self.args["assemble_low_entropy_kmers"] = assemble_low_entropy_kmers
+        return self
+
+    def assemble_highest_n(self, assemble_highest_n: int):
+        self.args["assemble_highest_n"] = assemble_highest_n
+        return self
+
+    def input_driver_config(self, input_driver_config: str):
+        self.args["input_driver_config"] = input_driver_config
+        return self
+
+    def alphabet(self, alphabet: str):
+        self.args["alphabet"] = alphabet
+        return self
+
+    def input_filetype(self, input_filetype: Literal["fasta", "fastq"]):
+        self.args["input_filetype"] = input_filetype
+        return self
+
+    def kmer_listfile(self, kmer_listfile: str):
+        self.args["kmer_listfile"] = kmer_listfile
+        return self
+
+    def sequence_countfile(self, sequence_countfile: str):
+        self.args["sequence_countfile"] = sequence_countfile
+        return self
+
+    def weighting_method(self, weighting_method: Literal["tag_count"]):
+        self.args["weighting_method"] = weighting_method
+        return self
+
+    def run(self):
+        validate_args(self.args)
+        print(self.args)
+        run(self.args)
 
 
 if __name__ == "__main__":
