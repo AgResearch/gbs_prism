@@ -19,8 +19,8 @@ class FastqSampleError(Exception):
 
 
 class FastqSample(object):
-    def __init__(self, out_rootdir: str, sample_rate: float, minimum_sample_size: int):
-        self.out_dir = os.path.join(out_rootdir, "fastq_sample")
+    def __init__(self, out_dir: str, sample_rate: float, minimum_sample_size: int):
+        self.out_dir = out_dir
         self.sample_rate = sample_rate
         self.minimum_sample_size = minimum_sample_size
 

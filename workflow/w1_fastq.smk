@@ -32,9 +32,9 @@ c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
 sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 post_processor = PostProcessor(c.postprocessing_root, c.run)
-bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.sample_sheet_dir)
-fastqc = Fastqc(post_processor.sample_sheet_dir)
-kmer_run_fastq_sample = FastqSample(post_processor.kmer_run_dir, sample_rate=0.0002, minimum_sample_size=10000)
+bclconvert = BclConvert(sequencer_run.dir, post_processor.sample_sheet_path, post_processor.bclconvert_dir)
+fastqc = Fastqc(post_processor.fastqc_dir)
+kmer_run_fastq_sample = FastqSample(post_processor.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism_args = (kmer_prism.Args()
     .input_filetype("fasta")
     .kmer_size(6)
@@ -84,22 +84,20 @@ rule bclconvert:
 ruleorder: fastqc > gunzip
 rule fastqc:
     input:
-        bclconvert.fastq_path("{basename}.fastq.gz")
+        fastq_path = bclconvert.fastq_path("{basename}.fastq.gz")
     output:
         fastqc.output("{basename}.fastq.gz"),
     run:
-        for fastq_path in input:
-            fastqc.run(fastq_path)
+        fastqc.run(input.fastq_path)
 
 ruleorder: kmer_run_fastq_sample > gunzip
 rule kmer_run_fastq_sample:
     input:
-        bclconvert.fastq_path("{basename}.fastq.gz")
+        fastq_path = bclconvert.fastq_path("{basename}.fastq.gz")
     output:
         kmer_run_fastq_sample.output("{basename}.fastq.gz"),
     run:
-        for fastq_path in input:
-            kmer_run_fastq_sample.run(fastq_path)
+        kmer_run_fastq_sample.run(input.fastq_path)
 
 ruleorder: kmer_analysis > gunzip
 rule kmer_analysis:

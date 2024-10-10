@@ -12,9 +12,9 @@ logger.setLevel(logging.DEBUG)
 
 
 class BclConvert(RealBclConvert):
-    def __init__(self, in_dir: str, sample_sheet_path: str, out_rootdir: str):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
         super(BclConvert, self).__init__(
-            in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_rootdir=out_rootdir
+            in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
         )
 
     def run(self):

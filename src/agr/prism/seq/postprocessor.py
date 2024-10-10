@@ -32,20 +32,20 @@ class PostProcessor(object):
         return os.path.join(self.sample_sheet_dir, "bclconvert")
 
     @property
+    def fastqc_dir(self) -> str:
+        return os.path.join(self.sample_sheet_dir, "fastqc_run", "fastqc")
+
+    @property
     def kmer_run_dir(self) -> str:
         return os.path.join(self.sample_sheet_dir, "kmer_run")
 
     @property
+    def kmer_fastq_sample_dir(self) -> str:
+        return os.path.join(self.kmer_run_dir, "fastq_sample")
+
+    @property
     def kmer_analysis_dir(self) -> str:
         return os.path.join(self.kmer_run_dir, "kmer_analysis")
-
-    @property
-    def top_unknown_path(self) -> str:
-        return os.path.join(self.bclconvert_dir, "Reports", "Top_Unknown_Barcodes.csv")
-
-    @property
-    def fastq_complete_path(self) -> str:
-        return os.path.join(self.bclconvert_dir, "Logs", "FastqComplete.txt")
 
     def ensure_dirs_exist(self):
         if not os.path.isdir(self.postprocessing_root):

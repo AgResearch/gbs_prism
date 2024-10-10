@@ -2,3 +2,5 @@
 /.snakemake/
 __pycache__/
 /log/
+*.pickle
+kmer_binning.txt.*

@@ -19,8 +19,8 @@ class FastqcError(Exception):
 
 
 class Fastqc(object):
-    def __init__(self, out_rootdir: str):
-        self.out_dir = os.path.join(out_rootdir, "fastqc_run", "fastqc")
+    def __init__(self, out_dir: str):
+        self.out_dir = out_dir
 
     @property
     def log_path(self) -> str:

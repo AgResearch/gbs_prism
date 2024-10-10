@@ -20,10 +20,10 @@ class BclConvertError(Exception):
 
 
 class BclConvert(object):
-    def __init__(self, in_dir: str, sample_sheet_path: str, out_rootdir: str):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
         self.in_dir = in_dir
         self.sample_sheet_path = sample_sheet_path
-        self.out_dir = os.path.join(out_rootdir, "bclconvert")
+        self.out_dir = out_dir
 
     @property
     def top_unknown_path(self) -> str:
