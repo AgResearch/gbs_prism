@@ -47,6 +47,10 @@ class PostProcessor(object):
     def kmer_analysis_dir(self) -> str:
         return os.path.join(self.kmer_run_dir, "kmer_analysis")
 
+    @property
+    def dedupe_dir(self) -> str:
+        return os.path.join(self.sample_sheet_dir, "dedupe")
+
     def ensure_dirs_exist(self):
         if not os.path.isdir(self.postprocessing_root):
             raise PostProcessorError("no such directory %s" % self.postprocessing_root)

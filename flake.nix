@@ -3,13 +3,17 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
+    bbmap = {
+      url = "github:AgResearch/bbmap.nix/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     bcl-convert = {
       url = "github:AgResearch/bcl-convert.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { nixpkgs, flake-utils, bcl-convert, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -18,6 +22,7 @@
           };
 
           flakePkgs = {
+            bbmap = bbmap.packages.${system}.default;
             bcl-convert = bcl-convert.packages.${system}.default;
           };
 
@@ -47,6 +52,7 @@
               buildInputs = [
                 bashInteractive
                 snakemake
+                flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 fastqc
                 seqtk
