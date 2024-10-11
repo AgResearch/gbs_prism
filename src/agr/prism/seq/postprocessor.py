@@ -7,25 +7,25 @@ logger = logging.getLogger(__name__)
 
 class PostProcessorError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
-        self.msg = msg
-        self.e = e
+        self._msg = msg
+        self._e = e
 
     def __str__(self) -> str:
-        return "%s: %s" % (self.msg, str(self.e))
+        return "%s: %s" % (self._msg, str(self._e))
 
 
 class PostProcessor(object):
     def __init__(self, postprocessing_root: str, run: str):
-        self.postprocessing_root = postprocessing_root
-        self.dir = os.path.join(postprocessing_root, run)
+        self._postprocessing_root = postprocessing_root
+        self._dir = os.path.join(postprocessing_root, run)
 
     @property
     def sample_sheet_path(self) -> str:
-        return os.path.join(self.dir, "SampleSheet.csv")
+        return os.path.join(self._dir, "SampleSheet.csv")
 
     @property
     def sample_sheet_dir(self) -> str:
-        return os.path.join(self.dir, "SampleSheet")
+        return os.path.join(self._dir, "SampleSheet")
 
     @property
     def bclconvert_dir(self) -> str:
@@ -52,8 +52,8 @@ class PostProcessor(object):
         return os.path.join(self.sample_sheet_dir, "dedupe")
 
     def ensure_dirs_exist(self):
-        if not os.path.isdir(self.postprocessing_root):
-            raise PostProcessorError("no such directory %s" % self.postprocessing_root)
+        if not os.path.isdir(self._postprocessing_root):
+            raise PostProcessorError("no such directory %s" % self._postprocessing_root)
         try:
             os.makedirs(self.sample_sheet_dir, exist_ok=True)
         except Exception as e:

@@ -24,7 +24,8 @@ from agr.prism.seq.fastq_sample import FastqSample
 from agr.prism.kmer_analysis import KmerAnalysis
 from agr.prism.dedupe import Dedupe
 from agr.prism.path import gunzipped, gzipped
-import agr.prism.kmer_prism as kmer_prism
+from agr.prism.kmer_prism import KmerPrism
+from agr.prism.gbs_keyfiles import GbsKeyfiles
 
 # custom rule code lives here:
 import w1_fastq
@@ -36,16 +37,23 @@ post_processor = PostProcessor(c.postprocessing_root, c.run)
 bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=post_processor.sample_sheet_path, out_dir=post_processor.bclconvert_dir)
 fastqc = Fastqc(out_dir=post_processor.fastqc_dir)
 kmer_run_fastq_sample = FastqSample(out_dir=post_processor.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
-kmer_prism_args = (kmer_prism.Args()
-    .input_filetype("fasta")
-    .kmer_size(6)
+kmer_prism = KmerPrism(
+    input_filetype="fasta",
+    kmer_size=6,
     # this causes it to crash: 😩
-    #.assemble_low_entropy_kmers()
+    #assemble_low_entropy_kmers=True
 )
-kmer_analysis = KmerAnalysis(out_dir=post_processor.kmer_analysis_dir, kmer_prism_args=kmer_prism_args)
+kmer_analysis = KmerAnalysis(out_dir=post_processor.kmer_analysis_dir, kmer_prism=kmer_prism)
 dedupe = Dedupe(out_dir=post_processor.dedupe_dir,
                 tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
                 jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
+gbs_keyfiles = GbsKeyfiles(
+    sequencer_run=sequencer_run,
+    sample_sheet=sample_sheet,
+    postprocessing_root=c.postprocessing_root,
+    out_dir=c.key_files_dir,
+    fastq_link_farm=c.fastq_link_farm,
+    backup_dir=c.gbs_backup_dir)
 
 rule default:
     input:
@@ -55,6 +63,7 @@ rule default:
         [gzipped(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [kmer_analysis.output(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [dedupe.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        gbs_keyfiles.output()
     default_target: True
 
 rule write_sample_sheet:
@@ -111,7 +120,7 @@ rule kmer_analysis:
     output:
         kmer_analysis.output(kmer_run_fastq_sample.output("{basename}.fastq.gz"))
     run:
-        kmer_analysis.run(kmer_prism_args, input.fastq_sample)
+        kmer_analysis.run(input.fastq_sample)
 
 ruleorder: dedupe > gzip > gunzip
 rule dedupe:
@@ -121,6 +130,12 @@ rule dedupe:
         dedupe.output("{basename}.fastq.gz"),
     run:
         dedupe.run(input.fastq_path)
+
+rule gbs_keyfiles:
+    output:
+        gbs_keyfiles.output()
+    run:
+        gbs_keyfiles.create()
 
 rule gunzip:
     input:

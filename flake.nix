@@ -11,9 +11,14 @@
       url = "github:AgResearch/bcl-convert.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    gquery = {
+      # TODO use main branch not gbs_prism branch
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, gquery, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -24,10 +29,17 @@
           flakePkgs = {
             bbmap = bbmap.packages.${system}.default;
             bcl-convert = bcl-convert.packages.${system}.default;
+            gquery-api = gquery.packages.${system}.api;
+            gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
 
-          myPython = pkgs.python3.withPackages (python-pkgs: [
+          export-gquery-environment-for-eri = env:
+            gquery.export-environment-for-eri.${system} env;
+
+          devPython = pkgs.python3.withPackages (python-pkgs: [
             python-pkgs.biopython
+            python-pkgs.pytest
+            flakePkgs.gquery-api
           ]);
 
           fastq_generator =
@@ -57,12 +69,21 @@
                 fastqc
                 seqtk
                 gzip
-                myPython
+                devPython
 
                 # for fake bclconvert
                 fastq_generator
               ];
+
+              shellHook = ''
+                export PYTHONPATH=./src:$PYTHONPATH
+                ${export-gquery-environment-for-eri "dev"}
+                export GQUERY_ROOT=$HOME/gquery-logs
+              '';
             };
+          };
+          packages = {
+            default = flakePkgs.gquery;
           };
         }
       );

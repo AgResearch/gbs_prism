@@ -1,0 +1,26 @@
+[project]
+name = "gbs_prism"
+version = "0.1.0a1"
+description = "GBS Prism pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+  { name = "Alan McCulloch", email = "alan.mcculloch@agresearch.co.nz" },
+  { name = "Simon Guest", email = "simon.guest@agresearch.co.nz" },
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["src/agr"]
+
+[tool.pyright]
+reportUnusedCallResult = "warning"

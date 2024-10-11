@@ -4,32 +4,45 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 
+from agr.gquery import GQuery, GQueryNotFoundException, Predicates
+from agr.util import StdioRedirect
+
 logger = logging.getLogger(__name__)
 
 
 class SequencerRunError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
-        self.msg = msg
-        self.e = e
+        self._msg = msg
+        self._e = e
 
 
 class SequencerRun(object):
-    def __init__(self, seq_root: str, run: str):
-        self.dir = os.path.join(seq_root, run)
-        if not os.path.isdir(self.dir):
-            raise SequencerRunError("no such directory %s" % self.dir)
+    def __init__(self, seq_root: str, run_name: str):
+        self._seq_root = seq_root
+        self._run_name = run_name
+        self._dir = os.path.join(seq_root, run_name)
+        if not os.path.isdir(self._dir):
+            raise SequencerRunError("no such directory %s" % self._dir)
 
     def ensure_dirs_exist(self):
         # validate it's a run directory
-        run_info_path = os.path.join(self.dir, "RunInfo.xml")
+        run_info_path = os.path.join(self._dir, "RunInfo.xml")
         if not os.path.exists(run_info_path):
             raise SequencerRunError(
                 "can't find %s, are you sure this is a run directory?" % run_info_path
             )
 
     @property
+    def seq_root(self) -> str:
+        return self._seq_root
+
+    @property
+    def dir(self) -> str:
+        return self._dir
+
+    @property
     def sample_sheet_path(self) -> str:
-        return os.path.join(self.dir, "SampleSheet.csv")
+        return os.path.join(self._dir, "SampleSheet.csv")
 
     def await_complete(
         self,
@@ -37,7 +50,7 @@ class SequencerRun(object):
         overall_timeout: Optional[timedelta] = None,
     ):
         self.ensure_dirs_exist()
-        rta_complete_path = os.path.join(self.dir, "RTAComplete.txt")
+        rta_complete_path = os.path.join(self._dir, "RTAComplete.txt")
         deadline = (
             datetime.now() + overall_timeout if overall_timeout is not None else None
         )
@@ -56,3 +69,17 @@ class SequencerRun(object):
         if not os.path.exists(rta_complete_path):
             raise SequencerRunError("timeout waiting for %s" % rta_complete_path)
         logger.info("%s found, run is complete" % rta_complete_path)
+
+    def exists_in_database(self):
+        """Use GQuery to determine whether the run exists in the database."""
+        with open(os.devnull, "w") as null_f:
+            with StdioRedirect(stdout=null_f, stderr=null_f):
+                try:
+                    GQuery(
+                        task="lab_report",
+                        predicates=Predicates(name="illumina_run_details"),
+                        items=[self._run_name],
+                    ).run()
+                except GQueryNotFoundException:
+                    return False
+            return True

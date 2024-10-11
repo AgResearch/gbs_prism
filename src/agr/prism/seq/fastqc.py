@@ -8,34 +8,34 @@ logger = logging.getLogger(__name__)
 
 class FastqcError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
-        self.msg = msg
-        self.e = e
+        self._msg = msg
+        self._e = e
 
     def __str__(self) -> str:
-        if self.e is None:
-            return self.msg
+        if self._e is None:
+            return self._msg
         else:
-            return "%s: %s" % (self.msg, str(self.e))
+            return "%s: %s" % (self._msg, str(self._e))
 
 
 class Fastqc(object):
     def __init__(self, out_dir: str):
-        self.out_dir = out_dir
+        self._out_dir = out_dir
 
     @property
     def log_path(self) -> str:
-        return os.path.join(self.out_dir, "fastqc.log")
+        return os.path.join(self._out_dir, "fastqc.log")
 
     def ensure_dirs_exist(self):
         try:
-            os.makedirs(self.out_dir, exist_ok=True)
+            os.makedirs(self._out_dir, exist_ok=True)
         except Exception as e:
-            raise FastqcError("failed to create %s" % self.out_dir, e)
-        logger.info("created %s directory" % self.out_dir)
+            raise FastqcError("failed to create %s" % self._out_dir, e)
+        logger.info("created %s directory" % self._out_dir)
 
     def output(self, fastq_file: str) -> List[str]:
         output = [
-            os.path.join(self.out_dir, out_file)
+            os.path.join(self._out_dir, out_file)
             for out_file in [
                 "%s%s" % (os.path.basename(fastq_file).removesuffix(".fastq.gz"), ext)
                 for ext in ["_fastqc.html", "_fastqc.zip"]
@@ -45,13 +45,13 @@ class Fastqc(object):
 
     def run(self, fastq_path: str, num_threads: int = 8):
         with open(self.log_path, "w") as log_f:
-            subprocess.run(
+            _ = subprocess.run(
                 [
                     "fastqc",
                     "-t",
                     str(num_threads),
                     "-o",
-                    self.out_dir,
+                    self._out_dir,
                     fastq_path,
                 ],
                 check=True,

@@ -2,44 +2,44 @@ import logging
 import os.path
 import pathlib
 import subprocess
-from typing import Optional, List
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 class BclConvertError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
-        self.msg = msg
-        self.e = e
+        self._msg = msg
+        self._e = e
 
     def __str__(self) -> str:
-        if self.e is None:
-            return self.msg
+        if self._e is None:
+            return self._msg
         else:
-            return "%s: %s" % (self.msg, str(self.e))
+            return "%s: %s" % (self._msg, str(self._e))
 
 
 class BclConvert(object):
     def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
-        self.in_dir = in_dir
-        self.sample_sheet_path = sample_sheet_path
-        self.out_dir = out_dir
+        self._in_dir = in_dir
+        self._sample_sheet_path = sample_sheet_path
+        self._out_dir = out_dir
 
     @property
     def top_unknown_path(self) -> str:
-        return os.path.join(self.out_dir, "Reports", "Top_Unknown_Barcodes.csv")
+        return os.path.join(self._out_dir, "Reports", "Top_Unknown_Barcodes.csv")
 
     @property
     def fastq_complete_path(self) -> str:
-        return os.path.join(self.out_dir, "Logs", "FastqComplete.txt")
+        return os.path.join(self._out_dir, "Logs", "FastqComplete.txt")
 
     @property
     def log_path(self) -> str:
-        return os.path.join(self.out_dir, "Logs", "1_run_bclconvert.log")
+        return os.path.join(self._out_dir, "Logs", "1_run_bclconvert.log")
 
     @property
     def benchmark_path(self) -> str:
-        return os.path.join(self.out_dir, "benchmarks", "run_bclconvert.txt")
+        return os.path.join(self._out_dir, "benchmarks", "run_bclconvert.txt")
 
     @property
     def fastq_files(self) -> set[str]:
@@ -48,36 +48,36 @@ class BclConvert(object):
         return set(
             [
                 filename
-                for filename in os.listdir(self.out_dir)
+                for filename in os.listdir(self._out_dir)
                 if filename.endswith(".fastq.gz")
                 and not filename.startswith("Undetermined")
             ]
         )
 
     def ensure_dirs_exist(self):
-        if not os.path.isdir(self.in_dir):
-            raise BclConvertError("no such directory %s" % self.in_dir)
+        if not os.path.isdir(self._in_dir):
+            raise BclConvertError("no such directory %s" % self._in_dir)
         try:
-            os.makedirs(self.out_dir, exist_ok=True)
+            os.makedirs(self._out_dir, exist_ok=True)
         except Exception as e:
-            raise BclConvertError("failed to create %s" % self.out_dir, e)
-        logger.info("created %s directory" % self.out_dir)
+            raise BclConvertError("failed to create %s" % self._out_dir, e)
+        logger.info("created %s directory" % self._out_dir)
 
     def fastq_path(self, fastq_file: str):
-        return os.path.join(self.out_dir, fastq_file)
+        return os.path.join(self._out_dir, fastq_file)
 
     def run(self):
         with open(self.log_path, "w") as log_f:
-            subprocess.run(
+            _ = subprocess.run(
                 [
                     "bcl-convert",
                     "--force",
                     "--bcl-input-directory",
-                    self.in_dir,
+                    self._in_dir,
                     "--sample-sheet",
-                    self.sample_sheet_path,
+                    self._sample_sheet_path,
                     "--output-directory",
-                    self.out_dir,
+                    self._out_dir,
                 ],
                 check=True,
                 stdout=log_f,

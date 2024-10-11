@@ -10,6 +10,7 @@ import math
 from functools import reduce
 from typing import TextIO, cast
 
+from agr.util.iterator import consume
 
 PROC_POOL_SIZE = 30
 
@@ -295,20 +296,22 @@ class Prism(object):
             interval = self.get_containing_interval(sparse_key)
 
             if len(self.assignments_files) > 0:
-                map(
-                    lambda raw, assignment, writer: writer.write(
-                        "%s\t%s\n" % (raw, assignment)
-                    ),
-                    sparse_key,
-                    interval,
-                    assignment_writers,
+                consume(
+                    map(
+                        lambda raw, assignment, writer: writer.write(
+                            "%s\t%s\n" % (raw, assignment)
+                        ),
+                        sparse_key,
+                        interval,
+                        assignment_writers,
+                    )
                 )
 
             partial[interval] = partial.setdefault(interval, 0) + sparse_total
 
             total_spectrum_value += sparse_total
         if len(assignment_writers) > 0:
-            map(lambda writer: writer.close(), assignment_writers)
+            consume(map(lambda writer: writer.close(), assignment_writers))
 
         return (slice_number, partial)
 
@@ -480,13 +483,13 @@ class Prism(object):
                 record_tuples = (
                     re.split("\t", record.strip())[0] for record in instream
                 )
-                next(record_tuples)
+                _ = next(record_tuples)
                 return list(record_tuples)
             else:
                 record_tuples = (
                     re.split("\t", record.strip())[1:] for record in instream
                 )
-                next(record_tuples)
+                _ = next(record_tuples)
                 return list(record_tuples)
 
     @staticmethod

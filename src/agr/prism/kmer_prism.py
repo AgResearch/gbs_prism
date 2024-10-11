@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 import os
 import re
-import sys
 import itertools
 import subprocess
 import argparse
 from Bio import SeqIO
 from random import random
 from functools import reduce
-from typing import Literal, cast
+from typing import Literal, Optional, cast
 
 from agr.prism.data_prism import (
     Prism,
@@ -818,14 +817,14 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         epilog=long_description,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "file_names",
         type=str,
         nargs="*",  # changed from "+" to support late-passing of filename
         metavar="filename",
         help="list of files to process",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-t",
         "--summary_type",
         dest="summary_type",
@@ -833,7 +832,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         choices=["frequency", "entropy", "ranks", "zipfian", "assembly", "test"],
         help="type of summary",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-k",
         "--kmer_size",
         dest="kmer_size",
@@ -845,7 +844,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
     def comma_separated_list(arg: str) -> list[str]:
         return re.split(r"\s*,\s*", arg)
 
-    parser.add_argument(
+    _ = parser.add_argument(
         "-r",
         "--kmer_regexp_list",
         dest="kmer_regexps",
@@ -853,7 +852,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=comma_separated_list,
         help="list of regular expressions (not currently supported)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-b",
         "--build_dir",
         dest="builddir",
@@ -861,7 +860,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=str,
         help="build folder (default '.')",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-p",
         "--num_processes",
         dest="num_processes",
@@ -869,7 +868,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=int,
         help="number of processes to start (default 4)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-s",
         "--sampling_proportion",
         dest="sampling_proportion",
@@ -877,7 +876,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=float,
         help="proportion of sequence records to sample (default None means process all records)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-o",
         "--output_filename",
         dest="output_filename",
@@ -885,21 +884,21 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=str,
         help="name of the output file to contain table of kmer distribution summaries for each input file (default 'distributions.txt')",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-c",
         "--reverse_complement",
         dest="reverse_complement",
         action="store_true",
         help="for each kmer tabulate the frequency or entropy of its reverse complement (default False)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-A",
         "--assemble_low_entropy_kmers",
         dest="assemble_low_entropy_kmers",
         action="store_true",
         help="assemble low entropy kmers (default False)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-N",
         "--assemble_highest_n",
         dest="assemble_highest_n",
@@ -907,14 +906,14 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=int,
         help="assemble top N kmers (default 50)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-x",
         "--input_driver_config",
         dest="input_driver_config",
         default=None,
         help="this is use to configure input from custom file formats such as tassel count files",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-a",
         "--alphabet",
         dest="alphabet",
@@ -922,7 +921,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         type=str,
         help="alphabet used to filter kmers when summarising distributions (not applied when building distribution)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-f",
         "--input_filetype",
         dest="input_filetype",
@@ -931,21 +930,21 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
         choices=["fasta", "fastq"],
         help="optionally specify input format ( if not specified will try to guess)",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--kmer_listfile",
         dest="kmer_listfile",
         default=None,
         type=str,
         help="list of kmers for an assembly run",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--sequence_countfile",
         dest="sequence_countfile",
         default=None,
         type=str,
         help="sequence count file",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "--weighting_method",
         dest="weighting_method",
         default=None,
@@ -963,110 +962,95 @@ class ArgumentParser(argparse.ArgumentParser):
         raise KmerPrismException(message)
 
 
-class Args:
+class KmerPrism:
     """For programmatic interface"""
 
-    def __init__(self):
-        self.parser = create_parser(ArgumentParser)
+    def __init__(
+        self,
+        summary_type: Optional[
+            Literal["frequency", "entropy", "ranks", "zipfian", "assembly", "test"]
+        ] = None,
+        kmer_size: Optional[int] = None,
+        kmer_regexps: Optional[list[str]] = None,
+        builddir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        sampling_proportion: Optional[float] = None,
+        reverse_complement: Optional[bool] = None,
+        assemble_low_entropy_kmers: Optional[bool] = None,
+        assemble_highest_n: Optional[int] = None,
+        input_driver_config: Optional[str] = None,
+        alphabet: Optional[str] = None,
+        input_filetype: Optional[Literal["fasta", "fastq"]] = None,
+        kmer_listfile: Optional[str] = None,
+        sequence_countfile: Optional[str] = None,
+        weighting_method: Optional[Literal["tag_count"]] = None,
+    ):
+        self._parser = create_parser(ArgumentParser)
         try:
-            self.options = vars(self.parser.parse_args([]))
+            self._options = vars(self._parser.parse_args([]))
         except argparse.ArgumentError as e:
             raise KmerPrismException(str(e))
-        self.supported_moniker_keys = ["k", "A"]
-        self.moniker_components = {}
+        self._supported_moniker_keys = ["k", "A"]
+        self._moniker_components = {}
 
-    def add_moniker_key(self, k: str):
-        assert k in self.supported_moniker_keys
-        self.moniker_components[k] = ""
+        if summary_type is not None:
+            self._options["summary_type"] = summary_type
+        if kmer_size is not None:
+            self._options["kmer_size"] = kmer_size
+            self._add_moniker_key_value("k", str(kmer_size))
+        if kmer_regexps is not None:
+            self._options["kmer_regexps"] = kmer_regexps
+        if builddir is not None:
+            self._options["builddir"] = builddir
+        if num_processes is not None:
+            self._options["num_processes"] = num_processes
+        if sampling_proportion is not None:
+            self._options["sampling_proportion"] = sampling_proportion
+        if reverse_complement is not None:
+            self._options["reverse_complement"] = reverse_complement
+        if assemble_low_entropy_kmers is not None:
+            self._options["assemble_low_entropy_kmers"] = assemble_low_entropy_kmers
+            if assemble_low_entropy_kmers:
+                self._add_moniker_key("A")
+        if assemble_highest_n is not None:
+            self._options["assemble_highest_n"] = assemble_highest_n
+        if input_driver_config is not None:
+            self._options["input_driver_config"] = input_driver_config
+        if alphabet is not None:
+            self._options["alphabet"] = alphabet
+        if input_filetype is not None:
+            self._options["input_filetype"] = input_filetype
+        if kmer_listfile is not None:
+            self._options["kmer_listfile"] = kmer_listfile
+        if sequence_countfile is not None:
+            self._options["sequence_countfile"] = sequence_countfile
+        if weighting_method is not None:
+            self._options["weighting_method"] = weighting_method
 
-    def add_moniker_key_value(self, k: str, value: str):
-        assert k in self.supported_moniker_keys
-        self.moniker_components[k] = value
+    def _add_moniker_key(self, k: str):
+        assert k in self._supported_moniker_keys
+        self._moniker_components[k] = ""
+
+    def _add_moniker_key_value(self, k: str, value: str):
+        assert k in self._supported_moniker_keys
+        self._moniker_components[k] = value
 
     @property
     def moniker(self) -> str:
         return "".join(
             [
-                "%s%s" % (k, self.moniker_components[k])
-                for k in self.supported_moniker_keys
-                if k in self.moniker_components
+                "%s%s" % (k, self._moniker_components[k])
+                for k in self._supported_moniker_keys
+                if k in self._moniker_components
             ]
         )
 
-    def file_names(self, file_names: list[str]):
-        self.options["file_names"] = file_names
-        return self
-
-    def summary_type(
-        self,
-        summary_type: Literal[
-            "frequency", "entropy", "ranks", "zipfian", "assembly", "test"
-        ],
-    ):
-        self.options["summary_type"] = summary_type
-        return self
-
-    def kmer_size(self, kmer_size: int):
-        self.options["kmer_size"] = kmer_size
-        self.add_moniker_key_value("k", str(kmer_size))
-        return self
-
-    def kmer_regexp_list(self, kmer_regexps: list[str]):
-        self.options["kmer_regexps"] = kmer_regexps
-        return self
-
-    def build_dir(self, builddir: str):
-        self.options["builddir"] = builddir
-        return self
-
-    def num_processes(self, num_processes: int):
-        self.options["num_processes"] = num_processes
-        return self
-
-    def sampling_proportion(self, sampling_proportion: float):
-        self.options["sampling_proportion"] = sampling_proportion
-        return self
-
-    def output_filename(self, output_filename: str):
-        self.options["output_filename"] = output_filename
-        return self
-
-    def reverse_complement(self):
-        self.options["reverse_complement"] = True
-        return self
-
-    def assemble_low_entropy_kmers(self):
-        self.options["assemble_low_entropy_kmers"] = True
-        self.add_moniker_key("A")
-        return self
-
-    def assemble_highest_n(self, assemble_highest_n: int):
-        self.options["assemble_highest_n"] = assemble_highest_n
-        return self
-
-    def input_driver_config(self, input_driver_config: str):
-        self.options["input_driver_config"] = input_driver_config
-        return self
-
-    def alphabet(self, alphabet: str):
-        self.options["alphabet"] = alphabet
-        return self
-
-    def input_filetype(self, input_filetype: Literal["fasta", "fastq"]):
-        self.options["input_filetype"] = input_filetype
-        return self
-
-    def kmer_listfile(self, kmer_listfile: str):
-        self.options["kmer_listfile"] = kmer_listfile
-        return self
-
-    def sequence_countfile(self, sequence_countfile: str):
-        self.options["sequence_countfile"] = sequence_countfile
-        return self
-
-    def weighting_method(self, weighting_method: Literal["tag_count"]):
-        self.options["weighting_method"] = weighting_method
-        return self
+    def run(self, file_names: list[str], output_filename: str):
+        self._options["file_names"] = file_names
+        self._options["output_filename"] = output_filename
+        validate_options(self._options)
+        print(self._options)
+        run_with_options(self._options)
 
 
 def get_options():
@@ -1151,12 +1135,6 @@ def run_with_options(options):
             options["input_driver_config"],
             options["sequence_countfile"],
         )
-
-
-def run(args: Args):
-    validate_options(args.options)
-    print(args.options)
-    run_with_options(args.options)
 
 
 def main():

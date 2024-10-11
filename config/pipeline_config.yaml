@@ -6,3 +6,15 @@ seq_root: "/home/guestsi/flexihpc/gbs_prism/fake_runs"
 # postprocessing_root: "/dataset/2024_illumina_sequencing_d/scratch/postprocessing/illumina/novaseq"
 # postprocessing_root: "/dataset/2023-legacy-sysadmin/itmp/guestsi/postprocessing"
 postprocessing_root: "/home/guestsi/flexihpc/gbs_prism/postprocessing"
+
+# TODO:
+# gbs_backup_dir: /dataset/gseq_processing/archive/backups
+gbs_backup_dir: /home/guestsi/flexihpc/gbs_prism/backups
+
+# TODO:
+# key_files_dir: /dataset/hiseq/active/key-files
+key_files_dir: /home/guestsi/flexihpc/gbs_prism/key-files
+
+# TODO
+# fastq_link_farm: /dataset/hiseq/active/fastq-link-farm
+fastq_link_farm: /home/guestsi/flexihpc/gbs_prism/fastq-link-farm

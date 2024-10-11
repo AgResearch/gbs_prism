@@ -9,14 +9,14 @@ from typing import Optional, Generator
 
 class SampleSheetError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
-        self.msg = msg
-        self.e = e
+        self._msg = msg
+        self._e = e
 
     def __str__(self) -> str:
-        if self.e is None:
-            return self.msg
+        if self._e is None:
+            return self._msg
         else:
-            return "%s: %s" % (self.msg, str(self.e))
+            return "%s: %s" % (self._msg, str(self._e))
 
 
 class SampleSheetSection:
@@ -33,7 +33,7 @@ class SampleSheetSection:
 
     def __init__(self, name: str, rows: list[list[str]] = []):
         self._name = name
-        self._rows = []
+        self._rows: list[list[str]] = []
         for row in rows:
             self.append_harmonised(row)
 
@@ -42,8 +42,19 @@ class SampleSheetSection:
         return self._name
 
     @property
-    def rows(self) -> list[str]:
+    def rows(self) -> list[list[str]]:
         return self._rows
+
+    def named_column(self, column_name: str) -> Optional[list[str]]:
+        """If the first row contains the (case-insensitive) named column, return as a list all the values from that column, otherwise None."""
+        if not self._rows:
+            return None
+        try:
+            lowercase_header = [s.lower() for s in self.rows[0]]
+            column_index = lowercase_header.index(column_name.lower())
+        except ValueError:
+            return None
+        return [row[column_index] for row in self._rows[1:]]
 
     def append_harmonised(self, row: list[str]):
         """Read a row into the sample sheet section, with on-the-fly harmonisation.
@@ -179,6 +190,10 @@ class SampleSheet:
         #     "SampleSheet sequencing type: %s, fastq files: %s"
         #     % (self._sequencing_type, ", ".join(self._fastq_files))
         # )
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def fastq_files(self):
