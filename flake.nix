@@ -11,9 +11,14 @@
       url = "github:AgResearch/bcl-convert.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    gquery = {
+      # TODO use main branch not eri branch
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, gquery, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -24,10 +29,12 @@
           flakePkgs = {
             bbmap = bbmap.packages.${system}.default;
             bcl-convert = bcl-convert.packages.${system}.default;
+            gquery = gquery.packages.${system}.gquery;
           };
 
           myPython = pkgs.python3.withPackages (python-pkgs: [
             python-pkgs.biopython
+            flakePkgs.gquery
           ]);
 
           fastq_generator =
@@ -63,6 +70,9 @@
                 fastq_generator
               ];
             };
+          };
+          packages = {
+            default = flakePkgs.gquery;
           };
         }
       );
