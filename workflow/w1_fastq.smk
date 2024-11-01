@@ -13,47 +13,49 @@ for noisy_module in ['asyncio', 'pulp.apis.core']:
     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 from config import Config
-from agr.prism.seq.sequencer_run import SequencerRun
-from agr.prism.seq.sample_sheet import SampleSheet
-from agr.prism.seq.postprocessor import PostProcessor
-# TODO: use real bclconvert not fake one (fake one is very fast)
-#from agr.prism.seq.bclconvert import BclConvert
-from agr.fake.seq.bclconvert import BclConvert
-from agr.prism.seq.fastqc import Fastqc
-from agr.prism.seq.fastq_sample import FastqSample
-from agr.prism.kmer_analysis import KmerAnalysis
-from agr.prism.dedupe import Dedupe
-from agr.prism.path import gunzipped, gzipped
-from agr.prism.kmer_prism import KmerPrism
-from agr.prism.gbs_keyfiles import GbsKeyfiles
 
-# custom rule code lives here:
-import w1_fastq
+from agr.util.path import gunzipped, gzipped
+from agr.seq.sequencer_run import SequencerRun
+from agr.seq.sample_sheet import SampleSheet
+# TODO: use real bclconvert not fake one (fake one is very fast)
+#from agr.seq.bclconvert import BclConvert
+from agr.fake.bclconvert import BclConvert
+from agr.seq.dedupe import Dedupe
+from agr.seq.fastqc import Fastqc
+from agr.seq.fastq_sample import FastqSample
+
+from agr.gbs_prism.kmer_analysis import KmerAnalysis
+from agr.gbs_prism.kmer_prism import KmerPrism
+from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
+from agr.gbs_prism.paths import Paths
 
 c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
 sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
-post_processor = PostProcessor(c.postprocessing_root, c.run)
-bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=post_processor.sample_sheet_path, out_dir=post_processor.bclconvert_dir)
-fastqc = Fastqc(out_dir=post_processor.fastqc_dir)
-kmer_run_fastq_sample = FastqSample(out_dir=post_processor.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
+paths = Paths(c.postprocessing_root, c.run)
+bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.sample_sheet_path, out_dir=paths.bclconvert_dir)
+fastqc = Fastqc(out_dir=paths.fastqc_dir)
+kmer_run_fastq_sample = FastqSample(out_dir=paths.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism = KmerPrism(
     input_filetype="fasta",
     kmer_size=6,
     # this causes it to crash: 😩
     #assemble_low_entropy_kmers=True
 )
-kmer_analysis = KmerAnalysis(out_dir=post_processor.kmer_analysis_dir, kmer_prism=kmer_prism)
-dedupe = Dedupe(out_dir=post_processor.dedupe_dir,
+kmer_analysis = KmerAnalysis(out_dir=paths.kmer_analysis_dir, kmer_prism=kmer_prism)
+dedupe = Dedupe(out_dir=paths.dedupe_dir,
                 tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
                 jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
 gbs_keyfiles = GbsKeyfiles(
     sequencer_run=sequencer_run,
     sample_sheet=sample_sheet,
-    postprocessing_root=c.postprocessing_root,
+    root=paths.root,
     out_dir=c.key_files_dir,
     fastq_link_farm=c.fastq_link_farm,
     backup_dir=c.gbs_backup_dir)
+
+# Ensure we have the directory structure we need in advance
+paths.makedirs()
 
 rule default:
     input:
@@ -68,15 +70,14 @@ rule default:
 
 rule write_sample_sheet:
     log: "log/write_sample_sheet"
-    output: post_processor.sample_sheet_path
+    output: paths.sample_sheet_path
     run:
-        post_processor.ensure_dirs_exist()
-        sample_sheet.write(post_processor.sample_sheet_path)
+        sample_sheet.write(paths.sample_sheet_path)
 
 rule bclconvert:
     input:
         sequencer_run_dir = sequencer_run.dir,
-        sample_sheet = post_processor.sample_sheet_path,
+        sample_sheet = paths.sample_sheet_path,
     output:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
         fastq_complete = bclconvert.fastq_complete_path,
@@ -91,7 +92,6 @@ rule bclconvert:
         mem_gb = lambda wildcards, attempt: 128 + ((attempt - 1) * 32),
         time = lambda wildcards, attempt: 480 + ((attempt - 1) * 120),
     run:
-        bclconvert.ensure_dirs_exist()
         bclconvert.run()
         bclconvert.check_expected_fastq_files(sample_sheet.fastq_files)
 

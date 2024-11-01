@@ -54,15 +54,6 @@ class BclConvert(object):
             ]
         )
 
-    def ensure_dirs_exist(self):
-        if not os.path.isdir(self._in_dir):
-            raise BclConvertError("no such directory %s" % self._in_dir)
-        try:
-            os.makedirs(self._out_dir, exist_ok=True)
-        except Exception as e:
-            raise BclConvertError("failed to create %s" % self._out_dir, e)
-        logger.info("created %s directory" % self._out_dir)
-
     def fastq_path(self, fastq_file: str):
         return os.path.join(self._out_dir, fastq_file)
 

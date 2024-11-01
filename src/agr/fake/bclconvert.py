@@ -4,8 +4,8 @@ import os.path
 import pathlib
 import subprocess
 
-from agr.prism.seq.sample_sheet import SampleSheet
-from agr.prism.seq.bclconvert import BclConvert as RealBclConvert
+from agr.seq.sample_sheet import SampleSheet
+from agr.seq.bclconvert import BclConvert as RealBclConvert
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

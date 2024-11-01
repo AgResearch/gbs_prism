@@ -3,8 +3,8 @@ import os.path
 from agr.gquery import GQuery, GUpdate, Predicates
 from agr.util import StdioRedirect
 
-from .seq.sequencer_run import SequencerRun
-from .seq.sample_sheet import SampleSheet
+from agr.seq.sequencer_run import SequencerRun
+from agr.seq.sample_sheet import SampleSheet
 
 
 class GbsKeyfiles:
@@ -12,14 +12,14 @@ class GbsKeyfiles:
         self,
         sequencer_run: SequencerRun,
         sample_sheet: SampleSheet,
-        postprocessing_root: str,
+        root: str,
         out_dir: str,
         fastq_link_farm: str,
         backup_dir: str,
     ):
         self._sequencer_run = sequencer_run
         self._sample_sheet = sample_sheet
-        self._postprocessing_root = postprocessing_root
+        self._root = root
         self._out_dir = out_dir
         self._fastq_link_farm = fastq_link_farm
         self._backup_dir = backup_dir
@@ -139,7 +139,7 @@ where
             task="create_gbs_keyfiles",
             explain=True,
             predicates=Predicates(
-                fastq_folder_root=self._postprocessing_root,
+                fastq_folder_root=self._root,
                 run_folder_root=self._sequencer_run.seq_root,
                 out_folder=self._out_dir,
                 fastq_link_root=self._fastq_link_farm,

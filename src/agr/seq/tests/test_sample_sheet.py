@@ -1,6 +1,6 @@
 import os.path
 
-from agr.prism.seq.sample_sheet import SampleSheet
+from agr.seq.sample_sheet import SampleSheet
 
 
 def test_sample_sheet():

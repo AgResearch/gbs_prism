@@ -9,7 +9,7 @@ from random import random
 from functools import reduce
 from typing import Literal, Optional, cast
 
-from agr.prism.data_prism import (
+from .data_prism import (
     Prism,
     build,
     bin_discrete_value,
@@ -19,9 +19,9 @@ from agr.prism.data_prism import (
 )
 
 
-class KmerPrismException(Exception):
+class KmerPrismError(Exception):
     def __init__(self, args=None):
-        super(KmerPrismException, self).__init__(args)
+        super(KmerPrismError, self).__init__(args)
 
 
 # ********************************************************************
@@ -155,7 +155,7 @@ def tag_count_from_tag_count_file(datafile, *args):
     input_driver_config = args[0]
 
     if input_driver_config is None:
-        raise KmerPrismException(
+        raise KmerPrismError(
             """
 must supply input driver config for .cnt files. This consists of the name of a
 script which lists the contents of the tile in text. Example code using tassel3 and bash shell:
@@ -209,7 +209,7 @@ cat <$f1
                     else:
                         break
             else:
-                raise KmerPrismException(
+                raise KmerPrismError(
                     "Error encountered running %s - return code was %s, stderr:%s stdout:%s"
                     % (" ".join(cat_tag_count_command), proc.returncode, stderr, stdout)
                 )
@@ -249,7 +249,7 @@ cat <$f1
             #    print "DEBUG %s"%str(record)
             #    sys.exit(1)
         else:
-            raise KmerPrismException(
+            raise KmerPrismError(
                 "Error encountered running %s" % " ".join(cat_tag_count_command)
             )
 
@@ -484,7 +484,7 @@ def assemble_kmer_spectrum(
 
     pattern_window_length = max(len(kmer) for kmer in kmer_list)
     if pattern_window_length != min(len(kmer) for kmer in kmer_list):
-        raise KmerPrismException(
+        raise KmerPrismError(
             "error -  all kmers in supporting list mustbe the same length"
         )
 
@@ -959,7 +959,7 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
 # https://peps.python.org/pep-0389/#discussion-sys-stderr-and-sys-exit
 class ArgumentParser(argparse.ArgumentParser):
     def error(self, message):
-        raise KmerPrismException(message)
+        raise KmerPrismError(message)
 
 
 class KmerPrism:
@@ -989,7 +989,7 @@ class KmerPrism:
         try:
             self._options = vars(self._parser.parse_args([]))
         except argparse.ArgumentError as e:
-            raise KmerPrismException(str(e))
+            raise KmerPrismError(str(e))
         self._supported_moniker_keys = ["k", "A"]
         self._moniker_components = {}
 
@@ -1058,7 +1058,7 @@ def get_options():
     options = vars(parser.parse_args())
     try:
         validate_options(options)
-    except KmerPrismException as e:
+    except KmerPrismError as e:
         parser.error(str(e))
     return options
 
@@ -1069,29 +1069,29 @@ def validate_options(options):
     # checks
     if options["summary_type"] != "assembly":
         if options["num_processes"] < 1 or options["num_processes"] > PROC_POOL_SIZE:
-            raise KmerPrismException(
+            raise KmerPrismError(
                 "num_processes must be between 1 and %d" % PROC_POOL_SIZE
             )
 
         # should specify either a kmer_size, or a list of patterns (but not both)
         if options["kmer_size"] is None and options["kmer_regexps"] is None:
-            raise KmerPrismException(
+            raise KmerPrismError(
                 "should specify either kmer_size or a list of patterns"
             )
         elif options["kmer_size"] is not None and options["kmer_regexps"]:
-            raise KmerPrismException(
+            raise KmerPrismError(
                 "should specify either kmer_size or a list of patterns but not both"
             )
 
         if not options["file_names"]:
-            raise KmerPrismException("no input file_name")
+            raise KmerPrismError("no input file_name")
 
         # either input file or distribution file should exist
         for file_name in options["file_names"]:
             if not os.path.isfile(file_name) and not os.path.exists(
                 get_save_filename(file_name, options["builddir"])
             ):
-                raise KmerPrismException(
+                raise KmerPrismError(
                     "could not find either %s or %s"
                     % (file_name, get_save_filename(file_name, options["builddir"]))
                 )
@@ -1099,7 +1099,7 @@ def validate_options(options):
 
         # output file should not already exist
         if os.path.exists(options["output_filename"]):
-            raise KmerPrismException(
+            raise KmerPrismError(
                 "error output file %(output_filename)s already exists" % options
             )
 

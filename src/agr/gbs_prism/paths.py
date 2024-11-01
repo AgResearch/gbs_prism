@@ -5,7 +5,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-class PostProcessorError(Exception):
+class PathsError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
         self._msg = msg
         self._e = e
@@ -14,10 +14,22 @@ class PostProcessorError(Exception):
         return "%s: %s" % (self._msg, str(self._e))
 
 
-class PostProcessor(object):
-    def __init__(self, postprocessing_root: str, run: str):
-        self._postprocessing_root = postprocessing_root
-        self._dir = os.path.join(postprocessing_root, run)
+def _makedir(path: str):
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception as e:
+        raise PathsError("failed to create %s" % path, e)
+    logger.info("created %s directory" % path)
+
+
+class Paths(object):
+    def __init__(self, root: str, run: str):
+        self._root = root
+        self._dir = os.path.join(root, run)
+
+    @property
+    def root(self) -> str:
+        return self._root
 
     @property
     def sample_sheet_path(self) -> str:
@@ -51,11 +63,13 @@ class PostProcessor(object):
     def dedupe_dir(self) -> str:
         return os.path.join(self.sample_sheet_dir, "dedupe")
 
-    def ensure_dirs_exist(self):
-        if not os.path.isdir(self._postprocessing_root):
-            raise PostProcessorError("no such directory %s" % self._postprocessing_root)
-        try:
-            os.makedirs(self.sample_sheet_dir, exist_ok=True)
-        except Exception as e:
-            raise PostProcessorError("failed to create %s" % self.sample_sheet_dir, e)
-        logger.info("created %s directory" % self.sample_sheet_dir)
+    def makedirs(self):
+        if not os.path.isdir(self._root):
+            raise PathsError("no such directory %s" % self._root)
+        _makedir(self.sample_sheet_dir)
+        _makedir(self.bclconvert_dir)
+        _makedir(self.fastqc_dir)
+        _makedir(self.kmer_run_dir)
+        _makedir(self.kmer_fastq_sample_dir)
+        _makedir(self.kmer_analysis_dir)
+        _makedir(self.dedupe_dir)

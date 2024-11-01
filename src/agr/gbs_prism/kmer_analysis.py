@@ -1,23 +1,10 @@
 import logging
 import os.path
-from typing import Optional
 
-from agr.prism.kmer_prism import KmerPrism
 from agr.util import StdioRedirect
+from .kmer_prism import KmerPrism
 
 logger = logging.getLogger(__name__)
-
-
-class KmerAnalysisError(Exception):
-    def __init__(self, msg: str, e: Optional[Exception] = None):
-        self._msg = msg
-        self._e = e
-
-    def __str__(self) -> str:
-        if self._e is None:
-            return self._msg
-        else:
-            return "%s: %s" % (self._msg, str(self._e))
 
 
 class KmerAnalysis(object):
@@ -33,13 +20,6 @@ class KmerAnalysis(object):
 
     def log_path(self, fastq_file: str) -> str:
         return "%s.log" % self._monikered_out_basepath(fastq_file)
-
-    def ensure_dirs_exist(self):
-        try:
-            os.makedirs(self._out_dir, exist_ok=True)
-        except Exception as e:
-            raise KmerAnalysisError("failed to create %s" % self._out_dir, e)
-        logger.info("created %s directory" % self._out_dir)
 
     def output(self, fastq_file: str) -> str:
         return "%s.1" % self._monikered_out_basepath(fastq_file)

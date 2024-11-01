@@ -24,7 +24,7 @@ class SequencerRun(object):
         if not os.path.isdir(self._dir):
             raise SequencerRunError("no such directory %s" % self._dir)
 
-    def ensure_dirs_exist(self):
+    def validate(self):
         # validate it's a run directory
         run_info_path = os.path.join(self._dir, "RunInfo.xml")
         if not os.path.exists(run_info_path):
@@ -49,7 +49,7 @@ class SequencerRun(object):
         poll_interval: timedelta = timedelta(minutes=5),
         overall_timeout: Optional[timedelta] = None,
     ):
-        self.ensure_dirs_exist()
+        self.validate()
         rta_complete_path = os.path.join(self._dir, "RTAComplete.txt")
         deadline = (
             datetime.now() + overall_timeout if overall_timeout is not None else None

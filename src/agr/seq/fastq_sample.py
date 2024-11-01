@@ -1,21 +1,8 @@
 import logging
 import os.path
 import subprocess
-from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-
-class FastqSampleError(Exception):
-    def __init__(self, msg: str, e: Optional[Exception] = None):
-        self._msg = msg
-        self._e = e
-
-    def __str__(self) -> str:
-        if self._e is None:
-            return self._msg
-        else:
-            return "%s: %s" % (self._msg, str(self._e))
 
 
 class FastqSample(object):
@@ -27,13 +14,6 @@ class FastqSample(object):
     @property
     def log_path(self) -> str:
         return os.path.join(self._out_dir, "fastq_sample.log")
-
-    def ensure_dirs_exist(self):
-        try:
-            os.makedirs(self._out_dir, exist_ok=True)
-        except Exception as e:
-            raise FastqSampleError("failed to create %s" % self._out_dir, e)
-        logger.info("created %s directory" % self._out_dir)
 
     def output(self, fastq_file: str) -> str:
         sample_rate_moniker = ("%f" % self._sample_rate).strip("0")

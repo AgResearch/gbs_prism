@@ -31,13 +31,6 @@ class Dedupe(object):
         self._jvm_args = jvm_args
         self._clumpify_args = clumpify_args
 
-    def ensure_dirs_exist(self):
-        try:
-            os.makedirs(self._out_dir, exist_ok=True)
-        except Exception as e:
-            raise DedupeError("failed to create %s" % self._out_dir, e)
-        logger.info("created %s directory" % self._out_dir)
-
     def output(self, fastq_file: str) -> str:
         return os.path.join(self._out_dir, os.path.basename(fastq_file))
 

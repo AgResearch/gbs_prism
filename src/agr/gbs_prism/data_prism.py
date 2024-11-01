@@ -27,9 +27,9 @@ def default_spectrum_value_provider(interval, *_):
     # (because some provider functions provide tuples of many tuples)
 
 
-class DataPrismException(Exception):
+class DataPrismError(Exception):
     def __init__(self, args=None):
-        super(DataPrismException, self).__init__(args)
+        super(DataPrismError, self).__init__(args)
 
 
 class Prism(object):
@@ -158,7 +158,7 @@ class Prism(object):
 
     def check_settings(self):
         if len(self.input_filenames) > 0 and self.file_to_stream_func is None:
-            raise DataPrismException(
+            raise DataPrismError(
                 """
             Error - you have specified one or more input files, so you also need to set a file_to_stream_func - e.g.
             
@@ -172,7 +172,7 @@ class Prism(object):
             len(self.interval_locator_funcs) != len(self.interval_locator_parameters)
             and len(self.interval_locator_parameters) > 0
         ):
-            raise DataPrismException(
+            raise DataPrismError(
                 "Error - there are %d interval locator functions specified, but %d dimensions"
                 % (
                     len(self.interval_locator_funcs),
@@ -181,7 +181,7 @@ class Prism(object):
             )
         if len(self.assignments_files) > 0:
             if len(self.assignments_files) != len(self.interval_locator_funcs):
-                raise DataPrismException(
+                raise DataPrismError(
                     "Error - there are %d interval assignments files specified, but %d dimensions"
                     % (len(self.assignments_files), len(self.interval_locator_funcs))
                 )
@@ -243,7 +243,7 @@ class Prism(object):
                     )
 
                 if len(spectrum_value_tuple) != 1 + len(self.interval_locator_funcs):
-                    raise DataPrismException(
+                    raise DataPrismError(
                         "Error - I received a spectrum_value_tuple %s but there are %d interval locators for locating the value"
                         % (str(spectrum_value_tuple), len(self.interval_locator_funcs))
                     )
@@ -255,7 +255,7 @@ class Prism(object):
                         % (spectrum_interval, spectrum_value)
                     )
                 if type(spectrum_interval) != tuple:
-                    raise DataPrismException(
+                    raise DataPrismError(
                         "Error - I got %s from the spectrum_value provider: interval should be a tuple , instead it is %s (%s)"
                         % (
                             str(spectrum_value),
@@ -436,9 +436,7 @@ class Prism(object):
         elif projection_type == "information":
             projections = pool.map(p_get_information_projection, args)
         else:
-            raise DataPrismException(
-                "projection type %s not supported" % projection_type
-            )
+            raise DataPrismError("projection type %s not supported" % projection_type)
 
         return projections
 
@@ -893,7 +891,7 @@ def p_load(filename):
     preader.close()
 
     if not isinstance(pinstance, Prism):
-        raise DataPrismException("%s is not a spectrum object" % filename)
+        raise DataPrismError("%s is not a spectrum object" % filename)
     return pinstance
 
 
@@ -1134,6 +1132,4 @@ def build(spectrum_instance, use="multithreads", proc_pool_size=PROC_POOL_SIZE):
         return spectrum_instance.get_spectrum()
 
     else:
-        raise DataPrismException(
-            "error - unknown resource specified for build : %s" % use
-        )
+        raise DataPrismError("error - unknown resource specified for build : %s" % use)
