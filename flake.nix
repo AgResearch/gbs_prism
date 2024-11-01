@@ -69,6 +69,7 @@
                 fastqc
                 seqtk
                 gzip
+                yq-go
                 devPython
 
                 # for fake bclconvert
