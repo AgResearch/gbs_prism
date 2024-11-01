@@ -24,7 +24,7 @@ class GbsKeyfiles:
         self._fastq_link_farm = fastq_link_farm
         self._backup_dir = backup_dir
 
-        self._sample_ids = self._get_sample_ids()
+        self._libraries = self._get_libraries_from_sample_sheet()
 
         self._keyfile_dump_path = os.path.join(self._backup_dir, "keyfile_dump.dat")
         self._qcsampleid_history_path = os.path.join(
@@ -40,22 +40,22 @@ class GbsKeyfiles:
             self._backup_dir, "runs_libraries_dump.dat"
         )
 
-    def _get_sample_ids(self):
+    def _get_libraries_from_sample_sheet(self):
         if (
             generate_keyfile_section := self._sample_sheet.get_section(
                 "GenerateKeyfile"
             )
         ) is not None and (
-            sample_ids := generate_keyfile_section.named_column("Sample_ID")
+            libraries := generate_keyfile_section.named_column("Sample_ID")
         ) is not None:
-            return list(set(sample_ids))
+            return list(set(libraries))
         else:
             return []
 
     def output(self):
         return [
             os.path.join(self._out_dir, "%s.generated.txt" % sample_id)
-            for sample_id in self._sample_ids
+            for sample_id in self._libraries
         ]
 
     def dump_gbs_tables(self):
