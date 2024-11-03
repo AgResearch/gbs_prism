@@ -4,6 +4,7 @@ import csv
 import datetime
 import re
 from enum import Enum
+from functools import cached_property
 from typing import Optional, Generator
 
 
@@ -180,12 +181,7 @@ class SampleSheet:
         self._path = path
         self._impute_lanes = impute_lanes
         self._sections = self._read(path)
-        self._section_indices = {
-            s.name.casefold(): i for i, s in enumerate(self._sections)
-        }
         self._validate(path)
-        self._infer_sequencing_type(path)
-        self._fastq_files = self._get_fastq_filenames()
         # print(
         #     "SampleSheet sequencing type: %s, fastq files: %s"
         #     % (self._sequencing_type, ", ".join(self._fastq_files))
@@ -195,9 +191,77 @@ class SampleSheet:
     def path(self):
         return self._path
 
-    @property
-    def fastq_files(self):
-        return self._fastq_files
+    @cached_property
+    def fastq_files(self) -> list[str]:
+        """
+        Construct expected fastq.gz filenames from sample sheet.
+        """
+        predicted_files = set()
+        reads = [1, 2] if self.sequencing_type == SequencingType.PAIRED_END else [1]
+        sample_id_number = {}
+
+        if (data := self.get_section("Data")) is None:
+            self._raise_error("missing Data section")
+        else:
+            for lane, sample_id in data.get_fields(["Lane", "Sample_ID"]):
+                if lane is None:
+                    lane = 1  # default lane to 1
+                isample = sample_id_number.get(sample_id, None)
+                if isample is None:
+                    isample = len(sample_id_number) + 1
+                    sample_id_number[sample_id] = isample
+
+                    # use the lane as in the sample sheet, unless impute-lanes has been passed in, in which case, use those
+                    lanes = [lane] if self._impute_lanes is None else self._impute_lanes
+                    for lane in lanes:
+                        for i_read in reads:
+                            predicted_files.add(
+                                "%s_S%d_L%03d_R%d_001.fastq.gz"
+                                % (
+                                    sample_id,
+                                    isample,
+                                    lane,
+                                    i_read,
+                                )
+                            )
+
+        return list(predicted_files)
+
+    @cached_property
+    def gbs_libraries(self) -> list[str]:
+        """Return GBS libraries, that is `Sample_ID`s from the `GenerateKeyfile` section, if any."""
+        if (
+            generate_keyfile_section := self.get_section("GenerateKeyfile")
+        ) is not None and (
+            libraries := generate_keyfile_section.named_column("Sample_ID")
+        ) is not None:
+            return list(set(libraries))
+        else:
+            return []
+
+    @cached_property
+    def sequencing_type(self):
+        """Infer the sequencing type from the Reads section.
+
+        TODO confirm this logic is correct
+        """
+        if (reads := self.get_section("Reads")) is None:
+            raise SampleSheetError(
+                "missing Reads section from sample sheet at %s" % self._path
+            )
+        reads_values = [row[0] for row in reads.rows if row and row[0]]
+        n_reads_values = len(reads_values)
+        return (
+            SequencingType.SINGLE_END
+            if n_reads_values == 1
+            else (
+                SequencingType.PAIRED_END
+                if n_reads_values == 2
+                else self._raise_error(
+                    "unexpected number of read values: %d" % n_reads_values
+                )
+            )
+        )
 
     def _read(self, path: str):
         """Read a sample sheet into its sections"""
@@ -240,65 +304,9 @@ class SampleSheet:
                 % path
             )
 
-    def _infer_sequencing_type(self, path: str):
-        """Infer the sequencing type from the Reads section.
-
-        TODO confirm this logic is correct
-        """
-        if (reads := self.get_section("Reads")) is None:
-            raise SampleSheetError(
-                "missing Reads section from sample sheet at %s" % path
-            )
-        reads_values = [row[0] for row in reads.rows if row and row[0]]
-        n_reads_values = len(reads_values)
-        self._sequencing_type = (
-            SequencingType.SINGLE_END
-            if n_reads_values == 1
-            else (
-                SequencingType.PAIRED_END
-                if n_reads_values == 2
-                else self._raise_error(
-                    "unexpected number of read values: %d" % n_reads_values
-                )
-            )
-        )
-
-    def _get_fastq_filenames(
-        self,
-    ) -> set[str]:
-        """
-        Construct expected fastq.gz filenames from sample sheet.
-        """
-        predicted_files = set()
-        reads = [1, 2] if self._sequencing_type == SequencingType.PAIRED_END else [1]
-        sample_id_number = {}
-
-        if (data := self.get_section("Data")) is None:
-            self._raise_error("missing Data section")
-        else:
-            for lane, sample_id in data.get_fields(["Lane", "Sample_ID"]):
-                if lane is None:
-                    lane = 1  # default lane to 1
-                isample = sample_id_number.get(sample_id, None)
-                if isample is None:
-                    isample = len(sample_id_number) + 1
-                    sample_id_number[sample_id] = isample
-
-                    # use the lane as in the sample sheet, unless impute-lanes has been passed in, in which case, use those
-                    lanes = [lane] if self._impute_lanes is None else self._impute_lanes
-                    for lane in lanes:
-                        for i_read in reads:
-                            predicted_files.add(
-                                "%s_S%d_L%03d_R%d_001.fastq.gz"
-                                % (
-                                    sample_id,
-                                    isample,
-                                    lane,
-                                    i_read,
-                                )
-                            )
-
-        return predicted_files
+    @cached_property
+    def _section_indices(self):
+        return {s.name.casefold(): i for i, s in enumerate(self._sections)}
 
     def get_section(self, name: str) -> Optional[SampleSheetSection]:
         if (i := self._section_indices[name.casefold()]) is not None:
