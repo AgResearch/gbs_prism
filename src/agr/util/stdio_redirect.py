@@ -107,6 +107,21 @@ class StdioRedirect:
             if self._stderr_close_on_exit:
                 self._stderr.close()
 
+    @property
+    def stdin(self):
+        """If the stdin argument was PIPE, this attribute is a writeable text stream object as returned by open(). If the stdin argument was not PIPE, this attribute is None."""
+        return self._stdin_writer
+
+    @property
+    def stdout(self):
+        """If the stdout argument was PIPE, this attribute is a readable text stream object as returned by open(). If the stdout argument was not PIPE, this attribute is None."""
+        return self._stdout_reader
+
+    @property
+    def stderr(self):
+        """If the stderr argument was PIPE, this attribute is a readable text stream object as returned by open(). If the stderr argument was not PIPE, this attribute is None."""
+        return self._stderr_reader
+
     def communicate(self):
         """A simplified version of `communicate` which doesn't support passing in `stdin`.
 
