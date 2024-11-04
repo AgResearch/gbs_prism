@@ -192,7 +192,7 @@ class SampleSheet:
         return self._path
 
     @cached_property
-    def fastq_files(self) -> list[str]:
+    def fastq_files(self) -> set[str]:
         """
         Construct expected fastq.gz filenames from sample sheet.
         """
@@ -225,7 +225,7 @@ class SampleSheet:
                                 )
                             )
 
-        return list(predicted_files)
+        return predicted_files
 
     @cached_property
     def gbs_libraries(self) -> list[str]:

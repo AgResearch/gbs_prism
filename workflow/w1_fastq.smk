@@ -33,29 +33,29 @@ c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
 sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 paths = Paths(c.postprocessing_root, c.run)
-bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.sample_sheet_path, out_dir=paths.bclconvert_dir)
-fastqc = Fastqc(out_dir=paths.fastqc_dir)
-kmer_run_fastq_sample = FastqSample(out_dir=paths.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
+bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.seq.sample_sheet_path, out_dir=paths.seq.bclconvert_dir)
+fastqc = Fastqc(out_dir=paths.seq.fastqc_dir)
+kmer_run_fastq_sample = FastqSample(out_dir=paths.seq.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism = KmerPrism(
     input_filetype="fasta",
     kmer_size=6,
     # this causes it to crash: 😩
     #assemble_low_entropy_kmers=True
 )
-kmer_analysis = KmerAnalysis(out_dir=paths.kmer_analysis_dir, kmer_prism=kmer_prism)
-dedupe = Dedupe(out_dir=paths.dedupe_dir,
+kmer_analysis = KmerAnalysis(out_dir=paths.seq.kmer_analysis_dir, kmer_prism=kmer_prism)
+dedupe = Dedupe(out_dir=paths.seq.dedupe_dir,
                 tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
                 jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
 gbs_keyfiles = GbsKeyfiles(
     sequencer_run=sequencer_run,
     sample_sheet=sample_sheet,
-    root=paths.root,
+    root=paths.illumina_platform_root,
     out_dir=c.key_files_dir,
     fastq_link_farm=c.fastq_link_farm,
     backup_dir=c.gbs_backup_dir)
 
 # Ensure we have the directory structure we need in advance
-paths.makedirs()
+paths.make_run_dirs()
 
 rule default:
     input:
@@ -70,14 +70,14 @@ rule default:
 
 rule write_sample_sheet:
     log: "log/write_sample_sheet"
-    output: paths.sample_sheet_path
+    output: paths.seq.sample_sheet_path
     run:
-        sample_sheet.write(paths.sample_sheet_path)
+        sample_sheet.write(paths.seq.sample_sheet_path)
 
 rule bclconvert:
     input:
         sequencer_run_dir = sequencer_run.dir,
-        sample_sheet = paths.sample_sheet_path,
+        sample_sheet = paths.seq.sample_sheet_path,
     output:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
         fastq_complete = bclconvert.fastq_complete_path,
