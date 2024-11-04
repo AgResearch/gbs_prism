@@ -11,7 +11,7 @@ def eprint(*args, **kwargs):
 
 def test_stdio_redirect_file_stdout():
     testfile = tempfile.TemporaryFile(mode="w+")
-    with StdioRedirect(stdout=testfile, text=True):
+    with StdioRedirect(stdout=testfile):
         print("gibber jabber")
     _ = testfile.seek(0)
     actual = testfile.read()
@@ -20,7 +20,7 @@ def test_stdio_redirect_file_stdout():
 
 def test_stdio_redirect_file_stderr():
     testfile = tempfile.TemporaryFile(mode="w+")
-    with StdioRedirect(stderr=testfile, text=True):
+    with StdioRedirect(stderr=testfile):
         eprint("gibber jabber")
     _ = testfile.seek(0)
     actual = testfile.read()
@@ -29,7 +29,7 @@ def test_stdio_redirect_file_stderr():
 
 def test_stdio_redirect_devnull():
     """This is a bit awkward to test, suggest commenting out the DEVNULL and running `pytest -s`"""
-    with StdioRedirect(stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL, text=True):
+    with StdioRedirect(stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL):
         print("gibber jabber on stdout")
         eprint("more gibber jabber on stderr")
         stdin_text = sys.stdin.read()
@@ -37,17 +37,17 @@ def test_stdio_redirect_devnull():
 
 
 def test_stdio_redirect_pipe():
-    with StdioRedirect(stdout=PIPE, text=True) as red:
+    with StdioRedirect(stdout=PIPE) as red:
         print("the good oil flowin' down that ol' pipe")
         (stdout, _) = red.communicate()
         assert stdout == "the good oil flowin' down that ol' pipe\n"
 
-    with StdioRedirect(stderr=PIPE, text=True) as red:
+    with StdioRedirect(stderr=PIPE) as red:
         eprint("oops")
         (_, stderr) = red.communicate()
         assert stderr == "oops\n"
 
-    with StdioRedirect(stdout=PIPE, stderr=PIPE, text=True) as red:
+    with StdioRedirect(stdout=PIPE, stderr=PIPE) as red:
         print("good boy")
         eprint("bad boy")
         (stdout, stderr) = red.communicate()

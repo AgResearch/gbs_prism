@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from io import BufferedIOBase, TextIOBase
+from io import TextIOBase
 
 
 class StdioRedirect:
@@ -17,6 +17,8 @@ class StdioRedirect:
 
     Raw file descriptors are not currently supported.
 
+    Also, only text mode is supported.  Python is rather uncomfortable with binary stdout, and YAGNI.
+
     Example:
 
     with StdioRedirect(stdout=f):
@@ -24,24 +26,20 @@ class StdioRedirect:
     print("hello world to console, probably")
     """
 
-    def __init__(self, stdin=None, stdout=None, stderr=None, text=None):
+    def __init__(self, stdin=None, stdout=None, stderr=None):
         self._stdin_close_on_exit = False
         self._stdin_writer = None
         if stdin is None:
             self._stdin = stdin
         elif isinstance(stdin, TextIOBase):
-            assert text, "TextIOBase for stdin requires text"
-            self._stdin = stdin
-        elif isinstance(stdin, BufferedIOBase):
-            assert not text, "BufferedIOBase for stdin requires not text"
             self._stdin = stdin
         elif stdin == subprocess.DEVNULL:
-            self._stdin = open(os.devnull, "r" if text else "rb")
+            self._stdin = open(os.devnull, "r")
             self._stdin_close_on_exit = True
         elif stdin == subprocess.PIPE:
             (r, w) = os.pipe()
-            self._stdin = os.fdopen(r, "r" if text else "rb")
-            self._stdin_writer = os.fdopen(w, "w" if text else "wb")
+            self._stdin = os.fdopen(r, "r")
+            self._stdin_writer = os.fdopen(w, "w")
             self._stdin_close_on_exit = True
         else:
             assert False, "unsupported value for stdin, %s" % repr(stdin)
@@ -52,18 +50,14 @@ class StdioRedirect:
         if stdout is None:
             self._stdout = stdout
         elif isinstance(stdout, TextIOBase):
-            assert text, "TextIOBase for stdout requires text"
-            self._stdout = stdout
-        elif isinstance(stdout, BufferedIOBase):
-            assert not text, "BufferedIOBase for stdout requires not text"
             self._stdout = stdout
         elif stdout == subprocess.DEVNULL:
-            self._stdout = open(os.devnull, "w" if text else "wb")
+            self._stdout = open(os.devnull, "w")
             self._stdout_close_on_exit = True
         elif stdout == subprocess.PIPE:
             (r, w) = os.pipe()
-            self._stdout = os.fdopen(w, "w" if text else "wb")
-            self._stdout_reader = os.fdopen(r, "r" if text else "rb")
+            self._stdout = os.fdopen(w, "w")
+            self._stdout_reader = os.fdopen(r, "r")
             self._stdout_close_on_exit = True
         else:
             assert False, "unsupported value for stdout, %s" % repr(stdout)
@@ -74,24 +68,18 @@ class StdioRedirect:
         if stderr is None:
             self._stderr = stderr
         elif isinstance(stderr, TextIOBase):
-            assert text, "TextIOBase for stderr requires text"
-            self._stderr = stderr
-        elif isinstance(stderr, BufferedIOBase):
-            assert not text, "BufferedIOBase for stderr requires not text"
             self._stderr = stderr
         elif stderr == subprocess.DEVNULL:
-            self._stderr = open(os.devnull, "w" if text else "wb")
+            self._stderr = open(os.devnull, "w")
             self._stderr_close_on_exit = True
         elif stderr == subprocess.PIPE:
             (r, w) = os.pipe()
-            self._stderr = os.fdopen(w, "w" if text else "wb")
-            self._stderr_reader = os.fdopen(r, "r" if text else "rb")
+            self._stderr = os.fdopen(w, "w")
+            self._stderr_reader = os.fdopen(r, "r")
             self._stderr_close_on_exit = True
         else:
             assert False, "unsupported value for stderr, %s" % repr(stderr)
         self._saved_stderr = None
-
-        self._text = text
 
     def __enter__(self):
         if self._stdin is not None:
