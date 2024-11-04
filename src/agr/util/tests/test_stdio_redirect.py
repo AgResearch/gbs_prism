@@ -44,29 +44,12 @@ def test_stdio_redirect_pipe():
         stdout = red.stdout.read()
         assert stdout == "the good oil flowin' down that ol' pipe\n"
 
-    with StdioRedirect(stdout=PIPE) as red:
-        print("the good oil flowin' down that ol' pipe")
-        (stdout, _) = red.communicate()
-        assert stdout == "the good oil flowin' down that ol' pipe\n"
-
     with StdioRedirect(stderr=PIPE) as red:
         eprint("oops")
         assert red.stderr is not None  # because PIPE
         _ = sys.stderr.close()
         stderr = red.stderr.read()
         assert stderr == "oops\n"
-
-    with StdioRedirect(stderr=PIPE) as red:
-        eprint("oops")
-        (_, stderr) = red.communicate()
-        assert stderr == "oops\n"
-
-    with StdioRedirect(stdout=PIPE, stderr=PIPE) as red:
-        print("good boy")
-        eprint("bad boy")
-        (stdout, stderr) = red.communicate()
-        assert stdout == "good boy\n"
-        assert stderr == "bad boy\n"
 
     with StdioRedirect(stdin=PIPE, stdout=PIPE) as red:
         print("feeding the snake", file=red.stdin)

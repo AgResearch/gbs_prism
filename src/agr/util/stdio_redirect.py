@@ -121,30 +121,3 @@ class StdioRedirect:
     def stderr(self):
         """If the stderr argument was PIPE, this attribute is a readable text stream object as returned by open(). If the stderr argument was not PIPE, this attribute is None."""
         return self._stderr_reader
-
-    def communicate(self):
-        """A simplified version of `communicate` which doesn't support passing in `stdin`.
-
-        The reason for the simplification is that passing `stdin` significantly complicates the
-        implementation, and YAGNI.
-
-        See https://github.com/python/cpython/blob/9441993f272f42e4a97d90616ec629a11c06aa3a/Lib/subprocess.py#L2068
-        """
-
-        if self._stdout_reader is not None:
-            if self._stdout_close_on_exit and self._stdout is not None:
-                self._stdout.close()
-                self._stdout_close_on_exit = False
-            stdout = self._stdout_reader.read()
-        else:
-            stdout = None
-
-        if self._stderr_reader is not None:
-            if self._stderr_close_on_exit and self._stderr is not None:
-                self._stderr.close()
-                self._stderr_close_on_exit = False
-            stderr = self._stderr_reader.read()
-        else:
-            stderr = None
-
-        return (stdout, stderr)
