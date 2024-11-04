@@ -121,7 +121,7 @@ where
 
         self.dump_gbs_tables()
 
-        create_gbs_keyfiles = GUpdate(
+        GUpdate(
             task="create_gbs_keyfiles",
             explain=True,
             predicates=Predicates(
@@ -133,6 +133,4 @@ where
                 import_=True,
             ),
             items=["all"],
-        )
-        print(create_gbs_keyfiles)
-        create_gbs_keyfiles.run()
+        ).run()

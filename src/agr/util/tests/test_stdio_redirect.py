@@ -40,14 +40,12 @@ def test_stdio_redirect_pipe():
     with StdioRedirect(stdout=PIPE) as red:
         print("the good oil flowin' down that ol' pipe")
         assert red.stdout is not None  # because PIPE
-        _ = sys.stdout.close()
         stdout = red.stdout.read()
         assert stdout == "the good oil flowin' down that ol' pipe\n"
 
     with StdioRedirect(stderr=PIPE) as red:
         eprint("oops")
         assert red.stderr is not None  # because PIPE
-        _ = sys.stderr.close()
         stderr = red.stderr.read()
         assert stderr == "oops\n"
 
@@ -57,7 +55,6 @@ def test_stdio_redirect_pipe():
         _ = red.stdin.close()
         regurgitation = sys.stdin.read()
         print(regurgitation)
-        _ = sys.stdout.close()
         assert red.stdout is not None  # because PIPE
         excretion = red.stdout.read()
         # we accumulated a newline with each print, so:

@@ -2,6 +2,8 @@ import logging
 import os.path
 from typing import Literal, Optional
 
+from .stage1 import Cohort
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,10 +69,10 @@ class GbsPaths(object):
     def __init__(self, run_root: str):
         self._run_root = run_root
 
-    def bwa_mapping_dir(self, cohort: str) -> str:
-        return os.path.join(self._run_root, "bwa_mapping", cohort)
+    def bwa_mapping_dir(self, cohort: Cohort) -> str:
+        return os.path.join(self._run_root, "bwa_mapping", str(cohort))
 
-    def _make_cohort_dirs(self, cohort: str):
+    def _make_cohort_dirs(self, cohort: Cohort):
         _makedir(self.bwa_mapping_dir(cohort))
 
 
@@ -108,7 +110,7 @@ class Paths(object):
             raise PathsError("no such directory %s" % self._illumina_platform_root)
         self._seq_paths._make_run_dirs()
 
-    def make_cohort_dirs(self, cohort):
+    def make_cohort_dirs(self, cohort: Cohort):
         if not os.path.isdir(self._gbs_root):
             raise PathsError("no such directory %s" % self._gbs_root)
         self._gbs_paths._make_cohort_dirs(cohort)

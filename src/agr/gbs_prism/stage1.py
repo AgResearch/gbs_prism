@@ -1,8 +1,41 @@
 from functools import cached_property, lru_cache
 from subprocess import PIPE
+from dataclasses import dataclass
+from typing import Self
 
 from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
+
+
+def _flowcell_id(run: str) -> str:
+    return run.split("_")[3][1:]
+
+
+@dataclass
+class Cohort:
+    libname: str
+    qc_cohort: str
+    gbs_cohort: str
+    enzyme: str
+
+    def __str__(self):
+        return "%s.%s.%s.%s" % (
+            self.libname,
+            self.qc_cohort,
+            self.gbs_cohort,
+            self.enzyme,
+        )
+
+    @classmethod
+    def parse(cls, cohort_str: str) -> Self:
+        fields = cohort_str.split(".")
+        assert len(fields) == 4, (
+            "expected four dot-separated fields in cohort %s" % cohort_str
+        )
+        (libname, qc_cohort, gbs_cohort, enzyme) = tuple(fields)
+        return cls(
+            libname=libname, qc_cohort=qc_cohort, gbs_cohort=gbs_cohort, enzyme=enzyme
+        )
 
 
 class Stage1(object):
@@ -22,10 +55,10 @@ class Stage1(object):
             except GQueryNotFoundException:
                 return []
             assert lab_report.stdout is not None  # because PIPE
-            return lab_report.stdout.readlines()
+            return [line.strip() for line in lab_report.stdout.readlines()]
 
     @lru_cache
-    def cohorts(self, library) -> list[str]:
+    def cohorts(self, library) -> list[Cohort]:
         with StdioRedirect(stdout=PIPE) as lab_report:
             try:
                 GQuery(
@@ -39,8 +72,32 @@ class Stage1(object):
             except GQueryNotFoundException:
                 return []
             assert lab_report.stdout is not None  # because PIPE
-            return lab_report.stdout.readlines()
+            return [
+                Cohort.parse("%s.%s" % (library, cohort_substr.strip()))
+                for cohort_substr in lab_report.stdout.readlines()
+            ]
 
+    @lru_cache
+    def fastq_files(self, cohort: Cohort) -> list[str]:
+        fcid = _flowcell_id(self._run_name)
 
-def _flowcell_id(run: str) -> str:
-    return run.split("_")[3][1:]
+        with StdioRedirect(stdout=PIPE) as gbs_keyfile:
+            try:
+                GQuery(
+                    task="gbs_keyfile",
+                    badge_type="library",
+                    predicates=Predicates(
+                        flowcell=fcid,
+                        enzyme=cohort.enzyme,
+                        gbs_cohort=cohort.gbs_cohort,
+                        columns="lane",
+                        fastq_link=True,
+                        noheading=True,
+                        distinct=True,
+                    ),
+                    items=[cohort.libname],
+                ).run()
+            except GQueryNotFoundException:
+                return []
+            assert gbs_keyfile.stdout is not None  # because PIPE
+            return [line.split("\t")[1] for line in gbs_keyfile.stdout.readlines()]

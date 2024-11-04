@@ -24,6 +24,11 @@ class StdioRedirect:
     with StdioRedirect(stdout=f):
         print("hello world in file")
     print("hello world to console, probably")
+
+    Note: when using PIPE, it is important to avoid blocking reading from a pipe whose write end is open.
+    For stdout and stderr this is handled automatically, in that accessing those properties result in
+    the writer being closed.  For stdin this is not possible, as the read env is simply `sys.stdin`, so
+    the writer must be expliticly closed.  See the tests for an example.
     """
 
     def __init__(self, stdin=None, stdout=None, stderr=None):
@@ -115,9 +120,15 @@ class StdioRedirect:
     @property
     def stdout(self):
         """If the stdout argument was PIPE, this attribute is a readable text stream object as returned by open(). If the stdout argument was not PIPE, this attribute is None."""
+        # close to avoid hang on read
+        if self._stdout is not None:
+            self._stdout.close()
         return self._stdout_reader
 
     @property
     def stderr(self):
         """If the stderr argument was PIPE, this attribute is a readable text stream object as returned by open(). If the stderr argument was not PIPE, this attribute is None."""
+        # close to avoid hang on read
+        if self._stderr is not None:
+            self._stderr.close()
         return self._stderr_reader
