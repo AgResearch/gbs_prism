@@ -15,11 +15,14 @@ class FastqSample(object):
     def log_path(self) -> str:
         return os.path.join(self._out_dir, "fastq_sample.log")
 
-    def output(self, fastq_file: str) -> str:
+    def output(self, fastq_path: str) -> str:
+        # seq_prisms/sample_prism.sh link_inputs() used to expand symlinks
+        fastq_realpath = os.path.realpath(fastq_path)
         sample_rate_moniker = ("%f" % self._sample_rate).strip("0")
         return os.path.join(
             self._out_dir,
-            "%s.fastq.s%s.fastq" % (os.path.basename(fastq_file), sample_rate_moniker),
+            "%s.fastq.s%s.fastq"
+            % (os.path.basename(fastq_realpath), sample_rate_moniker),
         )
 
     def run(self, fastq_path: str):
