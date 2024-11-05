@@ -16,25 +16,33 @@ from config import Config
 
 from agr.gbs_prism.stage1 import Stage1
 from agr.gbs_prism.paths import Paths
+from agr.seq.fastq_sample import FastqSample
 
 c = Config(**config)
-stage1= Stage1(c.run)
+stage1= Stage1(c.run, c.fastq_link_farm)
 paths = Paths(c.postprocessing_root, c.run)
 
-print("libraries: %s" % ",".join(stage1.libraries))
-for library in stage1.libraries:
-    print("cohorts for library %s: %s" % (library, ",".join(stage1.libraries)))
+all_cohorts = [cohort for library in stage1.libraries for cohort in stage1.cohorts(library)]
 
-#bwa_mapping_fastq_sample = {cohort:FastqSample(out_dir=paths.gbs.bwa_mapping_dir(cohort), sample_rate=0.00005, minimum_sample_size=150000) for library in stage1.libraries for cohort in stage1.cohorts(library)}
+bwa_mapping_fastq_sample = {cohort:FastqSample(out_dir=paths.gbs.bwa_mapping_dir(cohort), sample_rate=0.00005, minimum_sample_size=150000) for cohort in all_cohorts}
 
 # Ensure we have the directory structure we need in advance
-for library in stage1.libraries:
-    for cohort in stage1.cohorts(library):
-        paths.make_cohort_dirs(cohort)
+for cohort in all_cohorts:
+    paths.make_cohort_dirs(cohort)
+
+# TODO remove
+for cohort in all_cohorts:
+    print("cohort: %s" % cohort)
+    fastq_files = stage1.fastq_files(cohort)
+    print("fastq_files for cohort %s: %s" % (cohort, ",".join(fastq_files)))
+    # for fastq_file in fastq_files:
+    #     bwa_mapping_sample = bwa_mapping_fastq_sample[cohort].output(fastq_file)
+    #     print("bwa_mapping sample for %s: %s" (fastq_file, bwa_mapping_sample))
+
+
 
 rule default:
     input:
-        []
-        # [bwa_mapping_fastq_sample[cohort].output(fastq_file) for fastq_file in stage1.fastq_files(cohort) for cohort in stage1.cohorts],
+        [bwa_mapping_fastq_sample[cohort].output(fastq_file) for cohort in all_cohorts for fastq_file in stage1.fastq_files(cohort)],
     default_target: True
 

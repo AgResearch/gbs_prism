@@ -3,7 +3,7 @@ from subprocess import PIPE
 from dataclasses import dataclass
 from typing import Self
 
-from agr.util import StdioRedirect
+from agr.util import StdioRedirect, eprint
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
 
 
@@ -11,7 +11,7 @@ def _flowcell_id(run: str) -> str:
     return run.split("_")[3][1:]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Cohort:
     libname: str
     qc_cohort: str
@@ -39,8 +39,9 @@ class Cohort:
 
 
 class Stage1(object):
-    def __init__(self, run_name: str):
+    def __init__(self, run_name: str, fastq_link_farm: str):
         self._run_name = run_name
+        self._fastq_link_farm = fastq_link_farm
 
     @cached_property
     def libraries(self) -> list[str]:
@@ -90,14 +91,16 @@ class Stage1(object):
                         flowcell=fcid,
                         enzyme=cohort.enzyme,
                         gbs_cohort=cohort.gbs_cohort,
-                        columns="lane",
-                        fastq_link=True,
+                        columns="lane,fastq_link",
                         noheading=True,
                         distinct=True,
+                        fastq_path=self._fastq_link_farm,
                     ),
                     items=[cohort.libname],
                 ).run()
             except GQueryNotFoundException:
                 return []
             assert gbs_keyfile.stdout is not None  # because PIPE
-            return [line.split("\t")[1] for line in gbs_keyfile.stdout.readlines()]
+            return [
+                line.strip().split("\t")[1] for line in gbs_keyfile.stdout.readlines()
+            ]
