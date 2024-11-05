@@ -71,6 +71,7 @@
                 gzip
                 yq-go
                 devPython
+                graphviz # for dot, for snakemake DAG visualization
 
                 # for fake bclconvert
                 fastq_generator

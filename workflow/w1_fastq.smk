@@ -132,6 +132,8 @@ rule dedupe:
         dedupe.run(input.fastq_path)
 
 rule gbs_keyfiles:
+    input:
+        [dedupe.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
     output:
         gbs_keyfiles.output()
     run:
