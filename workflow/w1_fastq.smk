@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt='%Y-%m-%d %H:%M')
                     #filename='gbs_prism.log',
                     #filemode='a')
-for noisy_module in ['asyncio', 'pulp.apis.core']:
+for noisy_module in ['asyncio', 'pulp.apis.core', 'urllib3']:
     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 from config import Config
