@@ -31,6 +31,29 @@ _ADAPTERS = [
 ]
 
 
+# TODO transition from class to plain function:
+def cutadapt(in_path: str, out_path: str):
+    err_path = "%s.report" % out_path.removesuffix(".fastq")
+    with open(out_path, "w") as out_f:
+        with open(err_path, "w") as err_f:
+            cutadapt_command = (
+                [
+                    "cutadapt",
+                ]
+                + [arg for adapter in _ADAPTERS for arg in ["-a", adapter]]
+                + [
+                    in_path,
+                ]
+            )
+            eprint(" ".join(cutadapt_command))
+            _ = subprocess.run(
+                cutadapt_command,
+                check=True,
+                stdout=out_f,
+                stderr=err_f,
+            )
+
+
 class Cutadapt(object):
     def __init__(self):
         pass

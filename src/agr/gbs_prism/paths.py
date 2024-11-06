@@ -17,11 +17,13 @@ class PathsError(Exception):
 
 
 def _makedir(path: str):
+    if not os.path.isdir(path):
+        pass
+        # logger.info("creating %s directory" % path)
     try:
         os.makedirs(path, exist_ok=True)
     except Exception as e:
         raise PathsError("failed to create %s" % path, e)
-    logger.info("created %s directory" % path)
 
 
 class SeqPaths(object):
@@ -69,11 +71,15 @@ class GbsPaths(object):
     def __init__(self, run_root: str):
         self._run_root = run_root
 
+    def fastq_link_dir(self, cohort: Cohort) -> str:
+        return os.path.join(self._run_root, str(cohort), "fastq")
+
     def bwa_mapping_dir(self, cohort: Cohort) -> str:
         return os.path.join(self._run_root, "bwa_mapping", str(cohort))
 
     def make_cohort_dirs(self, cohort: Cohort):
         _makedir(self.bwa_mapping_dir(cohort))
+        _makedir(self.fastq_link_dir(cohort))
 
 
 class Paths(object):

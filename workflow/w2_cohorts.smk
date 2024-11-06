@@ -14,40 +14,58 @@ for noisy_module in ['asyncio', 'pulp.apis.core']:
 
 from config import Config
 
-from agr.util.path import gzipped
+from agr.util.path import gzipped, trimmed
 from agr.gbs_prism.stage1 import Stage1Outputs
 from agr.gbs_prism.stage2 import Stage2Targets
 from agr.gbs_prism.paths import Paths
+from agr.seq.fastq_sample import FastqSample
+from agr.seq.cutadapt import cutadapt
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
 stage1= Stage1Outputs(c.run, c.fastq_link_farm)
 stage2 = Stage2Targets(stage1, paths.gbs)
+bwa_mapping_sample = FastqSample(
+    sample_rate=0.00005,
+    minimum_sample_size=150000,
+)
 
 # Ensure we have the directory structure we need in advance
 stage2.make_dirs()
 
 rule default:
     input:
-        [gzipped(fastq_file) for fastq_file in stage2.all_bwa_mapping_sampled],
-        stage2.all_bwa_mapping_sampled_trimmed
+        #[gzipped(fastq_file) for fastq_file in stage2.all_bwa_mapping_sampled],
+        stage2.all_bwa_mapping_sampled_trimmed(bwa_mapping_sample.moniker)
     default_target: True
 
-rule sample_for_bwa_mapping:
+# this links the fastq files for each cohort separately
+# so that subsequent dependencies can be properly captured in wildcarded paths
+rule cohort_fastq_links:
     input:
         stage1.all_fastq_links
     output:
-        stage2.all_bwa_mapping_sampled
+        stage2.all_cohort_fastq_links
     run:
-        stage2.sample_all_fastq_links_for_bwa_mapping()
-        
-rule trim_samples_for_bwa_mapping:
+        stage2.create_all_cohort_fastq_links()
+
+
+rule sample_for_bwa_mapping:
     input:
-        stage2.all_bwa_mapping_sampled
+        fastq_file="{path}/{cohort}/fastq/{basename}.fastq.gz"
     output:
-        stage2.all_bwa_mapping_sampled_trimmed
+        # the ugly name is copied from legacy gbs_prism
+        sampled_fastq_file="{path}/bwa_mapping/{cohort}/{basename}.fastq.gz.fastq.%s.fastq" % bwa_mapping_sample.moniker
     run:
-        stage2.trim_all_bwa_mapping_sampled()
+        bwa_mapping_sample.run(in_path=input.fastq_file, out_path=output.sampled_fastq_file)
+        
+rule cutadapt:
+    input:
+        fastq_file="{path}/{basename}.fastq"
+    output:
+        trimmed_fastq_file="{path}/{basename}.trimmed.fastq"
+    run:
+        cutadapt(in_path=input.fastq_file, out_path=output.trimmed_fastq_file)
 
 rule gzip:
     input:
@@ -56,3 +74,10 @@ rule gzip:
                otherwise="/N/A")
     output: "{path}.gz"
     shell: "gzip -k {input}"
+
+wildcard_constraints:
+    # cohort has four dot-separated components with no slashes, and we're fairly liberal besides that
+    cohort=r"[^./]+\.[^./]+\.[^./]+\.[^./]+",
+    sample_rate=r"s\.[0-9]+",
+    # a filename with no path component
+    basename=r"[^/]+"

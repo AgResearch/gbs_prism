@@ -1,58 +1,60 @@
-from agr.seq.cutadapt import Cutadapt
-from agr.seq.fastq_sample import FastqSample
+import os.path
 
 from .paths import GbsPaths
 from .stage1 import Stage1Outputs
+from .types import Cohort
+
+
+def _fastq_real_basename(fastq_link: str) -> str:
+    return os.path.basename(os.path.realpath(fastq_link))
 
 
 class Stage2Targets:
     def __init__(self, stage1: Stage1Outputs, gbs_paths: GbsPaths):
         self._stage1 = stage1
         self._gbs_paths = gbs_paths
-        self._bwa_mapping_fastq_sample = {
-            cohort: FastqSample(
-                out_dir=self._gbs_paths.bwa_mapping_dir(cohort),
-                sample_rate=0.00005,
-                minimum_sample_size=150000,
-            )
-            for cohort in stage1.all_cohorts
-        }
-        self._cutadapt = Cutadapt()
 
     def make_dirs(self):
         for cohort in self._stage1.all_cohorts:
             self._gbs_paths.make_cohort_dirs(cohort)
 
-    @property
-    def all_bwa_mapping_sampled(self):
+    def _fastq_basenames_for_cohort(self, cohort: Cohort) -> list[str]:
         return [
-            self._bwa_mapping_fastq_sample[cohort].output(fastq_link)
-            for cohort in self._stage1.all_cohorts
+            _fastq_real_basename(fastq_link)
             for fastq_link in self._stage1.fastq_links(cohort)
         ]
 
-    def sample_all_fastq_links_for_bwa_mapping(self):
-        for cohort in self._stage1.all_cohorts:
-            for fastq_link in self._stage1.fastq_links(cohort):
-                self._bwa_mapping_fastq_sample[cohort].run(fastq_link)
-
     @property
-    def all_bwa_mapping_sampled_trimmed(self):
+    def all_cohort_fastq_links(self):
         return [
-            self._cutadapt.output(
-                out_dir=self._gbs_paths.bwa_mapping_dir(cohort),
-                fastq_path=self._bwa_mapping_fastq_sample[cohort].output(fastq_link),
-            )
+            os.path.join(self._gbs_paths.fastq_link_dir(cohort), fastq_basename)
             for cohort in self._stage1.all_cohorts
-            for fastq_link in self._stage1.fastq_links(cohort)
+            for fastq_basename in self._fastq_basenames_for_cohort(cohort)
         ]
 
-    def trim_all_bwa_mapping_sampled(self):
+    def create_all_cohort_fastq_links(self):
         for cohort in self._stage1.all_cohorts:
             for fastq_link in self._stage1.fastq_links(cohort):
-                self._cutadapt.run(
-                    out_dir=self._gbs_paths.bwa_mapping_dir(cohort),
-                    fastq_path=self._bwa_mapping_fastq_sample[cohort].output(
-                        fastq_link
+                os.symlink(
+                    os.path.realpath(fastq_link),
+                    os.path.join(
+                        self._gbs_paths.fastq_link_dir(cohort),
+                        _fastq_real_basename(fastq_link),
                     ),
                 )
+
+    def all_bwa_mapping_sampled(self, sample_moniker) -> list[str]:
+        return [
+            os.path.join(
+                self._gbs_paths.bwa_mapping_dir(cohort),
+                "%s.fastq.%s.fastq" % (fastq_basename, sample_moniker),
+            )
+            for cohort in self._stage1.all_cohorts
+            for fastq_basename in self._fastq_basenames_for_cohort(cohort)
+        ]
+
+    def all_bwa_mapping_sampled_trimmed(self, sample_moniker) -> list[str]:
+        return [
+            "%s.trimmed.fastq" % sampled.removesuffix(".fastq")
+            for sampled in self.all_bwa_mapping_sampled(sample_moniker)
+        ]

@@ -55,7 +55,7 @@ class Stage1Outputs(object):
 
     @lru_cache
     def fastq_links(self, cohort: Cohort) -> list[str]:
-        fcid = _flowcell_id(self._run_name)
+        fcid = flowcell_id(self._run_name)
 
         with StdioRedirect(stdout=PIPE) as gbs_keyfile:
             try:

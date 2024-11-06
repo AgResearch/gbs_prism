@@ -22,7 +22,7 @@ from agr.seq.sample_sheet import SampleSheet
 from agr.fake.bclconvert import BclConvert
 from agr.seq.dedupe import Dedupe
 from agr.seq.fastqc import Fastqc
-from agr.seq.fastq_sample import FastqSample
+from agr.seq.fastq_sample import ObsoleteFastqSample
 
 from agr.gbs_prism.kmer_analysis import KmerAnalysis
 from agr.gbs_prism.kmer_prism import KmerPrism
@@ -35,7 +35,7 @@ sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 paths = Paths(c.postprocessing_root, c.run)
 bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.seq.sample_sheet_path, out_dir=paths.seq.bclconvert_dir)
 fastqc = Fastqc(out_dir=paths.seq.fastqc_dir)
-kmer_run_fastq_sample = FastqSample(out_dir=paths.seq.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
+kmer_run_fastq_sample = ObsoleteFastqSample(out_dir=paths.seq.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism = KmerPrism(
     input_filetype="fasta",
     kmer_size=6,
