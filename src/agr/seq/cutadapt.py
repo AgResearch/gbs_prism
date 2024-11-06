@@ -32,17 +32,17 @@ _ADAPTERS = [
 
 
 class Cutadapt(object):
-    def __init__(self, out_dir: str):
-        self._out_dir = out_dir
+    def __init__(self):
+        pass
 
-    def output(self, fastq_path: str) -> str:
+    def output(self, out_dir: str, fastq_path: str) -> str:
         outbase = (
             os.path.basename(fastq_path).removesuffix(".gz").removesuffix(".fastq")
         )
-        return os.path.join(self._out_dir, "%s.trimmed.fastq" % outbase)
+        return os.path.join(out_dir, "%s.trimmed.fastq" % outbase)
 
-    def run(self, fastq_path: str):
-        out_path = self.output(fastq_path)
+    def run(self, out_dir: str, fastq_path: str):
+        out_path = self.output(out_dir, fastq_path)
         err_path = "%s.report" % out_path.removesuffix(".fastq")
         with open(out_path, "w") as out_f:
             with open(err_path, "w") as err_f:

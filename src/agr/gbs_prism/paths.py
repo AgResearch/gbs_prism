@@ -72,7 +72,7 @@ class GbsPaths(object):
     def bwa_mapping_dir(self, cohort: Cohort) -> str:
         return os.path.join(self._run_root, "bwa_mapping", str(cohort))
 
-    def _make_cohort_dirs(self, cohort: Cohort):
+    def make_cohort_dirs(self, cohort: Cohort):
         _makedir(self.bwa_mapping_dir(cohort))
 
 
@@ -113,4 +113,4 @@ class Paths(object):
     def make_cohort_dirs(self, cohort: Cohort):
         if not os.path.isdir(self._gbs_root):
             raise PathsError("no such directory %s" % self._gbs_root)
-        self._gbs_paths._make_cohort_dirs(cohort)
+        self._gbs_paths.make_cohort_dirs(cohort)

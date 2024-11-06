@@ -1,8 +1,8 @@
-from agr.gbs_prism.stage1 import _flowcell_id, Cohort
+from agr.gbs_prism.types import flowcell_id, Cohort
 
 
 def test_flowcell_id():
-    assert _flowcell_id("240621_A01439_0276_AH33J5DRX5") == "H33J5DRX5"
+    assert flowcell_id("240621_A01439_0276_AH33J5DRX5") == "H33J5DRX5"
 
 
 def test_parse_cohort():
