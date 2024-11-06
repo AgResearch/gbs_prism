@@ -3,7 +3,7 @@ from subprocess import PIPE
 from dataclasses import dataclass
 from typing import Self
 
-from agr.util import StdioRedirect, eprint
+from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
 
 
@@ -78,6 +78,12 @@ class Stage1(object):
                 for cohort_substr in lab_report.stdout.readlines()
             ]
 
+    @cached_property
+    def all_cohorts(self) -> list[Cohort]:
+        return [
+            cohort for library in self.libraries for cohort in self.cohorts(library)
+        ]
+
     @lru_cache
     def fastq_links(self, cohort: Cohort) -> list[str]:
         fcid = _flowcell_id(self._run_name)
@@ -104,3 +110,13 @@ class Stage1(object):
             return [
                 line.strip().split("\t")[1] for line in gbs_keyfile.stdout.readlines()
             ]
+
+    @cached_property
+    def all_fastq_links(self) -> set[str]:
+        return set(
+            [
+                fastq_link
+                for cohort in self.all_cohorts
+                for fastq_link in self.fastq_links(cohort)
+            ]
+        )

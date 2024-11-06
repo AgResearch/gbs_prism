@@ -11,6 +11,10 @@
       url = "github:AgResearch/bcl-convert.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    cutadapt = {
+      url = "github:AgResearch/cutadapt.nix/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     gquery = {
       # TODO use main branch not gbs_prism branch
       url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
@@ -18,7 +22,7 @@
     };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, gquery, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, gquery, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -29,6 +33,7 @@
           flakePkgs = {
             bbmap = bbmap.packages.${system}.default;
             bcl-convert = bcl-convert.packages.${system}.default;
+            cutadapt = cutadapt.packages.${system}.default;
             gquery-api = gquery.packages.${system}.api;
             gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
@@ -66,6 +71,7 @@
                 snakemake
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
+                flakePkgs.cutadapt
                 fastqc
                 seqtk
                 gzip
