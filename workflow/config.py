@@ -10,7 +10,7 @@ class Config:
     postprocessing_root: str
     run: str
     gbs_backup_dir: str
-    key_files_dir: str
+    keyfiles_dir: str
     fastq_link_farm: str
 
     def __post_init__(self):

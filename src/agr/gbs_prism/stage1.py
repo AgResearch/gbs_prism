@@ -59,6 +59,12 @@ class Stage1Targets:
             for fastq_file in self._sample_sheet.fastq_files
         ]
 
+    def all_gbs_keyfiles(self, keyfiles_dir) -> list[str]:
+        return [
+            os.path.join(keyfiles_dir, "%s.generated.txt" % sample_id)
+            for sample_id in self._sample_sheet.gbs_libraries
+        ]
+
 
 class Stage1Outputs(object):
     def __init__(self, run_name: str, fastq_link_farm: str):

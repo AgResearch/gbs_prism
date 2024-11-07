@@ -47,7 +47,7 @@ gbs_keyfiles = GbsKeyfiles(
     sequencer_run=sequencer_run,
     sample_sheet=sample_sheet,
     root=paths.illumina_platform_root,
-    out_dir=c.key_files_dir,
+    out_dir=c.keyfiles_dir,
     fastq_link_farm=c.fastq_link_farm,
     backup_dir=c.gbs_backup_dir)
 
@@ -63,7 +63,7 @@ rule default:
         [gzipped(sampled_fastq_file) for sampled_fastq_file in stage1.all_kmer_sampled(kmer_sample.moniker)],
         stage1.all_kmer_analysis(kmer_sample.moniker, kmer_prism.moniker),
         stage1.all_dedupe,
-        gbs_keyfiles.output()
+        stage1.all_gbs_keyfiles(c.keyfiles_dir)
     default_target: True
 
 rule write_sample_sheet:
@@ -139,7 +139,7 @@ rule gbs_keyfiles:
     input:
         stage1.all_dedupe,
     output:
-        gbs_keyfiles.output()
+        stage1.all_gbs_keyfiles(c.keyfiles_dir),
     run:
         gbs_keyfiles.create()
 

@@ -38,12 +38,6 @@ class GbsKeyfiles:
             self._backup_dir, "runs_libraries_dump.dat"
         )
 
-    def output(self):
-        return [
-            os.path.join(self._out_dir, "%s.generated.txt" % sample_id)
-            for sample_id in self._sample_sheet.gbs_libraries
-        ]
-
     def dump_gbs_tables(self):
         # dump the GBS keyfile table
         with open(self._keyfile_dump_path, "w") as dump_f:
