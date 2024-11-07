@@ -10,3 +10,10 @@ The design approach is as follows:
 ## Work in progress
 
 The eri branch in this repo is a work-in-progress.  Eventually the Python library will be moved out as a separately installable package.
+
+## Notes
+
+1. historical_unblind has been omitted, seems not to be required
+
+2. some items which were previously dumped into the filesystem are now simply passed around as lists of strings
+   namely: method, bwa_references

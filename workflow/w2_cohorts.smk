@@ -18,13 +18,14 @@ from agr.util.path import gzipped, trimmed
 from agr.gbs_prism.stage1 import Stage1Outputs
 from agr.gbs_prism.stage2 import Stage2Targets
 from agr.gbs_prism.paths import Paths
+from agr.gbs_prism.types import Cohort
 from agr.seq.fastq_sample import FastqSample
 from agr.seq.cutadapt import cutadapt
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
 stage1= Stage1Outputs(c.run, c.fastq_link_farm)
-stage2 = Stage2Targets(stage1, paths.gbs)
+stage2 = Stage2Targets(c.run, stage1, paths.gbs)
 bwa_mapping_sample = FastqSample(
     sample_rate=0.00005,
     minimum_sample_size=150000,
@@ -36,7 +37,8 @@ stage2.make_dirs()
 rule default:
     input:
         #[gzipped(fastq_file) for fastq_file in stage2.all_bwa_mapping_sampled],
-        stage2.all_bwa_mapping_sampled_trimmed(bwa_mapping_sample.moniker)
+        stage2.all_bwa_mapping_sampled_trimmed(bwa_mapping_sample.moniker),
+        stage2.all_cohort_targets,
     default_target: True
 
 # this links the fastq files for each cohort separately
@@ -66,6 +68,24 @@ rule cutadapt:
         trimmed_fastq_file="{path}/{basename}.trimmed.fastq"
     run:
         cutadapt(in_path=input.fastq_file, out_path=output.trimmed_fastq_file)
+
+rule keyfile_for_tassel:
+    output:
+        keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run)
+    run:
+        stage2.get_keyfile_for_tassel(Cohort.parse(wildcards.cohort), out_path=output.keyfile)
+
+rule gbsx_keyfile:
+    output:
+        keyfile = "%s/%s.{cohort}.gbsx.key" % (paths.gbs.run_root, c.run)
+    run:
+        stage2.get_gbsx_keyfile(Cohort.parse(wildcards.cohort), out_path=output.keyfile)
+
+rule unblind_script:
+    output:
+        script  = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
+    run:
+        stage2.get_unblind_script(Cohort.parse(wildcards.cohort), out_path=output.script)
 
 rule gzip:
     input:

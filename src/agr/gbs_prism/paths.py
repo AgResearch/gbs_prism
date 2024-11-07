@@ -71,6 +71,10 @@ class GbsPaths(object):
     def __init__(self, run_root: str):
         self._run_root = run_root
 
+    @property
+    def run_root(self) -> str:
+        return self._run_root
+
     def fastq_link_dir(self, cohort: Cohort) -> str:
         return os.path.join(self._run_root, str(cohort), "fastq")
 

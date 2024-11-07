@@ -8,6 +8,7 @@ from agr.seq.sample_sheet import SampleSheet
 
 from .paths import SeqPaths
 from .types import flowcell_id, Cohort
+from .exceptions import GbsPrismDataException
 
 
 class Stage1Targets:
@@ -148,3 +149,53 @@ class Stage1Outputs(object):
                 for fastq_link in self.fastq_links(cohort)
             ]
         )
+
+    # no need to dump the method into a file in the filesystem
+    @lru_cache
+    def cohort_method(self, cohort: Cohort) -> str:
+        fcid = flowcell_id(self._run_name)
+        with StdioRedirect(stdout=PIPE) as method:
+            GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell=fcid,
+                    enzyme=cohort.enzyme,
+                    gbs_cohort=cohort.gbs_cohort,
+                    columns="geno_method",
+                    distinct=True,
+                    noheading=True,
+                    no_unpivot=True,
+                ),
+                items=[cohort.libname],
+            ).run()
+            assert method.stdout is not None  # because PIPE
+            methods = method.stdout.readlines()
+            if n_methods := len(methods) != 1:
+                raise GbsPrismDataException(
+                    "found %d distinct genotyping methods for cohort %s - should be exactly one. Has the keyfile for this cohort been imported ? If so check and change cohort defn or method geno_method col"
+                    % (n_methods, str(cohort))
+                )
+            return methods[0].strip()
+
+    # just refgenome_bwa_indexes for references.txt
+    # no need to dump these into a file in the filesystem
+    @lru_cache
+    def cohort_bwa_references(self, cohort: Cohort) -> list[str]:
+        fcid = flowcell_id(self._run_name)
+        with StdioRedirect(stdout=PIPE) as refgenome_bwa_indexes:
+            GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell=fcid,
+                    enzyme=cohort.enzyme,
+                    gbs_cohort=cohort.gbs_cohort,
+                    columns="refgenome_bwa_indexes",
+                    noheading=True,
+                    distinct=True,
+                ),
+                items=[cohort.libname],
+            ).run()
+            assert refgenome_bwa_indexes.stdout is not None  # because PIPE
+            return [line.strip() for line in refgenome_bwa_indexes.stdout.readlines()]
