@@ -1,10 +1,38 @@
 from functools import cached_property, lru_cache
+import os.path
 from subprocess import PIPE
 
 from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
+from agr.seq.sample_sheet import SampleSheet
 
+from .paths import SeqPaths
 from .types import flowcell_id, Cohort
+
+
+class Stage1Targets:
+    def __init__(self, run_name: str, sample_sheet: SampleSheet, seq_paths: SeqPaths):
+        self._run_name = run_name
+        self._sample_sheet = sample_sheet
+        self._seq_paths = seq_paths
+
+    def all_kmer_sampled(self, sample_moniker) -> list[str]:
+        return [
+            os.path.join(
+                self._seq_paths.kmer_fastq_sample_dir,
+                "%s.fastq.%s.fastq" % (fastq_file, sample_moniker),
+            )
+            for fastq_file in self._sample_sheet.fastq_files
+        ]
+
+    def all_kmer_analysis(self, sample_moniker, kmer_prism_moniker) -> list[str]:
+        return [
+            os.path.join(
+                self._seq_paths.kmer_analysis_dir,
+                "%s.%s.1" % (os.path.basename(kmer_sample), kmer_prism_moniker),
+            )
+            for kmer_sample in self.all_kmer_sampled(sample_moniker)
+        ]
 
 
 class Stage1Outputs(object):

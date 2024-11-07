@@ -2,7 +2,7 @@ import logging
 import os.path
 from typing import Literal, Optional
 
-from .stage1 import Cohort
+from .types import Cohort
 
 logger = logging.getLogger(__name__)
 

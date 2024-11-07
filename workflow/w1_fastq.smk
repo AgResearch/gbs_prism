@@ -22,9 +22,10 @@ from agr.seq.sample_sheet import SampleSheet
 from agr.fake.bclconvert import BclConvert
 from agr.seq.dedupe import Dedupe
 from agr.seq.fastqc import Fastqc
-from agr.seq.fastq_sample import ObsoleteFastqSample
+from agr.seq.fastq_sample import FastqSample
 
-from agr.gbs_prism.kmer_analysis import KmerAnalysis
+from agr.gbs_prism.stage1 import Stage1Targets
+from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
@@ -33,16 +34,16 @@ c = Config(**config)
 sequencer_run = SequencerRun(c.seq_root, c.run)
 sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 paths = Paths(c.postprocessing_root, c.run)
+stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
 bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.seq.sample_sheet_path, out_dir=paths.seq.bclconvert_dir)
 fastqc = Fastqc(out_dir=paths.seq.fastqc_dir)
-kmer_run_fastq_sample = ObsoleteFastqSample(out_dir=paths.seq.kmer_fastq_sample_dir, sample_rate=0.0002, minimum_sample_size=10000)
+kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism = KmerPrism(
     input_filetype="fasta",
     kmer_size=6,
     # this causes it to crash: 😩
     #assemble_low_entropy_kmers=True
 )
-kmer_analysis = KmerAnalysis(out_dir=paths.seq.kmer_analysis_dir, kmer_prism=kmer_prism)
 dedupe = Dedupe(out_dir=paths.seq.dedupe_dir,
                 tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
                 jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
@@ -62,8 +63,9 @@ rule default:
         [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
         [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
         [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
-        [gzipped(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
-        [kmer_analysis.output(kmer_run_fastq_sample.output(fastq_file)) for fastq_file in sample_sheet.fastq_files],
+        stage1.all_kmer_sampled(kmer_sample.moniker),
+        [gzipped(sampled_fastq_file) for sampled_fastq_file in stage1.all_kmer_sampled(kmer_sample.moniker)],
+        stage1.all_kmer_analysis(kmer_sample.moniker, kmer_prism.moniker),
         [dedupe.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
         gbs_keyfiles.output()
     default_target: True
@@ -104,23 +106,24 @@ rule fastqc:
     run:
         fastqc.run(input.fastq_path)
 
-ruleorder: kmer_run_fastq_sample > gunzip
-rule kmer_run_fastq_sample:
+ruleorder: sample_for_kmer_analysis > gunzip
+rule sample_for_kmer_analysis:
     input:
-        fastq_path = bclconvert.fastq_path("{basename}.fastq.gz")
+        fastq_file="{path}/bclconvert/{basename}.fastq.gz"
     output:
-        kmer_run_fastq_sample.output("{basename}.fastq.gz"),
+        # the ugly name is copied from legacy gbs_prism
+        sampled_fastq_file="{path}/kmer_run/fastq_sample/{basename}.fastq.gz.fastq.%s.fastq" % kmer_sample.moniker
     run:
-        kmer_run_fastq_sample.run(input.fastq_path)
+        kmer_sample.run(in_path=input.fastq_file, out_path=output.sampled_fastq_file)
 
 ruleorder: kmer_analysis > gunzip
 rule kmer_analysis:
     input:
-        fastq_sample = kmer_run_fastq_sample.output("{basename}.fastq.gz")
+        fastq_sample="{path}/kmer_run/fastq_sample/{basename}.fastq"
     output:
-        kmer_analysis.output(kmer_run_fastq_sample.output("{basename}.fastq.gz"))
+        kmer_analysis="{path}/kmer_run/kmer_analysis/{basename}.fastq.%s.1" % kmer_prism.moniker
     run:
-        kmer_analysis.run(input.fastq_sample)
+        run_kmer_analysis(in_path=input.fastq_sample, out_path=output.kmer_analysis, kmer_prism=kmer_prism)
 
 ruleorder: dedupe > gzip > gunzip
 rule dedupe:
@@ -139,12 +142,13 @@ rule gbs_keyfiles:
     run:
         gbs_keyfiles.create()
 
+# only for bclconvert output to avoid cyclic graph exception
 rule gunzip:
     input:
-        branch(lambda wildcards: not wildcards["path"].endswith(".gz"),
-               then="{path}.gz",
+        branch(lambda wildcards: not wildcards["basename"].endswith(".gz"),
+               then="{path}/bclconvert/{basename}.gz",
                otherwise="/N/A")
-    output: "{path}"
+    output: "{path}/bclconvert/{basename}"
     shell: "gunzip -k {input}"
 
 rule gzip:
@@ -154,3 +158,8 @@ rule gzip:
                otherwise="/N/A")
     output: "{path}.gz"
     shell: "gzip -k {input}"
+
+wildcard_constraints:
+    sample_rate=r"s\.[0-9]+",
+    # a filename with no path component
+    basename=r"[^/]+"
