@@ -16,6 +16,24 @@ class Stage1Targets:
         self._sample_sheet = sample_sheet
         self._seq_paths = seq_paths
 
+    @property
+    def all_bclconvert_fastq_files(self) -> list[str]:
+        return [
+            os.path.join(self._seq_paths.bclconvert_dir, fastq_file)
+            for fastq_file in self._sample_sheet.fastq_files
+        ]
+
+    @property
+    def all_fastqc(self) -> list[str]:
+        return [
+            os.path.join(self._seq_paths.fastqc_dir, out_file)
+            for fastq_file in self._sample_sheet.fastq_files
+            for out_file in [
+                "%s%s" % (os.path.basename(fastq_file).removesuffix(".fastq.gz"), ext)
+                for ext in ["_fastqc.html", "_fastqc.zip"]
+            ]
+        ]
+
     def all_kmer_sampled(self, sample_moniker) -> list[str]:
         return [
             os.path.join(
@@ -32,6 +50,13 @@ class Stage1Targets:
                 "%s.%s.1" % (os.path.basename(kmer_sample), kmer_prism_moniker),
             )
             for kmer_sample in self.all_kmer_sampled(sample_moniker)
+        ]
+
+    @property
+    def all_dedupe(self) -> list[str]:
+        return [
+            os.path.join(self._seq_paths.dedupe_dir, fastq_file)
+            for fastq_file in self._sample_sheet.fastq_files
         ]
 
 

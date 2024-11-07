@@ -20,7 +20,7 @@ from agr.seq.sample_sheet import SampleSheet
 # TODO: use real bclconvert not fake one (fake one is very fast)
 #from agr.seq.bclconvert import BclConvert
 from agr.fake.bclconvert import BclConvert
-from agr.seq.dedupe import Dedupe
+from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import Fastqc
 from agr.seq.fastq_sample import FastqSample
 
@@ -44,9 +44,6 @@ kmer_prism = KmerPrism(
     # this causes it to crash: 😩
     #assemble_low_entropy_kmers=True
 )
-dedupe = Dedupe(out_dir=paths.seq.dedupe_dir,
-                tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
-                jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
 gbs_keyfiles = GbsKeyfiles(
     sequencer_run=sequencer_run,
     sample_sheet=sample_sheet,
@@ -60,13 +57,13 @@ paths.make_run_dirs()
 
 rule default:
     input:
-        [bclconvert.fastq_path(fastq_file) for fastq_file in sample_sheet.fastq_files],
-        [gunzipped(bclconvert.fastq_path(fastq_file)) for fastq_file in sample_sheet.fastq_files],
-        [fastqc.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        stage1.all_bclconvert_fastq_files,
+        [gunzipped(fastq_file) for fastq_file in stage1.all_bclconvert_fastq_files],
+        stage1.all_fastqc,
         stage1.all_kmer_sampled(kmer_sample.moniker),
         [gzipped(sampled_fastq_file) for sampled_fastq_file in stage1.all_kmer_sampled(kmer_sample.moniker)],
         stage1.all_kmer_analysis(kmer_sample.moniker, kmer_prism.moniker),
-        [dedupe.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        stage1.all_dedupe,
         gbs_keyfiles.output()
     default_target: True
 
@@ -128,15 +125,19 @@ rule kmer_analysis:
 ruleorder: dedupe > gzip > gunzip
 rule dedupe:
     input:
-        fastq_path = bclconvert.fastq_path("{basename}.fastq.gz")
+        fastq_file="{path}/bclconvert/{basename}.fastq.gz"
     output:
-        dedupe.output("{basename}.fastq.gz"),
+        deduped_fastq_file="{path}/dedupe/{basename}.fastq.gz",
     run:
-        dedupe.run(input.fastq_path)
+        dedupe(
+            in_path=input.fastq_file,
+            out_path=output.deduped_fastq_file,
+            tmp_dir="/tmp", # TODO maybe need tmp_dir on large scratch partition
+            jvm_args=[]) # TODO fallback to default of 80g which Dedupe uses if we don't override it here
 
 rule gbs_keyfiles:
     input:
-        [dedupe.output(fastq_file) for fastq_file in sample_sheet.fastq_files],
+        stage1.all_dedupe,
     output:
         gbs_keyfiles.output()
     run:
