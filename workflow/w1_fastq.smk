@@ -21,7 +21,7 @@ from agr.seq.sample_sheet import SampleSheet
 #from agr.seq.bclconvert import BclConvert
 from agr.fake.bclconvert import BclConvert
 from agr.seq.dedupe import dedupe
-from agr.seq.fastqc import Fastqc
+from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.stage1 import Stage1Targets
@@ -36,7 +36,6 @@ sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
 paths = Paths(c.postprocessing_root, c.run)
 stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
 bclconvert = BclConvert(in_dir=sequencer_run.dir, sample_sheet_path=paths.seq.sample_sheet_path, out_dir=paths.seq.bclconvert_dir)
-fastqc = Fastqc(out_dir=paths.seq.fastqc_dir)
 kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
 kmer_prism = KmerPrism(
     input_filetype="fasta",
@@ -97,11 +96,12 @@ rule bclconvert:
 ruleorder: fastqc > gunzip
 rule fastqc:
     input:
-        fastq_path = bclconvert.fastq_path("{basename}.fastq.gz")
+        fastq_file="{path}/bclconvert/{basename}.fastq.gz"
     output:
-        fastqc.output("{basename}.fastq.gz"),
+        fastqc_html="{path}/fastqc_run/fastqc/{basename}_fastqc.html",
+        fastqc_zip="{path}/fastqc_run/fastqc/{basename}_fastqc.zip",
     run:
-        fastqc.run(input.fastq_path)
+        fastqc(in_path=input.fastq_file, out_dir="%s/fastqc_run/fastqc" % wildcards.path)
 
 ruleorder: sample_for_kmer_analysis > gunzip
 rule sample_for_kmer_analysis:
