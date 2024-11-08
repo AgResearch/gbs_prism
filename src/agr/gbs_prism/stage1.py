@@ -1,6 +1,6 @@
 from functools import cached_property, lru_cache
 import os.path
-from subprocess import PIPE
+import tempfile
 
 from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
@@ -74,37 +74,41 @@ class Stage1Outputs(object):
 
     @cached_property
     def libraries(self) -> list[str]:
-        with StdioRedirect(stdout=PIPE) as lab_report:
-            try:
-                GQuery(
-                    task="lab_report",
-                    # Libraries are queried as samples 😩
-                    predicates=Predicates(name="illumina_run_details", samples=True),
-                    items=[self._run_name],
-                ).run()
-            except GQueryNotFoundException:
-                return []
-            assert lab_report.stdout is not None  # because PIPE
-            return [line.strip() for line in lab_report.stdout.readlines()]
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                try:
+                    GQuery(
+                        task="lab_report",
+                        # Libraries are queried as samples 😩
+                        predicates=Predicates(
+                            name="illumina_run_details", samples=True
+                        ),
+                        items=[self._run_name],
+                    ).run()
+                except GQueryNotFoundException:
+                    return []
+            _ = tmp_f.seek(0)
+            return [line.strip() for line in tmp_f.readlines()]
 
     @lru_cache
     def cohorts(self, library) -> list[Cohort]:
-        with StdioRedirect(stdout=PIPE) as lab_report:
-            try:
-                GQuery(
-                    task="lab_report",
-                    # Libraries are queried as samples 😩
-                    predicates=Predicates(
-                        name="illumina_run_details", cohorts=True, sample_id=library
-                    ),
-                    items=[self._run_name],
-                ).run()
-            except GQueryNotFoundException:
-                return []
-            assert lab_report.stdout is not None  # because PIPE
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                try:
+                    GQuery(
+                        task="lab_report",
+                        # Libraries are queried as samples 😩
+                        predicates=Predicates(
+                            name="illumina_run_details", cohorts=True, sample_id=library
+                        ),
+                        items=[self._run_name],
+                    ).run()
+                except GQueryNotFoundException:
+                    return []
+            _ = tmp_f.seek(0)
             return [
                 Cohort.parse("%s.%s" % (library, cohort_substr.strip()))
-                for cohort_substr in lab_report.stdout.readlines()
+                for cohort_substr in tmp_f.readlines()
             ]
 
     @cached_property
@@ -117,28 +121,27 @@ class Stage1Outputs(object):
     def fastq_links(self, cohort: Cohort) -> list[str]:
         fcid = flowcell_id(self._run_name)
 
-        with StdioRedirect(stdout=PIPE) as gbs_keyfile:
-            try:
-                GQuery(
-                    task="gbs_keyfile",
-                    badge_type="library",
-                    predicates=Predicates(
-                        flowcell=fcid,
-                        enzyme=cohort.enzyme,
-                        gbs_cohort=cohort.gbs_cohort,
-                        columns="lane,fastq_link",
-                        noheading=True,
-                        distinct=True,
-                        fastq_path=self._fastq_link_farm,
-                    ),
-                    items=[cohort.libname],
-                ).run()
-            except GQueryNotFoundException:
-                return []
-            assert gbs_keyfile.stdout is not None  # because PIPE
-            return [
-                line.strip().split("\t")[1] for line in gbs_keyfile.stdout.readlines()
-            ]
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                try:
+                    GQuery(
+                        task="gbs_keyfile",
+                        badge_type="library",
+                        predicates=Predicates(
+                            flowcell=fcid,
+                            enzyme=cohort.enzyme,
+                            gbs_cohort=cohort.gbs_cohort,
+                            columns="lane,fastq_link",
+                            noheading=True,
+                            distinct=True,
+                            fastq_path=self._fastq_link_farm,
+                        ),
+                        items=[cohort.libname],
+                    ).run()
+                except GQueryNotFoundException:
+                    return []
+            _ = tmp_f.seek(0)
+            return [line.strip().split("\t")[1] for line in tmp_f.readlines()]
 
     @cached_property
     def all_fastq_links(self) -> set[str]:
@@ -154,23 +157,24 @@ class Stage1Outputs(object):
     @lru_cache
     def cohort_method(self, cohort: Cohort) -> str:
         fcid = flowcell_id(self._run_name)
-        with StdioRedirect(stdout=PIPE) as method:
-            GQuery(
-                task="gbs_keyfile",
-                badge_type="library",
-                predicates=Predicates(
-                    flowcell=fcid,
-                    enzyme=cohort.enzyme,
-                    gbs_cohort=cohort.gbs_cohort,
-                    columns="geno_method",
-                    distinct=True,
-                    noheading=True,
-                    no_unpivot=True,
-                ),
-                items=[cohort.libname],
-            ).run()
-            assert method.stdout is not None  # because PIPE
-            methods = method.stdout.readlines()
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                GQuery(
+                    task="gbs_keyfile",
+                    badge_type="library",
+                    predicates=Predicates(
+                        flowcell=fcid,
+                        enzyme=cohort.enzyme,
+                        gbs_cohort=cohort.gbs_cohort,
+                        columns="geno_method",
+                        distinct=True,
+                        noheading=True,
+                        no_unpivot=True,
+                    ),
+                    items=[cohort.libname],
+                ).run()
+            _ = tmp_f.seek(0)
+            methods = tmp_f.readlines()
             if n_methods := len(methods) != 1:
                 raise GbsPrismDataException(
                     "found %d distinct genotyping methods for cohort %s - should be exactly one. Has the keyfile for this cohort been imported ? If so check and change cohort defn or method geno_method col"
@@ -183,19 +187,20 @@ class Stage1Outputs(object):
     @lru_cache
     def cohort_bwa_references(self, cohort: Cohort) -> list[str]:
         fcid = flowcell_id(self._run_name)
-        with StdioRedirect(stdout=PIPE) as refgenome_bwa_indexes:
-            GQuery(
-                task="gbs_keyfile",
-                badge_type="library",
-                predicates=Predicates(
-                    flowcell=fcid,
-                    enzyme=cohort.enzyme,
-                    gbs_cohort=cohort.gbs_cohort,
-                    columns="refgenome_bwa_indexes",
-                    noheading=True,
-                    distinct=True,
-                ),
-                items=[cohort.libname],
-            ).run()
-            assert refgenome_bwa_indexes.stdout is not None  # because PIPE
-            return [line.strip() for line in refgenome_bwa_indexes.stdout.readlines()]
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                GQuery(
+                    task="gbs_keyfile",
+                    badge_type="library",
+                    predicates=Predicates(
+                        flowcell=fcid,
+                        enzyme=cohort.enzyme,
+                        gbs_cohort=cohort.gbs_cohort,
+                        columns="refgenome_bwa_indexes",
+                        noheading=True,
+                        distinct=True,
+                    ),
+                    items=[cohort.libname],
+                ).run()
+            _ = tmp_f.seek(0)
+            return [line.strip() for line in tmp_f.readlines()]

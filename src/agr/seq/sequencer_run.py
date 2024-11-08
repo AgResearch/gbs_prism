@@ -2,7 +2,6 @@ import logging
 import os.path
 import time
 from datetime import datetime, timedelta
-from subprocess import DEVNULL
 from typing import Optional
 
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
@@ -74,13 +73,14 @@ class SequencerRun(object):
     # TODO move this to a more appropriate class, perhaps
     def exists_in_database(self):
         """Use GQuery to determine whether the run exists in the database."""
-        with StdioRedirect(stdout=DEVNULL, stderr=DEVNULL):
-            try:
-                GQuery(
-                    task="lab_report",
-                    predicates=Predicates(name="illumina_run_details"),
-                    items=[self._run_name],
-                ).run()
-            except GQueryNotFoundException:
-                return False
-        return True
+        with open(os.devnull, "w") as devnull_f:
+            with StdioRedirect(stdout=devnull_f, stderr=devnull_f):
+                try:
+                    GQuery(
+                        task="lab_report",
+                        predicates=Predicates(name="illumina_run_details"),
+                        items=[self._run_name],
+                    ).run()
+                except GQueryNotFoundException:
+                    return False
+            return True

@@ -1,11 +1,12 @@
 from functools import cached_property
 import os.path
 import re
-from subprocess import PIPE
+import tempfile
 
 from agr.gquery import GQuery, Predicates
 
 from agr.util.stdio_redirect import StdioRedirect
+from agr.util import eprint
 
 from .paths import GbsPaths
 from .stage1 import Stage1Outputs
@@ -88,26 +89,29 @@ class Stage2Targets:
 
     def get_keyfile_for_tassel(self, cohort: Cohort, out_path: str):
         fcid = flowcell_id(self._run_name)
-        with StdioRedirect(stdout=PIPE) as gbs_keyfile:
-            GQuery(
-                task="gbs_keyfile",
-                badge_type="library",
-                predicates=Predicates(
-                    flowcell=fcid,
-                    enzyme=cohort.enzyme,
-                    gbs_cohort=cohort.gbs_cohort,
-                    columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
-                ),
-                items=[cohort.libname],
-            ).run()
-            assert gbs_keyfile.stdout is not None  # because PIPE
+        with tempfile.TemporaryFile(mode="w+") as tmp_f:
+            with StdioRedirect(stdout=tmp_f):
+                g = GQuery(
+                    task="gbs_keyfile",
+                    badge_type="library",
+                    predicates=Predicates(
+                        flowcell=fcid,
+                        enzyme=cohort.enzyme,
+                        gbs_cohort=cohort.gbs_cohort,
+                        columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+                    ),
+                    items=[cohort.libname],
+                )
+                eprint(g)
+                g.run()
 
-            # from https://github.com/AgResearch/gbs_prism/blob/dc5a71a6a2c554cd8952614d151a46ddce6892d1/ag_gbs_qc_prism.sh#L252
-            enzyme_sub_re = re.compile(r"HpaIII?")  # matches HpaII or HpaIII
-            enzyme_sub = "MspI"
+                # from https://github.com/AgResearch/gbs_prism/blob/dc5a71a6a2c554cd8952614d151a46ddce6892d1/ag_gbs_qc_prism.sh#L252
+                enzyme_sub_re = re.compile(r"HpaIII?")  # matches HpaII or HpaIII
+                enzyme_sub = "MspI"
 
+            _ = tmp_f.seek(0)
             with open(out_path, "w") as keyfile_f:
-                for line in gbs_keyfile.stdout:
+                for line in tmp_f:
                     _ = keyfile_f.write(enzyme_sub_re.sub(enzyme_sub, line))
 
     def get_gbsx_keyfile(self, cohort: Cohort, out_path: str):
