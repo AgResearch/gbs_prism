@@ -3,7 +3,7 @@
 # seq_root: "/dataset/2024_illumina_sequencing_e/active"
 seq_root: "~/gbs_prism.dev/fake_runs"
 # TODO:
-# postprocessing_root: "/dataset/2024_illumina_sequencing_d/scratch/postprocessing/illumina/novaseq"
+# postprocessing_root: "/dataset/2024_illumina_sequencing_d/scratch/postprocessing"
 postprocessing_root: "~/gbs_prism.dev/postprocessing"
 
 # TODO:

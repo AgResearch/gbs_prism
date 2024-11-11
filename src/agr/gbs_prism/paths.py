@@ -2,8 +2,6 @@ import logging
 import os.path
 from typing import Literal, Optional
 
-from .types import Cohort
-
 logger = logging.getLogger(__name__)
 
 
@@ -75,15 +73,15 @@ class GbsPaths(object):
     def run_root(self) -> str:
         return self._run_root
 
-    def fastq_link_dir(self, cohort: Cohort) -> str:
-        return os.path.join(self._run_root, str(cohort), "fastq")
+    def fastq_link_dir(self, cohort_name: str) -> str:
+        return os.path.join(self._run_root, cohort_name, "fastq")
 
-    def bwa_mapping_dir(self, cohort: Cohort) -> str:
-        return os.path.join(self._run_root, "bwa_mapping", str(cohort))
+    def bwa_mapping_dir(self, cohort_name: str) -> str:
+        return os.path.join(self._run_root, "bwa_mapping", cohort_name)
 
-    def make_cohort_dirs(self, cohort: Cohort):
-        _makedir(self.bwa_mapping_dir(cohort))
-        _makedir(self.fastq_link_dir(cohort))
+    def make_cohort_dirs(self, cohort_name: str):
+        _makedir(self.bwa_mapping_dir(cohort_name))
+        _makedir(self.fastq_link_dir(cohort_name))
 
 
 class Paths(object):
@@ -120,7 +118,7 @@ class Paths(object):
             raise PathsError("no such directory %s" % self._illumina_platform_root)
         self._seq_paths._make_run_dirs()
 
-    def make_cohort_dirs(self, cohort: Cohort):
+    def make_cohort_dirs(self, cohort_name: str):
         if not os.path.isdir(self._gbs_root):
             raise PathsError("no such directory %s" % self._gbs_root)
-        self._gbs_paths.make_cohort_dirs(cohort)
+        self._gbs_paths.make_cohort_dirs(cohort_name)

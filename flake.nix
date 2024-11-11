@@ -72,6 +72,7 @@
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
+                bwa
                 fastqc
                 seqtk
                 gzip
