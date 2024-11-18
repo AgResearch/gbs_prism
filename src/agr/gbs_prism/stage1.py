@@ -64,7 +64,7 @@ class Stage1Targets:
         ]
 
 
-class Stage1Outputs(object):
+class Stage1Outputs:
     def __init__(self, run_name: str, fastq_link_farm: str):
         self._run_name = run_name
         self._fastq_link_farm = fastq_link_farm

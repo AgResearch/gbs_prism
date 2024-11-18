@@ -15,7 +15,7 @@ from .types import flowcell_id
 logger = logging.getLogger(__name__)
 
 
-class Cohort(object):
+class Cohort:
     def __init__(self, name: str, run_name: str):
         name_fields = name.split(".")
         assert len(name_fields) == 4, (

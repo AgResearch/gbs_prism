@@ -32,7 +32,7 @@ class DataPrismError(Exception):
         super(DataPrismError, self).__init__(args)
 
 
-class Prism(object):
+class Prism:
     """
     this class is used to build a "spectrum" data structure, which is often but not alwaysa discrete multivariate
     frequency/probability distribution, from large input data (for example an alignment file of nextgen sequence data),

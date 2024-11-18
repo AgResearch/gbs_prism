@@ -19,7 +19,7 @@ class BclConvertError(Exception):
             return "%s: %s" % (self._msg, str(self._e))
 
 
-class BclConvert(object):
+class BclConvert:
     def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
         self._in_dir = in_dir
         self._sample_sheet_path = sample_sheet_path

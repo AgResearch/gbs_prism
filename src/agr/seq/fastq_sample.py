@@ -4,7 +4,7 @@ import subprocess
 logger = logging.getLogger(__name__)
 
 
-class FastqSample(object):
+class FastqSample:
     def __init__(self, sample_rate: float, minimum_sample_size: int):
         self._sample_rate = sample_rate
         self._minimum_sample_size = minimum_sample_size

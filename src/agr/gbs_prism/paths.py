@@ -24,7 +24,7 @@ def _makedir(path: str):
         raise PathsError("failed to create %s" % path, e)
 
 
-class SeqPaths(object):
+class SeqPaths:
     def __init__(self, run_root: str):
         self._run_root = run_root
 
@@ -65,7 +65,7 @@ class SeqPaths(object):
         _makedir(self.dedupe_dir)
 
 
-class GbsPaths(object):
+class GbsPaths:
     def __init__(self, run_root: str):
         self._run_root = run_root
 
@@ -84,7 +84,7 @@ class GbsPaths(object):
         _makedir(self.fastq_link_dir(cohort_name))
 
 
-class Paths(object):
+class Paths:
     def __init__(
         self,
         postprocessing_root: str,

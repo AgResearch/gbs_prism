@@ -16,7 +16,7 @@ class SequencerRunError(Exception):
         self._e = e
 
 
-class SequencerRun(object):
+class SequencerRun:
     def __init__(self, seq_root: str, run_name: str):
         self._seq_root = seq_root
         self._run_name = run_name

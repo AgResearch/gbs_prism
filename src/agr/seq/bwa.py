@@ -6,7 +6,7 @@ from agr.util import eprint
 logger = logging.getLogger(__name__)
 
 
-class Bwa(object):
+class Bwa:
     def __init__(self, barcode_len: int):
         self._barcode_len = barcode_len
 
