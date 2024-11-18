@@ -1,18 +1,23 @@
 from functools import cached_property, lru_cache
+import logging
 import tempfile
 
-from agr.util import StdioRedirect
+from agr.util import StdioRedirect, Singleton
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
 
 from .cohort import Cohort, TargetConfig
 from .paths import GbsPaths
 
+logger = logging.getLogger(__name__)
 
-class Cohorts(object):
+
+# This class wants to be a singleton, but SnakeMake apparently won't allow it
+class Cohorts(metaclass=Singleton):
     """All cohorts for the run"""
 
     def __init__(self, run_name: str):
         self._run_name = run_name
+        logger.debug("Cohorts(%s) object created" % self._run_name)
 
     @property
     def run_name(self) -> str:
