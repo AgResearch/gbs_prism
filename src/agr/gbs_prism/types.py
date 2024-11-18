@@ -12,3 +12,4 @@ class Stage2TargetConfig:
     gbs_paths: str
     fastq_link_farm: str
     bwa_sample_moniker: str
+    bwa_moniker: str

@@ -73,6 +73,7 @@
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
                 bwa
+                samtools
                 fastqc
                 seqtk
                 gzip

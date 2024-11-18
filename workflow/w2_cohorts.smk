@@ -22,6 +22,7 @@ from agr.gbs_prism.cohort import Cohort
 from agr.gbs_prism.paths import Paths
 from agr.seq.fastq_sample import FastqSample
 from agr.seq.cutadapt import cutadapt
+from agr.seq.bwa import Bwa
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
@@ -31,7 +32,8 @@ bwa_sample = FastqSample(
     sample_rate=0.00005,
     minimum_sample_size=150000,
 )
-stage2_target_config = Stage2TargetConfig(gbs_paths=paths.gbs, fastq_link_farm=c.fastq_link_farm, bwa_sample_moniker=bwa_sample.moniker)
+bwa = Bwa(barcode_len=10)
+stage2_target_config = Stage2TargetConfig(gbs_paths=paths.gbs, fastq_link_farm=c.fastq_link_farm, bwa_sample_moniker=bwa_sample.moniker, bwa_moniker=bwa.moniker)
 
 # Ensure we have the directory structure we need in advance
 cohorts.make_dirs(paths.gbs)
@@ -69,14 +71,15 @@ rule cutadapt:
     run:
         cutadapt(in_path=input.fastq_file, out_path=output.trimmed_fastq_file)
 
-# TODO
-#rule align:
-#    input:
-#        fastq_file="{path}/{basename}.trimmed.fastq"
-#    output:
-#        aligned_fastq_file="{path}/{basename}.trimmed.bwa.{reference_genome}.bam"
-#    run:
-#        cutadapt(in_path=input.fastq_file, out_path=output.aligned_fastq_file)
+rule bwa_aln:
+    input:
+        fastq_file="{path}/{cohort}/{basename}.trimmed.fastq"
+    output:
+        bam_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.bam" % bwa.moniker,
+    run:
+        cohort = cohorts.by_name[wildcards.cohort]
+        bwa_reference = cohort.bwa_references[wildcards.reference_genome]
+        bwa.aln(in_path=input.fastq_file, out_path=output.bam_file, reference=bwa_reference)
 
 rule keyfile_for_tassel:
     output:

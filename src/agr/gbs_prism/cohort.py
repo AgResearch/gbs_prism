@@ -83,12 +83,13 @@ class Cohort(object):
             for sampled in bwa_sampled
         ]
 
-        bwa_aligned = [
-            "%s.%s.%s" % (trimmed, bwa_reference_moniker, ext)
-            for trimmed in bwa_sampled
+        bwa_bam = [
+            "%s.bwa.%s.%s.bam" % (trimmed, bwa_reference_moniker, c.bwa_moniker)
+            for trimmed in bwa_sampled_trimmed
             for bwa_reference_moniker in self.bwa_references.keys()
-            for ext in ["bam", "stats"]
         ]
+
+        bwa_sai = ["%s.sai" % bam_file.removesuffix(".bam") for bam_file in bwa_bam]
 
         def suffixed_target(suffix: str) -> str:
             # TODO these names are quite clunky, perhaps remove the pointless `run` prefix later
@@ -105,13 +106,16 @@ class Cohort(object):
             suffixed_target(suffix) for suffix in ["key", "gbsx.key", "unblind.sed"]
         ]
 
-        return (
+        targets = (
             self.local_fastq_links(c)
             + suffixed_targets
             + bwa_sampled
             + bwa_sampled_trimmed
-            # + bwa_aligned TODO
+            + bwa_bam
+            # TODO sai, stats
         )
+        logger.debug("targets for cohort %s:\n%s" % (self.name, "\n".join(targets)))
+        return targets
 
     def create_local_fastq_links(self, c: "TargetConfig"):
         for fastq_link in self.central_fastq_links(c.fastq_link_farm):
@@ -296,3 +300,4 @@ class TargetConfig(Protocol):
     fastq_link_farm: str
     gbs_paths: GbsPaths
     bwa_sample_moniker: str
+    bwa_moniker: str
