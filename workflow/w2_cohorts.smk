@@ -79,11 +79,30 @@ rule bwa_aln:
     input:
         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq"
     output:
+        sai_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.sai" % bwa.moniker,
+    run:
+        cohort_spec = gbs_target_spec.cohorts[wildcards.cohort]
+        bwa_reference = cohort_spec.alignment_references[wildcards.reference_genome]
+        bwa.aln(in_path=input.fastq_file, out_path=output.sai_file, reference=bwa_reference)
+
+rule bwa_samse:
+    input:
+        fastq_file="{path}/{cohort}/{basename}.trimmed.fastq",
+        sai_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.sai" % bwa.moniker,
+    output:
         bam_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.bam" % bwa.moniker,
     run:
         cohort_spec = gbs_target_spec.cohorts[wildcards.cohort]
         bwa_reference = cohort_spec.alignment_references[wildcards.reference_genome]
-        bwa.aln(in_path=input.fastq_file, out_path=output.bam_file, reference=bwa_reference)
+        bwa.samse(sai_path=input.sai_file, fastq_path=input.fastq_file, out_path=output.bam_file, reference=bwa_reference)
+
+rule bam_stats:
+    input:
+        bam_file="{path}/{basename}.bam"
+    output:
+        stats_file="{path}/{basename}.stats"
+    shell:
+        "samtools flagstat {input.bam_file} >{output.stats_file}"
 
 rule keyfile_for_tassel:
     output:

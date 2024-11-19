@@ -20,9 +20,25 @@ class Bwa:
                 "bwa",
                 "aln",
                 "-B",
-                "10",
+                str(self._barcode_len),
                 reference,
                 in_path,
+            ]
+            eprint(" ".join(bwa_command))
+            _ = subprocess.run(
+                bwa_command,
+                stdout=out_f,
+                check=True,
+            )
+
+    def samse(self, sai_path: str, fastq_path: str, out_path: str, reference: str):
+        with open(out_path, "w") as out_f:
+            bwa_command = [
+                "bwa",
+                "samse",
+                reference,
+                sai_path,
+                fastq_path,
             ]
             eprint(" ".join(bwa_command))
             _ = subprocess.run(

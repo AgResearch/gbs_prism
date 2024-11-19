@@ -136,8 +136,9 @@ class CohortTargets:
             + suffixed_targets
             + bwa_sampled
             + bwa_sampled_trimmed
+            + bwa_sai
             + bwa_bam
-            # TODO sai, stats
+            + bwa_stats
         )
         logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
