@@ -25,6 +25,7 @@ from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.stage1 import Stage1Targets
+from agr.gbs_prism.gbs_target_spec import gquery_gbs_target_spec, write_gbs_target_spec
 from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
@@ -63,7 +64,8 @@ rule default:
         [gzipped(sampled_fastq_file) for sampled_fastq_file in stage1.all_kmer_sampled(kmer_sample.moniker)],
         stage1.all_kmer_analysis(kmer_sample.moniker, kmer_prism.moniker),
         stage1.all_dedupe,
-        stage1.all_gbs_keyfiles(c.keyfiles_dir)
+        stage1.all_gbs_keyfiles(c.keyfiles_dir),
+        paths.gbs.target_spec_path
     default_target: True
 
 rule write_sample_sheet:
@@ -142,6 +144,15 @@ rule gbs_keyfiles:
         stage1.all_gbs_keyfiles(c.keyfiles_dir),
     run:
         gbs_keyfiles.create()
+
+rule gbs_target_spec:
+    input:
+        stage1.all_gbs_keyfiles(c.keyfiles_dir),
+    output:
+        paths.gbs.target_spec_path,
+    run:
+        gbs_target_spec = gquery_gbs_target_spec(c.run, c.fastq_link_farm)
+        write_gbs_target_spec(paths.gbs.target_spec_path, gbs_target_spec)
 
 # only for bclconvert output to avoid cyclic graph exception
 rule gunzip:

@@ -73,6 +73,10 @@ class GbsPaths:
     def run_root(self) -> str:
         return self._run_root
 
+    @property
+    def target_spec_path(self) -> str:
+        return os.path.join(self._run_root, "target-spec.json")
+
     def fastq_link_dir(self, cohort_name: str) -> str:
         return os.path.join(self._run_root, cohort_name, "fastq")
 

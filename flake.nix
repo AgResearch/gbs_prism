@@ -44,6 +44,7 @@
           devPython = pkgs.python3.withPackages (python-pkgs: [
             python-pkgs.biopython
             python-pkgs.pytest
+            python-pkgs.pydantic
             flakePkgs.gquery-api
           ]);
 

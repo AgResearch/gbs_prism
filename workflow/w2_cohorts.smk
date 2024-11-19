@@ -15,10 +15,8 @@ for noisy_module in ['asyncio', 'pulp.apis.core', 'urllib3']:
 from config import Config
 
 from agr.util.path import gzipped, trimmed
-from agr.gbs_prism.stage1 import Stage1Outputs
-from agr.gbs_prism.cohorts import Cohorts
-from agr.gbs_prism.types import Stage2TargetConfig
-from agr.gbs_prism.cohort import Cohort
+from agr.gbs_prism.gbs_target_spec import read_gbs_target_spec
+from agr.gbs_prism.gbs_targets import GbsConfig, GbsTargets
 from agr.gbs_prism.paths import Paths
 from agr.seq.fastq_sample import FastqSample
 from agr.seq.cutadapt import cutadapt
@@ -26,32 +24,38 @@ from agr.seq.bwa import Bwa
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
-stage1= Stage1Outputs(c.run, c.fastq_link_farm)
-cohorts = Cohorts(c.run)
 bwa_sample = FastqSample(
     sample_rate=0.00005,
     minimum_sample_size=150000,
 )
 bwa = Bwa(barcode_len=10)
-stage2_target_config = Stage2TargetConfig(gbs_paths=paths.gbs, fastq_link_farm=c.fastq_link_farm, bwa_sample_moniker=bwa_sample.moniker, bwa_moniker=bwa.moniker)
+gbs_config = GbsConfig(
+    run_name=c.run,
+    paths=paths.gbs,
+    alignment_sample_moniker=bwa_sample.moniker,
+    aligner="bwa",
+    alignment_moniker=bwa.moniker)
+gbs_target_spec = read_gbs_target_spec(paths.gbs.target_spec_path)
+from pprint import pp
+pp("gbs_target_spec: %s" % gbs_target_spec)
+gbs_targets = GbsTargets(gbs_config, gbs_target_spec)
 
 # Ensure we have the directory structure we need in advance
-cohorts.make_dirs(paths.gbs)
+gbs_targets.make_dirs()
 
 rule default:
     input:
-        #[gzipped(fastq_file) for fastq_file in stage2.all_bwa_sampled],
-        cohorts.targets(stage2_target_config),
+        #[gzipped(fastq_file) for fastq_file in gbs_targets.all_bwa_sampled],
+        gbs_targets.paths,
     default_target: True
 
 # this links the fastq files for each cohort separately
 # so that subsequent dependencies can be properly captured in wildcarded paths
-# TODO use the new Cohort class for this
 rule cohort_fastq_links:
     output:
-        cohorts.local_fastq_links(stage2_target_config)
+        gbs_targets.local_fastq_links
     run:
-        cohorts.create_local_fastq_links(stage2_target_config)
+        gbs_targets.create_local_fastq_links()
 
 
 rule sample_for_bwa:
@@ -77,27 +81,30 @@ rule bwa_aln:
     output:
         bam_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.bam" % bwa.moniker,
     run:
-        cohort = cohorts.by_name[wildcards.cohort]
-        bwa_reference = cohort.bwa_references[wildcards.reference_genome]
+        cohort_spec = gbs_target_spec.cohorts[wildcards.cohort]
+        bwa_reference = cohort_spec.alignment_references[wildcards.reference_genome]
         bwa.aln(in_path=input.fastq_file, out_path=output.bam_file, reference=bwa_reference)
 
 rule keyfile_for_tassel:
     output:
         keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run)
     run:
-        cohorts.by_name[wildcards.cohort].get_keyfile_for_tassel(out_path=output.keyfile)
+        cohort = gbs_targets.cohorts[wildcards.cohort]
+        cohort.get_keyfile_for_tassel(out_path=output.keyfile)
 
 rule gbsx_keyfile:
     output:
         keyfile = "%s/%s.{cohort}.gbsx.key" % (paths.gbs.run_root, c.run)
     run:
-        cohorts.by_name[wildcards.cohort].get_gbsx_keyfile(out_path=output.keyfile)
+        cohort = gbs_targets.cohorts[wildcards.cohort]
+        cohort.get_gbsx_keyfile(out_path=output.keyfile)
 
 rule unblind_script:
     output:
         script  = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
     run:
-        cohorts.by_name[wildcards.cohort].get_unblind_script(out_path=output.script)
+        cohort = gbs_targets.cohorts[wildcards.cohort]
+        cohort.get_unblind_script(out_path=output.script)
 
 rule gzip:
     input:

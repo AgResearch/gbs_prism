@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Self
 
 
 def flowcell_id(run: str) -> str:
@@ -6,10 +7,27 @@ def flowcell_id(run: str) -> str:
 
 
 @dataclass(frozen=True)
-class Stage2TargetConfig:
-    """Paths and monikers for stage 2 targets."""
+class Cohort:
+    libname: str
+    qc_cohort: str
+    gbs_cohort: str
+    enzyme: str
 
-    gbs_paths: str
-    fastq_link_farm: str
-    bwa_sample_moniker: str
-    bwa_moniker: str
+    def __str__(self):
+        return "%s.%s.%s.%s" % (
+            self.libname,
+            self.qc_cohort,
+            self.gbs_cohort,
+            self.enzyme,
+        )
+
+    @classmethod
+    def parse(cls, cohort_str: str) -> Self:
+        fields = cohort_str.split(".")
+        assert len(fields) == 4, (
+            "expected four dot-separated fields in cohort %s" % cohort_str
+        )
+        (libname, qc_cohort, gbs_cohort, enzyme) = tuple(fields)
+        return cls(
+            libname=libname, qc_cohort=qc_cohort, gbs_cohort=gbs_cohort, enzyme=enzyme
+        )

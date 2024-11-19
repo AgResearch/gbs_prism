@@ -1,11 +1,5 @@
-import sys
 import tempfile
-from agr.util import StdioRedirect
-
-
-def eprint(*args, **kwargs):
-    """Print to stderr"""
-    print(*args, file=sys.stderr, **kwargs)
+from agr.util import StdioRedirect, eprint
 
 
 def test_stdio_redirect_file_stdout():
