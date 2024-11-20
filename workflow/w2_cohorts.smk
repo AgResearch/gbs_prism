@@ -21,6 +21,7 @@ from agr.gbs_prism.paths import Paths
 from agr.seq.fastq_sample import FastqSample
 from agr.seq.cutadapt import cutadapt
 from agr.seq.bwa import Bwa
+from agr.gbs_prism.ramify_tassel_keyfile import ramify
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
@@ -126,6 +127,18 @@ rule unblind_script:
     run:
         cohort = gbs_targets.cohorts[wildcards.cohort]
         cohort.get_unblind_script(out_path=output.script)
+
+rule tag_counts_parts:
+    input:
+        keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run)
+    output:
+        tag_counts_part1 = directory("%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root)
+    run:
+        output_folder = os.path.dirname(output.tag_counts_part1)
+        print("ramify(keyfile=\"%s\", output_folder=\"%s\")" % (input.keyfile, output_folder))
+        os.makedirs(output_folder, exist_ok=True)
+        num_parts = ramify(keyfile=input.keyfile, output_folder=output_folder, sub_tassel_prefix="part")
+        assert num_parts == 1 # TODO not yet implemented if more than 1
 
 rule gzip:
     input:

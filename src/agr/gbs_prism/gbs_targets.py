@@ -131,6 +131,14 @@ class CohortTargets:
             suffixed_target(suffix) for suffix in ["key", "gbsx.key", "unblind.sed"]
         ]
 
+        tag_counts_part1 = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name)),
+                "tagCounts_parts",
+                "part1",
+            )
+        ]
+
         paths = (
             self.local_fastq_links
             + suffixed_targets
@@ -139,8 +147,9 @@ class CohortTargets:
             + bwa_sai
             + bwa_bam
             + bwa_stats
+            + tag_counts_part1  # TODO what do we need?
         )
-        logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
+        # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
 
     def get_keyfile_for_tassel(self, out_path: str):

@@ -100,7 +100,7 @@ examples:
     return args
 
 
-def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str):
+def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
     """
     typical keyfile looks like
 
@@ -111,6 +111,7 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str):
     HN7WGDRXY       1       GAGAATC 957002  JCM.4464        B       1       1793                    MspI-ApeKI      BEE     81                      /dataset/hiseq/active/fastq-link-farm/SQ1793_HN7WGDRXY_s_1_fastq.txt.gz
     HN7WGDRXY       2       GAGAATC 957002  JCM.4464        B       1       1793                    MspI-ApeKI      BEE     81                      /dataset/hiseq/active/fastq-link-farm/SQ1793_HN7WGDRXY_s_2_fastq.txt.gz
 
+    Returns number of parts, usually 1.
     """
 
     # read keyfile into array of tuples and get heading
@@ -194,7 +195,9 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str):
 
             part_number += 1
 
-        print("wrote out %d partial keyfiles and supporting folders " % part_number)
+        num_parts = part_number - 1
+        print("wrote out %d partial keyfiles and supporting folders " % num_parts)
+        return num_parts
 
 
 def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str):
@@ -313,7 +316,7 @@ def _main():
     options = _get_options()
 
     if options["task"] == "ramify":
-        ramify(
+        _ = ramify(
             keyfile=options["keyfile"][0],
             output_folder=options["output_folder"],
             sub_tassel_prefix=options["sub_tassel_prefix"],
