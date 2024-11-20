@@ -1,5 +1,4 @@
-#!/bin/env python
-from __future__ import print_function
+#!/usr/bin/env python
 
 #########################################################################
 # ramify a custom keyfile into different libraries to prep for demultiplexing
@@ -14,7 +13,7 @@ import itertools
 BARCODE_LENGTH = 10
 
 
-def get_options():
+def _get_options():
     description = """
     """
     long_description = """
@@ -51,8 +50,8 @@ examples:
         epilog=long_description,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("keyfile", type=str, nargs=1, help="keyfile to ramify")
-    parser.add_argument(
+    _ = parser.add_argument("keyfile", type=str, nargs=1, help="keyfile to ramify")
+    _ = parser.add_argument(
         "-t",
         "--task",
         dest="task",
@@ -62,7 +61,7 @@ examples:
         default="exclude_tiles",
         help="what you want to get / do",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-o",
         "--output_folder",
         dest="output_folder",
@@ -70,7 +69,7 @@ examples:
         default=None,
         help="output folder",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-m",
         "--merge_folder",
         dest="merge_folder",
@@ -78,7 +77,7 @@ examples:
         default=None,
         help="merge folder",
     )
-    parser.add_argument(
+    _ = parser.add_argument(
         "-p",
         "--sub_tassel_prefix",
         dest="sub_tassel_prefix",
@@ -101,7 +100,7 @@ examples:
     return args
 
 
-def ramify(options):
+def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str):
     """
     typical keyfile looks like
 
@@ -116,8 +115,8 @@ def ramify(options):
 
     # read keyfile into array of tuples and get heading
     # bail out if do not see columns called flowcell, lane, libraryprepid and fastq_link
-    print("ramifying keyfile %s" % options["keyfile"][0])
-    with open(options["keyfile"][0], "r") as instream:
+    print("ramifying keyfile %s" % keyfile)
+    with open(keyfile, "r") as instream:
         records = [re.split("\t", record.strip()) for record in instream]
         print("read %d keyfile records" % len(records))
 
@@ -133,16 +132,15 @@ def ramify(options):
                 indexes[fieldname] = header.index(fieldname)
 
         # sort the keyfile array
-        # define a comparator
-        def my_cmp(record1, record2):
-            if record1[indexes["flowcell"]] != record2[indexes["flowcell"]]:
-                return cmp(record1[indexes["flowcell"]], record2[indexes["flowcell"]])
-            else: 
-                return cmp(record1[indexes["libraryprepid"]], record2[indexes["libraryprepid"]])
-
         print("sorting keyfile")
-        sorted_records = sorted(records[1:], my_cmp)
-            
+        sorted_records = sorted(
+            records[1:],
+            key=lambda record: (
+                record[indexes["flowcell"]],
+                record[indexes["libraryprepid"]],
+            ),
+        )
+
         # set up an iterator, grouping by flowcell and libraryprepid
         print("analysing keyfile")
         sub_file_iter = itertools.groupby(
@@ -155,8 +153,8 @@ def ramify(options):
         for flowcell_lib_tuple, record_iter in sub_file_iter:
             # sub-folder structure
             part_folder = os.path.join(
-                options["output_folder"],
-                "%s%d" % (options["sub_tassel_prefix"], part_number),
+                output_folder,
+                "%s%d" % (sub_tassel_prefix, part_number),
             )
             key_folder = os.path.join(part_folder, "key")
             tag_folder = os.path.join(part_folder, "tagCounts")
@@ -199,7 +197,7 @@ def ramify(options):
         print("wrote out %d partial keyfiles and supporting folders " % part_number)
 
 
-def merge_results(options):
+def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str):
     """
     typical keyfile looks like
 
@@ -213,15 +211,12 @@ def merge_results(options):
     """
 
     # list the subfolders of the out folder, that are folders and match the expected name
-    print(
-        "merging demultiplexing from %s to %s"
-        % (options["output_folder"], options["merge_folder"])
-    )
-    part_folders = os.listdir(options["output_folder"])
+    print("merging demultiplexing from %s to %s" % (output_folder, merge_folder))
+    part_folders = os.listdir(output_folder)
     part_folders = [
-        os.path.join(options["output_folder"], content)
+        os.path.join(output_folder, content)
         for content in part_folders
-        if re.match(options["sub_tassel_prefix"], content) is not None
+        if re.match(sub_tassel_prefix, content) is not None
     ]
     part_folders = [folder for folder in part_folders if os.path.isdir(folder)]
 
@@ -233,7 +228,7 @@ def merge_results(options):
         count_files = [
             count_file
             for count_file in os.listdir(os.path.join(part_folder, "tagCounts"))
-            if re.search("\.cnt$", count_file) is not None
+            if re.search(r"\.cnt$", count_file) is not None
         ]
         for count_file in count_files:
             base = os.path.basename(count_file)
@@ -243,23 +238,23 @@ def merge_results(options):
                     % base
                 )
             unique_count_files.add(base)
-            target = os.path.join(options["merge_folder"], base)
+            target = os.path.join(merge_folder, base)
             source = os.path.join(part_folder, "tagCounts", base)
             os.symlink(source, target)
 
 
-def merge_counts(options):
+def merge_counts(output_folder: str, sub_tassel_prefix: str):
     # based on /dataset/gseq_processing/active/bin/gbs_prism/get_reads_tags_per_sample.py
 
     outline = ""
 
     print("sample,flowcell,lane,sq,tags,reads")
 
-    part_folders = os.listdir(options["output_folder"])
+    part_folders = os.listdir(output_folder)
     part_folders = [
-        os.path.join(options["output_folder"], content)
+        os.path.join(output_folder, content)
         for content in part_folders
-        if re.match(options["sub_tassel_prefix"], content) is not None
+        if re.match(sub_tassel_prefix, content) is not None
     ]
     part_folders = [folder for folder in part_folders if os.path.isdir(folder)]
 
@@ -267,7 +262,7 @@ def merge_counts(options):
         fastq_stdout_files = [
             stdout_file
             for stdout_file in os.listdir(part_folder)
-            if re.search("\.FastqToTagCount\.stdout$", stdout_file) is not None
+            if re.search(r"\.FastqToTagCount\.stdout$", stdout_file) is not None
         ]
         if len(fastq_stdout_files) != 1:
             raise Exception(
@@ -276,6 +271,7 @@ def merge_counts(options):
             )
 
         with open(os.path.join(part_folder, fastq_stdout_files[0])) as stdout_in:
+            cellline = ""  # overwritten by first line match
             for line in stdout_in:
                 line = line.strip()
                 if "Reading FASTQ file:" in line:
@@ -313,16 +309,27 @@ def merge_counts(options):
                     pass
 
 
-def main():
-    options = get_options()
+def _main():
+    options = _get_options()
 
     if options["task"] == "ramify":
-        ramify(options)
+        ramify(
+            keyfile=options["keyfile"][0],
+            output_folder=options["output_folder"],
+            sub_tassel_prefix=options["sub_tassel_prefix"],
+        )
     elif options["task"] == "merge_results":
-        merge_results(options)
+        merge_results(
+            output_folder=options["output_folder"],
+            merge_folder=options["merge_folder"],
+            sub_tassel_prefix=options["sub_tassel_prefix"],
+        )
     elif options["task"] == "merge_counts":
-        merge_counts(options)
+        merge_counts(
+            output_folder=options["output_folder"],
+            sub_tassel_prefix=options["sub_tassel_prefix"],
+        )
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_main())
