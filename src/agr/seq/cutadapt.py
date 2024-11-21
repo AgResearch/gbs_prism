@@ -1,8 +1,6 @@
 import logging
 import subprocess
 
-from agr.util import eprint
-
 logger = logging.getLogger(__name__)
 
 # adapter phrase taken from
@@ -43,7 +41,7 @@ def cutadapt(in_path: str, out_path: str):
                     in_path,
                 ]
             )
-            eprint(" ".join(cutadapt_command))
+            logger.info(" ".join(cutadapt_command))
             _ = subprocess.run(
                 cutadapt_command,
                 check=True,

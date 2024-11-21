@@ -1,8 +1,6 @@
 import logging
 import subprocess
 
-from agr.util import eprint
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +22,7 @@ class Bwa:
                 reference,
                 in_path,
             ]
-            eprint(" ".join(bwa_command))
+            logger.info(" ".join(bwa_command))
             _ = subprocess.run(
                 bwa_command,
                 stdout=out_f,
@@ -40,7 +38,7 @@ class Bwa:
                 sai_path,
                 fastq_path,
             ]
-            eprint(" ".join(bwa_command))
+            logger.info(" ".join(bwa_command))
             _ = subprocess.run(
                 bwa_command,
                 stdout=out_f,

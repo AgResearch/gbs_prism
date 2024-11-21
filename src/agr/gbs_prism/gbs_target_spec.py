@@ -3,7 +3,7 @@ import os.path
 import tempfile
 from pydantic import BaseModel
 
-from agr.util import StdioRedirect, eprint
+from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
 
 from .exceptions import GbsPrismDataException
@@ -172,7 +172,7 @@ def _gquery_cohort_genotyping_method(run_name: str, cohort: Cohort) -> str:
                 ),
                 items=[cohort.libname],
             )
-            eprint("%s" % g)
+            logger.info("%s" % g)
             g.run()
         _ = tmp_f.seek(0)
         methods = tmp_f.readlines()

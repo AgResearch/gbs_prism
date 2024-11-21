@@ -22,6 +22,7 @@ from agr.seq.fastq_sample import FastqSample
 from agr.seq.cutadapt import cutadapt
 from agr.seq.bwa import Bwa
 from agr.gbs_prism.ramify_tassel_keyfile import ramify
+from agr.gbs_prism.tassel3 import Tassel3
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
@@ -30,6 +31,7 @@ bwa_sample = FastqSample(
     minimum_sample_size=150000,
 )
 bwa = Bwa(barcode_len=10)
+tassel3 = Tassel3()
 gbs_config = GbsConfig(
     run_name=c.run,
     paths=paths.gbs,
@@ -59,7 +61,7 @@ rule cohort_fastq_links:
 
 rule sample_for_bwa:
     input:
-        fastq_file="{path}/{cohort}/fastq/{basename}.fastq.gz"
+        fastq_file="{path}/{cohort}/Illumina/{basename}.fastq.gz"
     output:
         # the ugly name is copied from legacy gbs_prism
         sampled_fastq_file="{path}/bwa_mapping/{cohort}/{basename}.fastq.gz.fastq.%s.fastq" % bwa_sample.moniker
@@ -132,13 +134,23 @@ rule tag_counts_parts:
     input:
         keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run)
     output:
-        tag_counts_part1 = directory("%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root)
+        tag_counts_part1_dir = directory("%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root)
     run:
-        output_folder = os.path.dirname(output.tag_counts_part1)
+        output_folder = os.path.dirname(output.tag_counts_part1_dir)
         print("ramify(keyfile=\"%s\", output_folder=\"%s\")" % (input.keyfile, output_folder))
         os.makedirs(output_folder, exist_ok=True)
         num_parts = ramify(keyfile=input.keyfile, output_folder=output_folder, sub_tassel_prefix="part")
         assert num_parts == 1 # TODO not yet implemented if more than 1
+
+rule fastq_to_tagcount:
+    input:
+        keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run),
+        # not used if there's only one part, but multiple parts are TODO:
+        tag_counts_part1_dir = "%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root
+    output:
+        tag_counts_dir = directory("%s/{cohort}/tagCounts" % paths.gbs.run_root)
+    run:
+        tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=wildcards.cohort, out_dir=os.path.dirname(output.tag_counts_dir))
 
 rule gzip:
     input:

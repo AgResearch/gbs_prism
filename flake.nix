@@ -15,6 +15,11 @@
       url = "github:AgResearch/cutadapt.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    tassel3 = {
+      # TODO merge dev to main and use main
+      url = "github:AgResearch/tassel3/dev";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     gquery = {
       # TODO use main branch not gbs_prism branch
       url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
@@ -22,7 +27,7 @@
     };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, gquery, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, tassel3, gquery, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -34,6 +39,7 @@
             bbmap = bbmap.packages.${system}.default;
             bcl-convert = bcl-convert.packages.${system}.default;
             cutadapt = cutadapt.packages.${system}.default;
+            tassel3 = tassel3.packages.${system}.default;
             gquery-api = gquery.packages.${system}.api;
             gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
@@ -59,6 +65,7 @@
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
+                flakePkgs.tassel3
                 bwa
                 samtools
                 fastqc

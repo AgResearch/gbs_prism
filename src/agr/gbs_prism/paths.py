@@ -81,7 +81,8 @@ class GbsPaths:
         return os.path.join(self._run_root, cohort_name)
 
     def fastq_link_dir(self, cohort_name: str) -> str:
-        return os.path.join(self._run_root, cohort_name, "fastq")
+        """Directory of links to fastq files for the cohort, needs to match Tassel3 expectation"""
+        return os.path.join(self._run_root, cohort_name, "Illumina")
 
     def bwa_mapping_dir(self, cohort_name: str) -> str:
         return os.path.join(self._run_root, "bwa_mapping", cohort_name)

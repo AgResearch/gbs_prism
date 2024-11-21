@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 import logging
 import os
-import re
 import tempfile
 
-from agr.util import StdioRedirect, eprint
+from agr.util import StdioRedirect
 from agr.gquery import GQuery, Predicates
 
+from .enzyme_sub import enzyme_sub_for_uneak
 from .gbs_target_spec import Cohort, GbsTargetSpec, CohortTargetSpec
 from .paths import GbsPaths
 from .types import flowcell_id
@@ -131,11 +131,18 @@ class CohortTargets:
             suffixed_target(suffix) for suffix in ["key", "gbsx.key", "unblind.sed"]
         ]
 
-        tag_counts_part1 = [
+        tag_counts_part1_dir = [
             os.path.join(
                 self._config.paths.cohort_dir(str(self._name)),
                 "tagCounts_parts",
                 "part1",
+            )
+        ]
+
+        tag_counts_dir = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name)),
+                "tagCounts",
             )
         ]
 
@@ -147,7 +154,8 @@ class CohortTargets:
             + bwa_sai
             + bwa_bam
             + bwa_stats
-            + tag_counts_part1  # TODO what do we need?
+            + tag_counts_part1_dir  # TODO what do we need?
+            + tag_counts_dir
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
@@ -167,17 +175,13 @@ class CohortTargets:
                     ),
                     items=[self._name.libname],
                 )
-                eprint(g)
+                logger.info(g)
                 g.run()
-
-                # from https://github.com/AgResearch/gbs_prism/blob/dc5a71a6a2c554cd8952614d151a46ddce6892d1/ag_gbs_qc_prism.sh#L252
-                enzyme_sub_re = re.compile(r"HpaIII?")  # matches HpaII or HpaIII
-                enzyme_sub = "MspI"
 
             _ = tmp_f.seek(0)
             with open(out_path, "w") as keyfile_f:
                 for line in tmp_f:
-                    _ = keyfile_f.write(enzyme_sub_re.sub(enzyme_sub, line))
+                    _ = keyfile_f.write(enzyme_sub_for_uneak(line))
 
     def get_gbsx_keyfile(self, out_path: str):
         fcid = flowcell_id(self._config.run_name)

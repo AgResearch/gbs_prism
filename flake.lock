@@ -156,6 +156,24 @@
         "type": "github"
       }
     },
+    "flake-utils_6": {
+      "inputs": {
+        "systems": "systems_6"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
     "gquery": {
       "inputs": {
         "flake-utils": "flake-utils_5",
@@ -200,7 +218,8 @@
         "cutadapt": "cutadapt",
         "flake-utils": "flake-utils_4",
         "gquery": "gquery",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "tassel3": "tassel3"
       }
     },
     "systems": {
@@ -275,6 +294,43 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_6": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "tassel3": {
+      "inputs": {
+        "flake-utils": "flake-utils_6",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1732224988,
+        "narHash": "sha256-VGX4BCTb3khxzVxpBnVgKK/R/4o5m5kA/yWk0Q6DTc8=",
+        "owner": "AgResearch",
+        "repo": "tassel3",
+        "rev": "18489c4cd3db3afc7029395eae76549f7e399aee",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AgResearch",
+        "ref": "dev",
+        "repo": "tassel3",
         "type": "github"
       }
     }
