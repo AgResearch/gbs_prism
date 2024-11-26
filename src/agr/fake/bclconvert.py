@@ -2,47 +2,70 @@ import gzip
 import logging
 import os.path
 import pathlib
-import subprocess
+import shutil
 
 from agr.seq.sample_sheet import SampleSheet
-from agr.seq.bclconvert import BclConvert as RealBclConvert
+from agr.seq.bclconvert import BclConvert as RealBclConvert, BclConvertError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
 class BclConvert(RealBclConvert):
-    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=1000):
         super(BclConvert, self).__init__(
             in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
         )
 
+        # find the real run
+        run_name = os.path.basename(in_dir)
+        illumina_datasets = [
+            "2024_illumina_sequencing_d",
+            "2024_illumina_sequencing_e",
+            "2023_illumina_sequencing_c",
+            "2023_illumina_sequencing_b",
+            "2023_illumina_sequencing_a",
+        ]
+        candidate_run_dir = "/not-found"
+        for dataset in illumina_datasets:
+            candidate_run_dir = (
+                "/dataset/%s/scratch/postprocessing/illumina/novaseq/%s"
+                % (dataset, run_name)
+            )
+            if os.path.isdir(candidate_run_dir):
+                break
+        if not os.path.isdir(candidate_run_dir):
+            raise BclConvertError(
+                "failed to find run %s in any of %s"
+                % (run_name, " ".join(illumina_datasets))
+            )
+        self._real_fastq_dir = os.path.join(
+            candidate_run_dir, "SampleSheet", "bclconvert"
+        )
+        self._real_top_unknown_path = os.path.join(
+            self._real_fastq_dir, "Reports", "Top_Unknown_Barcodes.csv"
+        )
+        self._n_reads = n_reads
+
     def run(self):
-        logger.warning("using fake BclConvert instead of real one")
+        logger.warning(
+            "fake BclConvert with %d reads from %s"
+            % (self._n_reads, self._real_fastq_dir)
+        )
         sample_sheet = SampleSheet(self._sample_sheet_path, impute_lanes=[1, 2])
 
         for fastq_file in sample_sheet.fastq_files:
-            fastq = subprocess.run(
-                [
-                    "fastq_generator",
-                    "generate_random_fastq_PE",
-                    "200",
-                    "20",
-                ],
-                check=True,
-                capture_output=True,
-            )
-            with gzip.open(os.path.join(self._out_dir, fastq_file), mode="wb") as gz:
-                _ = gz.write(fastq.stdout)
+            with gzip.open(
+                os.path.join(self._real_fastq_dir, fastq_file), mode="r"
+            ) as real_gz:
+                with gzip.open(
+                    os.path.join(self._out_dir, fastq_file), mode="w"
+                ) as fake_gz:
+                    for _ in range(self._n_reads * 4):  # 4 lines per read
+                        line = next(real_gz)
+                        _ = fake_gz.write(line)
 
-        # completely bogus, hopefully no-one's counting on this:
-        with open(self.top_unknown_path, mode="w") as f:
-            _ = f.write(
-                """Lane,index,index2,# Reads,% of Unknown Barcodes,% of All Reads
-1,GGGGGGGGGG,AGATCTCG,192055175,0.885274,0.182866
-1,GACGAGATTA,GGGGGGGG,2300580,0.010604,0.002191
-"""
-            )
+        _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
 
         # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
         pathlib.Path(self.fastq_complete_path).touch()
