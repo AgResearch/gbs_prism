@@ -76,6 +76,8 @@ rule cutadapt:
         cutadapt(in_path=input.fastq_file, out_path=output.trimmed_fastq_file)
 
 rule bwa_aln:
+    # TODO: remove this constraint when running with Slurm:
+    threads: 4
     input:
         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq"
     output:
@@ -86,6 +88,8 @@ rule bwa_aln:
         bwa.aln(in_path=input.fastq_file, out_path=output.sai_file, reference=bwa_reference)
 
 rule bwa_samse:
+    # TODO: remove this constraint when running with Slurm:
+    threads: 4
     input:
         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq",
         sai_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.sai" % bwa.moniker,

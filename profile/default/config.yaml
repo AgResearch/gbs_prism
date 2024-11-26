@@ -1,0 +1,3 @@
+default-resources:
+    mem_mb: 10 * 1000
+    runtime: 1y
