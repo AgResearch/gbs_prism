@@ -36,8 +36,6 @@ gbs_config = GbsConfig(
     aligner="bwa",
     alignment_moniker=bwa.moniker)
 gbs_target_spec = read_gbs_target_spec(paths.gbs.target_spec_path)
-from pprint import pp
-pp("gbs_target_spec: %s" % gbs_target_spec)
 gbs_targets = GbsTargets(gbs_config, gbs_target_spec)
 
 # Ensure we have the directory structure we need in advance
