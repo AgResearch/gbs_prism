@@ -48,20 +48,6 @@
             flakePkgs.gquery-api
           ]);
 
-          fastq_generator =
-            let
-              src = pkgs.fetchFromGitHub {
-                owner = "johanzi";
-                repo = "fastq_generator";
-                rev = "8bf8d68d0c8dc07c7e4b8c5a53068aef15b40aa6";
-                hash = "sha256-XABzYER54zOipEnELhYIcOssd2GYHaKjU5K2jMt9/xc=";
-              };
-            in
-            (pkgs.writeScriptBin "fastq_generator" (builtins.readFile "${src}/fastq_generator.py")).overrideAttrs (old: {
-              buildInputs = [ pkgs.python3 ];
-              buildCommand = "${old.buildCommand}\n patchShebangs $out";
-            });
-
         in
         with pkgs;
         {
