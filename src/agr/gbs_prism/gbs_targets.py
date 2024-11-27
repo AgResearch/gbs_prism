@@ -139,10 +139,21 @@ class CohortTargets:
             )
         ]
 
-        tag_counts_dir = [
+        tassel_stages_done = [
             os.path.join(
                 self._config.paths.cohort_dir(str(self._name)),
-                "tagCounts",
+                done_file,
+            )
+            for done_file in [
+                "tagCounts.done",
+                "mergedTagCounts.done",
+                "tagPair.done",
+            ]
+        ]
+
+        kgd_sample_stats = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name)), "KGD", "SampleStats.csv"
             )
         ]
 
@@ -155,7 +166,8 @@ class CohortTargets:
             + bwa_bam
             + bwa_stats
             + tag_counts_part1_dir  # TODO what do we need?
-            + tag_counts_dir
+            + tassel_stages_done
+            # + kgd_sample_stats
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths

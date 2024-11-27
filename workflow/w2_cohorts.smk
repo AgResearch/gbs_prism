@@ -23,6 +23,7 @@ from agr.seq.cutadapt import cutadapt
 from agr.seq.bwa import Bwa
 from agr.gbs_prism.ramify_tassel_keyfile import ramify
 from agr.gbs_prism.tassel3 import Tassel3
+from agr.gbs_prism.kgd import run_kgd
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
@@ -77,8 +78,6 @@ rule cutadapt:
         cutadapt(in_path=input.fastq_file, out_path=output.trimmed_fastq_file)
 
 rule bwa_aln:
-    # TODO: remove this constraint when running with Slurm:
-    threads: 4
     input:
         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq"
     output:
@@ -89,8 +88,6 @@ rule bwa_aln:
         bwa.aln(in_path=input.fastq_file, out_path=output.sai_file, reference=bwa_reference)
 
 rule bwa_samse:
-    # TODO: remove this constraint when running with Slurm:
-    threads: 4
     input:
         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq",
         sai_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.sai" % bwa.moniker,
@@ -142,15 +139,46 @@ rule tag_counts_parts:
         num_parts = ramify(keyfile=input.keyfile, output_folder=output_folder, sub_tassel_prefix="part")
         assert num_parts == 1 # TODO not yet implemented if more than 1
 
-rule fastq_to_tagcount:
+rule fastq_to_tag_count:
     input:
         keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run),
         # not used if there's only one part, but multiple parts are TODO:
         tag_counts_part1_dir = "%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root
     output:
-        tag_counts_dir = directory("%s/{cohort}/tagCounts" % paths.gbs.run_root)
+        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root
     run:
-        tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=wildcards.cohort, out_dir=os.path.dirname(output.tag_counts_dir))
+        cohort_str=wildcards.cohort
+        tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=cohort_str, work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule merge_taxa_tag_count:
+    input:
+        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root
+    output:
+        merge_taxa_tag_count_done = "%s/{cohort}/mergedTagCounts.done" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        tassel3.merge_taxa_tag_count(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule tag_count_to_tag_pair:
+    input:
+        merge_taxa_tag_count_done = "%s/{cohort}/mergedTagCounts.done" % paths.gbs.run_root
+    output:
+        tag_count_to_tag_pair= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        tassel3.tag_count_to_tag_pair(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule kgd:
+    input:
+        tag_counts_dir = "%s/{cohort}/tagCounts" % paths.gbs.run_root
+    output:
+        sample_stats_csv = "%s/{cohort}/KGD/SampleStats.csv" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        genotyping_method=gbs_target_spec.cohorts[cohort_str].genotyping_method
+        run_kgd(cohort_str=cohort_str, base_dir="%s/%s" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
+
+gbs_target_spec
 
 rule gzip:
     input:

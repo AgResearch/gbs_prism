@@ -99,6 +99,7 @@
                 flakePkgs.cutadapt
                 flakePkgs.tassel3
                 flakePkgs.kgd-src
+                run_kgd
                 bwa
                 samtools
                 fastqc
