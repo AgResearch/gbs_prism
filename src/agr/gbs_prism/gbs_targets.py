@@ -148,6 +148,9 @@ class CohortTargets:
                 "tagCounts.done",
                 "mergedTagCounts.done",
                 "tagPair.done",
+                "tagsByTaxa.done",
+                "mapInfo.done",
+                "hapMap.done",
             ]
         ]
 

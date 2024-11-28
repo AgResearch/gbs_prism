@@ -163,10 +163,37 @@ rule tag_count_to_tag_pair:
     input:
         merge_taxa_tag_count_done = "%s/{cohort}/mergedTagCounts.done" % paths.gbs.run_root
     output:
-        tag_count_to_tag_pair= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
+        tag_pair_done= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
         tassel3.tag_count_to_tag_pair(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule tag_pair_to_tbt:
+    input:
+        tag_pair_done= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
+    output:
+        tags_by_taxa_done = "%s/{cohort}/tagsByTaxa.done" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        tassel3.tag_pair_to_tbt(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule tbt_to_map_info:
+    input:
+        tags_by_taxa_done = "%s/{cohort}/tagsByTaxa.done" % paths.gbs.run_root
+    output:
+        map_info_done = "%s/{cohort}/mapInfo.done" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        tassel3.tbt_to_map_info(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule map_info_to_hap_map:
+    input:
+        map_info_done = "%s/{cohort}/mapInfo.done" % paths.gbs.run_root
+    output:
+        hap_map_done = "%s/{cohort}/hapMap.done" % paths.gbs.run_root
+    run:
+        cohort_str=wildcards.cohort
+        tassel3.map_info_to_hap_map(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
 
 rule kgd:
     input:

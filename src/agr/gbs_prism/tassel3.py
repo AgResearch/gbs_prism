@@ -114,3 +114,36 @@ class Tassel3:
             work_dir=work_dir,
             done_file="tagPair.done",
         )
+
+    def tag_pair_to_tbt(self, work_dir: str):
+        tags_by_taxa_dir = os.path.join(work_dir, "tagsByTaxa")
+        os.makedirs(tags_by_taxa_dir, exist_ok=True)
+
+        self._run_tassel_plugin(
+            "TagPairToTBT",
+            [],
+            work_dir=work_dir,
+            done_file="tagsByTaxa.done",
+        )
+
+    def tbt_to_map_info(self, work_dir: str):
+        map_info_dir = os.path.join(work_dir, "mapInfo")
+        os.makedirs(map_info_dir, exist_ok=True)
+
+        self._run_tassel_plugin(
+            "TBTToMapInfo",
+            [],
+            work_dir=work_dir,
+            done_file="mapInfo.done",
+        )
+
+    def map_info_to_hap_map(self, work_dir: str):
+        hap_map_dir = os.path.join(work_dir, "hapMap")
+        os.makedirs(hap_map_dir, exist_ok=True)
+
+        self._run_tassel_plugin(
+            "MapInfoToHapMap",
+            ["-mnMAF", "0.03", "-mxMAF", "0.5", "-mnC", "0.1"],
+            work_dir=work_dir,
+            done_file="hapMap.done",
+        )
