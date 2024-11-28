@@ -197,7 +197,7 @@ rule map_info_to_hap_map:
 
 rule kgd:
     input:
-        tag_counts_dir = "%s/{cohort}/tagCounts" % paths.gbs.run_root
+        hap_map_done = "%s/{cohort}/hapMap.done" % paths.gbs.run_root
     output:
         sample_stats_csv = "%s/{cohort}/KGD/SampleStats.csv" % paths.gbs.run_root
     run:

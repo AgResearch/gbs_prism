@@ -170,7 +170,7 @@ class CohortTargets:
             + bwa_stats
             + tag_counts_part1_dir  # TODO what do we need?
             + tassel_stages_done
-            # + kgd_sample_stats
+            + kgd_sample_stats
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
