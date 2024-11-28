@@ -41,6 +41,10 @@ class SequencerRun:
         return self._dir
 
     @property
+    def name(self) -> str:
+        return self._run_name
+
+    @property
     def sample_sheet_path(self) -> str:
         return os.path.join(self._dir, "SampleSheet.csv")
 

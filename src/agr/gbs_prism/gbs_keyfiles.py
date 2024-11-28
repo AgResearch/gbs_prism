@@ -1,3 +1,4 @@
+import logging
 import os.path
 
 from agr.gquery import GQuery, GUpdate, Predicates
@@ -5,6 +6,8 @@ from agr.util import StdioRedirect
 
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
+
+logger = logging.getLogger(__name__)
 
 
 class GbsKeyfiles:
@@ -110,8 +113,9 @@ where
     def create(self):
 
         if self._sequencer_run.exists_in_database():
-            print("not creating GBS keyfiles in database - run already exists")
-            return
+            logger.warning(
+                "run %s already exists, continuing anyway" % self._sequencer_run.name
+            )
 
         self.dump_gbs_tables()
 
