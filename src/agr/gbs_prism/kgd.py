@@ -1,6 +1,7 @@
 import logging
 import os.path
 import subprocess
+from itertools import islice
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +34,24 @@ def run_kgd(
     )
     hapmap_path = hapmap_paths[0]
 
-    with open(out_path, "w") as out_f:
-        with open(err_path, "w") as err_f:
-            run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
-            logger.info(" ".join(run_kgd_command))
-            _ = subprocess.run(
-                run_kgd_command,
-                cwd=work_dir,
-                stdout=out_f,
-                stderr=err_f,
-                check=True,
-            )
+    if has_sufficient_snps(hapmap_path):
+        with open(out_path, "w") as out_f:
+            with open(err_path, "w") as err_f:
+                run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
+                logger.info(" ".join(run_kgd_command))
+                _ = subprocess.run(
+                    run_kgd_command,
+                    cwd=work_dir,
+                    stdout=out_f,
+                    stderr=err_f,
+                    check=True,
+                )
+    else:
+        print("skipping KGD since insufficient SNPs in %s" % hapmap_path)
+
+
+def has_sufficient_snps(hapmap_file: str):
+    # KGD seems to fail badly with 0 or 1 SNP, so we need 2, plus the header line
+    required_snps = 2
+    with open(hapmap_file, "r") as f:
+        return len(list(islice(f, required_snps + 1))) == required_snps + 1
