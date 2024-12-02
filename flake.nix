@@ -98,7 +98,6 @@
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
                 flakePkgs.tassel3
-                flakePkgs.kgd-src
                 run_kgd
                 bwa
                 samtools
@@ -114,9 +113,6 @@
                 export PYTHONPATH=./src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
-
-                # TODO embed this better
-                export KGD_SRC=${flakePkgs.kgd-src};
               '';
             };
           };
