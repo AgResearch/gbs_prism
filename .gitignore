@@ -5,3 +5,6 @@ __pycache__/
 /result
 *.pickle
 kmer_binning.txt.*
+# for Nextflow:
+/.nextflow*
+/work/

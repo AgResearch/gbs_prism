@@ -1,7 +1,7 @@
 {
   description = "Flake for gbs_prism development";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
       url = "github:AgResearch/bbmap.nix/main";
@@ -139,7 +139,7 @@
             default = mkShell {
               buildInputs = [
                 bashInteractive
-                snakemake
+                nextflow
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
@@ -153,12 +153,11 @@
                 gzip
                 yq-go
                 devPython
-                graphviz # for dot, for snakemake DAG visualization
               ];
 
               shellHook = ''
                 # enable use of gbs_prism from current directory during development
-                export PYTHONPATH=./src:$PYTHONPATH
+                export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
               '';

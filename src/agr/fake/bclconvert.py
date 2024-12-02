@@ -1,7 +1,6 @@
 import gzip
 import logging
 import os.path
-import pathlib
 import shutil
 
 from agr.seq.sample_sheet import SampleSheet
@@ -12,9 +11,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class BclConvert(RealBclConvert):
-    def __init__(
-        self, in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=2000000
-    ):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=2000):
         super(BclConvert, self).__init__(
             in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
         )
@@ -47,6 +44,7 @@ class BclConvert(RealBclConvert):
         self._real_top_unknown_path = os.path.join(
             self._real_fastq_dir, "Reports", "Top_Unknown_Barcodes.csv"
         )
+        self._real_logs_dir = os.path.join(self._real_fastq_dir, "Logs")
         self._n_reads = n_reads
 
     def run(self):
@@ -67,7 +65,17 @@ class BclConvert(RealBclConvert):
                         line = next(real_gz)
                         _ = fake_gz.write(line)
 
+        reports_dir = os.path.join(self._out_dir, "Reports")
+        os.makedirs(reports_dir)
         _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
 
-        # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
-        pathlib.Path(self.fastq_complete_path).touch()
+        logs_dir = os.path.join(self._out_dir, "Logs")
+        _ = shutil.copytree(self._real_logs_dir, logs_dir)
+
+        # this is completely bogus, a naive attempt to meet the contract of the nf-core bclconvert module
+        interop_dir = os.path.join(self._out_dir, "InterOp")
+        os.makedirs(interop_dir)
+        with open(os.path.join(interop_dir, "dummy.bin"), "w") as dummy_interop_f:
+            _ = dummy_interop_f.write(
+                "The bogus file makes fake bclconvert look more real"
+            )
