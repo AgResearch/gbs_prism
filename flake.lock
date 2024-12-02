@@ -222,11 +222,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1733090481,
-        "narHash": "sha256-HtCAAI1c9cbhgZP/T+oz1eFv/4GrCSMW+YRLbgH9cqg=",
+        "lastModified": 1733109479,
+        "narHash": "sha256-cukx7pU8nldMJCSOUdaayc3uSqC7fAVrY5afk19YTP0=",
         "owner": "AgResearch",
         "repo": "KGD",
-        "rev": "ad4cf5669c202ac0d3f87c27229c5e302dce9b35",
+        "rev": "f3871b501826a90a44c75f8232fd8060feabadac",
         "type": "github"
       },
       "original": {
