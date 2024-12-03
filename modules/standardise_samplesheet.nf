@@ -5,7 +5,7 @@ process STANDARDISE_SAMPLESHEET {
 	tuple val(meta), path(raw)
 
 	output:
-	path "output/SampleSheet.csv"
+	tuple val(meta), path("output/SampleSheet.csv")
 
 	when:
 	task.ext.when == null || task.ext.when

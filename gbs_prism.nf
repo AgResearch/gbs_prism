@@ -12,6 +12,6 @@ workflow {
     def raw_samplesheet = "${run_dir}/SampleSheet.csv"
 
     samplesheet = STANDARDISE_SAMPLESHEET([meta, raw_samplesheet])
-    BCLCONVERT(samplesheet.map { v -> [meta, v, run_dir] })
+    BCLCONVERT(samplesheet.map { v -> [v[0], v[1], run_dir] })
     FASTQC(BCLCONVERT.out.fastq)
 }
