@@ -5,6 +5,7 @@ include { STANDARDISE_SAMPLESHEET } from './modules/standardise_samplesheet.nf'
 include { BCLCONVERT              } from './modules.fake/bclconvert.nf'
 // include { BCLCONVERT         } from './modules/bclconvert.nf'
 include { FASTQC                  } from "${projectDir}/nf-core/fastqc"
+include { SEQTK_SAMPLE_RATE } from "./modules/seqtk/sample_rate.nf"
 
 workflow {
     def meta = [id: params.run_name]
@@ -12,6 +13,7 @@ workflow {
     def raw_samplesheet = "${run_dir}/SampleSheet.csv"
 
     samplesheet = STANDARDISE_SAMPLESHEET([meta, raw_samplesheet])
-    BCLCONVERT(samplesheet.map { v -> [v[0], v[1], run_dir] })
-    FASTQC(BCLCONVERT.out.fastq)
+    fastq = BCLCONVERT(samplesheet.map { v -> [v[0], v[1], run_dir] }).fastq
+    FASTQC(fastq)
+    kmer_sample = SEQTK_SAMPLE_RATE(fastq.map { v -> [v[0], v[1], 0.0002, 10000] }).reads
 }
