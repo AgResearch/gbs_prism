@@ -21,8 +21,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     kgd = {
-      # TODO merge packaging to master and use master
-      url = "github:AgResearch/KGD/packaging";
+      url = "github:AgResearch/KGD/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
