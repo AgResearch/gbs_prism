@@ -1,10 +1,11 @@
-// sanitise sample sheet
-process CLEAN_SAMPLESHEET {
+process STANDARDISE_SAMPLESHEET {
+	tag "${meta.id}"
+
 	input:
-	path(raw)
+	tuple val(meta), path(raw)
 
 	output:
-	path("output/SampleSheet.csv")
+	path "output/SampleSheet.csv"
 
 	when:
 	task.ext.when == null || task.ext.when

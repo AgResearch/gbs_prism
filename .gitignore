@@ -8,3 +8,4 @@ kmer_binning.txt.*
 # for Nextflow:
 /.nextflow*
 /work/
+/nf-core
