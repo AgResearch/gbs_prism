@@ -21,7 +21,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     kgd = {
-      url = "github:AgResearch/KGD/master";
+      url = "github:AgResearch/KGD?ref=refs/tags/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
