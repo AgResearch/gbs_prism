@@ -2,8 +2,8 @@
 
 include { CLEAN_SAMPLESHEET } from './modules/clean_samplesheet.nf'
 // TODO use real bclconvert and consider how to include the fake bclconvert as a stub in the real one
-// include { BCLCONVERT         } from './modules.fake/bclconvert.nf'
-include { BCLCONVERT         } from './modules/bclconvert.nf'
+include { BCLCONVERT         } from './modules.fake/bclconvert.nf'
+// include { BCLCONVERT         } from './modules/bclconvert.nf'
 
 workflow {
     def meta = [:]
