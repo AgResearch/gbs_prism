@@ -17,7 +17,7 @@ process STANDARDISE_SAMPLESHEET {
 	from agr.seq.sample_sheet import SampleSheet
 
 	sample_sheet = SampleSheet("${raw}")
-	os.makedirs("output")
+	os.makedirs("output", exist_ok=True)
 	sample_sheet.write("output/SampleSheet.csv")
     """
 }

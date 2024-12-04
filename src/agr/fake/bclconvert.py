@@ -66,7 +66,7 @@ class BclConvert(RealBclConvert):
                         _ = fake_gz.write(line)
 
         reports_dir = os.path.join(self._out_dir, "Reports")
-        os.makedirs(reports_dir)
+        os.makedirs(reports_dir, exist_ok=True)
         _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
 
         logs_dir = os.path.join(self._out_dir, "Logs")
@@ -74,7 +74,7 @@ class BclConvert(RealBclConvert):
 
         # this is completely bogus, a naive attempt to meet the contract of the nf-core bclconvert module
         interop_dir = os.path.join(self._out_dir, "InterOp")
-        os.makedirs(interop_dir)
+        os.makedirs(interop_dir, exist_ok=True)
         with open(os.path.join(interop_dir, "dummy.bin"), "w") as dummy_interop_f:
             _ = dummy_interop_f.write(
                 "The bogus file makes fake bclconvert look more real"

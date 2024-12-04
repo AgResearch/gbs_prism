@@ -12,7 +12,7 @@ process SEQTK_SAMPLE_RATE {
 	tuple val(meta), path(reads), val(sample_rate), val(minimum_sample_size)
 
 	output:
-	tuple val(meta), path("*.fastq.gz"), emit: reads
+	tuple val(meta), path("output/*.fastq.gz"), emit: reads
 	path "versions.yml", emit: versions
 
 	when:
@@ -37,9 +37,11 @@ from agr.seq.fastq_sample import FastqSample
 from agr.util import gzip
 from agr.nextflow import write_version
 
+os.makedirs("output", exist_ok=True)
+
 fastq_sample = FastqSample(sample_rate=${sample_rate}, minimum_sample_size=${minimum_sample_size})
 for fastq_file in "${reads}".split():
-	out_path="${prefix}_%s" % os.path.basename(fastq_file).removesuffix(".gz")
+	out_path="output/${prefix}_%s" % os.path.basename(fastq_file).removesuffix(".gz")
 	fastq_sample.run(in_path=fastq_file, out_path=out_path)
 	gzip(out_path)
 

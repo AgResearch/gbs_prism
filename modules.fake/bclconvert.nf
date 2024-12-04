@@ -1,5 +1,5 @@
 process BCLCONVERT {
-    tag {"$meta.lane" ? "$meta.id"+"."+"$meta.lane" : "$meta.id" }
+    tag { "${meta.lane}" ? "${meta.id}" + "." + "${meta.lane}" : "${meta.id}" }
     label 'process_medium'
 
     container "nf-core/bclconvert:4.3.6"
@@ -8,14 +8,14 @@ process BCLCONVERT {
     tuple val(meta), path(samplesheet), path(run_dir)
 
     output:
-    tuple val(meta), path("output/**_S[1-9]*_R?_00?.fastq.gz")           , emit: fastq
-    tuple val(meta), path("output/**_S[1-9]*_I?_00?.fastq.gz")           , optional:true, emit: fastq_idx
-    tuple val(meta), path("output/**Undetermined_S0*_R?_00?.fastq.gz")   , optional:true, emit: undetermined
-    tuple val(meta), path("output/**Undetermined_S0*_I?_00?.fastq.gz")   , optional:true, emit: undetermined_idx
-    tuple val(meta), path("output/Reports")                              , emit: reports
-    tuple val(meta), path("output/Logs")                                 , emit: logs
+    tuple val(meta), path("output/**_S[1-9]*_R?_00?.fastq.gz"), emit: fastq
+    tuple val(meta), path("output/**_S[1-9]*_I?_00?.fastq.gz"), optional: true, emit: fastq_idx
+    tuple val(meta), path("output/**Undetermined_S0*_R?_00?.fastq.gz"), optional: true, emit: undetermined
+    tuple val(meta), path("output/**Undetermined_S0*_I?_00?.fastq.gz"), optional: true, emit: undetermined_idx
+    tuple val(meta), path("output/Reports"), emit: reports
+    tuple val(meta), path("output/Logs"), emit: logs
     tuple val(meta), path("**/InterOp/*.bin", includeInputs: true), emit: interop
-    path("versions.yml")                                          , emit: versions
+    path ("versions.yml"), emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -28,7 +28,7 @@ process BCLCONVERT {
     from agr.seq.sequencer_run import SequencerRun
     from agr.fake.bclconvert import BclConvert
 
-    os.makedirs("output")
+    os.makedirs("output", exist_ok=True)
     bclconvert = BclConvert(in_dir="${run_dir}", sample_sheet_path="${samplesheet}", out_dir="output")
     bclconvert.run()
 

@@ -20,7 +20,7 @@ import os
 from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.util import gunzip, StdioRedirect
 
-os.makedirs("output")
+os.makedirs("output", exist_ok=True)
 
 # currently we don't expose the kmer prism parameters
 
