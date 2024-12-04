@@ -22,11 +22,9 @@ from agr.util import gunzip, StdioRedirect
 
 os.makedirs("output", exist_ok=True)
 
-# currently we don't expose the kmer prism parameters
-
 kmer_prism = KmerPrism(
-	input_filetype="fasta",
-	kmer_size=6,
+	input_filetype="${task.ext.input_filetype}",
+	kmer_size=${task.ext.kmer_size},
 	# this causes it to crash: 😩
 	#assemble_low_entropy_kmers=True
 )
