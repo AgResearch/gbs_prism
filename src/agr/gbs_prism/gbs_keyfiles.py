@@ -4,25 +4,24 @@ import os.path
 from agr.gquery import GQuery, GUpdate, Predicates
 from agr.util import StdioRedirect
 
-from agr.seq.sequencer_run import SequencerRun
-from agr.seq.sample_sheet import SampleSheet
-
 logger = logging.getLogger(__name__)
 
 
 class GbsKeyfiles:
     def __init__(
         self,
-        sequencer_run: SequencerRun,
-        sample_sheet: SampleSheet,
-        root: str,
+        seq_root: str,
+        run_name: str,
+        sample_sheet: str,
+        fastq_dir: str,
         out_dir: str,
         fastq_link_farm: str,
         backup_dir: str,
     ):
-        self._sequencer_run = sequencer_run
+        self._seq_root = seq_root
+        self._run_name = run_name
         self._sample_sheet = sample_sheet
-        self._root = root
+        self._fastq_dir = fastq_dir
         self._out_dir = out_dir
         self._fastq_link_farm = fastq_link_farm
         self._backup_dir = backup_dir
@@ -112,22 +111,18 @@ where
 
     def create(self):
 
-        if self._sequencer_run.exists_in_database():
-            logger.warning(
-                "run %s already exists, continuing anyway" % self._sequencer_run.name
-            )
-
         self.dump_gbs_tables()
 
         GUpdate(
             task="create_gbs_keyfiles",
             explain=True,
             predicates=Predicates(
-                fastq_folder_root=self._root,
-                run_folder_root=self._sequencer_run.seq_root,
+                run=self._run_name,
+                fastq_root=self._fastq_dir,
+                run_folder_root=self._seq_root,
                 out_folder=self._out_dir,
                 fastq_link_root=self._fastq_link_farm,
-                sample_sheet=self._sample_sheet.path,
+                sample_sheet=self._sample_sheet,
                 import_=True,
             ),
             items=["all"],
