@@ -7,6 +7,7 @@ include { BCLCONVERT              } from './modules.fake/bclconvert.nf'
 include { FASTQC                  } from "${projectDir}/nf-core/fastqc"
 include { SEQTK_SAMPLE_RATE } from "./modules/seqtk/sample_rate.nf"
 include { KMER_ANALYSIS } from "./modules/kmer_analysis.nf"
+include { DEDUPE } from "./modules/dedupe.nf"
 
 workflow {
     def meta = [id: params.run_name]
@@ -18,4 +19,5 @@ workflow {
     FASTQC(fastq)
     kmer_sample = SEQTK_SAMPLE_RATE(fastq.map { v -> [v[0], v[1], 0.0002, 10000] }).reads
     KMER_ANALYSIS(kmer_sample)
+    DEDUPE(fastq)
 }

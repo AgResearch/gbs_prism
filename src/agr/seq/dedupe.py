@@ -11,20 +11,18 @@ def dedupe(
     jvm_args: list[str] = ["-Xmx80g"],
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ):
-    stdout_path = "%s.stdout" % out_path
-    stderr_path = "%s.stderr" % out_path
-    with open(stdout_path, "w") as stdout_f:
-        with open(stderr_path, "w") as stderr_f:
-            _ = subprocess.run(
-                ["clumpify.sh"]
-                + jvm_args
-                + clumpify_args
-                + [
-                    "tmpdir=%s" % tmp_dir,
-                    "in=%s" % in_path,
-                    "out=%s" % out_path,
-                ],
-                check=True,
-                stdout=stdout_f,
-                stderr=stderr_f,
-            )
+    log_path = "%s.log" % out_path.removesuffix(".fastq.gz")
+    with open(log_path, "w") as log_f:
+        _ = subprocess.run(
+            ["clumpify.sh"]
+            + jvm_args
+            + clumpify_args
+            + [
+                "tmpdir=%s" % tmp_dir,
+                "in=%s" % in_path,
+                "out=%s" % out_path,
+            ],
+            check=True,
+            stdout=log_f,
+            stderr=log_f,
+        )
