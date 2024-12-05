@@ -26,11 +26,10 @@ process BCLCONVERT {
     import os
 
     from agr.seq.sequencer_run import SequencerRun
-    from agr.fake.bclconvert import BclConvert
+    from agr.fake.bclconvert import bclconvert
 
     os.makedirs("output", exist_ok=True)
-    bclconvert = BclConvert(in_dir="${run_dir}", sample_sheet_path="${samplesheet}", out_dir="output")
-    bclconvert.run()
+    bclconvert(in_dir="${run_dir}", sample_sheet_path="${samplesheet}", out_dir="output")
 
     with open("versions.yml", "w") as versions_f:
         _ = versions_f.write("${task.process}:\\n  fake_bclconvert: 0.1.0\\n")
