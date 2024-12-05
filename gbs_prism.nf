@@ -13,11 +13,34 @@ include { CREATE_GBS_KEYFILES } from "./modules/create_gbs_keyfiles.nf"
 include { DETERMINE_COHORTS } from "./modules/determine_cohorts.nf"
 
 def parse_cohorts(path) {
-    println "parsing cohorts from ${path}"
-    cohorts = new JsonSlurper().parse(path)
-    println "parsed ${cohorts}"
-    return cohorts
+    new JsonSlurper().parse(path)
 }
+
+process COUNT_READS {
+	debug true
+	tag { "${meta.id}" }
+	
+	input:
+	// each tuple is not supported, but without it we only get called once, for the first element
+	// each tuple(val(meta), path(reads))
+	tuple(val(meta), path(reads))
+
+	output:
+	tuple val(meta), path("output/*.count"), emit: count
+
+	when:
+	task.ext.when == null || task.ext.when
+
+	script:
+	"""
+#!/usr/bin/env bash
+mkdir -p output
+for fastq_file in ${reads}; do
+	zcat \$fastq_file | wc -l > output/\$fastq_file.count
+done
+"""
+}
+
 
 workflow {
     def meta = [id: params.run_name, run_name: params.run_name]
@@ -41,6 +64,22 @@ workflow {
 
     gbs_keyfiles_reads = CREATE_GBS_KEYFILES(samplesheet.merge(deduped).map(v -> [v[0], params.run_name, v[1], v[3]])).reads
 
-    cohorts = DETERMINE_COHORTS(gbs_keyfiles_reads.map(v -> v[0])).cohorts.map(v -> parse_cohorts(v[1])).view(v -> "cohorts: ${v}")
-    cohorts.view(v -> "ready with cohorts ${v}")
+    cohorts = DETERMINE_COHORTS(gbs_keyfiles_reads.map(v -> v[0])).cohorts_path.map(v -> parse_cohorts(v[1])) // .view(v -> "cohorts: ${v}")
+
+    // TODO fold this into DETERMINE_COHORTS by making that a workflow not just a process:
+    cohort_reads = cohorts.map(cohorts ->
+		cohorts.collect { cohort ->
+			def fastq_links2 = cohort.remove('fastq_links')
+			[
+			    [
+				    id: "${params.run_name}.${cohort.name}",
+				    run_name: params.run_name,
+					cohort: cohort
+				],
+				fastq_links2
+			]
+		}
+	).flatMap() //.view(v -> "cohort_reads: ${v}")
+
+	COUNT_READS(cohort_reads)
 }

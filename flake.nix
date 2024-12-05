@@ -160,6 +160,10 @@
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
+
+                # the ansi log is deceptive as it hides the complete list of processes
+                # use `nextflow run -ansi-log true` to override
+                export NXF_ANSI_LOG=false
               '';
             };
           };

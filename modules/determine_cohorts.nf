@@ -5,7 +5,7 @@ process DETERMINE_COHORTS {
 	val(meta)
 
 	output:
-	tuple val(meta), path("output/cohorts.json"), emit: cohorts
+	tuple val(meta), path("output/cohorts.json"), emit: cohorts_path
 
 	when:
 	task.ext.when == null || task.ext.when
