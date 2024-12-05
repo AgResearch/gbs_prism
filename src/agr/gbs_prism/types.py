@@ -13,13 +13,17 @@ class Cohort:
     gbs_cohort: str
     enzyme: str
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s.%s.%s.%s" % (
             self.libname,
             self.qc_cohort,
             self.gbs_cohort,
             self.enzyme,
         )
+
+    @property
+    def name(self) -> str:
+        return str(self)
 
     @classmethod
     def parse(cls, cohort_str: str) -> Self:

@@ -9,6 +9,7 @@ include { SEQTK_SAMPLE_RATE } from "./modules/seqtk/sample_rate.nf"
 include { KMER_ANALYSIS } from "./modules/kmer_analysis.nf"
 include { DEDUPE } from "./modules/dedupe.nf"
 include { CREATE_GBS_KEYFILES } from "./modules/create_gbs_keyfiles.nf"
+include { DETERMINE_COHORTS } from "./modules/determine_cohorts.nf"
 
 workflow {
     def meta = [id: params.run_name, run_name: params.run_name]
@@ -30,5 +31,7 @@ workflow {
     // this is a nice way to see what we've got
     // samplesheet.merge(deduped).map(v -> [v[0], params.run_name, v[1], v[3]]).view(v -> "Merge of samplesheet and dedupe: ${v}")
 
-    CREATE_GBS_KEYFILES(samplesheet.merge(deduped).map(v -> [v[0], params.run_name, v[1], v[3]]))
+    gbs_keyfiles_reads = CREATE_GBS_KEYFILES(samplesheet.merge(deduped).map(v -> [v[0], params.run_name, v[1], v[3]])).reads
+
+    DETERMINE_COHORTS(gbs_keyfiles_reads.map(v -> v[0]))
 }
