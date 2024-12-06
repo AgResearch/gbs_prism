@@ -6,11 +6,13 @@ include { STANDARDISE_SAMPLESHEET } from './modules/standardise_samplesheet.nf'
 include { BCLCONVERT              } from './modules.fake/bclconvert.nf'
 // include { BCLCONVERT         } from './modules/bclconvert.nf'
 include { FASTQC                  } from "${projectDir}/nf-core/fastqc"
-include { SEQTK_SAMPLE_RATE } from "./modules/seqtk/sample_rate.nf"
+include { SEQTK_SAMPLE_RATE as SAMPLE_FOR_KMER_ANALYSIS } from "./modules/seqtk/sample_rate.nf"
+include { SEQTK_SAMPLE_RATE as SAMPLE_FOR_BWA } from "./modules/seqtk/sample_rate.nf"
 include { KMER_ANALYSIS } from "./modules/kmer_analysis.nf"
 include { DEDUPE } from "./modules/dedupe.nf"
 include { CREATE_GBS_KEYFILES } from "./modules/create_gbs_keyfiles.nf"
 include { DETERMINE_COHORTS } from "./modules/determine_cohorts.nf"
+include { SANITISE_FASTQ_FILE_NAMES } from "./modules/sanitise_fastq_file_names.nf"
 
 def parse_cohorts(path) {
     new JsonSlurper().parse(path)
@@ -53,9 +55,9 @@ workflow {
 
     FASTQC(fastq)
 
-    kmer_sample = SEQTK_SAMPLE_RATE(fastq.map { v -> [v[0], v[1], 0.0002, 10000] }).reads
+    sample_for_kmer_analysis = SAMPLE_FOR_KMER_ANALYSIS(fastq).reads
 
-    KMER_ANALYSIS(kmer_sample)
+    KMER_ANALYSIS(sample_for_kmer_analysis)
 
     deduped = DEDUPE(fastq).reads
 
@@ -67,7 +69,7 @@ workflow {
     cohorts = DETERMINE_COHORTS(gbs_keyfiles_reads.map(v -> v[0])).cohorts_path.map(v -> parse_cohorts(v[1])) // .view(v -> "cohorts: ${v}")
 
     // TODO fold this into DETERMINE_COHORTS by making that a workflow not just a process:
-    cohort_reads = cohorts.map(cohorts ->
+    badly_named_cohort_reads = cohorts.map(cohorts ->
 		cohorts.collect { cohort ->
 			def fastq_links2 = cohort.remove('fastq_links')
 			[
@@ -81,5 +83,11 @@ workflow {
 		}
 	).flatMap() //.view(v -> "cohort_reads: ${v}")
 
+    // TODO maybe also fold this one in, the bad names are so annoying
+    // because they break the globbing that Nextflow does to determine process output
+    cohort_reads = SANITISE_FASTQ_FILE_NAMES(badly_named_cohort_reads)
+
 	COUNT_READS(cohort_reads)
+
+    sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads)
 }

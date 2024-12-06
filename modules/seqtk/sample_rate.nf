@@ -9,7 +9,7 @@ process SEQTK_SAMPLE_RATE {
 		: 'biocontainers/seqtk:1.4--he4a0461_1'}"
 
 	input:
-	tuple val(meta), path(reads), val(sample_rate), val(minimum_sample_size)
+	tuple val(meta), path(reads)
 
 	output:
 	tuple val(meta), path("output/*.fastq.gz"), emit: reads
@@ -24,10 +24,10 @@ process SEQTK_SAMPLE_RATE {
 	if (!(args ==~ /.*-s[0-9]+.*/)) {
 		args += " -s100"
 	}
-	if (!sample_rate) {
+	if (!task.ext.sample_rate) {
 		error("SEQTK/SAMPLE_RATE must have a sample_rate value included")
 	}
-	if (!minimum_sample_size) {
+	if (!task.ext.minimum_sample_size) {
 		error("SEQTK/SAMPLE_RATE must have a minimum_sample_size value included")
 	}
 	"""
@@ -39,7 +39,7 @@ from agr.nextflow import write_version
 
 os.makedirs("output", exist_ok=True)
 
-fastq_sample = FastqSample(sample_rate=${sample_rate}, minimum_sample_size=${minimum_sample_size})
+fastq_sample = FastqSample(sample_rate=${task.ext.sample_rate}, minimum_sample_size=${task.ext.minimum_sample_size})
 for fastq_file in "${reads}".split():
 	out_path="output/${prefix}_%s" % os.path.basename(fastq_file).removesuffix(".gz")
 	fastq_sample.run(in_path=fastq_file, out_path=out_path)
