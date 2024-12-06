@@ -19,32 +19,6 @@ def parse_cohorts(path) {
     new JsonSlurper().parse(path)
 }
 
-process COUNT_READS {
-	debug true
-	tag { "${meta.id}" }
-	
-	input:
-	// each tuple is not supported, but without it we only get called once, for the first element
-	// each tuple(val(meta), path(reads))
-	tuple(val(meta), path(reads))
-
-	output:
-	tuple val(meta), path("output/*.count"), emit: count
-
-	when:
-	task.ext.when == null || task.ext.when
-
-	script:
-	"""
-#!/usr/bin/env bash
-mkdir -p output
-for fastq_file in ${reads}; do
-	zcat \$fastq_file | wc -l > output/\$fastq_file.count
-done
-"""
-}
-
-
 workflow {
     def meta = [id: params.run_name, run_name: params.run_name]
     def run_dir = "${params.seq_root}/${params.run_name}"
@@ -88,7 +62,6 @@ workflow {
     // because they break the globbing that Nextflow does to determine process output
     cohort_reads = SANITISE_FASTQ_FILE_NAMES(badly_named_cohort_reads)
 
-	COUNT_READS(cohort_reads)
 
     sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads).reads
 
