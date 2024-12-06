@@ -13,6 +13,7 @@ include { DEDUPE } from "./modules/dedupe.nf"
 include { CREATE_GBS_KEYFILES } from "./modules/create_gbs_keyfiles.nf"
 include { DETERMINE_COHORTS } from "./modules/determine_cohorts.nf"
 include { SANITISE_FASTQ_FILE_NAMES } from "./modules/sanitise_fastq_file_names.nf"
+include { CUTADAPT } from "./modules/cutadapt.nf"
 
 def parse_cohorts(path) {
     new JsonSlurper().parse(path)
@@ -89,5 +90,7 @@ workflow {
 
 	COUNT_READS(cohort_reads)
 
-    sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads)
+    sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads).reads
+
+    trimmed = CUTADAPT(sample_for_bwa)
 }
