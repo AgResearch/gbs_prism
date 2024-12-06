@@ -14,6 +14,7 @@ include { CREATE_GBS_KEYFILES } from "./modules/create_gbs_keyfiles.nf"
 include { DETERMINE_COHORTS } from "./modules/determine_cohorts.nf"
 include { SANITISE_FASTQ_FILE_NAMES } from "./modules/sanitise_fastq_file_names.nf"
 include { CUTADAPT } from "./modules/cutadapt.nf"
+include { COHORT_ALIGN_BWA } from './modules/cohort/bwa.nf'
 
 def parse_cohorts(path) {
     new JsonSlurper().parse(path)
@@ -62,8 +63,9 @@ workflow {
     // because they break the globbing that Nextflow does to determine process output
     cohort_reads = SANITISE_FASTQ_FILE_NAMES(badly_named_cohort_reads)
 
+    cohort_sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads).reads
 
-    sample_for_bwa = SAMPLE_FOR_BWA(cohort_reads).reads
+    cohort_trimmed = CUTADAPT(cohort_sample_for_bwa).reads
 
-    trimmed = CUTADAPT(sample_for_bwa)
+    COHORT_ALIGN_BWA(cohort_trimmed)
 }
