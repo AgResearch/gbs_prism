@@ -131,33 +131,24 @@ class CohortTargets:
             suffixed_target(suffix) for suffix in ["key", "gbsx.key", "unblind.sed"]
         ]
 
-        tag_counts_part1_dir = [
+        other_targets = [
             os.path.join(
                 self._config.paths.cohort_dir(str(self._name)),
-                "tagCounts_parts",
-                "part1",
+                target,
             )
-        ]
-
-        tassel_stages_done = [
-            os.path.join(
-                self._config.paths.cohort_dir(str(self._name)),
-                done_file,
-            )
-            for done_file in [
+            for target in [
+                "tagCounts_parts/part1",
                 "tagCounts.done",
                 "mergedTagCounts.done",
                 "tagPair.done",
                 "tagsByTaxa.done",
                 "mapInfo.done",
                 "hapMap.done",
+                "TagCount.csv",
+                "tags_reads_summary.txt",
+                "tags_reads_cv.txt",
+                "KGD/SampleStats.csv",
             ]
-        ]
-
-        kgd_sample_stats = [
-            os.path.join(
-                self._config.paths.cohort_dir(str(self._name)), "KGD", "SampleStats.csv"
-            )
         ]
 
         paths = (
@@ -168,9 +159,7 @@ class CohortTargets:
             + bwa_sai
             + bwa_bam
             + bwa_stats
-            + tag_counts_part1_dir  # TODO what do we need?
-            + tassel_stages_done
-            + kgd_sample_stats
+            + other_targets
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths

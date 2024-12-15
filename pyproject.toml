@@ -15,6 +15,10 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+get_reads_tags_per_sample = "agr.gbs_prism.get_reads_tags_per_sample:main"
+summarise_read_and_tag_counts = "agr.gbs_prism.summarise_read_and_tag_counts:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

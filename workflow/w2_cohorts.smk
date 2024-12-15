@@ -23,6 +23,7 @@ from agr.seq.cutadapt import cutadapt
 from agr.seq.bwa import Bwa
 from agr.gbs_prism.ramify_tassel_keyfile import ramify
 from agr.gbs_prism.tassel3 import Tassel3
+from agr.gbs_prism.get_reads_tags_per_sample import get_reads_tags_per_sample
 from agr.gbs_prism.kgd import run_kgd
 
 c = Config(**config)
@@ -145,10 +146,35 @@ rule fastq_to_tag_count:
         # not used if there's only one part, but multiple parts are TODO:
         tag_counts_part1_dir = "%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root
     output:
-        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root
+        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root,
+        fastq_to_tag_count_stdout = "%s/{cohort}/FastqToTagCount.stdout" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
         tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=cohort_str, work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+
+rule tag_count:
+    input:
+        fastq_to_tag_count_stdout = "%s/{cohort}/FastqToTagCount.stdout" % paths.gbs.run_root
+    output:
+        tag_count_csv = "%s/{cohort}/TagCount.csv" % paths.gbs.run_root
+    shell:
+        "get_reads_tags_per_sample <{input.fastq_to_tag_count_stdout} >{output.tag_count_csv}"
+
+rule tags_reads_summary:
+    input:
+        tag_count_csv = "%s/{cohort}/TagCount.csv" % paths.gbs.run_root
+    output:
+        tags_reads_summary = "%s/{cohort}/tags_reads_summary.txt" % paths.gbs.run_root
+    shell:
+        "summarise_read_and_tag_counts -o {output.tags_reads_summary} {input.tag_count_csv}"
+
+rule tags_reads_cv:
+    input:
+        tags_reads_summary = "%s/{cohort}/tags_reads_summary.txt" % paths.gbs.run_root
+    output:
+        tags_reads_cv = "%s/{cohort}/tags_reads_cv.txt" % paths.gbs.run_root
+    shell:
+        "cut -f 1,4,9 {input.tags_reads_summary} >{output.tags_reads_cv}"
 
 rule merge_taxa_tag_count:
     input:
@@ -204,8 +230,6 @@ rule kgd:
         cohort_str=wildcards.cohort
         genotyping_method=gbs_target_spec.cohorts[cohort_str].genotyping_method
         run_kgd(cohort_str=cohort_str, base_dir="%s/%s" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
-
-gbs_target_spec
 
 rule gzip:
     input:

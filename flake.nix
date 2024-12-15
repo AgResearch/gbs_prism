@@ -52,12 +52,27 @@
           export-gquery-environment-for-eri = env:
             gquery.export-environment-for-eri.${system} env;
 
-          devPython = pkgs.python3.withPackages (python-pkgs: [
-            python-pkgs.biopython
-            python-pkgs.pytest
-            python-pkgs.pydantic
-            flakePkgs.gquery-api
-          ]);
+          gbs-prism-api = with pkgs;
+            python3Packages.buildPythonPackage {
+              name = "gbs-prism-api";
+              src = ./.;
+              pyproject = true;
+
+              nativeBuildInputs = [
+                hatch
+                python3Packages.hatchling
+              ];
+
+              propagatedBuildInputs = with python3Packages;
+                [
+                  biopython
+                  pytest
+                  pydantic
+                  flakePkgs.gquery-api
+                ];
+            };
+
+          gbs-prism-cli = pkgs.python3Packages.toPythonApplication gbs-prism-api;
 
           run_kgd = pkgs.stdenv.mkDerivation {
             name = "gbs_prism_kgd";
@@ -81,9 +96,11 @@
             postFixup = ''
               wrapProgram $out/bin/run_kgd.R --set KGD_SRC "${flakePkgs.kgd-src}"
             '';
-
           };
 
+          devPython = pkgs.python3.withPackages (python-pkgs: [
+            gbs-prism-api
+          ]);
 
         in
         with pkgs;
@@ -109,7 +126,7 @@
               ];
 
               shellHook = ''
-                export PYTHONPATH=./src:$PYTHONPATH
+                # export PYTHONPATH=./src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
               '';
