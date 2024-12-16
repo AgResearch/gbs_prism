@@ -72,7 +72,7 @@
                 ];
             };
 
-          gbs-prism-cli = pkgs.python3Packages.toPythonApplication gbs-prism-api;
+          # gbs-prism-cli = pkgs.python3Packages.toPythonApplication gbs-prism-api;
 
           run_kgd = pkgs.stdenv.mkDerivation {
             name = "gbs_prism_kgd";

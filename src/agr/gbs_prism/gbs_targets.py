@@ -4,6 +4,7 @@ import os
 import tempfile
 
 from agr.util import StdioRedirect
+from agr.util.legacy import sanitised_realpath
 from agr.gquery import GQuery, Predicates
 
 from .enzyme_sub import enzyme_sub_for_uneak
@@ -66,7 +67,7 @@ class GbsTargets:
                 # create the same links in both blind and unblind directories
                 for blind in [False, True]:
                     os.symlink(
-                        os.path.realpath(fastq_link),
+                        sanitised_realpath(fastq_link),
                         os.path.join(
                             self._config.paths.fastq_link_dir(
                                 str(cohort_name), blind=blind

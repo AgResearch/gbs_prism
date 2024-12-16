@@ -11,6 +11,7 @@ from functools import reduce
 from typing import TextIO, cast
 
 from agr.util.iterator import consume
+from agr.util.legacy import sanitised_realpath
 
 PROC_POOL_SIZE = 30
 
@@ -970,7 +971,7 @@ def get_file_type(file_path):
     real_path = file_path
 
     if os.path.exists(file_path):
-        real_path = os.path.realpath(file_path)
+        real_path = sanitised_realpath(file_path)
 
     if re.search(r"(\.fasta|\.fa|\.fna|\.faa|\.seq)(\.|$)", real_path, re.I) != None:
         return "fasta"
@@ -989,7 +990,7 @@ def get_text_stream(file_path) -> TextIO:
     real_path = file_path
 
     if os.path.exists(file_path):
-        real_path = os.path.realpath(file_path)
+        real_path = sanitised_realpath(file_path)
 
     text_stream = None
     if re.search(r"\.gz$", real_path, re.I) != None:
