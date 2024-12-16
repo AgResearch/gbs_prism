@@ -126,7 +126,8 @@
               ];
 
               shellHook = ''
-                # export PYTHONPATH=./src:$PYTHONPATH
+                # enable use of gbs_prism from current directory during development
+                export PYTHONPATH=./src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
               '';

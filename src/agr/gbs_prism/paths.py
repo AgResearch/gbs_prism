@@ -91,7 +91,7 @@ class GbsPaths:
         return (
             os.path.join(self._run_root, cohort_name, "blind", "Illumina")
             if blind
-            else os.path.join(self._run_root, cohort_name, "Illumina")
+            else os.path.join(self._run_root, cohort_name, "fastq")
         )
 
     def bwa_mapping_dir(self, cohort_name: str) -> str:

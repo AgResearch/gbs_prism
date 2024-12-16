@@ -231,30 +231,6 @@ rule kgd:
         genotyping_method=gbs_target_spec.cohorts[cohort_str].genotyping_method
         run_kgd(cohort_str=cohort_str, base_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
 
-rule unblind:
-    input:
-        blind_file = "%s/{cohort}/blind/${path}" % paths.gbs.run_root,
-        unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
-    output:
-        unblinded_file = "%s/{cohort}/${path}" % paths.gbs.run_root
-    shell:
-        "mkdir -p $(dirname {output.unblinded_file}) ; "
-        "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
-
-
-rule unblind:
-    input:
-        blind_file = "%s/{cohort}/${path}" % paths.gbs.run_root
-        unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
-    output:
-        unblinded_file = "%s/{cohort}.unblinded/${path}" % paths.gbs.run_root
-    shell:
-        "mkdir -p $(dirname {output.unblinded_file}) ; "
-        "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
-
-
-gbs_target_spec
-
 rule gzip:
     input:
         branch(lambda wildcards: not wildcards["path"].endswith(".gz"),
