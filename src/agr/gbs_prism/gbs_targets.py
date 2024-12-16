@@ -170,9 +170,9 @@ class CohortTargets:
             ]
         ]
 
-        unblinded = [
+        unblinded_targets = [
             os.path.join(
-                self._config.paths.cohort_dir(str(self._name), unblinded=True),
+                self._config.paths.cohort_dir(str(self._name)),
                 target,
             )
             for target in
@@ -180,21 +180,22 @@ class CohortTargets:
             [
                 "TagCount.csv",
                 "TagCountsAndSampleStats.csv",
-                "%s.KGD_tassel3.KGD.stdout" % self._name,
-                "KGD/GHW05.csv"
-                "KGD/GHW05-Inbreeding.csv"
-                "KGD/GHW05-long.csv"
-                "KGD/GHW05-PC.csv"
-                "KGD/HeatmapOrderHWdgm.05.csv"
-                "KGD/SampleStats.csv"
-                "KGD/SampleStatsRawCombined.csv"
-                "KGD/SampleStatsRaw.csv"
-                "KGD/seqID.csv"
-                "KGD/GHW05-pca_metadata.tsv"
-                "KGD/GHW05-pca_vectors.tsv"
-                "KGD/GHW05.vcf"
-                "hapMap/HapMap.hmc.txt",
-                "hapMap/HapMap.hmp.txt",
+                # TODO soon
+                # "%s.KGD_tassel3.KGD.stdout" % self._name,
+                # "KGD/GHW05.csv",
+                # "KGD/GHW05-Inbreeding.csv",
+                # "KGD/GHW05-long.csv",
+                # "KGD/GHW05-PC.csv",
+                # "KGD/HeatmapOrderHWdgm.05.csv",
+                # "KGD/SampleStats.csv",
+                # "KGD/SampleStatsRawCombined.csv",
+                # "KGD/SampleStatsRaw.csv",
+                # "KGD/seqID.csv",
+                # "KGD/GHW05-pca_metadata.tsv",
+                # "KGD/GHW05-pca_vectors.tsv",
+                # "KGD/GHW05.vcf",
+                # "hapMap/HapMap.hmc.txt",
+                # "hapMap/HapMap.hmp.txt",
                 # TODO later
                 # "blast/locus*.txt",
                 # "blast/locus*.dat",
@@ -219,7 +220,8 @@ class CohortTargets:
             + bwa_bam
             + bwa_stats
             + blind_targets
-            # + tags_summary_targets
+            + tags_summary_targets
+            + unblinded_targets
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
