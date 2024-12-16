@@ -69,7 +69,7 @@ rule sample_for_bwa:
         sampled_fastq_file="{path}/bwa_mapping/{cohort}/{basename}.fastq.gz.fastq.%s.fastq" % bwa_sample.moniker
     run:
         bwa_sample.run(in_path=input.fastq_file, out_path=output.sampled_fastq_file)
-        
+
 rule cutadapt:
     input:
         fastq_file="{path}/{basename}.fastq"
@@ -132,7 +132,7 @@ rule tag_counts_parts:
     input:
         keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run)
     output:
-        tag_counts_part1_dir = directory("%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root)
+        tag_counts_part1_dir = directory("%s/{cohort}/blind/tagCounts_parts/part1" % paths.gbs.run_root)
     run:
         output_folder = os.path.dirname(output.tag_counts_part1_dir)
         print("ramify(keyfile=\"%s\", output_folder=\"%s\")" % (input.keyfile, output_folder))
@@ -144,25 +144,25 @@ rule fastq_to_tag_count:
     input:
         keyfile = "%s/%s.{cohort}.key" % (paths.gbs.run_root, c.run),
         # not used if there's only one part, but multiple parts are TODO:
-        tag_counts_part1_dir = "%s/{cohort}/tagCounts_parts/part1" % paths.gbs.run_root
+        tag_counts_part1_dir = "%s/{cohort}/blind/tagCounts_parts/part1" % paths.gbs.run_root
     output:
-        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root,
-        fastq_to_tag_count_stdout = "%s/{cohort}/FastqToTagCount.stdout" % paths.gbs.run_root
+        tag_counts_done = "%s/{cohort}/blind/tagCounts.done" % paths.gbs.run_root,
+        fastq_to_tag_count_stdout = "%s/{cohort}/blind/FastqToTagCount.stdout" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=cohort_str, work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.fastq_to_tag_count(in_path=input.keyfile, cohort_str=cohort_str, work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule tag_count:
     input:
-        fastq_to_tag_count_stdout = "%s/{cohort}/FastqToTagCount.stdout" % paths.gbs.run_root
+        fastq_to_tag_count_stdout = "%s/{cohort}/blind/FastqToTagCount.stdout" % paths.gbs.run_root
     output:
-        tag_count_csv = "%s/{cohort}/TagCount.csv" % paths.gbs.run_root
+        tag_count_csv = "%s/{cohort}/blind/TagCount.csv" % paths.gbs.run_root
     shell:
         "get_reads_tags_per_sample <{input.fastq_to_tag_count_stdout} >{output.tag_count_csv}"
 
 rule tags_reads_summary:
     input:
-        tag_count_csv = "%s/{cohort}/TagCount.csv" % paths.gbs.run_root
+        tag_count_csv = "%s/{cohort}/blind/TagCount.csv" % paths.gbs.run_root
     output:
         tags_reads_summary = "%s/{cohort}/tags_reads_summary.txt" % paths.gbs.run_root
     shell:
@@ -178,58 +178,82 @@ rule tags_reads_cv:
 
 rule merge_taxa_tag_count:
     input:
-        tag_counts_done = "%s/{cohort}/tagCounts.done" % paths.gbs.run_root
+        tag_counts_done = "%s/{cohort}/blind/tagCounts.done" % paths.gbs.run_root
     output:
-        merge_taxa_tag_count_done = "%s/{cohort}/mergedTagCounts.done" % paths.gbs.run_root
+        merge_taxa_tag_count_done = "%s/{cohort}/blind/mergedTagCounts.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.merge_taxa_tag_count(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.merge_taxa_tag_count(work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule tag_count_to_tag_pair:
     input:
-        merge_taxa_tag_count_done = "%s/{cohort}/mergedTagCounts.done" % paths.gbs.run_root
+        merge_taxa_tag_count_done = "%s/{cohort}/blind/mergedTagCounts.done" % paths.gbs.run_root
     output:
-        tag_pair_done= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
+        tag_pair_done= "%s/{cohort}/blind/tagPair.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.tag_count_to_tag_pair(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.tag_count_to_tag_pair(work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule tag_pair_to_tbt:
     input:
-        tag_pair_done= "%s/{cohort}/tagPair.done" % paths.gbs.run_root
+        tag_pair_done= "%s/{cohort}/blind/tagPair.done" % paths.gbs.run_root
     output:
-        tags_by_taxa_done = "%s/{cohort}/tagsByTaxa.done" % paths.gbs.run_root
+        tags_by_taxa_done = "%s/{cohort}/blind/tagsByTaxa.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.tag_pair_to_tbt(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.tag_pair_to_tbt(work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule tbt_to_map_info:
     input:
-        tags_by_taxa_done = "%s/{cohort}/tagsByTaxa.done" % paths.gbs.run_root
+        tags_by_taxa_done = "%s/{cohort}/blind/tagsByTaxa.done" % paths.gbs.run_root
     output:
-        map_info_done = "%s/{cohort}/mapInfo.done" % paths.gbs.run_root
+        map_info_done = "%s/{cohort}/blind/mapInfo.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.tbt_to_map_info(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.tbt_to_map_info(work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule map_info_to_hap_map:
     input:
-        map_info_done = "%s/{cohort}/mapInfo.done" % paths.gbs.run_root
+        map_info_done = "%s/{cohort}/blind/mapInfo.done" % paths.gbs.run_root
     output:
-        hap_map_done = "%s/{cohort}/hapMap.done" % paths.gbs.run_root
+        hap_map_done = "%s/{cohort}/blind/hapMap.done" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
-        tassel3.map_info_to_hap_map(work_dir="%s/%s" % (paths.gbs.run_root, cohort_str))
+        tassel3.map_info_to_hap_map(work_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str))
 
 rule kgd:
     input:
-        hap_map_done = "%s/{cohort}/hapMap.done" % paths.gbs.run_root
+        hap_map_done = "%s/{cohort}/blind/hapMap.done" % paths.gbs.run_root
     output:
-        sample_stats_csv = "%s/{cohort}/KGD/SampleStats.csv" % paths.gbs.run_root
+        sample_stats_csv = "%s/{cohort}/blind/KGD/SampleStats.csv" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
         genotyping_method=gbs_target_spec.cohorts[cohort_str].genotyping_method
-        run_kgd(cohort_str=cohort_str, base_dir="%s/%s" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
+        run_kgd(cohort_str=cohort_str, base_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
+
+rule unblind:
+    input:
+        blind_file = "%s/{cohort}/blind/${path}" % paths.gbs.run_root,
+        unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
+    output:
+        unblinded_file = "%s/{cohort}/${path}" % paths.gbs.run_root
+    shell:
+        "mkdir -p $(dirname {output.unblinded_file}) ; "
+        "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
+
+
+rule unblind:
+    input:
+        blind_file = "%s/{cohort}/${path}" % paths.gbs.run_root
+        unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
+    output:
+        unblinded_file = "%s/{cohort}.unblinded/${path}" % paths.gbs.run_root
+    shell:
+        "mkdir -p $(dirname {output.unblinded_file}) ; "
+        "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
+
+
+gbs_target_spec
 
 rule gzip:
     input:

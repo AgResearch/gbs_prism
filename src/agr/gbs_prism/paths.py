@@ -77,12 +77,22 @@ class GbsPaths:
     def target_spec_path(self) -> str:
         return os.path.join(self._run_root, "target-spec.json")
 
-    def cohort_dir(self, cohort_name: str) -> str:
-        return os.path.join(self._run_root, cohort_name)
+    def cohort_dir(self, cohort_name: str, unblinded=False) -> str:
+        suffix = ".unblinded" if unblinded else ""
+        return os.path.join(self._run_root, "%s%s" % (cohort_name, suffix))
 
-    def fastq_link_dir(self, cohort_name: str) -> str:
-        """Directory of links to fastq files for the cohort, needs to match Tassel3 expectation"""
-        return os.path.join(self._run_root, cohort_name, "Illumina")
+    def fastq_link_dir(self, cohort_name: str, blind=False) -> str:
+        """
+        Directory of links to fastq files for the cohort, needs to match Tassel3 expectation.
+
+        Because of the separate blind and unblind phases, and Tassel3's need for the local Illumina directory,
+        which means one is needed in the blind subdirectory, two identical link dirs are maintained.
+        """
+        return (
+            os.path.join(self._run_root, cohort_name, "blind", "Illumina")
+            if blind
+            else os.path.join(self._run_root, cohort_name, "Illumina")
+        )
 
     def bwa_mapping_dir(self, cohort_name: str) -> str:
         return os.path.join(self._run_root, "bwa_mapping", cohort_name)
@@ -90,6 +100,7 @@ class GbsPaths:
     def make_cohort_dirs(self, cohort_name: str):
         _makedir(self.bwa_mapping_dir(cohort_name))
         _makedir(self.fastq_link_dir(cohort_name))
+        _makedir(self.fastq_link_dir(cohort_name, blind=True))
 
 
 class Paths:

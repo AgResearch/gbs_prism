@@ -63,13 +63,17 @@ class GbsTargets:
     def create_local_fastq_links(self):
         for cohort_name, spec in self._spec.cohorts.items():
             for fastq_basename, fastq_link in spec.fastq_links.items():
-                os.symlink(
-                    os.path.realpath(fastq_link),
-                    os.path.join(
-                        self._config.paths.fastq_link_dir(str(cohort_name)),
-                        fastq_basename,
-                    ),
-                )
+                # create the same links in both blind and unblind directories
+                for blind in [False, True]:
+                    os.symlink(
+                        os.path.realpath(fastq_link),
+                        os.path.join(
+                            self._config.paths.fastq_link_dir(
+                                str(cohort_name), blind=blind
+                            ),
+                            fastq_basename,
+                        ),
+                    )
 
 
 class CohortTargets:
@@ -82,9 +86,11 @@ class CohortTargets:
     def local_fastq_links(self) -> list[str]:
         return [
             os.path.join(
-                self._config.paths.fastq_link_dir(str(self._name)), fastq_basename
+                self._config.paths.fastq_link_dir(str(self._name), blind=blind),
+                fastq_basename,
             )
             for fastq_basename in self._spec.fastq_links.keys()
+            for blind in [False, True]
         ]
 
     @property
@@ -131,9 +137,12 @@ class CohortTargets:
             suffixed_target(suffix) for suffix in ["key", "gbsx.key", "unblind.sed"]
         ]
 
-        other_targets = [
+        # blind targets are those with a qc- ID in place of a sample ID.
+        # and are kept separated in a `blind` subdirectory of the cohort
+        blind_targets = [
             os.path.join(
                 self._config.paths.cohort_dir(str(self._name)),
+                "blind",
                 target,
             )
             for target in [
@@ -145,9 +154,58 @@ class CohortTargets:
                 "mapInfo.done",
                 "hapMap.done",
                 "TagCount.csv",
+                "KGD/SampleStats.csv",
+            ]
+        ]
+
+        tags_summary_targets = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name)),
+                target,
+            )
+            for target in [
                 "tags_reads_summary.txt",
                 "tags_reads_cv.txt",
-                "KGD/SampleStats.csv",
+            ]
+        ]
+
+        unblinded = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name), unblinded=True),
+                target,
+            )
+            for target in
+            # from unblind script
+            [
+                "TagCount.csv",
+                "TagCountsAndSampleStats.csv",
+                "%s.KGD_tassel3.KGD.stdout" % self._name,
+                "KGD/GHW05.csv"
+                "KGD/GHW05-Inbreeding.csv"
+                "KGD/GHW05-long.csv"
+                "KGD/GHW05-PC.csv"
+                "KGD/HeatmapOrderHWdgm.05.csv"
+                "KGD/SampleStats.csv"
+                "KGD/SampleStatsRawCombined.csv"
+                "KGD/SampleStatsRaw.csv"
+                "KGD/seqID.csv"
+                "KGD/GHW05-pca_metadata.tsv"
+                "KGD/GHW05-pca_vectors.tsv"
+                "KGD/GHW05.vcf"
+                "hapMap/HapMap.hmc.txt",
+                "hapMap/HapMap.hmp.txt",
+                # TODO later
+                # "blast/locus*.txt",
+                # "blast/locus*.dat",
+                # "blast/taxonomy*.txt",
+                # "blast/taxonomy*.dat",
+                # "blast/frequency_table.txt",
+                # "blast/information_table.txt",
+                # TODO when we have cohort kmer_analysis:
+                # "kmer_analysis/*.txt",
+                # "kmer_analysis/*.dat",
+                # "allkmer_analysis/*.txt",
+                # "allkmer_analysis/*.dat",
             ]
         ]
 
@@ -159,7 +217,8 @@ class CohortTargets:
             + bwa_sai
             + bwa_bam
             + bwa_stats
-            + other_targets
+            + blind_targets
+            # + tags_summary_targets
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
