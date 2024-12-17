@@ -1,5 +1,4 @@
-// based on nf-core bwa/aln, simplified
-process BWA_ALN {
+process BWA_SAMSE {
     tag "$meta.id"
     label 'process_medium'
 
@@ -9,18 +8,16 @@ process BWA_ALN {
         'biocontainers/bwa:0.7.18--he4a0461_0' }"
 
     input:
-    tuple val(meta) , path(reads)
-    tuple val(meta2), path(index)
+    tuple val(meta), path(reads), path(index), path(sai)
 
     output:
-    tuple val(meta), path(reads), path(index), path("output/*.sai"), emit: sai
+    // tuple val(meta), val(reads), val(index), path("output/*.sai"), emit: sai
     path "versions.yml"           , emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
     """
     mkdir output
 
@@ -29,14 +26,18 @@ process BWA_ALN {
     # a mapping to mitigate this.  TODO find a better way to handle this.
     index="\$(readlink $index | sed -e 's,/ncbi/genomes/,/ncbi/indexes/bwa/,')"
 
-    for fastq_file in $reads; do
-        sai_file="\$(basename \$(basename \$fastq_file .gz) .fastq).${index}.sai"
-	    bwa aln \\
-	        $args \\
-	        \$index \\
-	        \$fastq_file \\
-            >output/\$sai_file
-	done
+    echo $sai
+
+    for fastq_file in $reads ; do
+        for sai_file in $sai ; do
+            bam_file=\$(echo \$sai_file | sed -e 's/\.sai/.bam/')
+            bwa samse \\
+            \$index \\
+            \$sai_file \\
+            \$fastq_file \\
+            >output/\$bam_file
+        done
+    done
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

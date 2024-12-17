@@ -3,7 +3,7 @@
 //
 
 include { BWA_ALN            } from "../bwa/aln"
-// include { BWA_SAMSE          } from "${NF_CORE}/bwa/samse/main"
+include { BWA_SAMSE          } from "../bwa/samse"
 // include { BWA_SAMPE          } from "${NF_CORE}/bwa/sampe/main"
 // include { SAMTOOLS_INDEX     } from "${NF_CORE}/samtools/index/main"
 
@@ -24,7 +24,7 @@ workflow COHORT_ALIGN_BWA {
 				def id = "${v[0].id}.${id_index}"
 				[v[0] + [id: id], v[1], index]
 		}
-	}.view(v -> "ch_prepped_input: ${v}")
+	} // .view(v -> "ch_prepped_input: ${v}")
 
     ch_preppedinput_for_bwaaln = ch_prepped_input
         .multiMap {
@@ -43,6 +43,10 @@ workflow COHORT_ALIGN_BWA {
 
     // Alignment and conversion to bam
     BWA_ALN ( ch_preppedinput_for_bwaaln.reads, ch_preppedinput_for_bwaaln.index )
+
+	// Single-end case only for now, as per legacy gbs_prism
+	BWA_SAMSE ( BWA_ALN.out.sai )
+
     // ch_versions = ch_versions.mix( BWA_ALN.out.versions.first() )
 
     // ch_sai_for_bam = ch_reads_newid
