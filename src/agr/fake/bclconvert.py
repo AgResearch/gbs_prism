@@ -22,7 +22,7 @@ class BclConvertError(Exception):
             return "%s: %s" % (self._msg, str(self._e))
 
 
-def bclconvert(in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=2000):
+def bclconvert(in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=2000000):
     # find the real run
     run_name = os.path.basename(in_dir)
     illumina_datasets = [
