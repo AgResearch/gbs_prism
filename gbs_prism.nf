@@ -1,11 +1,13 @@
 // Nextflow pipeline for gbs_prism
 import groovy.json.JsonSlurper
 
+def NF_CORE = env("NF_CORE")
+
 include { STANDARDISE_SAMPLESHEET } from './modules/standardise_samplesheet.nf'
 // TODO use real bclconvert and consider how to include the fake bclconvert as a stub in the real one
 include { BCLCONVERT              } from './modules.fake/bclconvert.nf'
 // include { BCLCONVERT         } from './modules/bclconvert.nf'
-include { FASTQC                  } from "${projectDir}/nf-core/fastqc"
+include { FASTQC                  } from "${NF_CORE}/fastqc"
 include { SEQTK_SAMPLE_RATE as SAMPLE_FOR_KMER_ANALYSIS } from "./modules/seqtk/sample_rate.nf"
 include { SEQTK_SAMPLE_RATE as SAMPLE_FOR_BWA } from "./modules/seqtk/sample_rate.nf"
 include { KMER_ANALYSIS } from "./modules/kmer_analysis.nf"

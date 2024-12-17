@@ -54,7 +54,15 @@
             gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
 
-          recent_nextflow = import ./nextflow/24.11.0-edge/package.nix pkgs;
+          recent-nextflow = import ./nextflow/24.11.0-edge/package.nix pkgs;
+
+          nf-core-modules = pkgs.fetchFromGitHub
+            {
+              owner = "nf-core";
+              repo = "modules";
+              rev = "2efd1bc760f63c0843dd45ce294bfc237cb32456";
+              hash = "sha256-6AuMEPpstk7rvfjRjhkGvXAXYkb5CMHwO4gatMlyTyE=";
+            };
 
           export-gquery-environment-for-eri = env:
             gquery.export-environment-for-eri.${system} env;
@@ -141,7 +149,7 @@
             default = mkShell {
               buildInputs = [
                 bashInteractive
-                recent_nextflow
+                recent-nextflow
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
@@ -155,6 +163,7 @@
                 gzip
                 yq-go
                 devPython
+                nf-core-modules
               ];
 
               shellHook = ''
@@ -166,6 +175,8 @@
                 # the ansi log is deceptive as it hides the complete list of processes
                 # use `nextflow run -ansi-log true` to override
                 export NXF_ANSI_LOG=false
+
+                export NF_CORE=${nf-core-modules}/modules/nf-core
               '';
             };
           };
