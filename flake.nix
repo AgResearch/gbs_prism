@@ -54,6 +54,8 @@
             gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
 
+          recent_nextflow = import ./nextflow/24.11.0-edge/package.nix pkgs;
+
           export-gquery-environment-for-eri = env:
             gquery.export-environment-for-eri.${system} env;
 
@@ -139,7 +141,7 @@
             default = mkShell {
               buildInputs = [
                 bashInteractive
-                nextflow
+                recent_nextflow
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
