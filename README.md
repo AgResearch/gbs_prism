@@ -17,3 +17,9 @@ The eri branch in this repo is a work-in-progress.  Eventually the Python librar
 
 2. some items which were previously dumped into the filesystem are now simply passed around as lists of strings
    namely: method, bwa_references
+
+### Nextflow
+
+Here are some Nextflow-specific notes.
+
+1. Nextflow stages files by symlinking them into the work directory.  Alas it follows symlinks, which breaks bwa alignment indexes if the reference genome is a symlink pointing away from where the index lives.  For now this has been mitigated by mapping from well-known paths of genomes to well-known paths of their indexes, which is rather a fragile solution.

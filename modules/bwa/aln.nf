@@ -1,4 +1,4 @@
-// based on nf-core bwa/aln
+// based on nf-core bwa/aln, simplified
 process BWA_ALN {
     tag "$meta.id"
     label 'process_medium'
@@ -13,7 +13,7 @@ process BWA_ALN {
     tuple val(meta2), path(index)
 
     output:
-    tuple val(meta), path("*.sai"), emit: sai
+    tuple val(meta), val(reads), val(index), path("output/*.sai"), emit: sai
     path "versions.yml"           , emit: versions
 
     when:
@@ -21,25 +21,26 @@ process BWA_ALN {
 
     script:
     def args = task.ext.args ?: ''
-    def prefix = task.ext.prefix ?: "${meta.id}"
-
-	// TODO simplified to single end only
-	// TODO what to use for output file name
     """
-    for index in $index; do
+    mkdir output
 
+    # Nextflow resolves symlinks recursively, which breaks finding the index, as
+    # AgR bwa indexes are kept a symlink distance away from the genome, so we hard-code
+    # a mapping to mitigate this.  TODO find a better way to handle this.
+    index="\$(readlink $index | sed -e 's,/ncbi/genomes/,/ncbi/indexes/bwa/,')"
+
+    for fastq_file in $reads; do
+        sai_file="\$(basename \$(basename \$fastq_file .gz) .fastq).sai"
 	    bwa aln \\
 	        $args \\
-	        -t $task.cpus \\
-	        -f ${prefix}.sai \\
 	        \$index \\
-	        ${reads}
+	        \$fastq_file \\
+            >output/\$sai_file
 	done
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         bwa: \$(echo \$(bwa 2>&1) | sed 's/^.*Version: //; s/Contact:.*\$//')
-    END_VERSIONS
+END_VERSIONS
     """
-    }
 }

@@ -2,10 +2,10 @@
 // Alignment with bwa aln and sort
 //
 
-include { BWA_ALN            } from "${NF_CORE}/bwa/aln/main"
-include { BWA_SAMSE          } from "${NF_CORE}/bwa/samse/main"
-include { BWA_SAMPE          } from "${NF_CORE}/bwa/sampe/main"
-include { SAMTOOLS_INDEX     } from "${NF_CORE}/samtools/index/main"
+include { BWA_ALN            } from "../bwa/aln"
+// include { BWA_SAMSE          } from "${NF_CORE}/bwa/samse/main"
+// include { BWA_SAMPE          } from "${NF_CORE}/bwa/sampe/main"
+// include { SAMTOOLS_INDEX     } from "${NF_CORE}/samtools/index/main"
 
 // based on nf-core fastq_align_bwaaln
 workflow COHORT_ALIGN_BWA {

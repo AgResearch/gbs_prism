@@ -64,6 +64,10 @@
               hash = "sha256-6AuMEPpstk7rvfjRjhkGvXAXYkb5CMHwO4gatMlyTyE=";
             };
 
+          nf-lastlog = pkgs.writeShellScriptBin "nf-lastlog" ''
+            nextflow log -f status,hash,name $(nextflow log | tail -1 | cut -f 3)
+          '';
+
           export-gquery-environment-for-eri = env:
             gquery.export-environment-for-eri.${system} env;
 
@@ -164,6 +168,7 @@
                 yq-go
                 devPython
                 nf-core-modules
+                nf-lastlog
               ];
 
               shellHook = ''
@@ -171,10 +176,6 @@
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
-
-                # the ansi log is deceptive as it hides the complete list of processes
-                # use `nextflow run -ansi-log true` to override
-                export NXF_ANSI_LOG=false
 
                 export NF_CORE=${nf-core-modules}/modules/nf-core
               '';
