@@ -179,7 +179,7 @@ class CohortTargets:
             # from unblind script
             [
                 "TagCount.csv",
-                "TagCountsAndSampleStats.csv",
+                # "TagCountsAndSampleStats.csv",
                 # TODO soon
                 # "%s.KGD_tassel3.KGD.stdout" % self._name,
                 # "KGD/GHW05.csv",

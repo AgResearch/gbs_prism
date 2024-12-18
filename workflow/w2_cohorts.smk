@@ -233,10 +233,20 @@ rule kgd:
 
 rule unblind:
     input:
-        blind_file = "%s/{cohort}/blind/{path}" % paths.gbs.run_root,
+        # disamibiguation, SnakeMake you are so tiresome
+        rules.tag_counts_parts.output,
+        rules.fastq_to_tag_count.output,
+        rules.merge_taxa_tag_count.output,
+        rules.tag_count_to_tag_pair.output,
+        rules.tag_pair_to_tbt.output,
+        rules.tbt_to_map_info.output,
+        rules.map_info_to_hap_map.output,
+        rules.tag_count.output,
+        rules.tags_reads_summary.output,
+        blind_file = "%s/{cohort}/blind/{file_or_file_in_subdirectory}" % paths.gbs.run_root,
         unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
     output:
-        unblinded_file = "%s/{cohort}/{path}" % paths.gbs.run_root
+        unblinded_file = "%s/{cohort}/{file_or_file_in_subdirectory}" % paths.gbs.run_root
     shell:
         "mkdir -p $(dirname {output.unblinded_file}) ; "
         "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
@@ -256,4 +266,6 @@ wildcard_constraints:
     reference_genome=r"[^/]+",
     sample_rate=r"s\.[0-9]+",
     # a filename with no path component
-    basename=r"[^/]+"
+    basename=r"[^/]+",
+    # a filename with at most one directory component
+    file_or_file_in_subdirectory=r"[^/]+/?[^/]*"
