@@ -1,13 +1,10 @@
 //
-// Alignment with bwa aln and sort
+// Alignment with bwa
 //
 
-include { BWA_ALN            } from "../bwa/aln"
-include { BWA_SAMSE          } from "../bwa/samse"
-// include { BWA_SAMPE          } from "${NF_CORE}/bwa/sampe/main"
-// include { SAMTOOLS_INDEX     } from "${NF_CORE}/samtools/index/main"
+include { BWA_LOCALISE_INDEX } from "../bwa/localise_index"
+include { FASTQ_ALIGN_BWAALN } from "${NF_CORE}/subworkflows/nf-core/fastq_align_bwaaln"
 
-// based on nf-core fastq_align_bwaaln
 workflow COHORT_ALIGN_BWA {
 
     take:
@@ -22,9 +19,11 @@ workflow COHORT_ALIGN_BWA {
 			index ->
 				def id_index = file(index).getName()
 				def id = "${v[0].id}.${id_index}"
-				[v[0] + [id: id], v[1], index]
+				// TODO legacy pipeline only handles single-end reads AFAICT
+				[v[0] + [id: id, single_end: true], v[1], index]
 		}
-	} // .view(v -> "ch_prepped_input: ${v}")
+	}.view(v -> "ch_prepped_input: ${v}")
+
 
     ch_preppedinput_for_bwaaln = ch_prepped_input
         .multiMap {
@@ -32,72 +31,17 @@ workflow COHORT_ALIGN_BWA {
                 reads: [ meta, reads ]
                 index: [ meta, index ]
         }
-	// ch_preppedinput_for_bwaaln.reads.view(v -> "ch_preppedinput_for_bwaaln reads: ${v}")
-	// ch_preppedinput_for_bwaaln.index.view(v -> "ch_preppedinput_for_bwaaln index: ${v}")
+
+    ch_full_index = BWA_LOCALISE_INDEX(	ch_preppedinput_for_bwaaln.index )
+
+	ch_full_index.view{ v -> "full_index: ${v}"}
+
+	ch_preppedinput_for_bwaaln.reads.view(v -> "ch_preppedinput_for_bwaaln reads: ${v}")
+	ch_preppedinput_for_bwaaln.index.view(v -> "ch_preppedinput_for_bwaaln index: ${v}")
 
 
-    // Set as independent channel to allow repeated joining but _with_ sample specific metadata
-    // to ensure right reference goes with right sample
-    // ch_reads_newid = ch_prepped_input.map{ meta, reads, index -> [ meta, reads ] }
-    // ch_index_newid = ch_prepped_input.map{ meta, reads, index -> [ meta, index ] }
+	FASTQ_ALIGN_BWAALN ( ch_preppedinput_for_bwaaln.reads, ch_full_index.full_index )
 
-    // Alignment and conversion to bam
-    BWA_ALN ( ch_preppedinput_for_bwaaln.reads, ch_preppedinput_for_bwaaln.index )
-
-	// Single-end case only for now, as per legacy gbs_prism
-	BWA_SAMSE ( BWA_ALN.out.sai )
-
-    // ch_versions = ch_versions.mix( BWA_ALN.out.versions.first() )
-
-    // ch_sai_for_bam = ch_reads_newid
-    //                     .join ( BWA_ALN.out.sai )
-    //                     .branch {
-    //                         meta, reads, sai ->
-    //                             pe: !meta.single_end
-    //                             se: meta.single_end
-    //                     }
-
-    // Split as PE/SE have different SAI -> BAM commands
-    // ch_sai_for_bam_pe =  ch_sai_for_bam.pe
-    //                         .join ( ch_index_newid )
-    //                         .multiMap {
-    //                             meta, reads, sai, index ->
-    //                                 reads: [ meta, reads, sai ]
-    //                                 index: [ meta, index      ]
-    //                         }
-
-    // ch_sai_for_bam_se =  ch_sai_for_bam.se
-    //                         .join ( ch_index_newid )
-    //                         .multiMap {
-    //                             meta, reads, sai, index ->
-    //                                 reads: [ meta, reads, sai ]
-    //                                 index: [ meta, index      ]
-    //                         }
-
-
-    // BWA_SAMPE ( ch_sai_for_bam_pe.reads, ch_sai_for_bam_pe.index )
-    // ch_versions = ch_versions.mix( BWA_SAMPE.out.versions.first() )
-
-    // BWA_SAMSE ( ch_sai_for_bam_se.reads, ch_sai_for_bam_se.index )
-    // ch_versions = ch_versions.mix( BWA_SAMSE.out.versions.first() )
-
-    // ch_bam_for_index = BWA_SAMPE.out.bam.mix( BWA_SAMSE.out.bam )
-
-    // Index all
-    // SAMTOOLS_INDEX ( ch_bam_for_index )
-    // ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
-
-    // Remove superfluous internal maps to minimise clutter as much as possible
-    // ch_bam_for_emit = ch_bam_for_index.map{ meta, bam -> [meta - meta.subMap('key_read_ref'), bam] }
-    // ch_bai_for_emit = SAMTOOLS_INDEX.out.bai.map{ meta, bai -> [meta - meta.subMap('key_read_ref'), bai] }
-    // ch_csi_for_emit = SAMTOOLS_INDEX.out.csi.map{ meta, csi -> [meta - meta.subMap('key_read_ref'), csi] }
-
-    // emit:
-    // Note: output channels will contain meta with additional 'id_index' meta
-    // value to allow association of BAM file with the meta.id of input indicies
-    // bam      = ch_bam_for_emit     // channel: [ val(meta), path(bam) ]
-    // bai      = ch_bai_for_emit     // channel: [ val(meta), path(bai) ]
-    // csi      = ch_csi_for_emit     // channel: [ val(meta), path(csi) ]
-
-    // versions = ch_versions         // channel: [ path(versions.yml) ]
+ //    emit:
+	// aligned = ch_output
 }

@@ -177,7 +177,7 @@
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
 
-                export NF_CORE=${nf-core-modules}/modules/nf-core
+                export NF_CORE=${nf-core-modules}
               '';
             };
           };

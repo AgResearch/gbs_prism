@@ -1,8 +1,9 @@
 import logging
 import os.path
+import re
 import tempfile
 from pydantic import BaseModel, RootModel
-from typing import List
+from typing import List, Iterable
 
 from agr.util import StdioRedirect
 from agr.gquery import GQuery, GQueryNotFoundException, Predicates
@@ -169,6 +170,16 @@ def _gquery_cohort_alignment_references(
         return path_by_moniker
 
 
+def resolve_alignment_references(alignment_references: Iterable[str]) -> list[str]:
+    """
+    Resolving alignment references means substituting *.fa and *.fasta with *.amb.
+    This is made necessary by Nextflow, which resolves all symlinks to their ultimate destinations, and expects
+    indexes to be passed as *.amb files, also side-stepping the problem that the fasta files are themselves symlinks
+    pointing away from the bwa index files.
+    """
+    return ["%s.amb" % ref for ref in alignment_references]
+
+
 def gquery_cohort_specs(run_name: str) -> List[CohortSpec]:
     """Extract cohort specs from database using gquery."""
     cohort_specs = []
@@ -185,6 +196,9 @@ def gquery_cohort_specs(run_name: str) -> List[CohortSpec]:
             ), "non-unique fastq link basenames: %s" % ", ".join(fastq_links)
             genotyping_method = _gquery_cohort_genotyping_method(run_name, cohort)
             alignment_references = _gquery_cohort_alignment_references(run_name, cohort)
+            resolved_alignment_references = resolve_alignment_references(
+                alignment_references.values()
+            )
 
             cohort_specs.append(
                 CohortSpec(
@@ -195,7 +209,7 @@ def gquery_cohort_specs(run_name: str) -> List[CohortSpec]:
                     enzyme=cohort.enzyme,
                     fastq_links=fastq_links,
                     genotyping_method=genotyping_method,
-                    alignment_references=list(alignment_references.values()),
+                    alignment_references=resolved_alignment_references,
                 )
             )
 
