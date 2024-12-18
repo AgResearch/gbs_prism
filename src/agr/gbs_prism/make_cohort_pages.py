@@ -7,17 +7,22 @@
 import os
 import re
 import argparse
+from string import Template
+from typing import Iterable
 
-header1 = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+from agr.gbs_prism.paths import Paths
+
+header1 = Template(
+    """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
    "httpd://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
 <head>
 <title>
-Overview of %(run_folder)s
+Overview of ${run_name}
 </title>
 </head>
 <body>
-<h1> Q/C Summaries for <a href="http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=%(run_folder)s&context=default">%(run_folder)s</a> </h1>
+<h1> Q/C Summaries for <a href="http://agbrdf.agresearch.co.nz/cgi-bin/fetch.py?obid=${run_name}&context=default">${run_name}</a> </h1>
 <ul>
 <li>  <a href="#overview_plots"> Overview Summaries (before demultiplexing) </a>
     <ul>
@@ -46,73 +51,77 @@ Overview of %(run_folder)s
 <h2 id=overview_plots> Overview Summaries </h2>
 
 """
-overview_section = """
+)
+
+overview_section = Template(
+    """
 <p/>
 <table width=90%% align=left>
 <tr id=samplesheet>
 <td> Sample Sheet </td>
-<td> <a href="SampleSheet.csv" target=SampleSheet.csv> Sample Sheet </a>  </td>
+<td> <a href="${sample_sheet}" target=SampleSheet.csv> Sample Sheet </a>  </td>
 </tr>
 <tr id=bclconvert>
 <td> bclconvert reports  </td>
-<td> <a href=bclconvert/index.html> bclconvert reports </a>  </td>
+<td> <a href="${bclconvert}"> bclconvert reports </a>  </td>
 </tr>
 <tr id=slippery_slope>
 <td> Cumulative self-relatedness </td>
-<td> <a href="file://isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
+<td> <a href="${self_rel_depth_details}" target=slippery_slopr> Cumulative self-relatedness ~ depth </a>  </td>
 </tr>
 <tr id=tags_reads>
 <td> Tag and Read Counts (plot) </td>
-<td> <img src=tag_read_stats.jpg title=tag_read_stats.jpg/> </td>
+<td> <img src="${tag_read_stats}" title=tag_read_stats.jpg/> </td>
 </tr>
 <tr>
 <td> Tag and Read Counts (text) </td>
-<td> <a href=tags_reads_cv.txt target=_blank> tags_reads_cv.txt </a>
-<p/> <a href=tags_reads_summary.txt target=_blank> tags_reads_summary.txt </td>
+<td> <a href="${tags_reads_cv}" target=_blank> tags_reads_cv.txt </a>
+<p/> <a href="${tags_reads_summary}" target=_blank> tags_reads_summary.txt </td>
 </tr>
 <tr id=barcode_yield>
 <td> Barcode yield (plot) </td>
-<td> <img src=barcode_yields.jpg title=barcode_yields.jpg/> </td>
+<td> <img src="${barcode_yields}" title=barcode_yields.jpg/> </td>
 </tr>
 <tr>
 <td> Barcode yield (text) </td>
-<td> <a href=barcode_yield_summary.txt> barcode_yield_summary.txt </a> </td>
+<td> <a href="${barcode_yield_summary}"> barcode_yield_summary.txt </a> </td>
 </tr>
 <tr id=bwa>
 <td> BWA alignment (plot) </td>
-<td> <img src=mapping_stats.jpg title=mapping_stats.jpg/> </td>
+<td> <img src="${mapping_stats}" title=mapping_stats.jpg/> </td>
 </tr>
 <tr>
 <td> BWA alignment (text) </td>
-<td> <a href=stats_summary.txt> bwa stats summary </a> </td>
+<td> <a href="${stats_summary}"> bwa stats summary </a> </td>
 </tr>
 <tr id=fastqc>
 <td> FASTQC </td>
-<td> <a href=fastqc> FASTQC results </a> </td>
+<td> <a href="${fastqc}"> FASTQC results </a> </td>
 </tr>
 <tr id=multiqc>
 <td> MULTIQC </td>
-<td> <a href=multiqc> MULTIQC (mashup of FASTQC across lanes) </a> </td>
+<td> <a href="${multiqc}"> MULTIQC (mashup of FASTQC across lanes) </a> </td>
 </tr>
 <tr id=raw_kmer>
 <td> 6-mer distributions (raw data)</td>
 <td>
-<img src=kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg height=600 width=600/>
-<img src=kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
-<a href=kmer_analysis/heatmap_sample_clusters.k6A.txt> Clusters  </a>
+<img src="${kmer_entropy}" title=kmer_entropy.k6A.jpg height=600 width=600/>
+<img src="${kmer_zipfian_comparisons}" title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
+<a href="${heatmap_sample_clusters}"> Clusters  </a>
 </td>
 </tr>
 <tr id=trimmed_kmer>
 <td> 6-mer distributions (GBS-adapter-trimmed data)</td>
 <td>
-<img src=trimmed_kmer_analysis/kmer_entropy.k6A.jpg title=kmer_entropy.k6A.jpg height=600 width=600/>
-<img src=trimmed_kmer_analysis/kmer_zipfian_comparisons.k6A.jpg title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
-<a href=trimmed_kmer_analysis/heatmap_sample_clusters.k6A.txt> Clusters  </a>
+<img src="${trimmed_kmer_entropy}"title=kmer_entropy.k6A.jpg height=600 width=600/>
+<img src="${trimmed_kmer_zipfian_comparisons}" title=kmer_zipfian_comparisons.k6A.jpg  height=400 width=400/>
+<a href="${trimmed_heatmap_sample_clusters}"> Clusters  </a>
 </td>
 </tr>
 </table>
 <p/>
 """
+)
 
 
 footer1 = """
@@ -121,13 +130,19 @@ footer1 = """
 """
 
 
-def get_cohorts(options):
-    BASEDIR = options["basedir"]
+def first_existing_path_or_default(paths: Iterable[str], default: str) -> str:
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return default
+
+
+def get_cohorts(paths):
     # cohorts are idenitified as subfolders of the run folder that
     # * are not tardis working folders (i.e. have names starting with tardis
     # * are of like SQ0775.all.TILAPIA.PstI-MspI
     #   - i.e. library.qc-cohort.gbs-cohort.enzyme
-    run_folder = os.path.join(BASEDIR, options["run_folder"])
+    run_folder = paths.gbs.run_root
     # print "DEBUG1 : "+run_folder
     # SQ0810.all.PstI-MspI.PstI-MspI
     # SQ0812.all.ApeKI.ApeKI
@@ -148,8 +163,7 @@ def get_cohorts(options):
     return cohort_folders
 
 
-def generate_run_plot(options):
-    BASEDIR = options["basedir"]  # e.g. /bifo/scratch/hiseq/postprocessing/gbs
+def generate_run_plot(run_name: str, paths: Paths, out_path: str):
     stats = {"found file count": 0, "no file count": 0, "no sample count": 0}
 
     file_group_iter = (
@@ -187,6 +201,7 @@ def generate_run_plot(options):
         "Overall SNP yields": ["overall_snp_yield.txt", "information_efficiency.txt"],
         "KGD stdout": ["KGD.stdout"],
         "KGD (plots)": [
+            # now all created in blind and left in place
             "KGD/AlleleFreq.png",
             "KGD/CallRate.png",
             "KGD/Co-call-HWdgm.05.png",
@@ -404,14 +419,42 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
 """,
     }
 
-    with open(options["output_filename"], "w") as out_stream:
+    out_dir = os.path.dirname(out_path)
 
-        _ = out_stream.write("%s\n" % (header1 % options))
+    with open(out_path, "w") as out_stream:
 
-        _ = out_stream.write("%s\n" % overview_section)
+        _ = out_stream.write("%s\n" % (header1.substitute({"run_name": run_name})))
+
+        _ = out_stream.write(
+            "%s\n"
+            % overview_section.substitute(
+                {
+                    "sample_sheet": os.path.relpath(
+                        paths.seq.sample_sheet_path, out_dir
+                    ),
+                    "bclconvert": "bclconvert/index.html",  # TODO
+                    "self_rel_depth_details": "file:#isamba/dataset/gseq_processing/scratch/gbs/SelfRelDepth_details.html",  # TODO
+                    "tag_read_stats": "tag_read_stats.jpg",  # TODO
+                    "tags_reads_cv": "tags_reads_cv.txt",  # TODO
+                    "tags_reads_summary": "tags_reads_summary.txt",  # TODO
+                    "barcode_yields": "barcode_yields.jpg",  # TODO
+                    "barcode_yield_summary": "barcode_yield_summary.txt",  # TODO
+                    "mapping_stats": "mapping_stats.jpg",  # TODO
+                    "stats_summary": "stats_summary.txt",  # TODO
+                    "fastqc": "fastqc",  # TODO
+                    "multiqc": "multiqc",  # TODO
+                    "kmer_entropy": "kmer_entropy.k6A.jpg",  # TODO
+                    "kmer_zipfian_comparisons": "kmer_zipfian_comparisons.k6A.jpg",  # TODO
+                    "heatmap_sample_clusters": "heatmap_sample_clusters.k6A.txt",  # TODO
+                    "trimmed_kmer_entropy": "trimmed_kmer_analysis/kmer_entropy.k6A.jpg",  # TODO
+                    "trimmed_kmer_zipfian_comparisons": "trimmed_kmer_analysis/kmer_zipfian_comparisons.k6A.jpg",  # TODO
+                    "trimmed_heatmap_sample_clusters": "trimmed_kmer_analysis/heatmap_sample_clusters.k6A.txt",  # TODO
+                }
+            )
+        )
 
         # print "DEBUG : calling get_cohorts"
-        cohorts = get_cohorts(options)
+        cohorts = get_cohorts(paths)
 
         _ = out_stream.write("<a id=lane_plots />\n\n")
         _ = out_stream.write("<a id=sample_plots />\n<a id=cohort_plots />\n\n")
@@ -439,16 +482,28 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
 
                 _ = out_stream.write("<tr><td>%s</td>\n\n" % file_name)
                 for cohort in cohorts:
-                    file_path = os.path.join(
-                        BASEDIR, options["run_folder"], cohort, file_name
+                    # some files are created in the blind subdir, where we leave them,
+                    # since gratuitous copying or linking of files is contrary to
+                    # the spirit of the snake
+                    file_path = first_existing_path_or_default(
+                        [
+                            os.path.join(
+                                paths.gbs.run_root,
+                                cohort,
+                                subdir,
+                                file_name,
+                            )
+                            for subdir in ["", "blind"]
+                        ],
+                        os.path.join(
+                            paths.gbs.run_root,
+                            cohort,
+                            file_name,
+                        ),
                     )
-                    alt_file_path = os.path.join(
-                        BASEDIR, options["run_folder"], "html", cohort, file_name
-                    )
+                    file_relpath = os.path.relpath(file_path, out_dir)
 
                     if file_type == "image":
-                        image_relpath = os.path.join(cohort, file_name)
-
                         if os.path.exists(file_path):
                             title = file_path
                             if file_name in narratives:
@@ -458,13 +513,11 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                                 )
                             _ = out_stream.write(
                                 "<td> <img src=%s title=%s height=300 width=300/> </td>\n\n"
-                                % (image_relpath, title)
+                                % (file_relpath, title)
                             )
                         else:
                             _ = out_stream.write("<td> unavailable </td>\n\n")
                     elif file_type == "link":
-                        link_relpath = os.path.join(cohort, file_name)
-
                         if file_group in [
                             "Preview common sequence (trimmed fastq)",
                             "All common sequence (trimmed fastq)",
@@ -472,21 +525,18 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                             "All common sequence (low depth tags)",
                         ]:
                             file_path = os.path.join(
-                                BASEDIR,
-                                options["run_folder"],
+                                paths.gbs.run_root,
                                 "common_sequence",
                                 cohort,
                                 file_name,
                             )
-                            link_relpath = os.path.join(
-                                cohort, "common_sequence", file_name
-                            )
+                            file_relpath = os.path.relpath(file_path, out_dir)
 
-                        if os.path.exists(file_path) or os.path.exists(alt_file_path):
+                        if os.path.exists(file_path):
                             print(file_path)
                             _ = out_stream.write(
                                 "<td width=300> <a href=%s target=%s> %s </a></td>\n\n"
-                                % (link_relpath, file_name, link_relpath)
+                                % (file_relpath, file_name, file_relpath)
                             )
                         else:
                             _ = out_stream.write("<td width=300> unavailable </td>\n\n")
@@ -500,20 +550,18 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                             "All common sequence (low depth tags)",
                         ]:
                             file_path = os.path.join(
-                                BASEDIR,
-                                options["run_folder"],
+                                paths.gbs.run_root,
                                 "common_sequence",
                                 cohort,
                                 file_name,
                             )
                         elif file_group in ["Overall SNP yields"]:
                             file_path = os.path.join(
-                                BASEDIR, options["run_folder"], cohort, file_name
+                                paths.gbs.run_root, cohort, file_name
                             )
                         elif file_group in ["KGD stdout", "Deduplication"]:
                             file_path = os.path.join(
-                                BASEDIR,
-                                options["run_folder"],
+                                paths.gbs.run_root,
                                 "html",
                                 cohort,
                                 file_name,
@@ -589,12 +637,10 @@ run     run_number      lane    samplename      species file_name
         help="name of output file",
     )
     _ = parser.add_argument(
-        "-b",
-        "--basedir",
-        dest="basedir",
-        default="/dataset/gseq_processing/scratch/gbs",
+        "--postprocessing_root",
+        dest="postprocessing_root",
         type=str,
-        help="base dir of original output",
+        help="postprocessing root dir, e.g. /dataset/2024_illumina_sequencing_d/scratch/postprocessing",
     )
 
     args = vars(parser.parse_args())
@@ -605,8 +651,9 @@ run     run_number      lane    samplename      species file_name
 def main():
 
     options = get_options()
+    paths = Paths(options["postprocessing_root"], options["run_folder"])
     print(options)
-    generate_run_plot(options)
+    generate_run_plot(options["run_folder"], paths, options["output_filename"])
 
 
 if __name__ == "__main__":

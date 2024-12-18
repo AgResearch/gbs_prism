@@ -47,7 +47,13 @@ class GbsTargets:
 
     @property
     def paths(self):
-        return [target for cohort in self._cohorts.values() for target in cohort.paths]
+        return [
+            target for cohort in self._cohorts.values() for target in cohort.paths
+        ] + self._global_paths
+
+    @property
+    def _global_paths(self):
+        return [os.path.join(self._config.paths.run_root, "html", "peacock.html")]
 
     @property
     def local_fastq_links(self):

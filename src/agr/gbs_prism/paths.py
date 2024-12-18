@@ -66,8 +66,13 @@ class SeqPaths:
 
 
 class GbsPaths:
-    def __init__(self, run_root: str):
-        self._run_root = run_root
+    def __init__(self, root: str, run: str):
+        self._root = root
+        self._run_root = os.path.join(root, run)
+
+    @property
+    def root(self) -> str:
+        return self._root
 
     @property
     def run_root(self) -> str:
@@ -117,7 +122,7 @@ class Paths:
         )
 
         self._gbs_root = os.path.join(postprocessing_root, "gbs")
-        self._gbs_paths = GbsPaths(run_root=os.path.join(self._gbs_root, run))
+        self._gbs_paths = GbsPaths(root=self._gbs_root, run=run)
 
     @property
     def illumina_platform_root(self) -> str:

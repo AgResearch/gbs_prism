@@ -243,13 +243,22 @@ rule unblind:
         rules.map_info_to_hap_map.output,
         rules.tag_count.output,
         rules.tags_reads_summary.output,
-        blind_file = "%s/{cohort}/blind/{file_or_file_in_subdirectory}" % paths.gbs.run_root,
+        blind_file = "%s/{cohort}/blind/{shallow_path}" % paths.gbs.run_root,
         unblind_script = "%s/%s.{cohort}.unblind.sed" % (paths.gbs.run_root, c.run)
     output:
-        unblinded_file = "%s/{cohort}/{file_or_file_in_subdirectory}" % paths.gbs.run_root
+        unblinded_file = "%s/{cohort}/{shallow_path}" % paths.gbs.run_root
     shell:
         "mkdir -p $(dirname {output.unblinded_file}) ; "
         "sed -f {input.unblind_script} {input.blind_file} >{output.unblinded_file}"
+
+rule peacock:
+    input:
+        expand("%s/{cohort}/{cohort_file}" % paths.gbs.run_root, cohort=gbs_targets.cohorts.keys(), cohort_file=["tags_reads_summary.txt"])
+    output:
+        peacock_report = "%s/html/peacock.html" % paths.gbs.run_root
+    shell:
+        "mkdir -p {paths.gbs.run_root}/html ; "
+        "make_cohort_pages -r {c.run} --postprocessing_root {c.postprocessing_root} -o {paths.gbs.run_root}/html/peacock.html"
 
 rule gzip:
     input:
@@ -267,5 +276,5 @@ wildcard_constraints:
     sample_rate=r"s\.[0-9]+",
     # a filename with no path component
     basename=r"[^/]+",
-    # a filename with at most one directory component
-    file_or_file_in_subdirectory=r"[^/]+/?[^/]*"
+    # a path with limited number of components, so SnakeMake doesn't recurse indefinitely
+    shallow_path=r"[^/]+(/?[^/]*){0,3}"
