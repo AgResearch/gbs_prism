@@ -485,6 +485,8 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                     # some files are created in the blind subdir, where we leave them,
                     # since gratuitous copying or linking of files is contrary to
                     # the spirit of the snake
+                    #
+                    # also, the common_sequence stuff is TODO
                     file_path = first_existing_path_or_default(
                         [
                             os.path.join(
@@ -493,7 +495,11 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                                 subdir,
                                 file_name,
                             )
-                            for subdir in ["", "blind"]
+                            for subdir in [
+                                "",
+                                "blind",
+                                "common_sequence",
+                            ]
                         ],
                         os.path.join(
                             paths.gbs.run_root,
@@ -516,22 +522,10 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                                 % (file_relpath, title)
                             )
                         else:
-                            _ = out_stream.write("<td> unavailable </td>\n\n")
-                    elif file_type == "link":
-                        if file_group in [
-                            "Preview common sequence (trimmed fastq)",
-                            "All common sequence (trimmed fastq)",
-                            "Preview common sequence (low depth tags)",
-                            "All common sequence (low depth tags)",
-                        ]:
-                            file_path = os.path.join(
-                                paths.gbs.run_root,
-                                "common_sequence",
-                                cohort,
-                                file_name,
+                            _ = out_stream.write(
+                                "<td> %s unavailable </td>\n\n" % file_relpath
                             )
-                            file_relpath = os.path.relpath(file_path, out_dir)
-
+                    elif file_type == "link":
                         if os.path.exists(file_path):
                             print(file_path)
                             _ = out_stream.write(
@@ -539,36 +533,16 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
                                 % (file_relpath, file_name, file_relpath)
                             )
                         else:
-                            _ = out_stream.write("<td width=300> unavailable </td>\n\n")
+                            _ = out_stream.write(
+                                "<td width=300> %s unavailable </td>\n\n" % file_relpath
+                            )
                     elif file_type == "in-line":
-                        text = "(unavailable)"
 
-                        if file_group in [
-                            "Preview common sequence (trimmed fastq)",
-                            "All common sequence (trimmed fastq)",
-                            "Preview common sequence (low depth tags)",
-                            "All common sequence (low depth tags)",
-                        ]:
-                            file_path = os.path.join(
-                                paths.gbs.run_root,
-                                "common_sequence",
-                                cohort,
-                                file_name,
-                            )
-                        elif file_group in ["Overall SNP yields"]:
-                            file_path = os.path.join(
-                                paths.gbs.run_root, cohort, file_name
-                            )
-                        elif file_group in ["KGD stdout", "Deduplication"]:
-                            file_path = os.path.join(
-                                paths.gbs.run_root,
-                                "html",
-                                cohort,
-                                file_name,
-                            )
                         if os.path.exists(file_path):
                             with open(file_path, "r") as infile:
                                 text = "\n".join((record.strip() for record in infile))
+                        else:
+                            text = "(%s %s unavailable)" % (file_group, file_relpath)
 
                         _ = out_stream.write(
                             '<td id="%s"> <font size=-2> <pre>%s</pre> </font> </td>\n'

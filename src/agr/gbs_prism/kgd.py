@@ -12,13 +12,11 @@ def run_kgd(
     genotyping_method: str,
     hapmap_reldir: str = "hapMap",  # relative to base_dir
 ):
-    engine = "KGD_tassel3"
-    cohort_engine_path = os.path.join(base_dir, "%s.%s.KGD" % (cohort_str, engine))
-    out_path = "%s.stdout" % cohort_engine_path
-    err_path = "%s.stderr" % cohort_engine_path
-
     work_dir = os.path.join(base_dir, "KGD")
     os.makedirs(work_dir, exist_ok=True)
+
+    out_path = "%s.stdout" % work_dir
+    err_path = "%s.stderr" % work_dir
 
     hapmap_files = ["HapMap.hmc.txt.blinded", "HapMap.hmc.txt"]
     hapmap_dir = os.path.join(base_dir, hapmap_reldir)
