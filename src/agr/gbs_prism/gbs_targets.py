@@ -162,6 +162,7 @@ class CohortTargets:
                 "hapMap.done",
                 "TagCount.csv",
                 "KGD/SampleStats.csv",
+                "KGD/GUSbase_comet.jpg",
             ]
         ]
 

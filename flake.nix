@@ -71,6 +71,7 @@
               propagatedBuildInputs = with python3Packages;
                 [
                   biopython
+                  pdf2image
                   pytest
                   pydantic
                   flakePkgs.gquery-api

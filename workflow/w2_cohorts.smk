@@ -25,6 +25,7 @@ from agr.gbs_prism.ramify_tassel_keyfile import ramify
 from agr.gbs_prism.tassel3 import Tassel3
 from agr.gbs_prism.get_reads_tags_per_sample import get_reads_tags_per_sample
 from agr.gbs_prism.kgd import run_kgd
+from agr.gbs_prism.GUSbase import run_GUSbase
 
 c = Config(**config)
 paths = Paths(c.postprocessing_root, c.run)
@@ -233,11 +234,20 @@ rule kgd:
     input:
         hap_map_done = "%s/{cohort}/blind/hapMap.done" % paths.gbs.run_root
     output:
-        sample_stats_csv = "%s/{cohort}/blind/KGD/SampleStats.csv" % paths.gbs.run_root
+        sample_stats_csv = "%s/{cohort}/blind/KGD/SampleStats.csv" % paths.gbs.run_root,
+        GUSbase_RData = "%s/{cohort}/blind/KGD/GUSbase.RData" % paths.gbs.run_root
     run:
         cohort_str=wildcards.cohort
         genotyping_method=gbs_target_spec.cohorts[cohort_str].genotyping_method
         run_kgd(cohort_str=cohort_str, base_dir="%s/%s/blind" % (paths.gbs.run_root, cohort_str), genotyping_method=genotyping_method)
+
+rule GUSbase:
+    input:
+        GUSbase_RData = "%s/{cohort}/blind/KGD/GUSbase.RData" % paths.gbs.run_root
+    output:
+        GUSbase_comet_jpg = "%s/{cohort}/blind/KGD/GUSbase_comet.jpg" % paths.gbs.run_root,
+    run:
+        run_GUSbase(input.GUSbase_RData)
 
 rule unblind:
     input:
