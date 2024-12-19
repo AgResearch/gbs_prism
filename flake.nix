@@ -24,6 +24,10 @@
       url = "github:AgResearch/KGD?ref=refs/tags/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    GUSbase = {
+      url = "github:tpbilton/GUSbase";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     gquery = {
       # TODO use main branch not gbs_prism branch
       url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
@@ -31,7 +35,7 @@
     };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, tassel3, kgd, gquery, ... }:
+  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, tassel3, kgd, GUSbase, gquery, ... }:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -45,6 +49,7 @@
             cutadapt = cutadapt.packages.${system}.default;
             tassel3 = tassel3.packages.${system}.default;
             kgd-src = kgd.packages.${system}.src;
+            GUSbase = GUSbase.packages.${system}.default;
             gquery-api = gquery.packages.${system}.api;
             gquery-eri-dev = gquery.packages.${system}.eri-dev;
           };
@@ -98,6 +103,30 @@
             '';
           };
 
+          R-with-GUSbase = pkgs.rWrapper.override {
+            packages = [ flakePkgs.GUSbase ];
+          };
+
+          run_GUSbase =
+            pkgs.stdenv.mkDerivation {
+              name = "gbs_prism_GUSbase";
+
+              src = ./src/run_GUSbase.R;
+
+              buildInputs = [ R-with-GUSbase ];
+
+              dontUnpack = true;
+              dontBuild = true;
+
+              installPhase = ''
+                mkdir -p $out/bin
+                runHook preInstall
+                cp $src $out/bin/run_GUSbase.R
+                chmod 755 $out/bin/run_GUSbase.R
+                runHook postInstall
+              '';
+            };
+
           devPython = pkgs.python3.withPackages (python-pkgs: [
             gbs-prism-api
           ]);
@@ -115,6 +144,7 @@
                 flakePkgs.cutadapt
                 flakePkgs.tassel3
                 run_kgd
+                run_GUSbase
                 bwa
                 samtools
                 fastqc
