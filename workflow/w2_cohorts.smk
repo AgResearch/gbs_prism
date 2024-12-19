@@ -61,6 +61,14 @@ rule cohort_fastq_links:
         gbs_targets.create_local_fastq_links()
 
 
+rule dedupe_summary:
+    input:
+        fastq_links = glob_wildcards("%s/{cohort}/fastq/{basename}" % paths.gbs.run_root)
+    output:
+        dedupe_summary = "%s/{cohort}/dedupe_summary.txt" % paths.gbs.run_root
+    shell:
+        "get_dedupe_sumary {input.fastq_links} >{output.dedupe_summary}"
+
 rule sample_for_bwa:
     input:
         fastq_file="{path}/{cohort}/Illumina/{basename}.fastq.gz"

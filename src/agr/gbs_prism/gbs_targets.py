@@ -217,6 +217,14 @@ class CohortTargets:
             ]
         ]
 
+        other_targets = [
+            os.path.join(
+                self._config.paths.cohort_dir(str(self._name)),
+                target,
+            )
+            for target in ["dedupe_summary.txt"]
+        ]
+
         paths = (
             self.local_fastq_links
             + suffixed_targets
@@ -228,6 +236,7 @@ class CohortTargets:
             + blind_targets
             + tags_summary_targets
             + unblinded_targets
+            # + other_targets
         )
         # logger.debug("targets for cohort %s:\n%s" % (self._name, "\n".join(paths)))
         return paths
