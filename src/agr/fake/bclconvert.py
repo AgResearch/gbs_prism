@@ -67,7 +67,11 @@ class BclConvert(RealBclConvert):
                         line = next(real_gz)
                         _ = fake_gz.write(line)
 
+        reports_dir = os.path.join(self._out_dir, "Reports")
+        os.makedirs(reports_dir, exist_ok=True)
         _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
 
         # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
+        fastq_complete_dir = os.path.dirname(self.fastq_complete_path)
+        os.makedirs(fastq_complete_dir, exist_ok=True)
         pathlib.Path(self.fastq_complete_path).touch()

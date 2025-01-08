@@ -58,6 +58,22 @@ def cook_sample_sheet(
 
 
 @task()
+def bclconvert(in_dir: str, cooked: CookSampleSheetOutput) -> List[File]:
+    out_dir = os.path.join(cooked.dir, "bclconvert")
+    os.makedirs(out_dir, exist_ok=True)
+    bclconvert = BclConvert(
+        in_dir=in_dir,
+        sample_sheet_path=cooked.sample_sheet.path,
+        out_dir=out_dir,
+    )
+    bclconvert.run()
+    bclconvert.check_expected_fastq_files(cooked.expected_fastq)
+    return [
+        File(os.path.join(out_dir, fastq_file)) for fastq_file in cooked.expected_fastq
+    ]
+
+
+@task()
 def main(run: str) -> List[File]:
     c = Config(
         run=run,
@@ -90,13 +106,10 @@ def main(run: str) -> List[File]:
     )
 
     sequencer_run = SequencerRun(c.seq_root, c.run)
+
     # paths = Paths(c.postprocessing_root, c.run)
     # stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
-    # bclconvert = BclConvert(
-    #     in_dir=sequencer_run.dir,
-    #     sample_sheet_path=paths.seq.sample_sheet_path,
-    #     out_dir=paths.seq.bclconvert_dir,
-    # )
+
     # kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
     # kmer_prism = KmerPrism(
     #     input_filetype="fasta",
@@ -120,4 +133,6 @@ def main(run: str) -> List[File]:
         sequencer_run=sequencer_run, postprocessing_root=c.postprocessing_root
     )
 
-    return [cooked.sample_sheet]
+    fastq_files = bclconvert(sequencer_run.dir, cooked)
+
+    return fastq_files
