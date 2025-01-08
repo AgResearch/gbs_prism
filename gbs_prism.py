@@ -1,7 +1,7 @@
 import os.path
 from dataclasses import dataclass
 from redun import task, File
-from typing import List, Literal
+from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
@@ -29,6 +29,7 @@ from agr.gbs_prism.paths import Paths
 class CookSampleSheetOutput:
     sample_sheet: File
     dir: str
+    expected_fastq: Set[str]
 
 
 @task()
@@ -50,7 +51,10 @@ def cook_sample_sheet(
     sample_sheet_dir = os.path.join(illumina_platform_run_root, "SampleSheet")
     os.makedirs(sample_sheet_dir, exist_ok=True)
     sample_sheet.write(out_path)
-    return CookSampleSheetOutput(sample_sheet=File(out_path), dir=sample_sheet_dir)
+    expected_fastq = sample_sheet.fastq_files
+    return CookSampleSheetOutput(
+        sample_sheet=File(out_path), dir=sample_sheet_dir, expected_fastq=expected_fastq
+    )
 
 
 @task()
