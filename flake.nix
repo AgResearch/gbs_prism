@@ -152,6 +152,8 @@
                 gzip
                 yq-go
                 devPython
+                python3Packages.pip # for redun from a virtualenv
+                virtualenv
               ];
 
               shellHook = ''
