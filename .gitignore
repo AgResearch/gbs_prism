@@ -1,5 +1,5 @@
 /.direnv/
-/.snakemake/
+/.redun/
 __pycache__/
 /log/
 /result

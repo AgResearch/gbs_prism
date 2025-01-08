@@ -139,7 +139,6 @@
             default = mkShell {
               buildInputs = [
                 bashInteractive
-                snakemake
                 flakePkgs.bbmap
                 flakePkgs.bcl-convert
                 flakePkgs.cutadapt
@@ -153,7 +152,6 @@
                 gzip
                 yq-go
                 devPython
-                graphviz # for dot, for snakemake DAG visualization
               ];
 
               shellHook = ''
