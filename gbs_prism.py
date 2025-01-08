@@ -23,13 +23,13 @@ from agr.gbs_prism.gbs_target_spec import gquery_gbs_target_spec, write_gbs_targ
 from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
-from agr.gbs_prism.paths import Paths
+from agr.gbs_prism.paths import SeqPaths
 
 
 @dataclass
 class CookSampleSheetOutput:
     sample_sheet: File
-    dir: str
+    paths: SeqPaths
     expected_fastq: Set[str]
 
 
@@ -44,40 +44,40 @@ def cook_sample_sheet(
     sample_sheet = SampleSheet(
         sequencer_run.sample_sheet_path, impute_lanes=impute_lanes
     )
+    # TODO remove the corresponding stuff from Paths class
     illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
     illumina_platform_run_root = os.path.join(
         illumina_platform_root, sequencer_run.name
     )
-    out_path = os.path.join(illumina_platform_run_root, "SampleSheet.csv")
-    sample_sheet_dir = os.path.join(illumina_platform_run_root, "SampleSheet")
-    os.makedirs(sample_sheet_dir, exist_ok=True)
-    sample_sheet.write(out_path)
+    seq_paths = SeqPaths(illumina_platform_run_root)
+    os.makedirs(seq_paths.sample_sheet_dir, exist_ok=True)
+    sample_sheet.write(seq_paths.sample_sheet_path)
     expected_fastq = sample_sheet.fastq_files
     return CookSampleSheetOutput(
-        sample_sheet=File(out_path), dir=sample_sheet_dir, expected_fastq=expected_fastq
+        sample_sheet=File(seq_paths.sample_sheet_path),
+        paths=seq_paths,
+        expected_fastq=expected_fastq,
     )
 
 
 @task()
-def bclconvert(in_dir: str, cooked: CookSampleSheetOutput) -> List[File]:
-    out_dir = os.path.join(cooked.dir, "bclconvert")
+def bclconvert(
+    in_dir: str, sample_sheet_path: str, expected_fastq: Set[str], out_dir: str
+) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
     bclconvert = BclConvert(
         in_dir=in_dir,
-        sample_sheet_path=cooked.sample_sheet.path,
+        sample_sheet_path=sample_sheet_path,
         out_dir=out_dir,
     )
     bclconvert.run()
-    bclconvert.check_expected_fastq_files(cooked.expected_fastq)
-    return [
-        File(os.path.join(out_dir, fastq_file)) for fastq_file in cooked.expected_fastq
-    ]
+    bclconvert.check_expected_fastq_files(expected_fastq)
+    return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
 
 
 @task()
-def fastqc_one(fastq_file: File, out_root: str) -> List[File]:
+def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
     """Run fastqc on a single file, returning both the html and zip results."""
-    out_dir = os.path.join(out_root, "fastqc_run", "fastqc")
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
@@ -89,9 +89,9 @@ def fastqc_one(fastq_file: File, out_root: str) -> List[File]:
 
 
 @task()
-def fastqc_all(fastq_files: List[File], out_root: str) -> List[File]:
+def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Run fastqc on multiple files, returning concatenation of all the html and zip results."""
-    return all_forall(fastqc_one, out_root, fastq_files)
+    return all_forall(fastqc_one, out_dir, fastq_files)
 
 
 @task()
@@ -150,12 +150,17 @@ def main(run: str) -> List[File]:
     # Ensure we have the directory structure we need in advance
     # paths.make_run_dirs()
 
-    cooked = cook_sample_sheet(
+    seq = cook_sample_sheet(
         sequencer_run=sequencer_run, postprocessing_root=c.postprocessing_root
     )
 
-    fastq_files = bclconvert(sequencer_run.dir, cooked)
+    fastq_files = bclconvert(
+        sequencer_run.dir,
+        sample_sheet_path=seq.sample_sheet.path,
+        expected_fastq=seq.expected_fastq,
+        out_dir=seq.paths.bclconvert_dir,
+    )
 
-    fastqc_files = fastqc_all(fastq_files, out_root=cooked.dir)
+    fastqc_files = fastqc_all(fastq_files, out_dir=seq.paths.fastqc_dir)
 
     return fastqc_files
