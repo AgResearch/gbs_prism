@@ -1,4 +1,7 @@
+import os.path
+from dataclasses import dataclass
 from redun import task, File
+from typing import List, Literal
 
 redun_namespace = "agr.gbs_prism"
 
@@ -22,17 +25,38 @@ from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
 
 
+@dataclass
+class CookSampleSheetOutput:
+    sample_sheet: File
+    dir: str
+
+
 @task()
-def write_sample_sheet(sample_sheet: SampleSheet, out_path: str) -> File:
+def cook_sample_sheet(
+    sequencer_run: SequencerRun,
+    postprocessing_root: str,
+    platform: Literal["iseq", "miseq", "novaseq"] = "novaseq",
+    impute_lanes=[1, 2],
+) -> CookSampleSheetOutput:
+    """Process a raw sample sheet into a form compatiable with bclconvert et al."""
+    sample_sheet = SampleSheet(
+        sequencer_run.sample_sheet_path, impute_lanes=impute_lanes
+    )
+    illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
+    illumina_platform_run_root = os.path.join(
+        illumina_platform_root, sequencer_run.name
+    )
+    out_path = os.path.join(illumina_platform_run_root, "SampleSheet.csv")
+    sample_sheet_dir = os.path.join(illumina_platform_run_root, "SampleSheet")
+    os.makedirs(sample_sheet_dir, exist_ok=True)
     sample_sheet.write(out_path)
-    return File(out_path)
+    return CookSampleSheetOutput(sample_sheet=File(out_path), dir=sample_sheet_dir)
 
 
 @task()
-def main(run: str):
+def main(run: str) -> List[File]:
     c = Config(
-        # TODO parameterise
-        run="240323_A01439_0249_BH33MYDRX5",
+        run=run,
         # pipeline config for gbs_prism
         # TODO:
         # seq_root = "/dataset/2024_illumina_sequencing_e/active",
@@ -62,31 +86,34 @@ def main(run: str):
     )
 
     sequencer_run = SequencerRun(c.seq_root, c.run)
-    sample_sheet = SampleSheet(sequencer_run.sample_sheet_path, impute_lanes=[1, 2])
-    paths = Paths(c.postprocessing_root, c.run)
-    stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
-    bclconvert = BclConvert(
-        in_dir=sequencer_run.dir,
-        sample_sheet_path=paths.seq.sample_sheet_path,
-        out_dir=paths.seq.bclconvert_dir,
-    )
-    kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
-    kmer_prism = KmerPrism(
-        input_filetype="fasta",
-        kmer_size=6,
-        # this causes it to crash: 😩
-        # assemble_low_entropy_kmers=True
-    )
-    gbs_keyfiles = GbsKeyfiles(
-        sequencer_run=sequencer_run,
-        sample_sheet=sample_sheet,
-        root=paths.illumina_platform_root,
-        out_dir=c.keyfiles_dir,
-        fastq_link_farm=c.fastq_link_farm,
-        backup_dir=c.gbs_backup_dir,
-    )
+    # paths = Paths(c.postprocessing_root, c.run)
+    # stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
+    # bclconvert = BclConvert(
+    #     in_dir=sequencer_run.dir,
+    #     sample_sheet_path=paths.seq.sample_sheet_path,
+    #     out_dir=paths.seq.bclconvert_dir,
+    # )
+    # kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
+    # kmer_prism = KmerPrism(
+    #     input_filetype="fasta",
+    #     kmer_size=6,
+    #     # this causes it to crash: 😩
+    #     # assemble_low_entropy_kmers=True
+    # )
+    # gbs_keyfiles = GbsKeyfiles(
+    #     sequencer_run=sequencer_run,
+    #     sample_sheet=sample_sheet,
+    #     root=paths.illumina_platform_root,
+    #     out_dir=c.keyfiles_dir,
+    #     fastq_link_farm=c.fastq_link_farm,
+    #     backup_dir=c.gbs_backup_dir,
+    # )
 
     # Ensure we have the directory structure we need in advance
-    paths.make_run_dirs()
+    # paths.make_run_dirs()
 
-    _ = write_sample_sheet(sample_sheet, out_path=paths.seq.sample_sheet_path)
+    cooked = cook_sample_sheet(
+        sequencer_run=sequencer_run, postprocessing_root=c.postprocessing_root
+    )
+
+    return [cooked.sample_sheet]
