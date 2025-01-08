@@ -6,6 +6,7 @@ from typing import List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.path import gunzipped, gzipped
+from agr.util.redun import all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -74,6 +75,26 @@ def bclconvert(in_dir: str, cooked: CookSampleSheetOutput) -> List[File]:
 
 
 @task()
+def fastqc_one(fastq_file: File, out_root: str) -> List[File]:
+    """Run fastqc on a single file, returning both the html and zip results."""
+    out_dir = os.path.join(out_root, "fastqc_run", "fastqc")
+    fastqc(in_path=fastq_file.path, out_dir=out_dir)
+    basename = (
+        os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
+    )
+    return [
+        File(os.path.join(out_dir, "%s%s" % (basename, ext)))
+        for ext in ["_fastqc.html", "_fastqc.zip"]
+    ]
+
+
+@task()
+def fastqc_all(fastq_files: List[File], out_root: str) -> List[File]:
+    """Run fastqc on multiple files, returning concatenation of all the html and zip results."""
+    return all_forall(fastqc_one, out_root, fastq_files)
+
+
+@task()
 def main(run: str) -> List[File]:
     c = Config(
         run=run,
@@ -135,4 +156,6 @@ def main(run: str) -> List[File]:
 
     fastq_files = bclconvert(sequencer_run.dir, cooked)
 
-    return fastq_files
+    fastqc_files = fastqc_all(fastq_files, out_root=cooked.dir)
+
+    return fastqc_files

@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 def fastqc(in_path: str, out_dir: str, num_threads: int = 8):
+    os.makedirs(out_dir, exist_ok=True)
     log_path = os.path.join(
         out_dir,
         "%s_fastqc.log"
