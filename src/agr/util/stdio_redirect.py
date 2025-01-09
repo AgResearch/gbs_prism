@@ -1,4 +1,5 @@
 import sys
+import traceback
 from io import TextIOBase
 
 
@@ -25,25 +26,19 @@ class StdioRedirect:
     """
 
     def __init__(self, stdin=None, stdout=None, stderr=None):
-        if stdin is None:
-            self._stdin = stdin
-        elif isinstance(stdin, TextIOBase):
+        if stdin is None or isinstance(stdin, TextIOBase):
             self._stdin = stdin
         else:
             assert False, "unsupported value for stdin, %s" % repr(stdin)
         self._saved_stdin = None
 
-        if stdout is None:
-            self._stdout = stdout
-        elif isinstance(stdout, TextIOBase):
+        if stdout is None or isinstance(stdout, TextIOBase):
             self._stdout = stdout
         else:
             assert False, "unsupported value for stdout, %s" % repr(stdout)
         self._saved_stdout = None
 
-        if stderr is None:
-            self._stderr = stderr
-        elif isinstance(stderr, TextIOBase):
+        if stderr is None or isinstance(stderr, TextIOBase):
             self._stderr = stderr
         else:
             assert False, "unsupported value for stderr, %s" % repr(stderr)
@@ -60,10 +55,17 @@ class StdioRedirect:
             self._saved_stderr = sys.stderr
             sys.stderr = self._stderr
 
-    def __exit__(self, *_):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         if self._stdin is not None:
             sys.stdin = self._saved_stdin
         if self._stdout is not None:
             sys.stdout = self._saved_stdout
         if self._stderr is not None:
             sys.stderr = self._saved_stderr
+        if exc_type is not None:
+            sys.stderr.write(
+                "%s in StdioRedirect context: %s\n" % (exc_type.__name__, exc_val)
+            )
+            traceback.print_tb(exc_tb, file=sys.stderr)
+        # don't suppress exceptions:
+        return False
