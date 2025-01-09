@@ -14,14 +14,14 @@ class GbsKeyfiles:
     def __init__(
         self,
         sequencer_run: SequencerRun,
-        sample_sheet: SampleSheet,
+        sample_sheet_path: str,
         root: str,
         out_dir: str,
         fastq_link_farm: str,
         backup_dir: str,
     ):
         self._sequencer_run = sequencer_run
-        self._sample_sheet = sample_sheet
+        self._sample_sheet_path = sample_sheet_path
         self._root = root
         self._out_dir = out_dir
         self._fastq_link_farm = fastq_link_farm
@@ -127,7 +127,7 @@ where
                 run_folder_root=self._sequencer_run.seq_root,
                 out_folder=self._out_dir,
                 fastq_link_root=self._fastq_link_farm,
-                sample_sheet=self._sample_sheet.path,
+                sample_sheet=self._sample_sheet_path,
                 import_=True,
             ),
             items=["all"],

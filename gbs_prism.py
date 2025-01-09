@@ -29,8 +29,10 @@ from agr.gbs_prism.paths import SeqPaths
 @dataclass
 class CookSampleSheetOutput:
     sample_sheet: File
+    illumina_platform_root: str
     paths: SeqPaths
     expected_fastq: Set[str]
+    gbs_libraries: List[str]
 
 
 @task()
@@ -52,11 +54,13 @@ def cook_sample_sheet(
     seq_paths = SeqPaths(illumina_platform_run_root)
     os.makedirs(seq_paths.sample_sheet_dir, exist_ok=True)
     sample_sheet.write(seq_paths.sample_sheet_path)
-    expected_fastq = sample_sheet.fastq_files
+
     return CookSampleSheetOutput(
         sample_sheet=File(seq_paths.sample_sheet_path),
+        illumina_platform_root=illumina_platform_root,
         paths=seq_paths,
-        expected_fastq=expected_fastq,
+        expected_fastq=sample_sheet.fastq_files,
+        gbs_libraries=sample_sheet.gbs_libraries,
     )
 
 
@@ -127,6 +131,7 @@ def kmer_analysis_one(fastq_file: File, kwargs) -> File:
         "%s.%s.1" % (os.path.basename(fastq_file.path), kmer_prism.moniker),
     )
     run_kmer_analysis(in_path=fastq_file.path, out_path=out_path, kmer_prism=kmer_prism)
+    return File(out_path)
 
 
 @task()
@@ -151,11 +156,42 @@ def dedupe_one(fastq_file: File, kwargs) -> File:
         tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
         jvm_args=[],
     )  # TODO fallback to default of 80g which Dedupe uses if we don't override it here
+    return File(out_path)
 
 
+@task()
 def dedupe_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Dedupe multiple fastq files."""
     return one_forall(dedupe_one, fastq_files, out_dir=out_dir)
+
+
+@task()
+def gbs_keyfiles(
+    sequencer_run: SequencerRun,
+    sample_sheet: File,
+    gbs_libraries: List[str],
+    _deduped_fastq_files: List[File],
+    root: str,
+    out_dir: str,
+    fastq_link_farm: str,
+    backup_dir: str,
+) -> List[File]:
+    """Get GBS ketfiles, which must depend on deduped fastq files having been produced."""
+    gbs_keyfiles = GbsKeyfiles(
+        sequencer_run=sequencer_run,
+        sample_sheet_path=sample_sheet.path,
+        root=root,
+        out_dir=out_dir,
+        fastq_link_farm=fastq_link_farm,
+        backup_dir=backup_dir,
+    )
+    gbs_keyfiles.create()
+
+    return [
+        File(os.path.join(out_dir, "%s.generated.txt" % library))
+        for library in gbs_libraries
+    ]
+
 
 @task()
 def main(run: str) -> List[File]:
@@ -194,15 +230,6 @@ def main(run: str) -> List[File]:
     # paths = Paths(c.postprocessing_root, c.run)
     # stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
 
-    # gbs_keyfiles = GbsKeyfiles(
-    #     sequencer_run=sequencer_run,
-    #     sample_sheet=sample_sheet,
-    #     root=paths.illumina_platform_root,
-    #     out_dir=c.keyfiles_dir,
-    #     fastq_link_farm=c.fastq_link_farm,
-    #     backup_dir=c.gbs_backup_dir,
-    # )
-
     # Ensure we have the directory structure we need in advance
     # paths.make_run_dirs()
 
@@ -233,5 +260,16 @@ def main(run: str) -> List[File]:
 
     deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
 
-    return fastqc_files + deduped_fastq
+    keyfiles = gbs_keyfiles(
+        sequencer_run=sequencer_run,
+        sample_sheet=seq.sample_sheet,
+        gbs_libraries=seq.gbs_libraries,
+        _deduped_fastq_files=deduped_fastq,
+        root=seq.illumina_platform_root,
+        out_dir=c.keyfiles_dir,
+        fastq_link_farm=c.fastq_link_farm,
+        backup_dir=c.gbs_backup_dir,
+    )
+
+    return fastqc_files + deduped_fastq + keyfiles
     # kmer_analysis + is troublesome for now because of in-process problems
