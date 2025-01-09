@@ -6,7 +6,7 @@ from typing import List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.path import gunzipped, gzipped
-from agr.util.redun import all_forall
+from agr.util.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -95,6 +95,28 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
+def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
+    """Sample a single fastq file as required for kmer analysis."""
+    os.makedirs(out_dir, exist_ok=True)
+    kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
+    # the ugly name is copied from legacy gbs_prism
+    out_path = os.path.join(
+        out_dir,
+        "%s.fastq.%s.fastq" % (os.path.basename(fastq_file.path), kmer_sample.moniker),
+    )
+    # fastq_file="{path}/bclconvert/{basename}.fastq.gz"
+    # sampled_fastq_file="{path}/kmer_run/fastq_sample/{basename}.fastq.gz.fastq.%s.fastq" % kmer_sample.moniker
+    kmer_sample.run(in_path=fastq_file.path, out_path=out_path)
+    return File(out_path)
+
+
+@task()
+def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
+    """Sample all fastq files as required for kmer analysis."""
+    return one_forall(kmer_sample_one, out_dir, fastq_files)
+
+
+@task()
 def main(run: str) -> List[File]:
     c = Config(
         run=run,
@@ -163,4 +185,6 @@ def main(run: str) -> List[File]:
 
     fastqc_files = fastqc_all(fastq_files, out_dir=seq.paths.fastqc_dir)
 
-    return fastqc_files
+    kmer_samples = kmer_sample_all(fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
+
+    return fastqc_files + kmer_samples
