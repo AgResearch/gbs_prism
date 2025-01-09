@@ -6,7 +6,7 @@ def flowcell_id(run: str) -> str:
     return run.split("_")[3][1:]
 
 
-@dataclass(frozen=True)
+@dataclass
 class Cohort:
     libname: str
     qc_cohort: str

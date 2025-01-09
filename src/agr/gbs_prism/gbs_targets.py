@@ -15,7 +15,7 @@ from .types import flowcell_id
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
+@dataclass
 class GbsConfig:
     run_name: str
     paths: GbsPaths
