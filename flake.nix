@@ -128,8 +128,14 @@
               '';
             };
 
-          devPython = pkgs.python3.withPackages (python-pkgs: [
-            gbs-prism-api
+          devPython = pkgs.python3.withPackages (python-pkgs: with python-pkgs; [
+            # gbs-prism-api
+            # TODO: remove these in favour of gbs-prism-api, which for now we consume via PYTHONPATH
+            biopython
+            pdf2image
+            pytest
+            pydantic
+            flakePkgs.gquery-api
           ]);
 
         in
@@ -158,7 +164,7 @@
 
               shellHook = ''
                 # enable use of gbs_prism from current directory during development
-                export PYTHONPATH=./src:$PYTHONPATH
+                export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${export-gquery-environment-for-eri "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
               '';
