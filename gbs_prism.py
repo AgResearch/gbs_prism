@@ -247,8 +247,30 @@ def create_cohort_fastq_links(gbs_targets: GbsTargetsOutput) -> Dict[str, List[F
     return links_by_cohort
 
 
+@task(script=True)
+def create_dedupe_summary_one_cohort(fastq_links: List[str], out_path: str):
+    return f"""
+        #!/usr/bin/env bash
+        get_dedupe_summary {fastq_links} >{out_path}
+    """
+
+
 @task()
 def main(run: str) -> tuple[List[File], List[Dict[str, List[File]]]]:
+def create_dedupe_summary_all_cohorts(
+    gbs_targets: GbsTargetsOutput, cohort_fastq_links: Dict[str, File]
+) -> Dict[str, File]:
+    summary_by_cohort = {}
+    for cohort_name, spec in gbs_targets.spec.cohorts.items():
+        summary_by_cohort[cohort_name] = create_dedupe_summary_one_cohort(
+            fastq_links=[file.path for file in cohort_fastq_links[cohort_name]],
+            out_path=os.path.join(
+                gbs_targets.paths.cohort_dir(str(cohort_name)), "dedupe_summary.txt"
+            ),
+        )
+    return summary_by_cohort
+
+
     c = Config(
         run=run,
         # pipeline config for gbs_prism
@@ -334,8 +356,13 @@ def main(run: str) -> tuple[List[File], List[Dict[str, List[File]]]]:
 
     cohort_fastq_links = create_cohort_fastq_links(gbs_targets)
 
+    cohort_dedupe_summary = create_dedupe_summary_all_cohorts(
+        gbs_targets=gbs_targets, cohort_fastq_links=cohort_fastq_links
+    )
+
     return (
         fastqc_files + deduped_fastq + gbs_keyfiles + [gbs_targets.spec_file],
+        [cohort_dedupe_summary],
         [cohort_fastq_links],
     )
     # kmer_analysis + is troublesome for now because of in-process problems
