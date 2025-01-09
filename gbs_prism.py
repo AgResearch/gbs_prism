@@ -1,12 +1,9 @@
 from redun import task
 
-from src.agr.gbs_prism.redun.stage1 import Stage1Output
-from src.agr.gbs_prism.redun.stage2 import Stage2Output
+from agr.gbs_prism.config import Config
+from agr.gbs_prism.redun import run_stage1, run_stage2, Stage1Output, Stage2Output
 
 redun_namespace = "agr.gbs_prism"
-
-from agr.gbs_prism.config import Config
-from agr.gbs_prism.redun import run_stage1, run_stage2
 
 
 @task()

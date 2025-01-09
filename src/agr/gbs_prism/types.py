@@ -21,6 +21,10 @@ class Cohort:
             self.enzyme,
         )
 
+    @property
+    def name(self):
+        return str(self)
+
     @classmethod
     def parse(cls, cohort_str: str) -> Self:
         fields = cohort_str.split(".")
