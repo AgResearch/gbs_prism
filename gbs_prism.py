@@ -76,8 +76,9 @@ def bclconvert(
 
 
 @task()
-def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
+def fastqc_one(fastq_file: File, kwargs) -> List[File]:
     """Run fastqc on a single file, returning both the html and zip results."""
+    out_dir = kwargs["out_dir"]
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
@@ -91,12 +92,13 @@ def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Run fastqc on multiple files, returning concatenation of all the html and zip results."""
-    return all_forall(fastqc_one, out_dir, fastq_files)
+    return all_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
-def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
+def kmer_sample_one(fastq_file: File, kwargs) -> File:
     """Sample a single fastq file as required for kmer analysis."""
+    out_dir = kwargs["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
     kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
     # the ugly name is copied from legacy gbs_prism
@@ -104,8 +106,6 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
         out_dir,
         "%s.fastq.%s.fastq" % (os.path.basename(fastq_file.path), kmer_sample.moniker),
     )
-    # fastq_file="{path}/bclconvert/{basename}.fastq.gz"
-    # sampled_fastq_file="{path}/kmer_run/fastq_sample/{basename}.fastq.gz.fastq.%s.fastq" % kmer_sample.moniker
     kmer_sample.run(in_path=fastq_file.path, out_path=out_path)
     return File(out_path)
 
@@ -113,7 +113,30 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
 @task()
 def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Sample all fastq files as required for kmer analysis."""
-    return one_forall(kmer_sample_one, out_dir, fastq_files)
+    return one_forall(kmer_sample_one, fastq_files, out_dir=out_dir)
+
+
+@task()
+def kmer_analysis_one(fastq_file: File, kwargs) -> File:
+    """Run kmer analysis for a single fastq file."""
+    out_dir = kwargs["out_dir"]
+    kmer_prism = kwargs["kmer_prism"]
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(
+        out_dir,
+        "%s.%s.1" % (os.path.basename(fastq_file.path), kmer_prism.moniker),
+    )
+    run_kmer_analysis(in_path=fastq_file.path, out_path=out_path, kmer_prism=kmer_prism)
+
+
+@task()
+def kmer_analysis_all(
+    fastq_files: List[File], out_dir: str, kmer_prism: KmerPrism
+) -> List[File]:
+    """Run kmer analysis for multiple fastq files."""
+    return one_forall(
+        kmer_analysis_one, fastq_files, out_dir=out_dir, kmer_prism=kmer_prism
+    )
 
 
 @task()
@@ -153,13 +176,6 @@ def main(run: str) -> List[File]:
     # paths = Paths(c.postprocessing_root, c.run)
     # stage1 = Stage1Targets(c.run, sample_sheet, paths.seq)
 
-    # kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
-    # kmer_prism = KmerPrism(
-    #     input_filetype="fasta",
-    #     kmer_size=6,
-    #     # this causes it to crash: 😩
-    #     # assemble_low_entropy_kmers=True
-    # )
     # gbs_keyfiles = GbsKeyfiles(
     #     sequencer_run=sequencer_run,
     #     sample_sheet=sample_sheet,
@@ -187,4 +203,14 @@ def main(run: str) -> List[File]:
 
     kmer_samples = kmer_sample_all(fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
 
-    return fastqc_files + kmer_samples
+    kmer_prism = KmerPrism(
+        input_filetype="fasta",
+        kmer_size=6,
+        # this causes it to crash: 😩
+        # assemble_low_entropy_kmers=True
+    )
+    kmer_analysis = kmer_analysis_all(
+        kmer_samples, out_dir=seq.paths.kmer_analysis_dir, kmer_prism=kmer_prism
+    )
+
+    return fastqc_files + kmer_analysis

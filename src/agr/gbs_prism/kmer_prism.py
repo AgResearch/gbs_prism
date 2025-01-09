@@ -985,9 +985,9 @@ class KmerPrism:
         sequence_countfile: Optional[str] = None,
         weighting_method: Optional[Literal["tag_count"]] = None,
     ):
-        self._parser = create_parser(ArgumentParser)
+        parser = create_parser(ArgumentParser)
         try:
-            self._options = vars(self._parser.parse_args([]))
+            self._options = vars(parser.parse_args([]))
         except argparse.ArgumentError as e:
             raise KmerPrismError(str(e))
         self._supported_moniker_keys = ["k", "A"]

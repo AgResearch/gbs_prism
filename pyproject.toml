@@ -16,6 +16,7 @@ classifiers = [
 ]
 
 [project.scripts]
+kmer_prism = "agr.gbs_prism.kmer_prism:main"
 get_reads_tags_per_sample = "agr.gbs_prism.get_reads_tags_per_sample:main"
 summarise_read_and_tag_counts = "agr.gbs_prism.summarise_read_and_tag_counts:main"
 tags_to_fasta = "agr.seq.tags_to_fasta:main"
