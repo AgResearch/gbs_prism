@@ -5,7 +5,6 @@ from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.util.path import gunzipped, gzipped
 from agr.util.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
@@ -18,12 +17,15 @@ from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.config import Config
-from agr.gbs_prism.stage1 import Stage1Targets
-from agr.gbs_prism.gbs_target_spec import gquery_gbs_target_spec, write_gbs_target_spec
+from agr.gbs_prism.gbs_target_spec import (
+    gquery_gbs_target_spec,
+    write_gbs_target_spec,
+    GbsTargetSpec,
+)
 from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
-from agr.gbs_prism.paths import SeqPaths
+from agr.gbs_prism.paths import SeqPaths, GbsPaths
 
 
 @dataclass
@@ -166,7 +168,7 @@ def dedupe_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def gbs_keyfiles(
+def get_gbs_keyfiles(
     sequencer_run: SequencerRun,
     sample_sheet: File,
     gbs_libraries: List[str],
@@ -176,7 +178,7 @@ def gbs_keyfiles(
     fastq_link_farm: str,
     backup_dir: str,
 ) -> List[File]:
-    """Get GBS ketfiles, which must depend on deduped fastq files having been produced."""
+    """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
     gbs_keyfiles = GbsKeyfiles(
         sequencer_run=sequencer_run,
         sample_sheet_path=sample_sheet.path,
@@ -191,6 +193,28 @@ def gbs_keyfiles(
         File(os.path.join(out_dir, "%s.generated.txt" % library))
         for library in gbs_libraries
     ]
+
+
+@dataclass
+class GbsTargetSpecOutput:
+    paths: GbsPaths
+    spec_file: File
+    spec: GbsTargetSpec
+
+
+@task()
+def get_gbs_target_spec(
+    run: str, postprocessing_root: str, fastq_link_farm: str, _gbs_keyfiles: List[File]
+) -> GbsTargetSpecOutput:
+    """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
+    gbs_root = os.path.join(postprocessing_root, "gbs")
+    paths = GbsPaths(root=gbs_root, run=run)
+    os.makedirs(paths.run_root, exist_ok=True)
+    gbs_target_spec = gquery_gbs_target_spec(run, fastq_link_farm)
+    write_gbs_target_spec(paths.target_spec_path, gbs_target_spec)
+    return GbsTargetSpecOutput(
+        paths=paths, spec_file=File(paths.target_spec_path), spec=gbs_target_spec
+    )
 
 
 @task()
@@ -260,7 +284,7 @@ def main(run: str) -> List[File]:
 
     deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
 
-    keyfiles = gbs_keyfiles(
+    gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
         sample_sheet=seq.sample_sheet,
         gbs_libraries=seq.gbs_libraries,
@@ -271,5 +295,12 @@ def main(run: str) -> List[File]:
         backup_dir=c.gbs_backup_dir,
     )
 
-    return fastqc_files + deduped_fastq + keyfiles
+    gbs_target_spec = get_gbs_target_spec(
+        run=run,
+        postprocessing_root=c.postprocessing_root,
+        fastq_link_farm=c.fastq_link_farm,
+        _gbs_keyfiles=gbs_keyfiles,
+    )
+
+    return fastqc_files + deduped_fastq + gbs_keyfiles + [gbs_target_spec.spec_file]
     # kmer_analysis + is troublesome for now because of in-process problems
