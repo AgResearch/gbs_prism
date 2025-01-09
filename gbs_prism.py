@@ -6,6 +6,7 @@ from typing import Dict, List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
+from agr.util.path import remove_if_exists
 from agr.util.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
@@ -219,12 +220,11 @@ def get_gbs_targets(
 
 
 @task
-def create_cohort_fastq_links(gbs_targets: GbsTargetsOutput) -> List[File]:
+def create_cohort_fastq_links(gbs_targets: GbsTargetsOutput) -> Dict[str, List[File]]:
     """Link the fastq files for each cohort separately.
 
     So that subsequent dependencies can be properly captured in wildcarded paths.
     """
-    all_links = []
     links_by_cohort = {}
     for cohort_name, spec in gbs_targets.spec.cohorts.items():
         cohort_links = []
@@ -239,15 +239,16 @@ def create_cohort_fastq_links(gbs_targets: GbsTargetsOutput) -> List[File]:
                     link_dir,
                     fastq_basename,
                 )
+                # Python should really support ln -sf, bah!
+                remove_if_exists(link)
                 os.symlink(sanitised_realpath(fastq_link), link)
                 cohort_links.append(File(link))
-                all_links.append(File(link))
         links_by_cohort[cohort_name] = cohort_links
-    return all_links
+    return links_by_cohort
 
 
 @task()
-def main(run: str) -> List[File]:
+def main(run: str) -> tuple[List[File], List[Dict[str, List[File]]]]:
     c = Config(
         run=run,
         # pipeline config for gbs_prism
@@ -334,10 +335,7 @@ def main(run: str) -> List[File]:
     cohort_fastq_links = create_cohort_fastq_links(gbs_targets)
 
     return (
-        fastqc_files
-        + deduped_fastq
-        + gbs_keyfiles
-        + [gbs_targets.spec_file]
-        + cohort_fastq_links
+        fastqc_files + deduped_fastq + gbs_keyfiles + [gbs_targets.spec_file],
+        [cohort_fastq_links],
     )
     # kmer_analysis + is troublesome for now because of in-process problems
