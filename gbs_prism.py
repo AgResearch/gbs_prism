@@ -140,6 +140,24 @@ def kmer_analysis_all(
 
 
 @task()
+def dedupe_one(fastq_file: File, kwargs) -> File:
+    """Dedupe a single fastq file."""
+    out_dir = kwargs["out_dir"]
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
+    dedupe(
+        in_path=fastq_file.path,
+        out_path=out_path,
+        tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+        jvm_args=[],
+    )  # TODO fallback to default of 80g which Dedupe uses if we don't override it here
+
+
+def dedupe_all(fastq_files: List[File], out_dir: str) -> List[File]:
+    """Dedupe multiple fastq files."""
+    return one_forall(dedupe_one, fastq_files, out_dir=out_dir)
+
+@task()
 def main(run: str) -> List[File]:
     c = Config(
         run=run,
@@ -213,4 +231,7 @@ def main(run: str) -> List[File]:
         kmer_samples, out_dir=seq.paths.kmer_analysis_dir, kmer_prism=kmer_prism
     )
 
-    return fastqc_files  # + kmer_analysis is troublesome for now because of in-process problems
+    deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
+
+    return fastqc_files + deduped_fastq
+    # kmer_analysis + is troublesome for now because of in-process problems
