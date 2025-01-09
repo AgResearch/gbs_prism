@@ -1,10 +1,11 @@
 import os.path
 from dataclasses import dataclass
 from redun import task, File
-from typing import List, Literal, Set
+from typing import Dict, List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
+from agr.util.legacy import sanitised_realpath
 from agr.util.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
@@ -196,25 +197,53 @@ def get_gbs_keyfiles(
 
 
 @dataclass
-class GbsTargetSpecOutput:
+class GbsTargetsOutput:
     paths: GbsPaths
     spec_file: File
     spec: GbsTargetSpec
 
 
 @task()
-def get_gbs_target_spec(
+def get_gbs_targets(
     run: str, postprocessing_root: str, fastq_link_farm: str, _gbs_keyfiles: List[File]
-) -> GbsTargetSpecOutput:
+) -> GbsTargetsOutput:
     """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
     gbs_root = os.path.join(postprocessing_root, "gbs")
     paths = GbsPaths(root=gbs_root, run=run)
     os.makedirs(paths.run_root, exist_ok=True)
     gbs_target_spec = gquery_gbs_target_spec(run, fastq_link_farm)
     write_gbs_target_spec(paths.target_spec_path, gbs_target_spec)
-    return GbsTargetSpecOutput(
+    return GbsTargetsOutput(
         paths=paths, spec_file=File(paths.target_spec_path), spec=gbs_target_spec
     )
+
+
+@task
+def create_cohort_fastq_links(gbs_targets: GbsTargetsOutput) -> List[File]:
+    """Link the fastq files for each cohort separately.
+
+    So that subsequent dependencies can be properly captured in wildcarded paths.
+    """
+    all_links = []
+    links_by_cohort = {}
+    for cohort_name, spec in gbs_targets.spec.cohorts.items():
+        cohort_links = []
+        for fastq_basename, fastq_link in spec.fastq_links.items():
+            # create the same links in both blind and unblind directories
+            for blind in [False, True]:
+                link_dir = gbs_targets.paths.fastq_link_dir(
+                    str(cohort_name), blind=blind
+                )
+                os.makedirs(link_dir, exist_ok=True)
+                link = os.path.join(
+                    link_dir,
+                    fastq_basename,
+                )
+                os.symlink(sanitised_realpath(fastq_link), link)
+                cohort_links.append(File(link))
+                all_links.append(File(link))
+        links_by_cohort[cohort_name] = cohort_links
+    return all_links
 
 
 @task()
@@ -295,12 +324,20 @@ def main(run: str) -> List[File]:
         backup_dir=c.gbs_backup_dir,
     )
 
-    gbs_target_spec = get_gbs_target_spec(
+    gbs_targets = get_gbs_targets(
         run=run,
         postprocessing_root=c.postprocessing_root,
         fastq_link_farm=c.fastq_link_farm,
         _gbs_keyfiles=gbs_keyfiles,
     )
 
-    return fastqc_files + deduped_fastq + gbs_keyfiles + [gbs_target_spec.spec_file]
+    cohort_fastq_links = create_cohort_fastq_links(gbs_targets)
+
+    return (
+        fastqc_files
+        + deduped_fastq
+        + gbs_keyfiles
+        + [gbs_targets.spec_file]
+        + cohort_fastq_links
+    )
     # kmer_analysis + is troublesome for now because of in-process problems
