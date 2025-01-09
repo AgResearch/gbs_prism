@@ -213,4 +213,4 @@ def main(run: str) -> List[File]:
         kmer_samples, out_dir=seq.paths.kmer_analysis_dir, kmer_prism=kmer_prism
     )
 
-    return fastqc_files + kmer_analysis
+    return fastqc_files  # + kmer_analysis is troublesome for now because of in-process problems
