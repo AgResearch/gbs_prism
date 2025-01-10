@@ -10,6 +10,7 @@ from agr.util.path import remove_if_exists
 from agr.util.redun import one_forall
 
 from agr.seq.fastq_sample import FastqSample
+from agr.seq.cutadapt import cutadapt
 
 from agr.gbs_prism.types import Cohort
 from agr.gbs_prism.paths import GbsPaths
@@ -53,13 +54,13 @@ def create_cohort_fastq_links(spec: CohortSpec) -> List[File]:
 def sample_one_for_bwa(fastq_file: File, kwargs) -> File:
     spec = kwargs["spec"]
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
+    os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
     out_path = os.path.join(
         out_dir,
         "%s.fastq.%s.fastq"
         % (os.path.basename(fastq_file.path), spec.bwa_sample.moniker),
     )
-    os.makedirs(out_dir, exist_ok=True)
     spec.bwa_sample.run(in_path=fastq_file.path, out_path=out_path)
     return File(out_path)
 
@@ -69,18 +70,41 @@ def sample_all_for_bwa(fastq_files: List[File], spec: CohortSpec) -> List[File]:
     return one_forall(sample_one_for_bwa, fastq_files, spec=spec)
 
 
+@task
+def cutadapt_one(fastq_file: File, kwargs) -> File:
+    out_dir = kwargs["out_dir"]
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(
+        out_dir,
+        "%s.trimmed.fastq" % os.path.basename(fastq_file.path).removesuffix(".fastq"),
+    )
+    cutadapt(in_path=fastq_file.path, out_path=out_path)
+    return File(out_path)
+
+
+@task()
+def cutadapt_all(fastq_files: List[File], out_dir: str) -> List[File]:
+    return one_forall(cutadapt_one, fastq_files, out_dir=out_dir)
+
+
 @dataclass
 class CohortOutput:
     fastq_links: List[File]
     bwa_sampled: List[File]
+    trimmed: List[File]
 
 
 @task()
 def run_cohort(spec: CohortSpec) -> CohortOutput:
     fastq_links = create_cohort_fastq_links(spec)
     bwa_sampled = sample_all_for_bwa(fastq_links, spec)
+    trimmed = cutadapt_all(
+        bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
+    )
 
-    output = CohortOutput(fastq_links=fastq_links, bwa_sampled=bwa_sampled)
+    output = CohortOutput(
+        fastq_links=fastq_links, bwa_sampled=bwa_sampled, trimmed=trimmed
+    )
     return output
 
 
