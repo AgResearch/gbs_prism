@@ -12,7 +12,7 @@ def one_forall(task: Task, files: List[File], **kw_task_args) -> List[File]:
 
 
 @task()
-def _concat_file_lists(files1: List[File], files2: List[File]) -> List[File]:
+def concat_file_lists(files1: List[File], files2: List[File]) -> List[File]:
     return files1 + files2
 
 
@@ -21,5 +21,5 @@ def all_forall(task: Task, files: List[File], **kw_task_args) -> List[File]:
     """Run a task which returns a list of files on a list of files."""
     results = []
     for file in files:
-        results = _concat_file_lists(results, task(file, kw_task_args))
+        results = concat_file_lists(results, task(file, kw_task_args))
     return results
