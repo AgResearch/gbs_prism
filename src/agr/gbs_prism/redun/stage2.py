@@ -1,4 +1,5 @@
 import os.path
+import tempfile
 from dataclasses import dataclass
 from redun import task, File
 from typing import Dict, List
@@ -13,13 +14,14 @@ from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
 from agr.seq.fastq_sample import FastqSample
 
-from agr.gbs_prism.types import Cohort
+from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 
 
 @dataclass
 class CohortSpec:
+    run: str
     cohort: Cohort
     target: CohortTargetSpec
     paths: GbsPaths
@@ -179,7 +181,7 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
 
 
 @task(script=True)
-def bam_stats_one(bam_file: File, _kwargs) -> File:
+def bam_stats_one(bam_file: File, _kwargs) -> str:
     """run samtools flagstat for a single file."""
     in_path = bam_file.path
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
@@ -194,6 +196,57 @@ def bam_stats_all(bam_files: List[File]) -> List[File]:
     return one_forall(bam_stats_one, bam_files)
 
 
+# this is a script because StdioRedirect causes trouble in redun
+# TODO tidy this up a bit
+@task(script=True)
+def get_keyfile_content_for_tassel(spec: CohortSpec) -> str:
+    return f"""
+    #!/usr/bin/env python
+    import sys
+    import tempfile
+
+    from agr.util import StdioRedirect
+    from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
+    from agr.gquery import GQuery, Predicates
+
+    with tempfile.TemporaryFile(mode="w+") as tmp_f:
+        with StdioRedirect(stdout=tmp_f):
+            g = GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell="{flowcell_id(spec.run)}",
+                    enzyme="{spec.cohort.enzyme}",
+                    gbs_cohort="{spec.cohort.gbs_cohort}",
+                    columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+                ),
+                items=["{spec.cohort.libname}"],
+            )
+            # logger.info(g)
+            g.run()
+
+        _ = tmp_f.seek(0)
+        for line in tmp_f:
+            _ = sys.stdout.write(enzyme_sub_for_uneak(line))
+    """
+
+
+@task
+def save_keyfile_content_for_tassel(content: str, out_path: str) -> File:
+    with open(out_path, "wb") as out_f:
+        _ = out_f.write(content)
+    return File(out_path)
+
+
+@task()
+def get_keyfile_for_tassel(spec: CohortSpec) -> File:
+    out_path = os.path.join(
+        spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
+    )
+    content = get_keyfile_content_for_tassel(spec)
+    return save_keyfile_content_for_tassel(content, out_path)
+
+
 @dataclass
 class CohortOutput:
     fastq_links: List[File]
@@ -201,6 +254,7 @@ class CohortOutput:
     trimmed: List[File]
     bam_files: List[File]
     bam_stats_files: List[File]
+    keyfile_for_tassel: File
 
 
 @task()
@@ -212,6 +266,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     )
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
+    keyfile_for_tassel = get_keyfile_for_tassel(spec)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -219,6 +274,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         trimmed=trimmed,
         bam_files=bam_files,
         bam_stats_files=bam_stats_files,
+        keyfile_for_tassel=keyfile_for_tassel,
     )
     return output
 
@@ -230,7 +286,7 @@ class Stage2Output:
 
 
 @task()
-def run_stage2(spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Output:
+def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Output:
     cohort_outputs = {}
 
     bwa_sample = FastqSample(
@@ -243,6 +299,7 @@ def run_stage2(spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Output:
     for name, target in spec.cohorts.items():
         cohort = Cohort.parse(name)
         target = CohortSpec(
+            run=run,
             cohort=cohort,
             target=target,
             paths=gbs_paths,

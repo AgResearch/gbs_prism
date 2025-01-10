@@ -49,7 +49,7 @@ def main(
         run=run,
     )
 
-    stage2 = run_stage2(spec=stage1.spec, gbs_paths=stage1.gbs_paths)
+    stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return (stage1, stage2)
