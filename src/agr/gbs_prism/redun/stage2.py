@@ -178,12 +178,29 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
     return out_paths
 
 
+@task(script=True)
+def bam_stats_one(bam_file: File, _kwargs) -> File:
+    """run samtools flagstat for a single file."""
+    in_path = bam_file.path
+    out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
+    return f"""
+        samtools flagstat {in_path} >{out_path}
+    """
+
+
+@task()
+def bam_stats_all(bam_files: List[File]) -> List[File]:
+    """bwa samse for multiple files with a single reference genome."""
+    return one_forall(bam_stats_one, bam_files)
+
+
 @dataclass
 class CohortOutput:
     fastq_links: List[File]
     bwa_sampled: List[File]
     trimmed: List[File]
-    bwa: List[File]
+    bam_files: List[File]
+    bam_stats_files: List[File]
 
 
 @task()
@@ -193,10 +210,15 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     trimmed = cutadapt_all(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
-    bwa = bwa_all_reference_genomes(trimmed, spec)
+    bam_files = bwa_all_reference_genomes(trimmed, spec)
+    bam_stats_files = bam_stats_all(bam_files)
 
     output = CohortOutput(
-        fastq_links=fastq_links, bwa_sampled=bwa_sampled, trimmed=trimmed, bwa=bwa
+        fastq_links=fastq_links,
+        bwa_sampled=bwa_sampled,
+        trimmed=trimmed,
+        bam_files=bam_files,
+        bam_stats_files=bam_stats_files,
     )
     return output
 
