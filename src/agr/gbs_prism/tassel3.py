@@ -1,6 +1,7 @@
 import logging
 import os.path
 import pathlib
+import re
 import subprocess
 from typing import Dict, List
 
@@ -10,6 +11,23 @@ from .enzyme_sub import enzyme_sub_for_uneak
 from .types import Cohort
 
 logger = logging.getLogger(__name__)
+
+
+# TODO review this!!!
+def fastq_name_for_tassel3(
+    cohort: Cohort, fcid: str, original_fastq_filename: str
+) -> str:
+    """Tassel3 is very fussy about what filenames it accepts for FASTQ files.
+
+    This was cribbed from gquery/sequencing/illumina.py
+    """
+    lane_re = re.compile("_L00([0-9])_")
+    if m := lane_re.search(original_fastq_filename):
+        lane = m.group(1)
+        return "%s_%s_s_%s_fastq.txt.gz" % (cohort.libname, fcid, lane)
+    else:
+        # return "%s_%s_s_X_fastq.txt.gz" % (cohort.libname, fcid)
+        return original_fastq_filename
 
 
 class Tassel3:

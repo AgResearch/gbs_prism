@@ -17,6 +17,7 @@ from agr.seq.fastq_sample import FastqSample
 from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
+from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
 
 
 @dataclass
@@ -30,12 +31,13 @@ class CohortSpec:
 
 
 @task
-def create_cohort_fastq_links(spec: CohortSpec) -> List[File]:
+def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]:
     """Link the fastq files for a single cohort separately.
 
     So that subsequent dependencies can be properly captured in wildcarded paths.
     """
     cohort_links = []
+    cohort_munged_links = []
     for fastq_basename, fastq_link in spec.target.fastq_links.items():
         # create the same links in both blind and unblind directories
         for blind in [False, True]:
@@ -43,15 +45,23 @@ def create_cohort_fastq_links(spec: CohortSpec) -> List[File]:
             os.makedirs(link_dir, exist_ok=True)
             link = os.path.join(
                 link_dir,
-                fastq_basename,
+                (
+                    # the blind directory is solely for Tassel3 which ironically can't see .fastq.gz files
+                    fastq_basename
+                    if not blind
+                    else fastq_name_for_tassel3(
+                        spec.cohort, flowcell_id(spec.run), fastq_basename
+                    )
+                ),
             )
             # Python should really support ln -sf, bah!
             remove_if_exists(link)
             os.symlink(sanitised_realpath(fastq_link), link)
-            # we only need one for each, the blind case is purely for Tassel3
-            if not blind:
+            if blind:
+                cohort_munged_links.append(File(link))
+            else:
                 cohort_links.append(File(link))
-    return cohort_links
+    return (cohort_links, cohort_munged_links)
 
 
 @task()
@@ -247,19 +257,34 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
     return save_keyfile_content_for_tassel(content, out_path)
 
 
+@task()
+def fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
+    tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
+    # fastq_to_tag_count_stdout = os.path.join(cohort_blind_dir, "FastqToTagCount.stdout")
+    tassel3 = Tassel3()
+    tassel3.fastq_to_tag_count(
+        in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
+    )
+    return File(tag_counts_done)
+
+
 @dataclass
 class CohortOutput:
     fastq_links: List[File]
+    munged_fastq_links_for_tassel: List[File]
     bwa_sampled: List[File]
     trimmed: List[File]
     bam_files: List[File]
     bam_stats_files: List[File]
     keyfile_for_tassel: File
+    tag_counts_done: File
 
 
 @task()
 def run_cohort(spec: CohortSpec) -> CohortOutput:
-    fastq_links = create_cohort_fastq_links(spec)
+    fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
     bwa_sampled = sample_all_for_bwa(fastq_links, spec)
     trimmed = cutadapt_all(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
@@ -267,14 +292,17 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
+    tag_counts_done = fastq_to_tag_count(spec, keyfile_for_tassel)
 
     output = CohortOutput(
         fastq_links=fastq_links,
+        munged_fastq_links_for_tassel=munged_fastq_links_for_tassel,
         bwa_sampled=bwa_sampled,
         trimmed=trimmed,
         bam_files=bam_files,
         bam_stats_files=bam_stats_files,
         keyfile_for_tassel=keyfile_for_tassel,
+        tag_counts_done=tag_counts_done,
     )
     return output
 
