@@ -7,7 +7,7 @@ redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
-from agr.util.redun import concat_file_lists, one_forall
+from agr.util.redun import lazy_concat, one_forall
 
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
@@ -89,8 +89,14 @@ def cutadapt_all(fastq_files: List[File], out_dir: str) -> List[File]:
     return one_forall(cutadapt_one, fastq_files, out_dir=out_dir)
 
 
+@dataclass
+class BwaAlnOutput:
+    fastq: File
+    sai: File
+
+
 @task()
-def bwa_aln_one(fastq_file: File, kwargs) -> File:
+def bwa_aln_one(fastq_file: File, kwargs) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
     ref_name = kwargs["ref_name"]
     ref_path = kwargs["ref_path"]
@@ -101,13 +107,13 @@ def bwa_aln_one(fastq_file: File, kwargs) -> File:
         "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
     )
     bwa.aln(in_path=fastq_file.path, out_path=out_path, reference=ref_path)
-    return File(out_path)
+    return BwaAlnOutput(fastq=fastq_file, sai=File(out_path))
 
 
 @task()
 def bwa_aln_all(
     fastq_files: List[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
-) -> List[File]:
+) -> List[BwaAlnOutput]:
     """bwa aln for multiple files with a single reference genome."""
     return one_forall(
         bwa_aln_one,
@@ -119,31 +125,33 @@ def bwa_aln_all(
     )
 
 
-# @task()
-# def bwa_samse_one(fastq_file: File, kwargs) -> File:
-#     """bwa samse for a single file with a single reference genome."""
-#     ref_name = kwargs["ref_name"]
-#     ref_path = kwargs["ref_path"]
-#     bwa = kwargs["bwa"]
-#     out_dir = kwargs["out_dir"]
-#     out_path = os.path.join(
-#         out_dir,
-#         "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
-#     )
-#     bwa.samse(in_path=fastq_file.path, out_path=out_path, reference=ref_path)
-#     return File(out_path)
+@task()
+def bwa_samse_one(aln: BwaAlnOutput, kwargs) -> File:
+    """bwa samse for a single file with a single reference genome."""
+    ref_path = kwargs["ref_path"]
+    bwa = kwargs["bwa"]
+    out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
+    bwa.samse(
+        sai_path=aln.sai.path,
+        fastq_path=aln.fastq.path,
+        out_path=out_path,
+        reference=ref_path,
+    )
+    return File(out_path)
 
 
-# rule bwa_samse:
-#     input:
-#         fastq_file="{path}/{cohort}/{basename}.trimmed.fastq",
-#         sai_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.sai" % bwa.moniker,
-#     output:
-#         bam_file="{path}/{cohort}/{basename}.trimmed.fastq.bwa.{reference_genome}.%s.bam" % bwa.moniker,
-#     run:
-#         cohort_spec = gbs_target_spec.cohorts[wildcards.cohort]
-#         bwa_reference = cohort_spec.alignment_references[wildcards.reference_genome]
-#         bwa.samse(sai_path=input.sai_file, fastq_path=input.fastq_file, out_path=output.bam_file, reference=bwa_reference)
+@task()
+def bwa_samse_all(
+    alns: List[BwaAlnOutput], ref_name: str, ref_path: str, bwa: Bwa
+) -> List[File]:
+    """bwa samse for multiple files with a single reference genome."""
+    return one_forall(
+        bwa_samse_one,
+        alns,
+        ref_name=ref_name,
+        ref_path=ref_path,
+        bwa=bwa,
+    )
 
 
 @task()
@@ -153,14 +161,20 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
     os.makedirs(out_dir, exist_ok=True)
     out_paths = []
     for ref_name, ref_path in spec.target.alignment_references.items():
-        sai_files = bwa_aln_all(
+        alns = bwa_aln_all(
             fastq_files,
             ref_name=ref_name,
             ref_path=ref_path,
             bwa=spec.bwa,
             out_dir=out_dir,
         )
-        out_paths = concat_file_lists(out_paths, sai_files)
+        bam_files = bwa_samse_all(
+            alns,
+            ref_name=ref_name,
+            ref_path=ref_path,
+            bwa=spec.bwa,
+        )
+        out_paths = lazy_concat(out_paths, bam_files)
     return out_paths
 
 

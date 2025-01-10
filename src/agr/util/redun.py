@@ -1,25 +1,25 @@
 # helpers for redun
-from redun import task, File, Task
-from typing import List
+from redun import task, Task
+from typing import List, Any
 
 redun_namespace = "agr.util"
 
 
 @task()
-def one_forall(task: Task, files: List[File], **kw_task_args) -> List[File]:
-    """Run a task which returns a single file on a list of files."""
-    return [task(file, kw_task_args) for file in files]
+def one_forall(task: Task, args: List[Any], **kw_task_args) -> List[Any]:
+    """Run a task which returns a single result once for each arg."""
+    return [task(arg, kw_task_args) for arg in args]
 
 
 @task()
-def concat_file_lists(files1: List[File], files2: List[File]) -> List[File]:
-    return files1 + files2
+def lazy_concat(l1: List[Any], l2: List[Any]) -> List[Any]:
+    return l1 + l2
 
 
 @task()
-def all_forall(task: Task, files: List[File], **kw_task_args) -> List[File]:
-    """Run a task which returns a list of files on a list of files."""
-    results = []
-    for file in files:
-        results = concat_file_lists(results, task(file, kw_task_args))
-    return results
+def all_forall(task: Task, args: List[Any], **kw_task_args) -> List[Any]:
+    """Run a task which returns a list of results once for each arg."""
+    all_results = []
+    for arg in args:
+        all_results = lazy_concat(all_results, task(arg, kw_task_args))
+    return all_results
