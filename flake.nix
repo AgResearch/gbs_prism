@@ -143,24 +143,31 @@
         {
           devShells = {
             default = mkShell {
-              buildInputs = [
-                bashInteractive
-                flakePkgs.bbmap
-                flakePkgs.bcl-convert
-                flakePkgs.cutadapt
-                flakePkgs.tassel3
-                run_kgd
-                run_GUSbase
-                bwa
-                samtools
-                fastqc
-                seqtk
-                gzip
-                yq-go
-                devPython
-                python3Packages.pip # for redun from a virtualenv
-                virtualenv
-              ];
+              buildInputs =
+                # until we consume gbs_prism as a package we need to wrap the scripts here
+                let
+                  get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample" (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
+                in
+                [
+                  bashInteractive
+                  flakePkgs.bbmap
+                  flakePkgs.bcl-convert
+                  flakePkgs.cutadapt
+                  flakePkgs.tassel3
+                  run_kgd
+                  run_GUSbase
+                  bwa
+                  samtools
+                  fastqc
+                  seqtk
+                  gzip
+                  yq-go
+                  devPython
+                  python3Packages.pip # for redun from a virtualenv
+                  virtualenv
+                  # own package scripts, just until we consume gbs_prism as a package
+                  get_reads_tags_per_sample
+                ];
 
               shellHook = ''
                 # enable use of gbs_prism from current directory during development

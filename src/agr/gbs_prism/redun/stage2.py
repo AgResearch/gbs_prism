@@ -258,16 +258,24 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
 
 
 @task()
-def fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
+def run_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
-    tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
-    # fastq_to_tag_count_stdout = os.path.join(cohort_blind_dir, "FastqToTagCount.stdout")
+    # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
+    fastq_to_tag_count_stdout = os.path.join(cohort_blind_dir, "FastqToTagCount.stdout")
     tassel3 = Tassel3()
     tassel3.fastq_to_tag_count(
         in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
     )
-    return File(tag_counts_done)
+    return File(fastq_to_tag_count_stdout)
+
+
+@task(script=True)
+def run_tag_count(fastqToTagCountStdout: File) -> File:
+    out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
+    return f"""
+        get_reads_tags_per_sample <{fastqToTagCountStdout.path} >{out_path}
+    """
 
 
 @dataclass
@@ -279,7 +287,7 @@ class CohortOutput:
     bam_files: List[File]
     bam_stats_files: List[File]
     keyfile_for_tassel: File
-    tag_counts_done: File
+    tag_count: File
 
 
 @task()
@@ -292,7 +300,8 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
-    tag_counts_done = fastq_to_tag_count(spec, keyfile_for_tassel)
+    fastq_to_tag_count_stdout = run_fastq_to_tag_count(spec, keyfile_for_tassel)
+    tag_count = run_tag_count(fastq_to_tag_count_stdout)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -302,7 +311,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         bam_files=bam_files,
         bam_stats_files=bam_stats_files,
         keyfile_for_tassel=keyfile_for_tassel,
-        tag_counts_done=tag_counts_done,
+        tag_count=tag_count,
     )
     return output
 
