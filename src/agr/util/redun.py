@@ -23,20 +23,3 @@ def all_forall(task: Task, args: List[Any], **kw_task_args) -> List[Any]:
     for arg in args:
         all_results = lazy_concat(all_results, task(arg, kw_task_args))
     return all_results
-
-
-@task()
-def file_from_path(path: str) -> File:
-    """
-    Alas the typing here does not work, because of the @task decorators.
-
-    `path` is passed in as bytes, since that's what gets output on stdout of a script,
-    but scripts look like they return `str`.
-
-    Being honest with the type of `path` input parameter here would mean we would have to suppress
-    type errors wherever this is called.
-    """
-    assert isinstance(path, bytes), path
-    path_s = path.decode("utf-8")
-    assert isinstance(path_s, str), path_s
-    return File(path_s)

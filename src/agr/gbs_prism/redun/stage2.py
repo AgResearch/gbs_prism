@@ -1,4 +1,5 @@
 import os.path
+import subprocess
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
@@ -8,16 +9,16 @@ redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
-from agr.util.redun import lazy_concat, one_forall, file_from_path
-
+from agr.util.redun import lazy_concat, one_forall
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
 from agr.seq.fastq_sample import FastqSample
 
-from agr.gbs_prism.types import Cohort, flowcell_id
+from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
+from agr.gbs_prism.types import Cohort, flowcell_id
 
 
 @dataclass
@@ -190,21 +191,15 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
     return out_paths
 
 
-@task(script=True)
-def bam_stats_one_script(in_path: str, out_path: str) -> str:
-    """run samtools flagstat for a single file."""
-    return f"""
-        samtools flagstat "{in_path}" >"{out_path}"
-
-        echo -n "{out_path}"
-    """
-
-
 @task()
 def bam_stats_one(bam_file: File, _kwargs) -> File:
     """run samtools flagstat for a single file."""
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
-    return file_from_path(bam_stats_one_script(bam_file.path, out_path))
+    with open(out_path, "w") as out_f:
+        subprocess.run(
+            ["samtools", "flagstat", bam_file.path], stdout=out_f, check=True
+        )
+    return File(out_path)
 
 
 @task()
@@ -213,50 +208,31 @@ def bam_stats_all(bam_files: List[File]) -> List[File]:
     return one_forall(bam_stats_one, bam_files)
 
 
-# this is a script because StdioRedirect causes trouble in redun
-# TODO tidy this up a bit
-@task(script=True)
-def get_keyfile_for_tassel_script(spec: CohortSpec, out_path: str) -> str:
-    return f"""
-    #!/usr/bin/env python
-    import sys
-    import tempfile
-
-    from agr.util import StdioRedirect
-    from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
-    from agr.gquery import GQuery, Predicates
-
-    with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        with StdioRedirect(stdout=tmp_f):
-            g = GQuery(
-                task="gbs_keyfile",
-                badge_type="library",
-                predicates=Predicates(
-                    flowcell="{flowcell_id(spec.run)}",
-                    enzyme="{spec.cohort.enzyme}",
-                    gbs_cohort="{spec.cohort.gbs_cohort}",
-                    columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
-                ),
-                items=["{spec.cohort.libname}"],
-            )
-            # logger.info(g)
-            g.run()
-
-        _ = tmp_f.seek(0)
-        with open("{out_path}", "w") as out_f:
-            for line in tmp_f:
-                _ = out_f.write(enzyme_sub_for_uneak(line))
-
-    sys.stdout.write("{out_path}")
-    """
-
-
 @task()
 def get_keyfile_for_tassel(spec: CohortSpec) -> File:
+    # this is a script because StdioRedirect causes trouble in redun
     out_path = os.path.join(
         spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
     )
-    return file_from_path(get_keyfile_for_tassel_script(spec, out_path))
+    columns = "flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link"
+    gquery = subprocess.Popen(
+        [
+            "gquery",
+            "-t",
+            "gbs_keyfile",
+            "-b",
+            "library",
+            "-p",
+            f"flowcell={flowcell_id(spec.run)};enzyme={spec.cohort.enzyme};gbs_cohort={spec.cohort.gbs_cohort};columns={columns}",
+            spec.cohort.libname,
+        ],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    with open(out_path, "w") as out_f:
+        for line in gquery.stdout:
+            _ = out_f.write(enzyme_sub_for_uneak(line))
+    return File(out_path)
 
 
 @task()
@@ -272,35 +248,26 @@ def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
     return File(fastq_to_tag_count_stdout)
 
 
-@task(script=True)
-def get_tag_count_script(fastqToTagCountStdoutPath: str, out_path: str):
-    return f"""
-        get_reads_tags_per_sample <"{fastqToTagCountStdoutPath}" >"{out_path}"
-
-        echo -n "{out_path}"
-    """
-
-
 @task()
 def get_tag_count(fastqToTagCountStdout: File) -> File:
+
     out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
-    return file_from_path(get_tag_count_script(fastqToTagCountStdout.path, out_path))
-
-
-@task(script=True)
-def get_tags_reads_summary_script(tagCountCsvPath: str, out_path: str) -> str:
-    return f"""
-        summarise_read_and_tag_counts -o "{out_path}" "{tagCountCsvPath}"
-
-        echo "{out_path}"
-    """
+    with open(fastqToTagCountStdout.path, "r") as in_f:
+        with open(out_path, "w") as out_f:
+            _ = subprocess.run(
+                ["get_reads_tags_per_sample"], stdin=in_f, stdout=out_f, check=True
+            )
+    return File(out_path)
 
 
 @task()
 def get_tags_reads_summary(spec: CohortSpec, tagCountCsv: File) -> File:
     out_dir = spec.paths.cohort_dir(spec.cohort.name)
     out_path = os.path.join(out_dir, "tags_reads_summary.txt")
-    return file_from_path(get_tags_reads_summary_script(tagCountCsv.path, out_path))
+    _ = subprocess.run(
+        ["summarise_read_and_tag_counts", "-o", out_path, tagCountCsv.path], check=True
+    )
+    return File(out_path)
 
 
 @dataclass
