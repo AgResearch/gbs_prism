@@ -1,11 +1,8 @@
 import logging
 import os.path
-
-from agr.gquery import GQuery, GUpdate, Predicates
-from agr.util import StdioRedirect
+import subprocess
 
 from agr.seq.sequencer_run import SequencerRun
-from agr.seq.sample_sheet import SampleSheet
 
 logger = logging.getLogger(__name__)
 
@@ -44,58 +41,78 @@ class GbsKeyfiles:
     def dump_gbs_tables(self):
         # dump the GBS keyfile table
         with open(self._keyfile_dump_path, "w") as dump_f:
-            with StdioRedirect(stdout=dump_f):
-                GQuery(
-                    task="sql",
-                    predicates=Predicates(
-                        interface_type="postgres", host="postgres_readonly"
-                    ),
-                    items=["select * from gbskeyfilefact"],
-                ).run()
+            _ = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "sql",
+                    "-p",
+                    "interface_type=postgres;host=postgres_readonly",
+                    "select * from gbskeyfilefact",
+                ],
+                stdout=dump_f,
+                text=True,
+                check=True,
+            )
 
         # dump the historical qc_sampleid (generated when a keyfile is *re*imported)
         with open(self._qcsampleid_history_path, "w") as dump_f:
-            with StdioRedirect(stdout=dump_f):
-                GQuery(
-                    task="sql",
-                    predicates=Predicates(
-                        interface_type="postgres", host="postgres_readonly"
-                    ),
-                    items=["select * from gbs_sampleid_history_fact"],
-                ).run()
+            _ = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "sql",
+                    "-p",
+                    "interface_type=postgres;host=postgres_readonly",
+                    "select * from gbs_sampleid_history_fact",
+                ],
+                stdout=dump_f,
+                text=True,
+                check=True,
+            )
 
         # dump of the brdf table that has sample-sheet details in it
         with open(self._sample_sheet_dump_path, "w") as dump_f:
-            with StdioRedirect(stdout=dump_f):
-                GQuery(
-                    task="sql",
-                    predicates=Predicates(
-                        interface_type="postgres", host="postgres_readonly"
-                    ),
-                    items=["select * from hiseqsamplesheetfact"],
-                ).run()
+            _ = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "sql",
+                    "-p",
+                    "interface_type=postgres;host=postgres_readonly",
+                    "select * from hiseqsamplesheetfact",
+                ],
+                stdout=dump_f,
+                text=True,
+                check=True,
+            )
 
         # dump of the brdf table which has GBS yield stats (sample depth etc)
         with open(self._gbs_yield_stats_dump_path, "w") as dump_f:
-            with StdioRedirect(stdout=dump_f):
-                GQuery(
-                    task="sql",
-                    predicates=Predicates(
-                        interface_type="postgres", host="postgres_readonly"
-                    ),
-                    items=["select * from gbsyieldfact"],
-                ).run()
+            _ = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "sql",
+                    "-p",
+                    "interface_type=postgres;host=postgres_readonly",
+                    "select * from gbsyieldfact",
+                ],
+                stdout=dump_f,
+                text=True,
+                check=True,
+            )
 
         # dump of the brdf model of flowcell x library ( = biosample list x biosample)
         with open(self._runs_libraries_dump_path, "w") as dump_f:
-            with StdioRedirect(stdout=dump_f):
-                GQuery(
-                    task="sql",
-                    predicates=Predicates(
-                        interface_type="postgres", host="postgres_readonly"
-                    ),
-                    items=[  # SQL extracted from gbs_prism/runs_libraries_dump.sql
-                        """select
+            _ = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "sql",
+                    "-p",
+                    "interface_type=postgres;host=postgres_readonly",
+                    """select
    b.obid as sampleobid,
    b.samplename,
    l.obid as listobid,
@@ -106,9 +123,12 @@ from
    biosamplelist as l on l.obid = m.biosamplelist
 where
    b.sampletype = 'Illumina GBS Library'
-"""
-                    ],
-                ).run()
+""",
+                ],
+                stdout=dump_f,
+                text=True,
+                check=True,
+            )
 
     def create(self):
 
@@ -119,16 +139,16 @@ where
 
         self.dump_gbs_tables()
 
-        GUpdate(
-            task="create_gbs_keyfiles",
-            explain=True,
-            predicates=Predicates(
-                fastq_folder_root=self._root,
-                run_folder_root=self._sequencer_run.seq_root,
-                out_folder=self._out_dir,
-                fastq_link_root=self._fastq_link_farm,
-                sample_sheet=self._sample_sheet_path,
-                import_=True,
-            ),
-            items=["all"],
-        ).run()
+        _ = subprocess.run(
+            [
+                "gupdate",
+                "-t",
+                "create_gbs_keyfiles",
+                "--explain",
+                "-p",
+                f"fastq_folder_root={self._root};run_folder_root={self._sequencer_run.seq_root};out_folder={self._out_dir};fastq_link_root={self._fastq_link_farm};sample_sheet={self._sample_sheet_path};import",
+                "all",
+            ],
+            text=True,
+            check=True,
+        )

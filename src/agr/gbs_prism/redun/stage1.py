@@ -22,7 +22,6 @@ from agr.gbs_prism.gbs_target_spec import (
     GbsTargetSpec,
 )
 from agr.gbs_prism.kmer_analysis import run_kmer_analysis
-from agr.gbs_prism.kmer_prism import KmerPrism
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 
@@ -125,24 +124,27 @@ def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
 def kmer_analysis_one(fastq_file: File, kwargs) -> File:
     """Run kmer analysis for a single fastq file."""
     out_dir = kwargs["out_dir"]
-    kmer_prism = kwargs["kmer_prism"]
     os.makedirs(out_dir, exist_ok=True)
+    kmer_size = 6
     out_path = os.path.join(
         out_dir,
-        "%s.%s.1" % (os.path.basename(fastq_file.path), kmer_prism.moniker),
+        "%s.k%d.1" % (os.path.basename(fastq_file.path), kmer_size),
     )
-    run_kmer_analysis(in_path=fastq_file.path, out_path=out_path, kmer_prism=kmer_prism)
+    run_kmer_analysis(
+        in_path=fastq_file.path,
+        out_path=out_path,
+        input_filetype="fasta",
+        kmer_size=kmer_size,
+        # this causes it to crash: 😩
+        # assemble_low_entropy_kmers=True
+    )
     return File(out_path)
 
 
 @task()
-def kmer_analysis_all(
-    fastq_files: List[File], out_dir: str, kmer_prism: KmerPrism
-) -> List[File]:
+def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Run kmer analysis for multiple fastq files."""
-    return one_forall(
-        kmer_analysis_one, fastq_files, out_dir=out_dir, kmer_prism=kmer_prism
-    )
+    return one_forall(kmer_analysis_one, fastq_files, out_dir=out_dir)
 
 
 @task()
@@ -246,15 +248,7 @@ def run_stage1(
 
     kmer_samples = kmer_sample_all(fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
 
-    kmer_prism = KmerPrism(
-        input_filetype="fasta",
-        kmer_size=6,
-        # this causes it to crash: 😩
-        # assemble_low_entropy_kmers=True
-    )
-    kmer_analysis = kmer_analysis_all(
-        kmer_samples, out_dir=seq.paths.kmer_analysis_dir, kmer_prism=kmer_prism
-    )
+    kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)
 
     deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
 

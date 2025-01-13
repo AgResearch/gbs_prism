@@ -210,7 +210,6 @@ def bam_stats_all(bam_files: List[File]) -> List[File]:
 
 @task()
 def get_keyfile_for_tassel(spec: CohortSpec) -> File:
-    # this is a script because StdioRedirect causes trouble in redun
     out_path = os.path.join(
         spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
     )
