@@ -146,7 +146,10 @@
               buildInputs =
                 # until we consume gbs_prism as a package we need to wrap the scripts here
                 let
-                  get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample" (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
+                  get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample"
+                    (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
+                  summarise_read_and_tag_counts = pkgs.writeScriptBin "summarise_read_and_tag_counts"
+                    (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py);
                 in
                 [
                   bashInteractive
@@ -167,6 +170,7 @@
                   virtualenv
                   # own package scripts, just until we consume gbs_prism as a package
                   get_reads_tags_per_sample
+                  summarise_read_and_tag_counts
                 ];
 
               shellHook = ''

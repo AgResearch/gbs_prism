@@ -7,7 +7,8 @@ import math
 import csv
 from functools import reduce
 
-from .data_prism import from_csv_file
+# use an absolute import so we can use this as a standalone script
+from agr.gbs_prism.data_prism import from_csv_file
 
 
 def safe_cv(stddev, mean):

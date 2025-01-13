@@ -8,7 +8,7 @@ redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
-from agr.util.redun import lazy_concat, one_forall
+from agr.util.redun import lazy_concat, one_forall, file_from_path
 
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
@@ -191,13 +191,20 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
 
 
 @task(script=True)
-def bam_stats_one(bam_file: File, _kwargs) -> str:
+def bam_stats_one_script(in_path: str, out_path: str) -> str:
     """run samtools flagstat for a single file."""
-    in_path = bam_file.path
-    out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
     return f"""
-        samtools flagstat {in_path} >{out_path}
+        samtools flagstat "{in_path}" >"{out_path}"
+
+        echo -n "{out_path}"
     """
+
+
+@task()
+def bam_stats_one(bam_file: File, _kwargs) -> File:
+    """run samtools flagstat for a single file."""
+    out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
+    return file_from_path(bam_stats_one_script(bam_file.path, out_path))
 
 
 @task()
@@ -209,7 +216,7 @@ def bam_stats_all(bam_files: List[File]) -> List[File]:
 # this is a script because StdioRedirect causes trouble in redun
 # TODO tidy this up a bit
 @task(script=True)
-def get_keyfile_content_for_tassel(spec: CohortSpec) -> str:
+def get_keyfile_for_tassel_script(spec: CohortSpec, out_path: str) -> str:
     return f"""
     #!/usr/bin/env python
     import sys
@@ -236,16 +243,12 @@ def get_keyfile_content_for_tassel(spec: CohortSpec) -> str:
             g.run()
 
         _ = tmp_f.seek(0)
-        for line in tmp_f:
-            _ = sys.stdout.write(enzyme_sub_for_uneak(line))
+        with open("{out_path}", "w") as out_f:
+            for line in tmp_f:
+                _ = out_f.write(enzyme_sub_for_uneak(line))
+
+    sys.stdout.write("{out_path}")
     """
-
-
-@task
-def save_keyfile_content_for_tassel(content: str, out_path: str) -> File:
-    with open(out_path, "wb") as out_f:
-        _ = out_f.write(content)
-    return File(out_path)
 
 
 @task()
@@ -253,12 +256,11 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
     out_path = os.path.join(
         spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
     )
-    content = get_keyfile_content_for_tassel(spec)
-    return save_keyfile_content_for_tassel(content, out_path)
+    return file_from_path(get_keyfile_for_tassel_script(spec, out_path))
 
 
 @task()
-def run_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
+def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
     # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
@@ -271,11 +273,34 @@ def run_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
 
 
 @task(script=True)
-def run_tag_count(fastqToTagCountStdout: File) -> File:
-    out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
+def get_tag_count_script(fastqToTagCountStdoutPath: str, out_path: str):
     return f"""
-        get_reads_tags_per_sample <{fastqToTagCountStdout.path} >{out_path}
+        get_reads_tags_per_sample <"{fastqToTagCountStdoutPath}" >"{out_path}"
+
+        echo -n "{out_path}"
     """
+
+
+@task()
+def get_tag_count(fastqToTagCountStdout: File) -> File:
+    out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
+    return file_from_path(get_tag_count_script(fastqToTagCountStdout.path, out_path))
+
+
+@task(script=True)
+def get_tags_reads_summary_script(tagCountCsvPath: str, out_path: str) -> str:
+    return f"""
+        summarise_read_and_tag_counts -o "{out_path}" "{tagCountCsvPath}"
+
+        echo "{out_path}"
+    """
+
+
+@task()
+def get_tags_reads_summary(spec: CohortSpec, tagCountCsv: File) -> File:
+    out_dir = spec.paths.cohort_dir(spec.cohort.name)
+    out_path = os.path.join(out_dir, "tags_reads_summary.txt")
+    return file_from_path(get_tags_reads_summary_script(tagCountCsv.path, out_path))
 
 
 @dataclass
@@ -288,6 +313,7 @@ class CohortOutput:
     bam_stats_files: List[File]
     keyfile_for_tassel: File
     tag_count: File
+    tags_reads_summary: File
 
 
 @task()
@@ -300,8 +326,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
-    fastq_to_tag_count_stdout = run_fastq_to_tag_count(spec, keyfile_for_tassel)
-    tag_count = run_tag_count(fastq_to_tag_count_stdout)
+    fastq_to_tag_count_stdout = get_fastq_to_tag_count(spec, keyfile_for_tassel)
+    tag_count = get_tag_count(fastq_to_tag_count_stdout)
+    tags_reads_summary = get_tags_reads_summary(spec, tag_count)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -312,6 +339,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         bam_stats_files=bam_stats_files,
         keyfile_for_tassel=keyfile_for_tassel,
         tag_count=tag_count,
+        tags_reads_summary=tags_reads_summary,
     )
     return output
 
