@@ -152,6 +152,8 @@
                     (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
                   summarise_read_and_tag_counts = pkgs.writeScriptBin "summarise_read_and_tag_counts"
                     (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py);
+                  make_cohort_pages = pkgs.writeScriptBin "make_cohort_pages"
+                    (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py);
                 in
                 [
                   bashInteractive
@@ -174,6 +176,7 @@
                   kmer_prism
                   get_reads_tags_per_sample
                   summarise_read_and_tag_counts
+                  make_cohort_pages
                 ];
 
               shellHook = ''

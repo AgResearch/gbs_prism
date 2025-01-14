@@ -1,7 +1,14 @@
-from redun import task
+from redun import task, File
+from typing import List
 
 from agr.gbs_prism.config import Config
-from agr.gbs_prism.redun import run_stage1, run_stage2, Stage1Output, Stage2Output
+from agr.gbs_prism.redun import (
+    run_stage1,
+    run_stage2,
+    Stage1Output,
+    Stage2Output,
+    create_peacock,
+)
 
 redun_namespace = "agr.gbs_prism"
 
@@ -9,7 +16,7 @@ redun_namespace = "agr.gbs_prism"
 @task()
 def main(
     run: str,
-) -> tuple[Stage1Output, Stage2Output]:
+) -> tuple[Stage1Output, Stage2Output, List[File]]:
     c = Config(
         run=run,
         # pipeline config for gbs_prism
@@ -51,5 +58,11 @@ def main(
 
     stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
 
+    peacock = create_peacock(
+        run=run,
+        postprocessing_root=c.postprocessing_root,
+        gbs_run_root=stage1.gbs_paths.run_root,
+        stage2=stage2,
+    )
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
-    return (stage1, stage2)
+    return (stage1, stage2, peacock)

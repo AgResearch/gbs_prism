@@ -433,7 +433,6 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 
 @dataclass
 class Stage2Output:
-    dummy: bool
     cohorts: Dict[str, CohortOutput]
 
 
@@ -463,6 +462,5 @@ def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Outp
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage2Output(
-        dummy=True,
         cohorts=cohort_outputs,
     )
