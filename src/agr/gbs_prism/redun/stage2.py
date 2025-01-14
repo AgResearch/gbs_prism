@@ -269,6 +269,18 @@ def get_tags_reads_summary(spec: CohortSpec, tagCountCsv: File) -> File:
     return File(out_path)
 
 
+@task()
+def get_tags_reads_cv(tags_reads_summary: File) -> File:
+    out_path = os.path.join(
+        os.path.dirname(tags_reads_summary.path), "tags_reads_cv.txt"
+    )
+    with open(out_path, "w") as out_f:
+        _ = subprocess.run(
+            ["cut", "-f", "1,4,9", tags_reads_summary.path], stdout=out_f, check=True
+        )
+    return File(out_path)
+
+
 @dataclass
 class CohortOutput:
     fastq_links: List[File]
@@ -280,6 +292,7 @@ class CohortOutput:
     keyfile_for_tassel: File
     tag_count: File
     tags_reads_summary: File
+    tags_reads_cv: File
 
 
 @task()
@@ -295,6 +308,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     fastq_to_tag_count_stdout = get_fastq_to_tag_count(spec, keyfile_for_tassel)
     tag_count = get_tag_count(fastq_to_tag_count_stdout)
     tags_reads_summary = get_tags_reads_summary(spec, tag_count)
+    tags_reads_cv = get_tags_reads_cv(tags_reads_summary)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -306,6 +320,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         keyfile_for_tassel=keyfile_for_tassel,
         tag_count=tag_count,
         tags_reads_summary=tags_reads_summary,
+        tags_reads_cv=tags_reads_cv,
     )
     return output
 
