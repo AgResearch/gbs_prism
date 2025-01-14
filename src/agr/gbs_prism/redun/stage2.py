@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
+from redun.file import glob_file
 from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
@@ -196,7 +197,7 @@ def bam_stats_one(bam_file: File, _kwargs) -> File:
     """run samtools flagstat for a single file."""
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
     with open(out_path, "w") as out_f:
-        subprocess.run(
+        _ = subprocess.run(
             ["samtools", "flagstat", bam_file.path], stdout=out_f, check=True
         )
     return File(out_path)
@@ -234,17 +235,26 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
     return File(out_path)
 
 
+@dataclass
+class FastqToTagCountOutput:
+    stdout: File
+    tag_counts: List[File]
+
+
 @task()
-def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> File:
+def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
     # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
-    fastq_to_tag_count_stdout = os.path.join(cohort_blind_dir, "FastqToTagCount.stdout")
+    tag_counts_dir = os.path.join(cohort_blind_dir, "tagCounts")
     tassel3 = Tassel3()
     tassel3.fastq_to_tag_count(
         in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
     )
-    return File(fastq_to_tag_count_stdout)
+    stdout = File(os.path.join(cohort_blind_dir, "FastqToTagCount.stdout"))
+    tag_counts = [File(path) for path in glob_file("%s/*" % tag_counts_dir)]
+
+    return FastqToTagCountOutput(stdout=stdout, tag_counts=tag_counts)
 
 
 @task()
@@ -281,8 +291,50 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
     return File(out_path)
 
 
+@task()
+def merge_taxa_tag_count(spec: CohortSpec, tag_counts: List[File]) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    tassel3 = Tassel3()
+    tassel3.merge_taxa_tag_count(work_dir=cohort_blind_dir)
+    return File(os.path.join(cohort_blind_dir, "mergedTagCounts", "mergedAll.cnt"))
+
+
+@task()
+def tag_count_to_tag_pair(spec: CohortSpec, merged_all_count: File) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    tassel3 = Tassel3()
+    tassel3.tag_count_to_tag_pair(work_dir=cohort_blind_dir)
+    return File(os.path.join(cohort_blind_dir, "tagPair", "tagPair.tps"))
+
+
+@task()
+def tag_pair_to_tbt(spec: CohortSpec, tag_pair: File) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    tassel3 = Tassel3()
+    tassel3.tag_pair_to_tbt(work_dir=cohort_blind_dir)
+    return File(os.path.join(cohort_blind_dir, "tagsByTaxa", "tbt.bin"))
+
+
+@task()
+def tbt_to_map_info(spec: CohortSpec, tags_by_taxa: File) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    tassel3 = Tassel3()
+    tassel3.tbt_to_map_info(work_dir=cohort_blind_dir)
+    return File(os.path.join(cohort_blind_dir, "mapInfo", "mapInfo.bin"))
+
+
+@task()
+def map_info_to_hap_map(spec: CohortSpec, map_info: File) -> List[File]:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    tassel3 = Tassel3()
+    tassel3.map_info_to_hap_map(work_dir=cohort_blind_dir)
+    hap_map_dir = os.path.join(cohort_blind_dir, "hapMap")
+    return [File(path) for path in glob_file("%s/*" % hap_map_dir)]
+
+
 @dataclass
 class CohortOutput:
+    # TODO remove the ones we don't need
     fastq_links: List[File]
     munged_fastq_links_for_tassel: List[File]
     bwa_sampled: List[File]
@@ -293,6 +345,11 @@ class CohortOutput:
     tag_count: File
     tags_reads_summary: File
     tags_reads_cv: File
+    merged_all_count: File
+    tag_pair: File
+    tags_by_taxa: File
+    map_info: File
+    hap_map_files: List[File]
 
 
 @task()
@@ -305,10 +362,15 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
-    fastq_to_tag_count_stdout = get_fastq_to_tag_count(spec, keyfile_for_tassel)
-    tag_count = get_tag_count(fastq_to_tag_count_stdout)
+    fastq_to_tag_count = get_fastq_to_tag_count(spec, keyfile_for_tassel)
+    tag_count = get_tag_count(fastq_to_tag_count.stdout)
     tags_reads_summary = get_tags_reads_summary(spec, tag_count)
     tags_reads_cv = get_tags_reads_cv(tags_reads_summary)
+    merged_all_count = merge_taxa_tag_count(spec, fastq_to_tag_count.tag_counts)
+    tag_pair = tag_count_to_tag_pair(spec, merged_all_count)
+    tags_by_taxa = tag_pair_to_tbt(spec, tag_pair)
+    map_info = tbt_to_map_info(spec, tags_by_taxa)
+    hap_map_files = map_info_to_hap_map(spec, map_info)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -321,6 +383,11 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         tag_count=tag_count,
         tags_reads_summary=tags_reads_summary,
         tags_reads_cv=tags_reads_cv,
+        merged_all_count=merged_all_count,
+        tag_pair=tag_pair,
+        tags_by_taxa=tags_by_taxa,
+        map_info=map_info,
+        hap_map_files=hap_map_files,
     )
     return output
 
