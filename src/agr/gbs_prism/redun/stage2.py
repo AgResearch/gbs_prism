@@ -18,6 +18,7 @@ from agr.seq.fastq_sample import FastqSample
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
+from agr.gbs_prism.GUSbase import run_GUSbase
 from agr.gbs_prism.kgd import run_kgd
 from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
 from agr.gbs_prism.types import Cohort, flowcell_id
@@ -356,6 +357,14 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
     )
 
 
+@task()
+def gusbase(spec: CohortSpec, gusbase_rdata: File) -> File:
+    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
+    out_dir = os.path.join(cohort_blind_dir, "KGD")
+    run_GUSbase(gusbase_rdata.path)
+    return File(os.path.join(out_dir, "GUSbase_comet.jpg"))
+
+
 @dataclass
 class CohortOutput:
     # TODO remove the ones we don't need
@@ -375,6 +384,7 @@ class CohortOutput:
     map_info: File
     hap_map_files: List[File]
     kgd_output: KgdOutput
+    gusbase_comet: File
 
 
 @task()
@@ -397,6 +407,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     map_info = tbt_to_map_info(spec, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(spec, map_info)
     kgd_output = kgd(spec, hap_map_files)
+    gusbase_comet = gusbase(spec, kgd_output.gusbase_rdata)
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -415,6 +426,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         map_info=map_info,
         hap_map_files=hap_map_files,
         kgd_output=kgd_output,
+        gusbase_comet=gusbase_comet,
     )
     return output
 
