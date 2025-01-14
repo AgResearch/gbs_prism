@@ -1,5 +1,7 @@
 import os.path
 from dataclasses import dataclass
+
+from agr.gbs_prism import kmer_analysis
 from redun import task, File
 from typing import List, Literal, Set
 
@@ -218,6 +220,7 @@ def get_gbs_targets(
 @dataclass
 class Stage1Output:
     fastqc: List[File]
+    kmer_analysis: List[File]
     spec: GbsTargetSpec
     gbs_paths: GbsPaths
 
@@ -272,6 +275,9 @@ def run_stage1(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
-        fastqc=fastqc_files, spec=gbs_targets.spec, gbs_paths=gbs_targets.paths
+        fastqc=fastqc_files,
+        kmer_analysis=kmer_analysis,
+        spec=gbs_targets.spec,
+        gbs_paths=gbs_targets.paths,
     )
     # kmer_analysis + is troublesome for now because of in-process problems, but should be fixed and returned

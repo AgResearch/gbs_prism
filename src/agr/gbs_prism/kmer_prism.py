@@ -9,7 +9,8 @@ from random import random
 from functools import reduce
 from typing import Literal, Optional, cast
 
-from .data_prism import (
+# fully qualified import so we can run this from a script
+from agr.gbs_prism.data_prism import (
     Prism,
     build,
     bin_discrete_value,
@@ -960,97 +961,6 @@ kmer_prism.py -t entropy -k 6 -p 20  /data/project2/*.fastq.gz /references/ref1.
 class ArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         raise KmerPrismError(message)
-
-
-class KmerPrism:
-    """For programmatic interface"""
-
-    def __init__(
-        self,
-        summary_type: Optional[
-            Literal["frequency", "entropy", "ranks", "zipfian", "assembly", "test"]
-        ] = None,
-        kmer_size: Optional[int] = None,
-        kmer_regexps: Optional[list[str]] = None,
-        builddir: Optional[str] = None,
-        num_processes: Optional[int] = None,
-        sampling_proportion: Optional[float] = None,
-        reverse_complement: Optional[bool] = None,
-        assemble_low_entropy_kmers: Optional[bool] = None,
-        assemble_highest_n: Optional[int] = None,
-        input_driver_config: Optional[str] = None,
-        alphabet: Optional[str] = None,
-        input_filetype: Optional[Literal["fasta", "fastq"]] = None,
-        kmer_listfile: Optional[str] = None,
-        sequence_countfile: Optional[str] = None,
-        weighting_method: Optional[Literal["tag_count"]] = None,
-    ):
-        parser = create_parser(ArgumentParser)
-        try:
-            self._options = vars(parser.parse_args([]))
-        except argparse.ArgumentError as e:
-            raise KmerPrismError(str(e))
-        self._supported_moniker_keys = ["k", "A"]
-        self._moniker_components = {}
-
-        if summary_type is not None:
-            self._options["summary_type"] = summary_type
-        if kmer_size is not None:
-            self._options["kmer_size"] = kmer_size
-            self._add_moniker_key_value("k", str(kmer_size))
-        if kmer_regexps is not None:
-            self._options["kmer_regexps"] = kmer_regexps
-        if builddir is not None:
-            self._options["builddir"] = builddir
-        if num_processes is not None:
-            self._options["num_processes"] = num_processes
-        if sampling_proportion is not None:
-            self._options["sampling_proportion"] = sampling_proportion
-        if reverse_complement is not None:
-            self._options["reverse_complement"] = reverse_complement
-        if assemble_low_entropy_kmers is not None:
-            self._options["assemble_low_entropy_kmers"] = assemble_low_entropy_kmers
-            if assemble_low_entropy_kmers:
-                self._add_moniker_key("A")
-        if assemble_highest_n is not None:
-            self._options["assemble_highest_n"] = assemble_highest_n
-        if input_driver_config is not None:
-            self._options["input_driver_config"] = input_driver_config
-        if alphabet is not None:
-            self._options["alphabet"] = alphabet
-        if input_filetype is not None:
-            self._options["input_filetype"] = input_filetype
-        if kmer_listfile is not None:
-            self._options["kmer_listfile"] = kmer_listfile
-        if sequence_countfile is not None:
-            self._options["sequence_countfile"] = sequence_countfile
-        if weighting_method is not None:
-            self._options["weighting_method"] = weighting_method
-
-    def _add_moniker_key(self, k: str):
-        assert k in self._supported_moniker_keys
-        self._moniker_components[k] = ""
-
-    def _add_moniker_key_value(self, k: str, value: str):
-        assert k in self._supported_moniker_keys
-        self._moniker_components[k] = value
-
-    @property
-    def moniker(self) -> str:
-        return "".join(
-            [
-                "%s%s" % (k, self._moniker_components[k])
-                for k in self._supported_moniker_keys
-                if k in self._moniker_components
-            ]
-        )
-
-    def run(self, file_names: list[str], output_filename: str):
-        self._options["file_names"] = file_names
-        self._options["output_filename"] = output_filename
-        validate_options(self._options)
-        print(self._options)
-        run_with_options(self._options)
 
 
 def get_options():

@@ -15,7 +15,7 @@ def run_kmer_analysis(in_path: str, out_path: str, input_filetype: str, kmer_siz
                 "kmer_prism",
                 "--input_filetype",
                 input_filetype,
-                "kmer_size",
+                "--kmer_size",
                 str(kmer_size),
                 "--output_filename",
                 out_path,
