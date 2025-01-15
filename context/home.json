@@ -1,0 +1,9 @@
+{
+  "path": {
+    "seq_root": "~/gbs_prism.dev/fake_runs",
+    "postprocessing_root": "~/gbs_prism.dev/postprocessing",
+    "gbs_backup_dir": "~/gbs_prism.dev/backups",
+    "keyfiles_dir": "~/gbs_prism.dev/key-files",
+    "fastq_link_farm": "~/gbs_prism.dev/fastq-link-farm"
+  }
+}

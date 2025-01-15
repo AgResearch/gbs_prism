@@ -77,8 +77,6 @@
                 ];
             };
 
-          # gbs-prism-cli = pkgs.python3Packages.toPythonApplication gbs-prism-api;
-
           run_kgd = pkgs.stdenv.mkDerivation {
             name = "gbs_prism_kgd";
 
@@ -127,15 +125,30 @@
               '';
             };
 
-          devPython = pkgs.python3.withPackages (python-pkgs: with python-pkgs; [
-            # gbs-prism-api
-            # TODO: remove these in favour of gbs-prism-api, which for now we consume via PYTHONPATH
-            biopython
-            pdf2image
-            pytest
-            pydantic
-            flakePkgs.gquery-api
+          python-with-gbs-prism = pkgs.python3.withPackages (python-pkgs: [
+            gbs-prism-api
           ]);
+
+          gbs-prism = pkgs.symlinkJoin
+            {
+              name = "gbs-prism";
+              paths = [
+                python-with-gbs-prism
+                run_kgd
+                run_GUSbase
+              ] ++ [
+                bbmap
+                bcl-convert
+                cutadapt
+                tassel3
+              ] ++ (with pkgs; [
+                bwa
+                samtools
+                fastqc
+                seqtk
+                gzip
+              ]);
+            };
 
         in
         with pkgs;
@@ -144,38 +157,28 @@
             default = mkShell {
               buildInputs =
                 # until we consume gbs_prism as a package we need to wrap the scripts here
-                let
-                  kmer_prism = pkgs.writeScriptBin "kmer_prism"
-                    (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py);
-                  get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample"
-                    (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
-                  summarise_read_and_tag_counts = pkgs.writeScriptBin "summarise_read_and_tag_counts"
-                    (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py);
-                  make_cohort_pages = pkgs.writeScriptBin "make_cohort_pages"
-                    (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py);
-                in
+                # let
+                #   kmer_prism = pkgs.writeScriptBin "kmer_prism"
+                #     (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py);
+                #   get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample"
+                #     (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
+                #   summarise_read_and_tag_counts = pkgs.writeScriptBin "summarise_read_and_tag_counts"
+                #     (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py);
+                #   make_cohort_pages = pkgs.writeScriptBin "make_cohort_pages"
+                #     (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py);
+                # in
                 [
                   bashInteractive
-                  flakePkgs.bbmap
-                  flakePkgs.bcl-convert
-                  flakePkgs.cutadapt
-                  flakePkgs.tassel3
-                  run_kgd
-                  run_GUSbase
-                  bwa
-                  samtools
-                  fastqc
-                  seqtk
-                  gzip
-                  yq-go
-                  devPython
                   python3Packages.pip # for redun from a virtualenv
                   virtualenv
-                  # own package scripts, just until we consume gbs_prism as a package
-                  kmer_prism
-                  get_reads_tags_per_sample
-                  summarise_read_and_tag_counts
-                  make_cohort_pages
+                  gbs-prism
+                  # own package scripts, just until we consume gbs_prism as a package:
+                  # kmer_prism
+                  # get_reads_tags_per_sample
+                  # summarise_read_and_tag_counts
+                  # make_cohort_pages
+                  # devtools:
+                  # yq-go
                 ];
 
               shellHook = ''
@@ -187,9 +190,7 @@
             };
           };
           packages = {
-            default = flakePkgs.gquery;
-
-            inherit run_kgd;
+            default = gbs-prism;
           };
         }
       );
