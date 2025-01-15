@@ -440,7 +440,7 @@
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "dev",
+        "ref": "main",
         "repo": "tassel3",
         "type": "github"
       }

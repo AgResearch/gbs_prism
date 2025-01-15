@@ -16,8 +16,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     tassel3 = {
-      # TODO merge dev to main and use main
-      url = "github:AgResearch/tassel3/dev";
+      url = "github:AgResearch/tassel3/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     kgd = {
