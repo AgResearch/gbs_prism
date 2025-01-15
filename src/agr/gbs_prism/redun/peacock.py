@@ -16,6 +16,7 @@ def create_peacock(
     stage2: Stage2Output,
 ) -> List[File]:
     # TODO make this a script task
+    _ = stage2  # depending on existence rather than value
     out_dir = os.path.join(gbs_run_root, "html")
     os.makedirs(out_dir, exist_ok=True)
     peacock_html_path = os.path.join(out_dir, "peacock.html")

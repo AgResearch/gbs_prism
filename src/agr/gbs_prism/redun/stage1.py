@@ -1,7 +1,6 @@
 import os.path
 from dataclasses import dataclass
 
-from agr.gbs_prism import kmer_analysis
 from redun import task, File
 from typing import List, Literal, Set
 
@@ -82,9 +81,8 @@ def bclconvert(
 
 
 @task()
-def fastqc_one(fastq_file: File, kwargs) -> List[File]:
+def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
     """Run fastqc on a single file, returning both the html and zip results."""
-    out_dir = kwargs["out_dir"]
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
@@ -102,9 +100,8 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def kmer_sample_one(fastq_file: File, kwargs) -> File:
+def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
     """Sample a single fastq file as required for kmer analysis."""
-    out_dir = kwargs["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
     kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
     # the ugly name is copied from legacy gbs_prism
@@ -123,9 +120,8 @@ def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def kmer_analysis_one(fastq_file: File, kwargs) -> File:
+def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
     """Run kmer analysis for a single fastq file."""
-    out_dir = kwargs["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
     kmer_size = 6
     out_path = os.path.join(
@@ -150,9 +146,8 @@ def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def dedupe_one(fastq_file: File, kwargs) -> File:
+def dedupe_one(fastq_file: File, out_dir: str) -> File:
     """Dedupe a single fastq file."""
-    out_dir = kwargs["out_dir"]
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
     dedupe(
@@ -175,13 +170,14 @@ def get_gbs_keyfiles(
     sequencer_run: SequencerRun,
     sample_sheet: File,
     gbs_libraries: List[str],
-    _deduped_fastq_files: List[File],
+    deduped_fastq_files: List[File],
     root: str,
     out_dir: str,
     fastq_link_farm: str,
     backup_dir: str,
 ) -> List[File]:
     """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
+    _ = deduped_fastq_files  # depending on existence rather than value
     gbs_keyfiles = GbsKeyfiles(
         sequencer_run=sequencer_run,
         sample_sheet_path=sample_sheet.path,
@@ -206,9 +202,10 @@ class GbsTargetsOutput:
 
 @task()
 def get_gbs_targets(
-    run: str, postprocessing_root: str, fastq_link_farm: str, _gbs_keyfiles: List[File]
+    run: str, postprocessing_root: str, fastq_link_farm: str, gbs_keyfiles: List[File]
 ) -> GbsTargetsOutput:
     """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
+    _ = gbs_keyfiles  # depending on existence rather than value
     gbs_root = os.path.join(postprocessing_root, "gbs")
     paths = GbsPaths(root=gbs_root, run=run)
     os.makedirs(paths.run_root, exist_ok=True)
@@ -259,7 +256,7 @@ def run_stage1(
         sequencer_run=sequencer_run,
         sample_sheet=seq.sample_sheet,
         gbs_libraries=seq.gbs_libraries,
-        _deduped_fastq_files=deduped_fastq,
+        deduped_fastq_files=deduped_fastq,
         root=seq.illumina_platform_root,
         out_dir=keyfiles_dir,
         fastq_link_farm=fastq_link_farm,
@@ -270,7 +267,7 @@ def run_stage1(
         run=run,
         postprocessing_root=postprocessing_root,
         fastq_link_farm=fastq_link_farm,
-        _gbs_keyfiles=gbs_keyfiles,
+        gbs_keyfiles=gbs_keyfiles,
     )
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens

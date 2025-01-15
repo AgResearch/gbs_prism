@@ -1,16 +1,15 @@
 import os.path
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from redun import task, File
 from redun.file import glob_file
-from typing import Dict, List
+from typing import Dict, List, TextIO
 
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
-from agr.util.redun import lazy_concat, one_forall
+from agr.util.redun import concat, one_forall
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
 from agr.seq.fastq_sample import FastqSample
@@ -69,8 +68,7 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
 
 
 @task()
-def sample_one_for_bwa(fastq_file: File, kwargs) -> File:
-    spec = kwargs["spec"]
+def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
@@ -89,8 +87,7 @@ def sample_all_for_bwa(fastq_files: List[File], spec: CohortSpec) -> List[File]:
 
 
 @task
-def cutadapt_one(fastq_file: File, kwargs) -> File:
-    out_dir = kwargs["out_dir"]
+def cutadapt_one(fastq_file: File, out_dir: str) -> File:
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(
         out_dir,
@@ -112,12 +109,10 @@ class BwaAlnOutput:
 
 
 @task()
-def bwa_aln_one(fastq_file: File, kwargs) -> BwaAlnOutput:
+def bwa_aln_one(
+    fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
+) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
-    ref_name = kwargs["ref_name"]
-    ref_path = kwargs["ref_path"]
-    bwa = kwargs["bwa"]
-    out_dir = kwargs["out_dir"]
     out_path = os.path.join(
         out_dir,
         "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
@@ -142,10 +137,8 @@ def bwa_aln_all(
 
 
 @task()
-def bwa_samse_one(aln: BwaAlnOutput, kwargs) -> File:
+def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, bwa: Bwa) -> File:
     """bwa samse for a single file with a single reference genome."""
-    ref_path = kwargs["ref_path"]
-    bwa = kwargs["bwa"]
     out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
     bwa.samse(
         sai_path=aln.sai.path,
@@ -157,14 +150,11 @@ def bwa_samse_one(aln: BwaAlnOutput, kwargs) -> File:
 
 
 @task()
-def bwa_samse_all(
-    alns: List[BwaAlnOutput], ref_name: str, ref_path: str, bwa: Bwa
-) -> List[File]:
+def bwa_samse_all(alns: List[BwaAlnOutput], ref_path: str, bwa: Bwa) -> List[File]:
     """bwa samse for multiple files with a single reference genome."""
     return one_forall(
         bwa_samse_one,
         alns,
-        ref_name=ref_name,
         ref_path=ref_path,
         bwa=bwa,
     )
@@ -186,16 +176,15 @@ def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List
         )
         bam_files = bwa_samse_all(
             alns,
-            ref_name=ref_name,
             ref_path=ref_path,
             bwa=spec.bwa,
         )
-        out_paths = lazy_concat(out_paths, bam_files)
+        out_paths = concat(out_paths, bam_files)
     return out_paths
 
 
 @task()
-def bam_stats_one(bam_file: File, _kwargs) -> File:
+def bam_stats_one(bam_file: File) -> File:
     """run samtools flagstat for a single file."""
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
     with open(out_path, "w") as out_f:
@@ -231,6 +220,7 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
         stdout=subprocess.PIPE,
         text=True,
     )
+    assert isinstance(gquery.stdout, TextIO)
     with open(out_path, "w") as out_f:
         for line in gquery.stdout:
             _ = out_f.write(enzyme_sub_for_uneak(line))
@@ -295,6 +285,7 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
 
 @task()
 def merge_taxa_tag_count(spec: CohortSpec, tag_counts: List[File]) -> File:
+    _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3()
     tassel3.merge_taxa_tag_count(work_dir=cohort_blind_dir)
@@ -303,6 +294,7 @@ def merge_taxa_tag_count(spec: CohortSpec, tag_counts: List[File]) -> File:
 
 @task()
 def tag_count_to_tag_pair(spec: CohortSpec, merged_all_count: File) -> File:
+    _ = merged_all_count  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3()
     tassel3.tag_count_to_tag_pair(work_dir=cohort_blind_dir)
@@ -311,6 +303,7 @@ def tag_count_to_tag_pair(spec: CohortSpec, merged_all_count: File) -> File:
 
 @task()
 def tag_pair_to_tbt(spec: CohortSpec, tag_pair: File) -> File:
+    _ = tag_pair  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3()
     tassel3.tag_pair_to_tbt(work_dir=cohort_blind_dir)
@@ -319,6 +312,7 @@ def tag_pair_to_tbt(spec: CohortSpec, tag_pair: File) -> File:
 
 @task()
 def tbt_to_map_info(spec: CohortSpec, tags_by_taxa: File) -> File:
+    _ = tags_by_taxa  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3()
     tassel3.tbt_to_map_info(work_dir=cohort_blind_dir)
@@ -327,6 +321,7 @@ def tbt_to_map_info(spec: CohortSpec, tags_by_taxa: File) -> File:
 
 @task()
 def map_info_to_hap_map(spec: CohortSpec, map_info: File) -> List[File]:
+    _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3()
     tassel3.map_info_to_hap_map(work_dir=cohort_blind_dir)
@@ -342,6 +337,7 @@ class KgdOutput:
 
 @task()
 def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
+    _ = hap_map_files  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
     os.makedirs(out_dir, exist_ok=True)
