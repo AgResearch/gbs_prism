@@ -229,6 +229,28 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
     return File(out_path)
 
 
+@task()
+def get_keyfile_for_gbsx(spec: CohortSpec) -> File:
+    out_path = os.path.join(
+        spec.paths.run_root, "%s.%s.gbsx.key" % (spec.run, spec.cohort.name)
+    )
+    fcid = flowcell_id(spec.run)
+    with open(out_path, "w") as out_f:
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=spec.cohort.enzyme,
+                gbs_cohort=spec.cohort.gbs_cohort,
+                columns="qc_sampleid as sample,Barcode,Enzyme",
+            ),
+            items=[spec.cohort.libname],
+            outfile=out_f,
+        ).run()
+    return File(out_path)
+
+
 @dataclass
 class FastqToTagCountOutput:
     stdout: File
@@ -373,6 +395,7 @@ class CohortOutput:
     bam_files: List[File]
     bam_stats_files: List[File]
     keyfile_for_tassel: File
+    keyfile_for_gbsx: File
     tag_count: File
     tags_reads_summary: File
     tags_reads_cv: File
@@ -395,6 +418,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
+    keyfile_for_gbsx = get_keyfile_for_gbsx(spec)
     fastq_to_tag_count = get_fastq_to_tag_count(spec, keyfile_for_tassel)
     tag_count = get_tag_count(fastq_to_tag_count.stdout)
     tags_reads_summary = get_tags_reads_summary(spec, tag_count)
@@ -415,6 +439,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         bam_files=bam_files,
         bam_stats_files=bam_stats_files,
         keyfile_for_tassel=keyfile_for_tassel,
+        keyfile_for_gbsx=keyfile_for_gbsx,
         tag_count=tag_count,
         tags_reads_summary=tags_reads_summary,
         tags_reads_cv=tags_reads_cv,
