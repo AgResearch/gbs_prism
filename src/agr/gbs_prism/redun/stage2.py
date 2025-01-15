@@ -1,12 +1,14 @@
 import os.path
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from redun import task, File
 from redun.file import glob_file
-from typing import Dict, List, TextIO
+from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
 
+from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
 from agr.util.redun import concat, one_forall
@@ -205,25 +207,25 @@ def get_keyfile_for_tassel(spec: CohortSpec) -> File:
     out_path = os.path.join(
         spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
     )
-    columns = "flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link"
-    gquery = subprocess.Popen(
-        [
-            "gquery",
-            "-t",
-            "gbs_keyfile",
-            "-b",
-            "library",
-            "-p",
-            f"flowcell={flowcell_id(spec.run)};enzyme={spec.cohort.enzyme};gbs_cohort={spec.cohort.gbs_cohort};columns={columns}",
-            spec.cohort.libname,
-        ],
-        stdout=subprocess.PIPE,
-        text=True,
-    )
-    assert isinstance(gquery.stdout, TextIO)
-    with open(out_path, "w") as out_f:
-        for line in gquery.stdout:
-            _ = out_f.write(enzyme_sub_for_uneak(line))
+    fcid = flowcell_id(spec.run)
+    with tempfile.TemporaryFile(mode="w+") as tmp_f:
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=spec.cohort.enzyme,
+                gbs_cohort=spec.cohort.gbs_cohort,
+                columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+            ),
+            items=[spec.cohort.libname],
+            outfile=tmp_f,
+        ).run()
+
+        _ = tmp_f.seek(0)
+        with open(out_path, "w") as out_f:
+            for line in tmp_f:
+                _ = out_f.write(enzyme_sub_for_uneak(line))
     return File(out_path)
 
 

@@ -1,8 +1,9 @@
 import logging
 import os.path
-import subprocess
 import tempfile
 from pydantic import BaseModel
+
+from agr.gquery import GQuery, Predicates
 
 from .exceptions import GbsPrismDataException
 from .types import Cohort, flowcell_id
@@ -89,42 +90,30 @@ def read_gbs_target_spec(path: str) -> GbsTargetSpec:
 
 def _gquery_libraries(run_name: str) -> list[str]:
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        _ = subprocess.run(
-            [
-                "gquery",
-                "-t",
-                "lab_report",
-                "-p",
-                # Libraries are queried as samples 😩
-                "name=illumina_run_details;samples",
-                "--notfound_ok",
-                run_name,
-            ],
-            stdout=tmp_f,
-            text=True,
-            check=True,
-        )
+        GQuery(
+            task="lab_report",
+            # Libraries are queried as samples 😩
+            predicates=Predicates(name="illumina_run_details", samples=True),
+            items=[run_name],
+            notfound_ok=True,
+            outfile=tmp_f,
+        ).run()
         _ = tmp_f.seek(0)
         return [line.strip() for line in tmp_f.readlines()]
 
 
 def _gquery_cohorts_for_library(run_name: str, library: str) -> list[Cohort]:
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        _ = subprocess.run(
-            [
-                "gquery",
-                "-t",
-                "lab_report",
-                "-p",
-                # Libraries are queried as samples 😩
-                f"name=illumina_run_details;cohorts;sample_id={library}",
-                "--notfound_ok",
-                run_name,
-            ],
-            stdout=tmp_f,
-            text=True,
-            check=True,
-        )
+        GQuery(
+            task="lab_report",
+            # Libraries are queried as samples 😩
+            predicates=Predicates(
+                name="illumina_run_details", cohorts=True, sample_id=library
+            ),
+            items=[run_name],
+            notfound_ok=True,
+            outfile=tmp_f,
+        ).run()
         _ = tmp_f.seek(0)
         return [
             Cohort.parse("%s.%s" % (library, cohort_substr.strip()))
@@ -138,22 +127,22 @@ def _gquery_cohort_fastq_links(
     fcid = flowcell_id(run_name)
 
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        _ = subprocess.run(
-            [
-                "gquery",
-                "-t",
-                "gbs_keyfile",
-                "-b",
-                "library",
-                "-p",
-                f"flowcell={fcid};enzyme={cohort.enzyme};gbs_cohort={cohort.gbs_cohort};columns=fastq_link;noheading;distinct;fastq_path={fastq_link_farm}",
-                "--notfound_ok",
-                cohort.libname,
-            ],
-            stdout=tmp_f,
-            text=True,
-            check=True,
-        )
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=cohort.enzyme,
+                gbs_cohort=cohort.gbs_cohort,
+                columns="fastq_link",
+                noheading=True,
+                distinct=True,
+                fastq_path=fastq_link_farm,
+            ),
+            items=[cohort.libname],
+            notfound_ok=True,
+            outfile=tmp_f,
+        ).run()
         _ = tmp_f.seek(0)
         return [line.strip() for line in tmp_f.readlines()]
 
@@ -161,21 +150,21 @@ def _gquery_cohort_fastq_links(
 def _gquery_cohort_genotyping_method(run_name: str, cohort: Cohort) -> str:
     fcid = flowcell_id(run_name)
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        _ = subprocess.run(
-            [
-                "gquery",
-                "-t",
-                "gbs_keyfile",
-                "-b",
-                "library",
-                "-p",
-                f"flowcell={fcid};enzyme={cohort.enzyme};gbs_cohort={cohort.gbs_cohort};columns=geno_method;noheading;distinct;no_unpivot",
-                cohort.libname,
-            ],
-            stdout=tmp_f,
-            text=True,
-            check=True,
-        )
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=cohort.enzyme,
+                gbs_cohort=cohort.gbs_cohort,
+                columns="geno_method",
+                distinct=True,
+                noheading=True,
+                no_unpivot=True,
+            ),
+            items=[cohort.libname],
+            outfile=tmp_f,
+        ).run()
         _ = tmp_f.seek(0)
         methods = tmp_f.readlines()
         if (n_methods := len(methods)) != 1:
@@ -197,21 +186,20 @@ def _gquery_cohort_alignment_references(
 ) -> dict[str, str]:
     fcid = flowcell_id(run_name)
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        _ = subprocess.run(
-            [
-                "gquery",
-                "-t",
-                "gbs_keyfile",
-                "-b",
-                "library",
-                "-p",
-                f"flowcell={fcid};enzyme={cohort.enzyme};gbs_cohort={cohort.gbs_cohort};columns=refgenome_bwa_indexes;noheading;distinct",
-                cohort.libname,
-            ],
-            stdout=tmp_f,
-            text=True,
-            check=True,
-        )
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=cohort.enzyme,
+                gbs_cohort=cohort.gbs_cohort,
+                columns="refgenome_bwa_indexes",
+                noheading=True,
+                distinct=True,
+            ),
+            items=[cohort.libname],
+            outfile=tmp_f,
+        ).run()
         _ = tmp_f.seek(0)
         paths = list(
             # ensure uniqueness

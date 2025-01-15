@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 import logging
 import os
-import subprocess
 import tempfile
 
 from agr.util.legacy import sanitised_realpath
+from agr.gquery import GQuery, Predicates
 
 from .enzyme_sub import enzyme_sub_for_uneak
 from .gbs_target_spec import Cohort, GbsTargetSpec, CohortTargetSpec
@@ -244,22 +244,18 @@ class CohortTargets:
     def get_keyfile_for_tassel(self, out_path: str):
         fcid = flowcell_id(self._config.run_name)
         with tempfile.TemporaryFile(mode="w+") as tmp_f:
-            columns = "flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link"
-            _ = subprocess.run(
-                [
-                    "gquery",
-                    "-t",
-                    "gbs_keyfile",
-                    "-b",
-                    "library",
-                    "-p",
-                    f"flowcell={fcid};enzyme={self._name.enzyme};gbs_cohort={self._name.gbs_cohort};columns={columns}",
-                    self._name.libname,
-                ],
-                stdout=tmp_f,
-                text=True,
-                check=True,
-            )
+            GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell=fcid,
+                    enzyme=self._name.enzyme,
+                    gbs_cohort=self._name.gbs_cohort,
+                    columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+                ),
+                items=[self._name.libname],
+                outfile=tmp_f,
+            ).run()
 
             _ = tmp_f.seek(0)
             with open(out_path, "w") as keyfile_f:
@@ -269,39 +265,33 @@ class CohortTargets:
     def get_gbsx_keyfile(self, out_path: str):
         fcid = flowcell_id(self._config.run_name)
         with open(out_path, "w") as keyfile_f:
-            columns = "qc_sampleid as sample,Barcode,Enzyme"
-            _ = subprocess.run(
-                [
-                    "gquery",
-                    "-t",
-                    "gbs_keyfile",
-                    "-b",
-                    "library",
-                    "-p",
-                    f"flowcell={fcid};enzyme={self._name.enzyme};gbs_cohort={self._name.gbs_cohort};columns={columns}",
-                    self._name.libname,
-                ],
-                stdout=keyfile_f,
-                text=True,
-                check=True,
-            )
+            GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell=fcid,
+                    enzyme=self._name.enzyme,
+                    gbs_cohort=self._name.gbs_cohort,
+                    columns="qc_sampleid as sample,Barcode,Enzyme",
+                ),
+                items=[self._name.libname],
+                outfile=keyfile_f,
+            ).run()
 
     def get_unblind_script(self, out_path: str):
         fcid = flowcell_id(self._config.run_name)
         with open(out_path, "w") as script_f:
-            columns = "qc_sampleid,sample"
-            _ = subprocess.run(
-                [
-                    "gquery",
-                    "-t",
-                    "gbs_keyfile",
-                    "-b",
-                    "library",
-                    "-p",
-                    f"flowcell={fcid};enzyme={self._name.enzyme};gbs_cohort={self._name.gbs_cohort};columns={columns};unblinding;noheading",
-                    self._name.libname,
-                ],
-                stdout=script_f,
-                text=True,
-                check=True,
-            )
+            GQuery(
+                task="gbs_keyfile",
+                badge_type="library",
+                predicates=Predicates(
+                    flowcell=fcid,
+                    enzyme=self._name.enzyme,
+                    gbs_cohort=self._name.gbs_cohort,
+                    unblinding=True,
+                    columns="qc_sampleid,sample",
+                    noheading=True,
+                ),
+                items=[self._name.libname],
+                outfile=script_f,
+            ).run()
