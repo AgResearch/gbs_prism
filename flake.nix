@@ -1,7 +1,7 @@
 {
-  description = "Flake for gbs_prism development";
+  description = "Flake for gbs_prism";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
       url = "github:AgResearch/bbmap.nix/main";
@@ -32,29 +32,45 @@
       url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    redun = {
+      url = "github:AgResearch/redun.nix/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, flake-utils, bbmap, bcl-convert, cutadapt, tassel3, kgd, GUSbase, gquery, ... }:
-    flake-utils.lib.eachDefaultSystem
+  outputs = inputs:
+    inputs.flake-utils.lib.eachDefaultSystem
       (system:
         let
-          pkgs = import nixpkgs {
+          pkgs = import inputs.nixpkgs {
             inherit system;
           };
 
           flakePkgs = {
-            bbmap = bbmap.packages.${system}.default;
-            bcl-convert = bcl-convert.packages.${system}.default;
-            cutadapt = cutadapt.packages.${system}.default;
-            tassel3 = tassel3.packages.${system}.default;
-            kgd-src = kgd.packages.${system}.src;
-            GUSbase = GUSbase.packages.${system}.default;
-            gquery-api = gquery.packages.${system}.api;
-            gquery-eri-dev = gquery.packages.${system}.eri-dev;
+            bbmap = inputs.bbmap.packages.${system}.default;
+            bcl-convert = inputs.bcl-convert.packages.${system}.default;
+            cutadapt = inputs.cutadapt.packages.${system}.default;
+            tassel3 = inputs.tassel3.packages.${system}.default;
+            kgd-src = inputs.kgd.packages.${system}.src;
+            GUSbase = inputs.GUSbase.packages.${system}.default;
+            gquery-api = inputs.gquery.packages.${system}.api;
+            gquery-eri-dev = inputs.gquery.packages.${system}.eri-dev;
+            redun = inputs.redun.packages.${system}.default;
           };
 
           export-gquery-environment-for-eri = env:
-            gquery.export-environment-for-eri.${system} env;
+            inputs.gquery.export-environment-for-eri.${system} env;
+
+          # when using NixOS 24.05 we need this:
+          # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
+          hatch-fixed = (pkgs.hatch.overrideAttrs (prev: {
+            disabledTests = prev.disabledTests ++ [
+              "test_field_readme"
+              "test_field_string"
+              "test_field_complex"
+              "test_plugin_dependencies_unmet"
+            ];
+          }));
 
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
@@ -63,7 +79,7 @@
               pyproject = true;
 
               nativeBuildInputs = [
-                hatch
+                hatch-fixed
                 python3Packages.hatchling
               ];
 
@@ -125,9 +141,18 @@
               '';
             };
 
-          python-with-gbs-prism = pkgs.python3.withPackages (python-pkgs: [
-            gbs-prism-api
-          ]);
+          python-with-gbs-prism = pkgs.symlinkJoin
+            {
+              name = "python-with-gbs-prism";
+              paths = [
+                flakePkgs.redun
+                (
+                  pkgs.python3.withPackages (python-pkgs: [
+                    gbs-prism-api
+                  ])
+                )
+              ];
+            };
 
           gbs-prism = pkgs.symlinkJoin
             {
@@ -136,12 +161,12 @@
                 python-with-gbs-prism
                 run_kgd
                 run_GUSbase
-              ] ++ [
+              ] ++ (with flakePkgs; [
                 bbmap
                 bcl-convert
                 cutadapt
                 tassel3
-              ] ++ (with pkgs; [
+              ]) ++ (with pkgs; [
                 bwa
                 samtools
                 fastqc
@@ -169,8 +194,6 @@
                 # in
                 [
                   bashInteractive
-                  python3Packages.pip # for redun from a virtualenv
-                  virtualenv
                   gbs-prism
                   # own package scripts, just until we consume gbs_prism as a package:
                   # kmer_prism
