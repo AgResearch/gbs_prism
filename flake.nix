@@ -1,7 +1,7 @@
 {
   description = "Flake for gbs_prism";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
       url = "github:AgResearch/bbmap.nix/main";
@@ -61,6 +61,17 @@
           export-gquery-environment-for-eri = env:
             inputs.gquery.export-environment-for-eri.${system} env;
 
+          # when using NixOS 24.05 we need this:
+          # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
+          hatch-fixed = (pkgs.hatch.overrideAttrs (prev: {
+            disabledTests = prev.disabledTests ++ [
+              "test_field_readme"
+              "test_field_string"
+              "test_field_complex"
+              "test_plugin_dependencies_unmet"
+            ];
+          }));
+
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
               name = "gbs-prism-api";
@@ -68,7 +79,7 @@
               pyproject = true;
 
               nativeBuildInputs = [
-                hatch
+                hatch-fixed
                 python3Packages.hatchling
               ];
 
