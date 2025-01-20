@@ -143,10 +143,24 @@
               ];
             };
 
+          gbs-prism-pipeline = pkgs.symlinkJoin
+            {
+              name = "gbs-prism-pipeline";
+              # the main pipeline.py and all the context files
+              paths = [
+                (pkgs.writeTextDir "pipeline/pipeline.py" (builtins.readFile ./pipeline.py))
+              ] ++ pkgs.lib.attrsets.mapAttrsToList
+                (filename: filetype:
+                  pkgs.writeTextDir "pipeline/${filename}" (builtins.readFile (./context + "/${filename}"))
+                )
+                (builtins.readDir ./context);
+            };
+
           gbs-prism = pkgs.symlinkJoin
             {
               name = "gbs-prism";
               paths = [
+                gbs-prism-pipeline
                 python-with-gbs-prism
                 run_kgd
                 run_GUSbase

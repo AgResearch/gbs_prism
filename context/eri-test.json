@@ -1,0 +1,9 @@
+{
+  "path": {
+    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_d/active",
+    "postprocessing_root": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/postprocessing",
+    "gbs_backup_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/backups",
+    "keyfiles_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/key-files",
+    "fastq_link_farm": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/fastq-link-farm"
+  }
+}
