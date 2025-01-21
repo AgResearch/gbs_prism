@@ -33,7 +33,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     redun = {
-      url = "github:AgResearch/redun.nix/main";
+      url = "github:AgResearch/redun.nix/nixos-24.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -55,7 +55,6 @@
             GUSbase = inputs.GUSbase.packages.${system}.default;
             gquery-api = inputs.gquery.packages.${system}.api;
             gquery-eri-dev = inputs.gquery.packages.${system}.eri-dev;
-            redun = inputs.redun.packages.${system}.default;
           };
 
           export-gquery-environment-for-eri = env:
@@ -87,7 +86,6 @@
                 [
                   biopython
                   pdf2image
-                  pytest
                   pydantic
                   flakePkgs.gquery-api
                 ];
@@ -141,18 +139,9 @@
               '';
             };
 
-          python-with-gbs-prism = pkgs.symlinkJoin
-            {
-              name = "python-with-gbs-prism";
-              paths = [
-                flakePkgs.redun
-                (
-                  pkgs.python3.withPackages (python-pkgs: [
-                    gbs-prism-api
-                  ])
-                )
-              ];
-            };
+          redun-with-gbs-prism = inputs.redun.lib.${system}.default {
+            propagatedBuildInputs = [ gbs-prism-api ];
+          };
 
           gbs-prism-pipeline = pkgs.symlinkJoin
             {
@@ -172,7 +161,7 @@
               name = "gbs-prism";
               paths = [
                 gbs-prism-pipeline
-                python-with-gbs-prism
+                redun-with-gbs-prism
                 run_kgd
                 run_GUSbase
               ] ++ (with flakePkgs; [
@@ -226,9 +215,8 @@
               '';
             };
           };
-          packages = {
-            default = gbs-prism;
-          };
+
+          packages.default = gbs-prism;
         }
       );
 }
