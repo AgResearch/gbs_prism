@@ -178,6 +178,8 @@
               ]);
             };
 
+          eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
+
         in
         with pkgs;
         {
@@ -217,6 +219,11 @@
           };
 
           packages.default = gbs-prism;
+
+          apps.eri-install = {
+            type = "app";
+            program = "${eri-install}/bin/eri-install.gbs_prism";
+          };
         }
       );
 }
