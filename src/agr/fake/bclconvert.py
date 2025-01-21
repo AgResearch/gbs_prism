@@ -5,17 +5,15 @@ import pathlib
 import shutil
 
 from agr.seq.sample_sheet import SampleSheet
-from agr.seq.bclconvert import BclConvert as RealBclConvert, BclConvertError
+from agr.seq.bclconvert import BclConvert, BclConvertError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-class BclConvert(RealBclConvert):
-    def __init__(
-        self, in_dir: str, sample_sheet_path: str, out_dir: str, n_reads=2000000
-    ):
-        super(BclConvert, self).__init__(
+class FakeBclConvert(BclConvert):
+    def __init__(self, in_dir: str, sample_sheet_path: str, out_dir: str, n_reads):
+        super(FakeBclConvert, self).__init__(
             in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
         )
 
@@ -51,7 +49,7 @@ class BclConvert(RealBclConvert):
 
     def run(self):
         logger.warning(
-            "fake BclConvert with %d reads from %s"
+            "FakeBclConvert with %d reads from %s"
             % (self._n_reads, self._real_fastq_dir)
         )
         sample_sheet = SampleSheet(self._sample_sheet_path, impute_lanes=[1, 2])

@@ -2,6 +2,7 @@ import os.path
 from dataclasses import dataclass
 
 from redun import task, File
+from redun.context import get_context
 from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
@@ -10,9 +11,9 @@ from agr.util.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
-# TODO: use real bclconvert not fake one (fake one is very fast)
-# from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import BclConvert
+# Fake bcl-convert may be selected in context
+from agr.seq.bclconvert import BclConvert
+from agr.fake.bclconvert import FakeBclConvert
 from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
@@ -67,14 +68,29 @@ def cook_sample_sheet(
 
 @task()
 def bclconvert(
-    in_dir: str, sample_sheet_path: str, expected_fastq: Set[str], out_dir: str
+    in_dir: str,
+    sample_sheet_path: str,
+    expected_fastq: Set[str],
+    out_dir: str,
+    bcl_convert_context=get_context("bcl_convert"),
 ) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
-    bclconvert = BclConvert(
-        in_dir=in_dir,
-        sample_sheet_path=sample_sheet_path,
-        out_dir=out_dir,
-    )
+    if (
+        bcl_convert_context is not None
+        and (fake := bcl_convert_context.get("fake")) is not None
+    ):
+        bclconvert = FakeBclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+            n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
+        )
+    else:
+        bclconvert = BclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+        )
     bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
     return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]

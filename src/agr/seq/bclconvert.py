@@ -24,6 +24,7 @@ class BclConvert:
         self._in_dir = in_dir
         self._sample_sheet_path = sample_sheet_path
         self._out_dir = out_dir
+        self._log_dir = os.path.join(self._out_dir, "Logs")
 
     @property
     def top_unknown_path(self) -> str:
@@ -31,11 +32,11 @@ class BclConvert:
 
     @property
     def fastq_complete_path(self) -> str:
-        return os.path.join(self._out_dir, "Logs", "FastqComplete.txt")
+        return os.path.join(self._log_dir, "FastqComplete.txt")
 
     @property
     def log_path(self) -> str:
-        return os.path.join(self._out_dir, "Logs", "1_run_bclconvert.log")
+        return os.path.join(self._log_dir, "1_run_bclconvert.log")
 
     @property
     def benchmark_path(self) -> str:
@@ -58,6 +59,7 @@ class BclConvert:
         return os.path.join(self._out_dir, fastq_file)
 
     def run(self):
+        os.makedirs(self._log_dir, exist_ok=True)
         with open(self.log_path, "w") as log_f:
             _ = subprocess.run(
                 [

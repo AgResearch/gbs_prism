@@ -5,5 +5,10 @@
     "gbs_backup_dir": "~/gbs_prism.dev/backups",
     "keyfiles_dir": "~/gbs_prism.dev/key-files",
     "fastq_link_farm": "~/gbs_prism.dev/fastq-link-farm"
+  },
+  "bcl_convert": {
+    "fake": {
+      "n_reads": 2000000
+    }
   }
 }

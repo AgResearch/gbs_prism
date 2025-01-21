@@ -1,0 +1,14 @@
+{
+  "path": {
+    "seq_root": "~/gbs_prism.dev/fake_runs",
+    "postprocessing_root": "~/gbs_prism.dev.tiny/postprocessing",
+    "gbs_backup_dir": "~/gbs_prism.dev.tiny/backups",
+    "keyfiles_dir": "~/gbs_prism.dev.tiny/key-files",
+    "fastq_link_farm": "~/gbs_prism.dev.tiny/fastq-link-farm"
+  },
+  "bcl_convert": {
+    "fake": {
+      "n_reads": 2000
+    }
+  }
+}
