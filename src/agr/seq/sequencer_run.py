@@ -1,4 +1,5 @@
 import logging
+import os
 import os.path
 import time
 from datetime import datetime, timedelta
@@ -76,14 +77,16 @@ class SequencerRun:
     # TODO move this to a more appropriate class, perhaps
     def exists_in_database(self):
         """Use GQuery to determine whether the run exists in the database."""
-        with open(os.devnull, "w") as devnull_f:
-            try:
+        (r, w) = os.pipe()
+        with os.fdopen(r, "r") as r_f:
+            with os.fdopen(w, "w") as w_f:
                 GQuery(
                     task="lab_report",
                     predicates=Predicates(name="illumina_run_details"),
                     items=[self._run_name],
-                    outfile=devnull_f,
+                    outfile=w_f,
+                    notfound_ok=True,
                 ).run()
-            except GQueryNotFoundException:
-                return False
-        return True
+                if len(r_f.readlines()) > 0:
+                    return True
+        return False
