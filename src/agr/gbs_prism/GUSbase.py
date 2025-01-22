@@ -2,7 +2,6 @@ import logging
 import os.path
 import pdf2image
 import subprocess
-from itertools import islice
 
 logger = logging.getLogger(__name__)
 

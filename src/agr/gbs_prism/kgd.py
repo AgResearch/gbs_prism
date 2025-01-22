@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 
 def run_kgd(
-    cohort_str: str,
     base_dir: str,
     genotyping_method: str,
     hapmap_reldir: str = "hapMap",  # relative to base_dir

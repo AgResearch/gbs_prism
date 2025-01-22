@@ -367,7 +367,6 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
     os.makedirs(out_dir, exist_ok=True)
     # KGD already knows what input files it expects to see under `base_dir`
     run_kgd(
-        cohort_str=spec.cohort.name,
         base_dir=cohort_blind_dir,
         genotyping_method=spec.target.genotyping_method,
     )
