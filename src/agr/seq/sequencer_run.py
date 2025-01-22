@@ -1,11 +1,12 @@
 import logging
 import os
 import os.path
+import subprocess
 import time
 from datetime import datetime, timedelta
 from typing import Optional
 
-from agr.gquery import GQuery, GQueryNotFoundException, Predicates
+from agr.gquery import GQuery, Predicates
 
 logger = logging.getLogger(__name__)
 
@@ -77,16 +78,18 @@ class SequencerRun:
     # TODO move this to a more appropriate class, perhaps
     def exists_in_database(self):
         """Use GQuery to determine whether the run exists in the database."""
-        (r, w) = os.pipe()
-        with os.fdopen(r, "r") as r_f:
-            with os.fdopen(w, "w") as w_f:
-                GQuery(
-                    task="lab_report",
-                    predicates=Predicates(name="illumina_run_details"),
-                    items=[self._run_name],
-                    outfile=w_f,
-                    notfound_ok=True,
-                ).run()
-                if len(r_f.readlines()) > 0:
-                    return True
-        return False
+        # TODO: there ought to be a nicer way to do this than failure code from gquery subprocess
+        with open("/dev/null", "wb") as devnull_f:
+            gquery = subprocess.run(
+                [
+                    "gquery",
+                    "-t",
+                    "lab_report",
+                    "-p",
+                    "name=illumina_run_details",
+                    self._run_name,
+                ],
+                stdout=devnull_f,
+                stderr=devnull_f,
+            )
+            return gquery.returncode == 0
