@@ -67,6 +67,7 @@
               "test_field_readme"
               "test_field_string"
               "test_field_complex"
+              "test_new_selected_python"
               "test_plugin_dependencies_unmet"
             ];
           }));
