@@ -143,6 +143,16 @@
             propagatedBuildInputs = [ gbs-prism-api ];
           };
 
+          # for development, we use a redun with only gquery, and pick up the gbs-prism locally
+          redun-with-gquery = inputs.redun.lib.${system}.default {
+            propagatedBuildInputs = with pkgs.python3Packages; [
+              biopython
+              pdf2image
+              pydantic
+              flakePkgs.gquery-api
+            ];
+          };
+
           gbs-prism-pipeline = pkgs.symlinkJoin
             {
               name = "gbs-prism-pipeline";
@@ -156,12 +166,10 @@
                 (builtins.readDir ./context);
             };
 
-          gbs-prism = pkgs.symlinkJoin
+          gbs-prism-dependencies = pkgs.symlinkJoin
             {
-              name = "gbs-prism";
+              name = "gbs-prism-dependencies";
               paths = [
-                gbs-prism-pipeline
-                redun-with-gbs-prism
                 run_kgd
                 run_GUSbase
               ] ++ (with flakePkgs; [
@@ -178,6 +186,16 @@
               ]);
             };
 
+          gbs-prism = pkgs.symlinkJoin
+            {
+              name = "gbs-prism";
+              paths = [
+                redun-with-gbs-prism
+                gbs-prism-pipeline
+                gbs-prism-dependencies
+              ];
+            };
+
           eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
 
         in
@@ -186,27 +204,27 @@
           devShells = {
             default = mkShell {
               buildInputs =
-                # until we consume gbs_prism as a package we need to wrap the scripts here
-                # let
-                #   kmer_prism = pkgs.writeScriptBin "kmer_prism"
-                #     (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py);
-                #   get_reads_tags_per_sample = pkgs.writeScriptBin "get_reads_tags_per_sample"
-                #     (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py);
-                #   summarise_read_and_tag_counts = pkgs.writeScriptBin "summarise_read_and_tag_counts"
-                #     (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py);
-                #   make_cohort_pages = pkgs.writeScriptBin "make_cohort_pages"
-                #     (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py);
-                # in
+                let
+                  gbs-prism-scripts = pkgs.symlinkJoin
+                    {
+                      name = "gbs-prism-dependencies";
+                      paths = [
+                        (pkgs.writeScriptBin "kmer_prism"
+                          (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py))
+                        (pkgs.writeScriptBin "get_reads_tags_per_sample"
+                          (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py))
+                        (pkgs.writeScriptBin "summarise_read_and_tag_counts"
+                          (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py))
+                        (pkgs.writeScriptBin "make_cohort_pages"
+                          (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py))
+                      ];
+                    };
+                in
                 [
                   bashInteractive
-                  gbs-prism
-                  # own package scripts, just until we consume gbs_prism as a package:
-                  # kmer_prism
-                  # get_reads_tags_per_sample
-                  # summarise_read_and_tag_counts
-                  # make_cohort_pages
-                  # devtools:
-                  # yq-go
+                  redun-with-gquery
+                  gbs-prism-dependencies
+                  gbs-prism-scripts
                 ];
 
               shellHook = ''

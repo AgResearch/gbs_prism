@@ -29,11 +29,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1728530980,
-        "narHash": "sha256-+b1KnD6gsBjp5SgAbk40fC7FiTbFAcdQBdfupIDgy/0=",
+        "lastModified": 1737500657,
+        "narHash": "sha256-+Vs+f2z88wcWUGpNlQcOeqzQjxQCTt2yUgZMlLvfYC8=",
         "owner": "AgResearch",
         "repo": "bbmap.nix",
-        "rev": "7e84ca518c13acd1f9bdd2d8d556f9f27c62e3b0",
+        "rev": "a1db32e02f17cc70cc5a476e963963c655b2d6e8",
         "type": "github"
       },
       "original": {
@@ -149,11 +149,11 @@
         "systems": "systems_2"
       },
       "locked": {
-        "lastModified": 1710146030,
-        "narHash": "sha256-SZ5L6eA7HJ/nmkzGG7/ISclqe6oZdOZTNoesiInkXPQ=",
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "b1d9ab70662946ef0850d488da1c9019f3a9752a",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
         "type": "github"
       },
       "original": {
@@ -296,11 +296,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737001530,
-        "narHash": "sha256-r4fBQ2T849ygOQUe/jqgGw/fymNlo0WNRWDPbOJ4Y80=",
+        "lastModified": 1737506728,
+        "narHash": "sha256-6wyuTC5skJXqbTKIpe026WTeDWER0yaK+XxkKPgQL20=",
         "ref": "refs/heads/gbs_prism",
-        "rev": "40aaf16eecb208fdebbe7e32624c8ccad44ce17f",
-        "revCount": 407,
+        "rev": "76f12e1797a887dc3b35458378b5d3ba4d34d21c",
+        "revCount": 408,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
