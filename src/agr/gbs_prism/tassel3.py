@@ -45,33 +45,30 @@ class Tassel3:
         self, plugin: str, plugin_args: List[str], work_dir: str, done_file: str
     ):
         out_path = os.path.join(work_dir, "%s.stdout" % plugin)
-        err_path = os.path.join(work_dir, "%s.stderr" % plugin)
         max_heap_size = self._max_heap_for_plugin.get(plugin, self._default_max_heap)
         with open(out_path, "w") as out_f:
-            with open(err_path, "w") as err_f:
-                tassel3_command = (
-                    [
-                        "run_pipeline.pl",
-                        "-Xms%s" % self._initial_heap_size,
-                        "-Xmx%s" % max_heap_size,
-                        "-fork1",
-                        "-U%sPlugin" % plugin,
-                        "-w",
-                        work_dir,
-                    ]
-                    + plugin_args
-                    + [
-                        "-endPlugin",
-                        "-runfork1",
-                    ]
-                )
-                logger.info(" ".join(tassel3_command))
-                _ = subprocess.run(
-                    tassel3_command,
-                    stdout=out_f,
-                    stderr=err_f,
-                    check=True,
-                )
+            tassel3_command = (
+                [
+                    "run_pipeline.pl",
+                    "-Xms%s" % self._initial_heap_size,
+                    "-Xmx%s" % max_heap_size,
+                    "-fork1",
+                    "-U%sPlugin" % plugin,
+                    "-w",
+                    work_dir,
+                ]
+                + plugin_args
+                + [
+                    "-endPlugin",
+                    "-runfork1",
+                ]
+            )
+            logger.info(" ".join(tassel3_command))
+            _ = subprocess.run(
+                tassel3_command,
+                stdout=out_f,
+                check=True,
+            )
         pathlib.Path(os.path.join(work_dir, done_file)).touch()
 
     def fastq_to_tag_count(self, in_path: str, cohort_str: str, work_dir: str):

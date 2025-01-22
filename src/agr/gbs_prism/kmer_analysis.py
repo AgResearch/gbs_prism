@@ -22,7 +22,6 @@ def run_kmer_analysis(in_path: str, out_path: str, input_filetype: str, kmer_siz
                 in_path,
             ],
             stdout=log_f,
-            stderr=log_f,
             text=True,
             check=True,
         )

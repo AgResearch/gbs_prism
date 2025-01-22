@@ -24,5 +24,4 @@ def fastqc(in_path: str, out_dir: str, num_threads: int = 8):
             ],
             check=True,
             stdout=log_f,
-            stderr=log_f,
         )

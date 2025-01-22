@@ -15,7 +15,6 @@ def run_kgd(
     os.makedirs(work_dir, exist_ok=True)
 
     out_path = "%s.stdout" % work_dir
-    err_path = "%s.stderr" % work_dir
 
     hapmap_files = ["HapMap.hmc.txt.blinded", "HapMap.hmc.txt"]
     hapmap_dir = os.path.join(base_dir, hapmap_reldir)
@@ -33,16 +32,14 @@ def run_kgd(
 
     if has_sufficient_snps(hapmap_path):
         with open(out_path, "w") as out_f:
-            with open(err_path, "w") as err_f:
-                run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
-                logger.info(" ".join(run_kgd_command))
-                _ = subprocess.run(
-                    run_kgd_command,
-                    cwd=work_dir,
-                    stdout=out_f,
-                    stderr=err_f,
-                    check=True,
-                )
+            run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
+            logger.info(" ".join(run_kgd_command))
+            _ = subprocess.run(
+                run_kgd_command,
+                cwd=work_dir,
+                stdout=out_f,
+                check=True,
+            )
     else:
         print("skipping KGD since insufficient SNPs in %s" % hapmap_path)
 

@@ -74,7 +74,6 @@ class BclConvert:
                 ],
                 check=True,
                 stdout=log_f,
-                stderr=log_f,
             )
         # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
         pathlib.Path(self.fastq_complete_path).touch()

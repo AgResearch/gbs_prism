@@ -29,22 +29,22 @@ _ADAPTERS = [
 
 
 def cutadapt(in_path: str, out_path: str):
-    err_path = "%s.report" % out_path.removesuffix(".fastq")
+    json_report_path = "%s.json" % out_path.removesuffix(".fastq")
     with open(out_path, "w") as out_f:
-        with open(err_path, "w") as err_f:
-            cutadapt_command = (
-                [
-                    "cutadapt",
-                ]
-                + [arg for adapter in _ADAPTERS for arg in ["-a", adapter]]
-                + [
-                    in_path,
-                ]
-            )
-            logger.info(" ".join(cutadapt_command))
-            _ = subprocess.run(
-                cutadapt_command,
-                check=True,
-                stdout=out_f,
-                stderr=err_f,
-            )
+        cutadapt_command = (
+            [
+                "cutadapt",
+            ]
+            + [arg for adapter in _ADAPTERS for arg in ["-a", adapter]]
+            + [
+                in_path,
+                "--json",
+                json_report_path,
+            ]
+        )
+        logger.info(" ".join(cutadapt_command))
+        _ = subprocess.run(
+            cutadapt_command,
+            check=True,
+            stdout=out_f,
+        )
