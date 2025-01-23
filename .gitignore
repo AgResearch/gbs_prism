@@ -2,6 +2,6 @@
 /.redun/
 __pycache__/
 /log/
-/result
+/result*
 *.pickle
 kmer_binning.txt.*

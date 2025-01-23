@@ -296,11 +296,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737516571,
-        "narHash": "sha256-5bW8J/NOJACYSp4dPCKVD6S3SFw2bp04w/wN1TKC8/w=",
+        "lastModified": 1737585680,
+        "narHash": "sha256-mop/ODNZJJSguhv8SJR+9b+ylutRKI7mDrAH2o1Y6rU=",
         "ref": "refs/heads/gbs_prism",
-        "rev": "5aec5fccd794d0d620bdc87e059ff01b8ef85f22",
-        "revCount": 409,
+        "rev": "dcfc3a7e4eda9d077dfa0d6770612180dbd5b39c",
+        "revCount": 410,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },

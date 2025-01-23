@@ -6,15 +6,8 @@ usage="usage: $(basename "$0") [--home] [--dev|--test] <nix-flake-url>"
 app_dir=/agr/persist/apps/eri_rocky8/software
 modulefiles_dir=/agr/persist/apps/eri_rocky8/modules/all
 
-unset package_suffix
 while true; do
     case "$1" in
-    --dev)
-        package_suffix="-dev"
-        ;;
-    --test)
-        package_suffix="-test"
-        ;;
     --home)
         app_dir=$HOME/apps
         modulefiles_dir=$HOME/modulefiles
@@ -53,14 +46,30 @@ test -d "$modulefiles_dir" || {
     exit 1
 }
 
-# unpack the flake URI
-IFS='?' read -r url query_string <<<"$nix_flake_url"
-IFS='/' read -r _ _ _ _ git_repo <<<"$url"
-IFS='.' read -r package_base _ <<<"$git_repo"
+# Nix flake
+IFS='?#' read -r repo query_string flake_attr <<<"$nix_flake_url"
+
+package_base="${repo##?*/}"
+
+env="${flake_attr##?*.}"
+case "$flake_attr" in
+eri.dev)
+    package_suffix="-$env"
+    ;;
+eri.test)
+    package_suffix="-$env"
+    ;;
+eri.prod)
+    package_suffix=
+    ;;
+*)
+    echo >&2 "ERROR: flake attribute expected to be one of eri.dev, eri.test, eri.prod"
+    exit 1
+    ;;
+esac
 
 package="${package_base}${package_suffix}"
-query_base="${query_string%%#*}"
-version="${query_base##?*/}"
+version="${query_string##?*/}"
 
 echo "installing Nix flake $nix_flake_url as $package version $version into $app_dir with modulefile into $modulefiles_dir"
 

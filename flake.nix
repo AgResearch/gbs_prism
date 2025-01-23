@@ -54,11 +54,15 @@
             kgd-src = inputs.kgd.packages.${system}.src;
             GUSbase = inputs.GUSbase.packages.${system}.default;
             gquery-api = inputs.gquery.packages.${system}.api;
-            gquery-eri-dev = inputs.gquery.packages.${system}.eri-dev;
+            gquery-cli = inputs.gquery.packages.${system}.cli;
+            gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
           };
 
           export-gquery-environment-for-eri = env:
             inputs.gquery.export-environment-for-eri.${system} env;
+
+          set-gquery-environment-for-eri = env:
+            inputs.gquery.set-environment-for-eri.${system} env;
 
           # when using NixOS 24.05 we need this:
           # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
@@ -187,6 +191,7 @@
               ]);
             };
 
+          # keep in step with gbs-prism-for-eri
           gbs-prism = pkgs.symlinkJoin
             {
               name = "gbs-prism";
@@ -194,8 +199,44 @@
                 redun-with-gbs-prism
                 gbs-prism-pipeline
                 gbs-prism-dependencies
+                flakePkgs.gquery-cli
               ];
             };
+
+          # keep in step with gbs-prism
+          gbs-prism-for-eri = env:
+            let
+              redun-with-gbs-prism-for-eri = env:
+                let
+                  inherit (pkgs) makeWrapper stdenv;
+                in
+                stdenv.mkDerivation
+                  {
+                    name = "redun-with-gbs-prism-${env}";
+
+                    phases = [ "installPhase" ];
+
+                    nativeBuildInputs = [ makeWrapper ];
+
+                    installPhase = ''
+                      mkdir -p $out/bin
+                      for prog in redun; do
+                        makeWrapper ${redun-with-gbs-prism}/bin/''$prog $out/bin/''$prog ${set-gquery-environment-for-eri env}
+                      done
+                    '';
+                  };
+
+            in
+            pkgs.symlinkJoin
+              {
+                name = "gbs-prism-${env}";
+                paths = [
+                  (redun-with-gbs-prism-for-eri env)
+                  gbs-prism-pipeline
+                  gbs-prism-dependencies
+                  (flakePkgs.gquery-eri-cli."${env}")
+                ];
+              };
 
           eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
 
@@ -237,7 +278,14 @@
             };
           };
 
-          packages.default = gbs-prism;
+          packages = {
+            default = gbs-prism;
+
+            # attribute for each environment which is the gbs-prism package wrapped for that eRI environment
+            eri = builtins.listToAttrs (map (env: { name = env; value = gbs-prism-for-eri env; })
+              [ "dev" "test" "prod" ]);
+
+          };
 
           apps.eri-install = {
             type = "app";
