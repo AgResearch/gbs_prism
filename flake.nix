@@ -58,11 +58,9 @@
             gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
           };
 
-          export-gquery-environment-for-eri = env:
-            inputs.gquery.export-environment-for-eri.${system} env;
+          gquery-export-env = env: inputs.gquery.${system}.export-env env;
 
-          set-gquery-environment-for-eri = env:
-            inputs.gquery.set-environment-for-eri.${system} env;
+          gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
 
           # when using NixOS 24.05 we need this:
           # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
@@ -148,6 +146,8 @@
             propagatedBuildInputs = [ gbs-prism-api ];
           };
 
+          python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
+
           # for development, we use a redun with only gquery, and pick up the gbs-prism locally
           redun-with-gquery = inputs.redun.lib.${system}.default {
             propagatedBuildInputs = with pkgs.python3Packages; [
@@ -191,52 +191,17 @@
               ]);
             };
 
-          # keep in step with gbs-prism-for-eri
           gbs-prism = pkgs.symlinkJoin
             {
               name = "gbs-prism";
               paths = [
                 redun-with-gbs-prism
+                python-with-gbs-prism
                 gbs-prism-pipeline
                 gbs-prism-dependencies
                 flakePkgs.gquery-cli
               ];
             };
-
-          # keep in step with gbs-prism
-          gbs-prism-for-eri = env:
-            let
-              redun-with-gbs-prism-for-eri = env:
-                let
-                  inherit (pkgs) makeWrapper stdenv;
-                in
-                stdenv.mkDerivation
-                  {
-                    name = "redun-with-gbs-prism-${env}";
-
-                    phases = [ "installPhase" ];
-
-                    nativeBuildInputs = [ makeWrapper ];
-
-                    installPhase = ''
-                      mkdir -p $out/bin
-                      for prog in redun; do
-                        makeWrapper ${redun-with-gbs-prism}/bin/''$prog $out/bin/''$prog ${set-gquery-environment-for-eri env}
-                      done
-                    '';
-                  };
-
-            in
-            pkgs.symlinkJoin
-              {
-                name = "gbs-prism-${env}";
-                paths = [
-                  (redun-with-gbs-prism-for-eri env)
-                  gbs-prism-pipeline
-                  gbs-prism-dependencies
-                  (flakePkgs.gquery-eri-cli."${env}")
-                ];
-              };
 
           eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
 
@@ -272,7 +237,7 @@
               shellHook = ''
                 # enable use of gbs_prism from current directory during development
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-                ${export-gquery-environment-for-eri "dev"}
+                gquery-${gquery-export-env "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
               '';
             };
@@ -280,16 +245,16 @@
 
           packages = {
             default = gbs-prism;
-
-            # attribute for each environment which is the gbs-prism package wrapped for that eRI environment
-            eri = builtins.listToAttrs (map (env: { name = env; value = gbs-prism-for-eri env; })
-              [ "dev" "test" "prod" ]);
-
           };
 
-          apps.eri-install = {
-            type = "app";
-            program = "${eri-install}/bin/eri-install.gbs_prism";
+          apps = {
+            eri-install = {
+              type = "app";
+              program = "${eri-install}/bin/eri-install.gbs_prism";
+            };
+
+            # used in eri/install for the module file
+            lmod-setenv = gquery-lmod-setenv;
           };
         }
       );

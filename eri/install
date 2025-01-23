@@ -3,6 +3,8 @@
 usage="usage: $(basename "$0") [--home] [--dev|--test] <nix-flake-url>"
 
 # defaults
+env=prod
+unset package_suffix
 app_dir=/agr/persist/apps/eri_rocky8/software
 modulefiles_dir=/agr/persist/apps/eri_rocky8/modules/all
 
@@ -11,6 +13,14 @@ while true; do
     --home)
         app_dir=$HOME/apps
         modulefiles_dir=$HOME/modulefiles
+        ;;
+    --dev)
+        env="dev"
+        package_suffix="-$env"
+        ;;
+    --test)
+        env="test"
+        package_suffix="-$env"
         ;;
     --help)
         echo >&2 "$usage"
@@ -47,27 +57,9 @@ test -d "$modulefiles_dir" || {
 }
 
 # Nix flake
-IFS='?#' read -r repo query_string flake_attr <<<"$nix_flake_url"
+IFS='?' read -r repo query_string <<<"$nix_flake_url"
 
 package_base="${repo##?*/}"
-
-env="${flake_attr##?*.}"
-case "$flake_attr" in
-eri.dev)
-    package_suffix="-$env"
-    ;;
-eri.test)
-    package_suffix="-$env"
-    ;;
-eri.prod)
-    package_suffix=
-    ;;
-*)
-    echo >&2 "ERROR: flake attribute expected to be one of eri.dev, eri.test, eri.prod"
-    exit 1
-    ;;
-esac
-
 package="${package_base}${package_suffix}"
 version="${query_string##?*/}"
 
@@ -79,6 +71,12 @@ test -d "$package_dir" || {
 }
 
 package_version_dir="$package_dir/$version"
+test -d "$package_version_dir" || {
+    mkdir "$package_version_dir"
+}
+
+# abort on error
+set -e
 
 nix build -o "$package_version_dir" "$nix_flake_url"
 bin_dir="$package_version_dir/bin"
@@ -107,4 +105,5 @@ More information
 
 prepend_path("PATH", "${bin_dir}")
 setenv("GBS_PRISM", "${pipeline_dir}")
+$(nix run "${nix_flake_url}#lmod-setenv" -- "${env}")
 EOF
