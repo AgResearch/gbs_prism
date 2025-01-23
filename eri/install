@@ -98,6 +98,9 @@ More information
  - Homepage: https://github.com/AgResearch/gbs_prism
 ]==])
 
+depends_on("krb5cc.home")
+
+conflict("${package_base}", "${package_base}-dev", "${package_base}-test")
 
 prepend_path("PATH", "${bin_dir}")
 setenv("GBS_PRISM", "${package_version_link}/pipeline")
