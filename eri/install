@@ -70,17 +70,13 @@ test -d "$package_dir" || {
     mkdir "$package_dir"
 }
 
-package_version_dir="$package_dir/$version"
-test -d "$package_version_dir" || {
-    mkdir "$package_version_dir"
-}
+package_version_link="$package_dir/$version"
 
 # abort on error
 set -e
 
-nix build -o "$package_version_dir" "$nix_flake_url"
-bin_dir="$package_version_dir/bin"
-pipeline_dir="$package_version_dir/pipeline"
+nix build -o "$package_version_link" "$nix_flake_url"
+bin_dir="$package_version_link/bin"
 
 # create modulefile
 module_dir="$modulefiles_dir/$package"
@@ -104,6 +100,6 @@ More information
 
 
 prepend_path("PATH", "${bin_dir}")
-setenv("GBS_PRISM", "${pipeline_dir}")
+setenv("GBS_PRISM", "${package_version_link}/pipeline")
 $(nix run "${nix_flake_url}#lmod-setenv" -- "${env}")
 EOF
