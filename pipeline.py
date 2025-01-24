@@ -1,8 +1,8 @@
-import os.path
 from redun import task, File
 from redun.context import get_context
 from typing import List
 
+from agr.util.path import expand
 from agr.gbs_prism.redun import (
     run_stage1,
     run_stage2,
@@ -20,7 +20,7 @@ def main(
     path_context=get_context("path"),
 ) -> tuple[Stage1Output, Stage2Output, List[File]]:
 
-    path = {k: os.path.expanduser(v) for (k, v) in path_context.items()}
+    path = {k: expand(v) for (k, v) in path_context.items()}
 
     stage1 = run_stage1(
         seq_root=path["seq_root"],

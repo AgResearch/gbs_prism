@@ -11,9 +11,18 @@ The design approach is as follows:
 
 This is the normal way to run the pipeline, and unless there is breakage, should be all that is needed.
 
+Currently Slurm has not been integrated, so the while pipeline runs in the foreground. (This is an early access release!)  So it;s best to run in an interactive Slurm session, as follows (for the test release).
+
+```
+login-1$ kinit
+login-1$ module load gbs_prism-test
+login-1$ srun -p compute --pty bash
+compute-3$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
+```
+
 ## Interactive Use
 
-The `RunContext` class is useful for interactive use, as it facilitates creation of various objects, with the paths defined in the redun context file.
+For interactive troubleshooting, the `RunContext` class is useful, as it facilitates creation of various objects, with the paths defined in the redun context file.
 
 With the `gbs_prism` module loaded:
 
@@ -22,7 +31,7 @@ $ python
 Python 3.11.10 (main, Sep  7 2024, 01:03:31) [GCC 13.2.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> from agr.gbs_prism.interactive import RunContext
->>> run = RunContext("./context/home.tiny.json", "240323_A01439_0249_BH33MYDRX5")
+>>> run = RunContext("240323_A01439_0249_BH33MYDRX5", "$GBS_PRISM/eri-test.json")
 
 >>> run.gbs_keyfiles.create()
 ```

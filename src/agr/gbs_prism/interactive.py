@@ -1,5 +1,4 @@
 import json
-import os.path
 from functools import cached_property
 from typing import Literal
 
@@ -12,6 +11,8 @@ from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
 from agr.gbs_prism.redun.stage1 import create_bcl_convert
 
+from agr.util.path import expand
+
 
 class RunContext:
     """
@@ -23,12 +24,12 @@ class RunContext:
 
     def __init__(
         self,
-        context_file: str,
         run_name: str,
+        context_file: str,
         platform: Literal["iseq", "miseq", "novaseq"] = "novaseq",
         impute_lanes=[1, 2],
     ):
-        with open(context_file, "r") as context_f:
+        with open(expand(context_file), "r") as context_f:
             self._context = json.load(context_f)
             self._path_context = self._context["path"]
             self._run_name = run_name
@@ -41,23 +42,23 @@ class RunContext:
 
     @cached_property
     def seq_root(self) -> str:
-        return os.path.expanduser(self._path_context["seq_root"])
+        return expand(self._path_context["seq_root"])
 
     @cached_property
     def postprocessing_root(self) -> str:
-        return os.path.expanduser(self._path_context["postprocessing_root"])
+        return expand(self._path_context["postprocessing_root"])
 
     @cached_property
     def gbs_backup_dir(self) -> str:
-        return os.path.expanduser(self._path_context["gbs_backup_dir"])
+        return expand(self._path_context["gbs_backup_dir"])
 
     @cached_property
     def keyfiles_dir(self) -> str:
-        return os.path.expanduser(self._path_context["keyfiles_dir"])
+        return expand(self._path_context["keyfiles_dir"])
 
     @cached_property
     def fastq_link_farm(self) -> str:
-        return os.path.expanduser(self._path_context["fastq_link_farm"])
+        return expand(self._path_context["fastq_link_farm"])
 
     @cached_property
     def sequencer_run(self) -> SequencerRun:
