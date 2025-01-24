@@ -73,7 +73,7 @@ class RunContext:
     def bclconvert(self) -> BclConvert | FakeBclConvert:
         return create_real_or_fake_bcl_convert(
             self.sequencer_run.dir,
-            sample_sheet_path=self.sample_sheet.path,
+            sample_sheet_path=self.paths.seq.sample_sheet_path,
             out_dir=self.paths.seq.bclconvert_dir,
             bcl_convert_context=self._context.get("bcl_convert"),
         )
@@ -82,7 +82,7 @@ class RunContext:
     def gbs_keyfiles(self) -> GbsKeyfiles:
         return GbsKeyfiles(
             sequencer_run=self.sequencer_run,
-            sample_sheet_path=self.sample_sheet.path,
+            sample_sheet_path=self.paths.seq.sample_sheet_path,
             root=self.paths.illumina_platform_root,
             out_dir=self.keyfiles_dir,
             fastq_link_farm=self.fastq_link_farm,
