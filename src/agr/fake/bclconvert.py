@@ -73,3 +73,24 @@ class FakeBclConvert(BclConvert):
         fastq_complete_dir = os.path.dirname(self.fastq_complete_path)
         os.makedirs(fastq_complete_dir, exist_ok=True)
         pathlib.Path(self.fastq_complete_path).touch()
+
+
+def create_real_or_fake_bcl_convert(
+    in_dir: str, sample_sheet_path: str, out_dir: str, bcl_convert_context
+) -> BclConvert | FakeBclConvert:
+    if (
+        bcl_convert_context is not None
+        and (fake := bcl_convert_context.get("fake")) is not None
+    ):
+        return FakeBclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+            n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
+        )
+    else:
+        return BclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+        )

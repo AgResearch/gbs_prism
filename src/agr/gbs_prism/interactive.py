@@ -5,11 +5,10 @@ from typing import Literal
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import FakeBclConvert
+from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
-from agr.gbs_prism.redun.stage1 import create_bcl_convert
 
 from agr.util.path import expand
 
@@ -72,7 +71,7 @@ class RunContext:
 
     @cached_property
     def bclconvert(self) -> BclConvert | FakeBclConvert:
-        return create_bcl_convert(
+        return create_real_or_fake_bcl_convert(
             self.sequencer_run.dir,
             sample_sheet_path=self.sample_sheet.path,
             out_dir=self.paths.seq.bclconvert_dir,

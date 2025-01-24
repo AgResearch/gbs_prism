@@ -12,8 +12,8 @@ from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
 # Fake bcl-convert may be selected in context
-from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import FakeBclConvert
+# from agr.seq.bclconvert import BclConvert
+from agr.fake.bclconvert import create_real_or_fake_bcl_convert
 from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
@@ -66,27 +66,6 @@ def cook_sample_sheet(
     )
 
 
-def create_bcl_convert(
-    in_dir: str, sample_sheet_path: str, out_dir: str, bcl_convert_context
-) -> BclConvert | FakeBclConvert:
-    if (
-        bcl_convert_context is not None
-        and (fake := bcl_convert_context.get("fake")) is not None
-    ):
-        return FakeBclConvert(
-            in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
-            out_dir=out_dir,
-            n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
-        )
-    else:
-        return BclConvert(
-            in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
-            out_dir=out_dir,
-        )
-
-
 @task()
 def bclconvert(
     in_dir: str,
@@ -96,7 +75,7 @@ def bclconvert(
     bcl_convert_context=get_context("bcl_convert"),
 ) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
-    bclconvert = create_bcl_convert(
+    bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
         sample_sheet_path=sample_sheet_path,
         out_dir=out_dir,

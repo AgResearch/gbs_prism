@@ -6,8 +6,6 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 
-from agr.gquery import GQuery, Predicates
-
 logger = logging.getLogger(__name__)
 
 
