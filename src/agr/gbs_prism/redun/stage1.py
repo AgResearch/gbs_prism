@@ -66,6 +66,27 @@ def cook_sample_sheet(
     )
 
 
+def create_bcl_convert(
+    in_dir: str, sample_sheet_path: str, out_dir: str, bcl_convert_context
+) -> BclConvert | FakeBclConvert:
+    if (
+        bcl_convert_context is not None
+        and (fake := bcl_convert_context.get("fake")) is not None
+    ):
+        return FakeBclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+            n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
+        )
+    else:
+        return BclConvert(
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+        )
+
+
 @task()
 def bclconvert(
     in_dir: str,
@@ -75,22 +96,12 @@ def bclconvert(
     bcl_convert_context=get_context("bcl_convert"),
 ) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
-    if (
-        bcl_convert_context is not None
-        and (fake := bcl_convert_context.get("fake")) is not None
-    ):
-        bclconvert = FakeBclConvert(
-            in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
-            out_dir=out_dir,
-            n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
-        )
-    else:
-        bclconvert = BclConvert(
-            in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
-            out_dir=out_dir,
-        )
+    bclconvert = create_bcl_convert(
+        in_dir=in_dir,
+        sample_sheet_path=sample_sheet_path,
+        out_dir=out_dir,
+        bcl_convert_context=bcl_convert_context,
+    )
     bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
     return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
