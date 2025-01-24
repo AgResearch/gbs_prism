@@ -58,7 +58,7 @@
             gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
           };
 
-          gquery-export-env = env: inputs.gquery.${system}.export-env env;
+          gquery-export-env = env: inputs.gquery.export-env.${system} env;
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
 
