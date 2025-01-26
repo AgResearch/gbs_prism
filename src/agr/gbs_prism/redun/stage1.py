@@ -160,8 +160,7 @@ def dedupe_one(fastq_file: File, out_dir: str) -> File:
         in_path=fastq_file.path,
         out_path=out_path,
         tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
-        jvm_args=[],
-    )  # TODO fallback to default of 80g which Dedupe uses if we don't override it here
+    )
     return File(out_path)
 
 

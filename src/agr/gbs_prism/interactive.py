@@ -107,5 +107,4 @@ class RunContext:
             in_path=fastq_path,
             out_path=out_path,
             tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
-            jvm_args=[],
-        )  # TODO fallback to default of 80g which Dedupe uses if we don't override it here
+        )
