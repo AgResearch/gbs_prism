@@ -29,11 +29,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737500657,
-        "narHash": "sha256-+Vs+f2z88wcWUGpNlQcOeqzQjxQCTt2yUgZMlLvfYC8=",
+        "lastModified": 1737929770,
+        "narHash": "sha256-dUTbjLi9e4nI8cKl2lWpsUU0UR95cWOH0/i2PdjL0I8=",
         "owner": "AgResearch",
         "repo": "bbmap.nix",
-        "rev": "a1db32e02f17cc70cc5a476e963963c655b2d6e8",
+        "rev": "e3706bdf1bc14f65ee4c378aab5ce59e30929cc7",
         "type": "github"
       },
       "original": {
