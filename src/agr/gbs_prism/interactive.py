@@ -1,4 +1,6 @@
 import json
+import logging
+import os.path
 from functools import cached_property
 from typing import Literal
 
@@ -9,8 +11,16 @@ from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
-
+from agr.seq.dedupe import dedupe
 from agr.util.path import expand
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M",
+)
+# for noisy_module in ["asyncio", "pulp.apis.core", "urllib3"]:
+#     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
 class RunContext:
@@ -88,3 +98,14 @@ class RunContext:
             fastq_link_farm=self.fastq_link_farm,
             backup_dir=self.gbs_backup_dir,
         )
+
+    def dedupe(self, fastq_path: str):
+        """Dedupe a single fastq file (full path), info the configured output directory."""
+        out_dir = self.paths.seq.dedupe_dir
+        out_path = os.path.join(out_dir, os.path.basename(fastq_path))
+        dedupe(
+            in_path=fastq_path,
+            out_path=out_path,
+            tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+            jvm_args=[],
+        )  # TODO fallback to default of 80g which Dedupe uses if we don't override it here

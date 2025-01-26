@@ -15,7 +15,7 @@ def dedupe(
     stderr_path = "%s.stderr" % out_path
     with open(stdout_path, "w") as stdout_f:
         with open(stderr_path, "w") as stderr_f:
-            _ = subprocess.run(
+            cmd = (
                 ["clumpify.sh"]
                 + jvm_args
                 + clumpify_args
@@ -23,7 +23,11 @@ def dedupe(
                     "tmpdir=%s" % tmp_dir,
                     "in=%s" % in_path,
                     "out=%s" % out_path,
-                ],
+                ]
+            )
+            logger.info(" ".join(cmd))
+            _ = subprocess.run(
+                cmd,
                 check=True,
                 stdout=stdout_f,
                 stderr=stderr_f,

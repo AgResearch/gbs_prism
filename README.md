@@ -16,7 +16,7 @@ Currently Slurm has not been integrated, so the while pipeline runs in the foreg
 ```
 login-1$ kinit
 login-1$ module load gbs_prism-test
-login-1$ srun -p compute --pty bash
+login-1$ srun -p compute --mem=64G --pty bash
 compute-3$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
 ```
 
