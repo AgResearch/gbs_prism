@@ -15,6 +15,7 @@ from agr.gbs_prism.redun import (
 redun_namespace = "agr.gbs_prism"
 
 logging.basicConfig(
+    filename="gbs_prism.log",
     level=logging.INFO,
     format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
     datefmt="%Y-%m-%d %H:%M",
