@@ -1,6 +1,6 @@
 # gbs_prism for eRI
 
-The `main` branch in this repo is the port of legacy HPC [gbs_prism](https://github.com/AgResearch/gbs_prism/tree/master) for eRI. (The legacy branch has been retained and renamed from `master` to `legacy`.)
+The `main` branch in this repo is the port of legacy HPC [gbs_prism](https://github.com/AgResearch/gbs_prism/tree/legacy) for eRI. (The legacy branch has been retained and renamed from `master` to `legacy`.)
 
 The design approach is as follows:
 - use redun instead of Tardis
