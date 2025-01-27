@@ -20,8 +20,16 @@ login-1$ srun -p compute --mem=256G --pty bash
 compute-3$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
 ```
 
+Note that the context file is where all path tweaking and memory sizing is done, and may be copied into the current directory for changing and using from there.
+
 Memory usage may be high, especially:
 - dedupe (150GB)
+
+## Redun
+
+The pipeline is built with [redun](https://insitro.github.io/redun/index.html), and that interface is exposed to users.
+
+A useful command to examine the status of previous jobs is [`redun console`](https://insitro.github.io/redun/console.html), which uses the `.redun` directory created in the current directory when running `redun`.
 
 ## Interactive Use
 
@@ -39,9 +47,9 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> run.gbs_keyfiles.create()
 ```
 
-## Work in progress
+## Development
 
-The eri branch in this repo is a work-in-progress.  Eventually the Python library will be moved out as a separately installable package.
+All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv` (still yet to be deployed on eRI, sorry).  Plain old `nix develop` also works, but doesn't cache like `direnv` does, so entering the environment may be time-consuming.
 
 ## Notes
 
