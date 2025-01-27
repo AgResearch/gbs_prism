@@ -28,8 +28,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      # TODO use main branch not gbs_prism branch
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/gbs_prism";
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     redun = {
