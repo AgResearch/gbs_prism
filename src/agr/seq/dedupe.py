@@ -1,4 +1,5 @@
 import logging
+import os.path
 import subprocess
 
 logger = logging.getLogger(__name__)
@@ -11,6 +12,8 @@ def dedupe(
     jvm_args: list[str] = ["-Xmx80g"],
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ):
+    # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
+    out_dir = os.path.dirname(out_path)
     stdout_path = "%s.stdout" % out_path
     stderr_path = "%s.stderr" % out_path
     with open(stdout_path, "w") as stdout_f:
@@ -31,4 +34,5 @@ def dedupe(
                 check=True,
                 stdout=stdout_f,
                 stderr=stderr_f,
+                cwd=out_dir,
             )
