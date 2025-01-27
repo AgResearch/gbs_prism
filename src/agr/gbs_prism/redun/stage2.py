@@ -251,6 +251,26 @@ def get_keyfile_for_gbsx(spec: CohortSpec) -> File:
     return File(out_path)
 
 
+# TODO make get_unblind_script a task
+# def get_unblind_script(self, out_path: str):
+#     fcid = flowcell_id(self._config.run_name)
+#     with open(out_path, "w") as script_f:
+#         GQuery(
+#             task="gbs_keyfile",
+#             badge_type="library",
+#             predicates=Predicates(
+#                 flowcell=fcid,
+#                 enzyme=self._name.enzyme,
+#                 gbs_cohort=self._name.gbs_cohort,
+#                 unblinding=True,
+#                 columns="qc_sampleid,sample",
+#                 noheading=True,
+#             ),
+#             items=[self._name.libname],
+#             outfile=script_f,
+#         ).run()
+
+
 @dataclass
 class FastqToTagCountOutput:
     stdout: File

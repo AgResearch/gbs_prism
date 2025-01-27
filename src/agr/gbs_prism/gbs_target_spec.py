@@ -177,10 +177,6 @@ def _gquery_cohort_genotyping_method(run_name: str, cohort: Cohort) -> str:
         return method
 
 
-# IMPORTANT NOTE: the SnakeMake targets are driven by target pathnames. A component of the path
-# is the basename of the bwa reference, which means the full path to the bwa reference must be
-# looked up from the basename, and must therefore be unique.  Non-uniqueness here is a fatal error,
-# and will need to be addressed if in fact it turns out to be a problem.
 def _gquery_cohort_alignment_references(
     run_name: str, cohort: Cohort
 ) -> dict[str, str]:
