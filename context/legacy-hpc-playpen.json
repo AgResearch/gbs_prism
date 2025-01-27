@@ -1,6 +1,6 @@
 {
   "path": {
-    "seq_root": "/dataset/2024_illumina_sequencing_d/active",
+    "seq_root": "/dataset/2024_illumina_sequencing_e/active",
     "postprocessing_root": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/postprocessing",
     "gbs_backup_dir": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/backups",
     "keyfiles_dir": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/key-files",

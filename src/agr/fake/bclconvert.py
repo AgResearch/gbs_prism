@@ -20,8 +20,8 @@ class FakeBclConvert(BclConvert):
         # find the real run
         run_name = os.path.basename(in_dir)
         illumina_datasets = [
-            "2024_illumina_sequencing_d",
             "2024_illumina_sequencing_e",
+            "2024_illumina_sequencing_d",
             "2023_illumina_sequencing_c",
             "2023_illumina_sequencing_b",
             "2023_illumina_sequencing_a",
