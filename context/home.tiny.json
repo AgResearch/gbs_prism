@@ -6,9 +6,26 @@
     "keyfiles_dir": "~/gbs_prism.dev.tiny/key-files",
     "fastq_link_farm": "~/gbs_prism.dev.tiny/fastq-link-farm"
   },
-  "bcl_convert": {
-    "fake": {
-      "n_reads": 2000
+  "tools": {
+    "bcl_convert": {
+      "fake": {
+        "n_reads": 2000
+      }
+    },
+    "dedupe":
+    {
+      "java_max_heap": "768M"
+    },
+    "tassel3":
+    {
+      "default": {
+        "java_initial_heap": "48M",
+        "java_max_heap": "1G"
+      },
+      "FastqToTagCount":
+      {
+        "java_max_heap": "256M"
+      }
     }
   }
 }

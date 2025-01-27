@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
+from redun.context import get_context
 from redun.file import glob_file
 from typing import Dict, List
 
@@ -278,12 +279,14 @@ class FastqToTagCountOutput:
 
 
 @task()
-def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOutput:
+def get_fastq_to_tag_count(
+    spec: CohortSpec, keyfile: File, tassel3_context=get_context("tools.tassel3")
+) -> FastqToTagCountOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
     # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
     tag_counts_dir = os.path.join(cohort_blind_dir, "tagCounts")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.fastq_to_tag_count(
         in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
     )
@@ -328,46 +331,60 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
 
 
 @task()
-def merge_taxa_tag_count(spec: CohortSpec, tag_counts: List[File]) -> File:
+def merge_taxa_tag_count(
+    spec: CohortSpec,
+    tag_counts: List[File],
+    tassel3_context=get_context("tools.tassel3"),
+) -> File:
     _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.merge_taxa_tag_count(work_dir=cohort_blind_dir)
     return File(os.path.join(cohort_blind_dir, "mergedTagCounts", "mergedAll.cnt"))
 
 
 @task()
-def tag_count_to_tag_pair(spec: CohortSpec, merged_all_count: File) -> File:
+def tag_count_to_tag_pair(
+    spec: CohortSpec,
+    merged_all_count: File,
+    tassel3_context=get_context("tools.tassel3"),
+) -> File:
     _ = merged_all_count  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.tag_count_to_tag_pair(work_dir=cohort_blind_dir)
     return File(os.path.join(cohort_blind_dir, "tagPair", "tagPair.tps"))
 
 
 @task()
-def tag_pair_to_tbt(spec: CohortSpec, tag_pair: File) -> File:
+def tag_pair_to_tbt(
+    spec: CohortSpec, tag_pair: File, tassel3_context=get_context("tools.tassel3")
+) -> File:
     _ = tag_pair  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.tag_pair_to_tbt(work_dir=cohort_blind_dir)
     return File(os.path.join(cohort_blind_dir, "tagsByTaxa", "tbt.bin"))
 
 
 @task()
-def tbt_to_map_info(spec: CohortSpec, tags_by_taxa: File) -> File:
+def tbt_to_map_info(
+    spec: CohortSpec, tags_by_taxa: File, tassel3_context=get_context("tools.tassel3")
+) -> File:
     _ = tags_by_taxa  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.tbt_to_map_info(work_dir=cohort_blind_dir)
     return File(os.path.join(cohort_blind_dir, "mapInfo", "mapInfo.bin"))
 
 
 @task()
-def map_info_to_hap_map(spec: CohortSpec, map_info: File) -> List[File]:
+def map_info_to_hap_map(
+    spec: CohortSpec, map_info: File, tassel3_context=get_context("tools.tassel3")
+) -> List[File]:
     _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3()
+    tassel3 = Tassel3(tassel3_context)
     tassel3.map_info_to_hap_map(work_dir=cohort_blind_dir)
     hap_map_dir = os.path.join(cohort_blind_dir, "hapMap")
     return [File(path) for path in glob_file("%s/*" % hap_map_dir)]

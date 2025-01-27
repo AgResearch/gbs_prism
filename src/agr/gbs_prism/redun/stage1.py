@@ -72,7 +72,7 @@ def bclconvert(
     sample_sheet_path: str,
     expected_fastq: Set[str],
     out_dir: str,
-    bcl_convert_context=get_context("bcl_convert"),
+    bcl_convert_context=get_context("tools.bcl_convert"),
 ) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
     bclconvert = create_real_or_fake_bcl_convert(
@@ -152,7 +152,11 @@ def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def dedupe_one(fastq_file: File, out_dir: str) -> File:
+def dedupe_one(
+    fastq_file: File,
+    out_dir: str,
+    java_max_heap=get_context("tools.dedupe.java_max_heap"),
+) -> File:
     """Dedupe a single fastq file."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
@@ -160,6 +164,7 @@ def dedupe_one(fastq_file: File, out_dir: str) -> File:
         in_path=fastq_file.path,
         out_path=out_path,
         tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+        jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
     )
     return File(out_path)
 

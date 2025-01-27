@@ -3,7 +3,7 @@ import os.path
 import pathlib
 import re
 import subprocess
-from typing import Dict, List
+from typing import Any, List
 
 from agr.util.path import remove_if_exists
 
@@ -31,29 +31,42 @@ def fastq_name_for_tassel3(
 
 
 class Tassel3:
-    def __init__(
-        self,
-        initial_heap_size: str = "512M",
-        max_heap_for_plugin: Dict[str, str] = {"FastqToTagCount": "5G"},
-        default_max_heap: str = "20G",  # legacy used 500G
-    ):
-        self._initial_heap_size = initial_heap_size
-        self._max_heap_for_plugin = max_heap_for_plugin
-        self._default_max_heap = default_max_heap
+    def __init__(self, tassel3_context: Any):
+        self._context = tassel3_context
+
+    def _jvm_args_for_plugin(self, plugin: str) -> List[str]:
+        """Look up java_max_heap and java_initial_heap in tassel3 context for plugin, or fallback to default."""
+        JAVA_MAX_HEAP = "java_max_heap"
+        JAVA_INITIAL_HEAP = "java_initial_heap"
+        max_heap = None
+        initial_heap = None
+        if isinstance(self._context, dict):
+            if isinstance(plugin_context := self._context.get(plugin), dict):
+                max_heap = plugin_context.get(JAVA_MAX_HEAP)
+                initial_heap = plugin_context.get(JAVA_INITIAL_HEAP)
+            if isinstance(default_context := self._context.get("default"), dict):
+                if max_heap is None:
+                    max_heap = default_context.get(JAVA_MAX_HEAP)
+                if initial_heap is None:
+                    initial_heap = default_context.get(JAVA_INITIAL_HEAP)
+
+        return ([f"-Xmx{max_heap}"] if max_heap is not None else []) + (
+            [f"-Xms{initial_heap}"] if initial_heap is not None else []
+        )
 
     def _run_tassel_plugin(
         self, plugin: str, plugin_args: List[str], work_dir: str, done_file: str
     ):
         out_path = os.path.join(work_dir, "%s.stdout" % plugin)
         err_path = os.path.join(work_dir, "%s.stderr" % plugin)
-        max_heap_size = self._max_heap_for_plugin.get(plugin, self._default_max_heap)
         with open(out_path, "w") as out_f:
             with open(err_path, "w") as err_f:
                 tassel3_command = (
                     [
                         "run_pipeline.pl",
-                        "-Xms%s" % self._initial_heap_size,
-                        "-Xmx%s" % max_heap_size,
+                    ]
+                    + self._jvm_args_for_plugin(plugin)
+                    + [
                         "-fork1",
                         "-U%sPlugin" % plugin,
                         "-w",

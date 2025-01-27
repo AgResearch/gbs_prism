@@ -1,3 +1,4 @@
+import logging
 from redun import task, File
 from redun.context import get_context
 from typing import List
@@ -12,6 +13,14 @@ from agr.gbs_prism.redun import (
 )
 
 redun_namespace = "agr.gbs_prism"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+    datefmt="%Y-%m-%d %H:%M",
+)
+# for noisy_module in ["asyncio", "pulp.apis.core", "urllib3"]:
+#     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
 @task()

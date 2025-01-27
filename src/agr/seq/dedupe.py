@@ -9,7 +9,7 @@ def dedupe(
     in_path: str,
     out_path: str,
     tmp_dir: str,
-    jvm_args: list[str] = ["-Xmx160g"],
+    jvm_args: list[str] = [],
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ):
     # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
