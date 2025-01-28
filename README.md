@@ -31,6 +31,12 @@ The pipeline is built with [redun](https://insitro.github.io/redun/index.html), 
 
 A useful command to examine the status of previous jobs is [`redun console`](https://insitro.github.io/redun/console.html), which uses the `.redun` directory created in the current directory when running `redun`.
 
+## GQuery
+
+When switching between `dev`, `test`, and `prod` environments, it is important not to lose track of which databases `gquery` is currently using.
+
+This may be shown using `gquery -t info`.
+
 ## Interactive Use
 
 For interactive troubleshooting, the `RunContext` class is useful, as it facilitates creation of various objects, with the paths defined in the redun context file.
