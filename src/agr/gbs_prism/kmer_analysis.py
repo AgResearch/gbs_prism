@@ -1,8 +1,8 @@
 import logging
 import os.path
-import subprocess
 
 from agr.util.path import remove_if_exists
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def run_kmer_analysis(in_path: str, out_path: str, input_filetype: str, kmer_siz
         out_dir = os.path.dirname(out_path)
         kmer_prism_workdir = os.path.join(out_dir, "work")
         os.makedirs(kmer_prism_workdir, exist_ok=True)
-        _ = subprocess.run(
+        _ = run_catching_stderr(
             [
                 "kmer_prism",
                 "--input_filetype",

@@ -1,5 +1,4 @@
 import os.path
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
@@ -13,6 +12,7 @@ from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
 from agr.util.redun import concat, one_forall
+from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
 from agr.seq.fastq_sample import FastqSample
@@ -191,7 +191,7 @@ def bam_stats_one(bam_file: File) -> File:
     """run samtools flagstat for a single file."""
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
     with open(out_path, "w") as out_f:
-        _ = subprocess.run(
+        _ = run_catching_stderr(
             ["samtools", "flagstat", bam_file.path], stdout=out_f, check=True
         )
     return File(out_path)
@@ -302,7 +302,7 @@ def get_tag_count(fastqToTagCountStdout: File) -> File:
     out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
     with open(fastqToTagCountStdout.path, "r") as in_f:
         with open(out_path, "w") as out_f:
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 ["get_reads_tags_per_sample"], stdin=in_f, stdout=out_f, check=True
             )
     return File(out_path)
@@ -312,7 +312,7 @@ def get_tag_count(fastqToTagCountStdout: File) -> File:
 def get_tags_reads_summary(spec: CohortSpec, tagCountCsv: File) -> File:
     out_dir = spec.paths.cohort_dir(spec.cohort.name)
     out_path = os.path.join(out_dir, "tags_reads_summary.txt")
-    _ = subprocess.run(
+    _ = run_catching_stderr(
         ["summarise_read_and_tag_counts", "-o", out_path, tagCountCsv.path], check=True
     )
     return File(out_path)
@@ -324,7 +324,7 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
         os.path.dirname(tags_reads_summary.path), "tags_reads_cv.txt"
     )
     with open(out_path, "w") as out_f:
-        _ = subprocess.run(
+        _ = run_catching_stderr(
             ["cut", "-f", "1,4,9", tags_reads_summary.path], stdout=out_f, check=True
         )
     return File(out_path)

@@ -1,8 +1,9 @@
 import logging
 import os.path
 import pathlib
-import subprocess
 from typing import Optional
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class BclConvert:
     def run(self):
         os.makedirs(self._log_dir, exist_ok=True)
         with open(self.log_path, "w") as log_f:
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 [
                     "bcl-convert",
                     "--force",

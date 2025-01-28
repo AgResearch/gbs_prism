@@ -231,6 +231,7 @@
                   redun-with-gquery
                   gbs-prism-dependencies
                   gbs-prism-scripts
+                  python3Packages.pytest
                 ];
 
               shellHook = ''

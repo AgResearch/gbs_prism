@@ -1,6 +1,7 @@
 import logging
 import os.path
-import subprocess
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ def fastqc(in_path: str, out_dir: str, num_threads: int = 8):
         % os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq"),
     )
     with open(log_path, "w") as log_f:
-        _ = subprocess.run(
+        _ = run_catching_stderr(
             [
                 "fastqc",
                 "-t",

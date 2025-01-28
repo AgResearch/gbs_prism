@@ -1,10 +1,11 @@
 import logging
 import os
 import os.path
-import subprocess
 import time
 from datetime import datetime, timedelta
 from typing import Optional
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class SequencerRun:
         """Use GQuery to determine whether the run exists in the database."""
         # TODO: there ought to be a nicer way to do this than failure code from gquery subprocess
         with open("/dev/null", "wb") as devnull_f:
-            gquery = subprocess.run(
+            gquery = run_catching_stderr(
                 [
                     "gquery",
                     "-t",

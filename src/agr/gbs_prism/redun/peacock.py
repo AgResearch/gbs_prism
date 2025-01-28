@@ -1,7 +1,8 @@
 import os.path
-import subprocess
 from redun import task, File
 from typing import List
+
+from agr.util.subprocess import run_catching_stderr
 
 from .stage2 import Stage2Output
 
@@ -19,7 +20,7 @@ def create_peacock(
     out_dir = os.path.join(gbs_run_root, "html")
     os.makedirs(out_dir, exist_ok=True)
     peacock_html_path = os.path.join(out_dir, "peacock.html")
-    _ = subprocess.run(
+    _ = run_catching_stderr(
         [
             "make_cohort_pages",
             "-r",

@@ -2,10 +2,10 @@ import logging
 import os.path
 import pathlib
 import re
-import subprocess
 from typing import Any, List
 
 from agr.util.path import remove_if_exists
+from agr.util.subprocess import run_catching_stderr
 
 from .enzyme_sub import enzyme_sub_for_uneak
 from .types import Cohort
@@ -58,33 +58,30 @@ class Tassel3:
         self, plugin: str, plugin_args: List[str], work_dir: str, done_file: str
     ):
         out_path = os.path.join(work_dir, "%s.stdout" % plugin)
-        err_path = os.path.join(work_dir, "%s.stderr" % plugin)
         with open(out_path, "w") as out_f:
-            with open(err_path, "w") as err_f:
-                tassel3_command = (
-                    [
-                        "run_pipeline.pl",
-                    ]
-                    + self._jvm_args_for_plugin(plugin)
-                    + [
-                        "-fork1",
-                        "-U%sPlugin" % plugin,
-                        "-w",
-                        work_dir,
-                    ]
-                    + plugin_args
-                    + [
-                        "-endPlugin",
-                        "-runfork1",
-                    ]
-                )
-                logger.info(" ".join(tassel3_command))
-                _ = subprocess.run(
-                    tassel3_command,
-                    stdout=out_f,
-                    stderr=err_f,
-                    check=True,
-                )
+            tassel3_command = (
+                [
+                    "run_pipeline.pl",
+                ]
+                + self._jvm_args_for_plugin(plugin)
+                + [
+                    "-fork1",
+                    "-U%sPlugin" % plugin,
+                    "-w",
+                    work_dir,
+                ]
+                + plugin_args
+                + [
+                    "-endPlugin",
+                    "-runfork1",
+                ]
+            )
+            logger.info(" ".join(tassel3_command))
+            _ = run_catching_stderr(
+                tassel3_command,
+                stdout=out_f,
+                check=True,
+            )
         pathlib.Path(os.path.join(work_dir, done_file)).touch()
 
     def fastq_to_tag_count(self, in_path: str, cohort_str: str, work_dir: str):

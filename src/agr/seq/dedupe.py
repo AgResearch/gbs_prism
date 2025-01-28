@@ -1,6 +1,7 @@
 import logging
 import os.path
-import subprocess
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def dedupe(
                 ]
             )
             logger.info(" ".join(cmd))
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 cmd,
                 check=True,
                 stdout=stdout_f,

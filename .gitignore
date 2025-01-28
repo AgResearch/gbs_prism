@@ -3,5 +3,6 @@
 __pycache__/
 /log/
 /result*
+/gbs_prism.log
 *.pickle
 kmer_binning.txt.*

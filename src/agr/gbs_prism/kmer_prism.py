@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import os
 import re
-import itertools
 import subprocess
+import itertools
 import argparse
 from Bio import SeqIO
 from random import random
 from functools import reduce
-from typing import Literal, Optional, cast
+from typing import cast
 
 # fully qualified import so we can run this from a script
 from agr.gbs_prism.data_prism import (

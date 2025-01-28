@@ -1,7 +1,8 @@
 import logging
 import os.path
-import subprocess
 from itertools import islice
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def run_kgd(
             with open(err_path, "w") as err_f:
                 run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
                 logger.info(" ".join(run_kgd_command))
-                _ = subprocess.run(
+                _ = run_catching_stderr(
                     run_kgd_command,
                     cwd=work_dir,
                     stdout=out_f,

@@ -1,5 +1,6 @@
 import logging
-import subprocess
+
+from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class Bwa:
                 in_path,
             ]
             logger.info(" ".join(bwa_command))
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 bwa_command,
                 stdout=out_f,
                 check=True,
@@ -39,7 +40,7 @@ class Bwa:
                 fastq_path,
             ]
             logger.info(" ".join(bwa_command))
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 bwa_command,
                 stdout=out_f,
                 check=True,

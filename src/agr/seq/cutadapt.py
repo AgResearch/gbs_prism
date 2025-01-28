@@ -1,5 +1,7 @@
 import logging
-import subprocess
+
+from agr.util.subprocess import run_catching_stderr
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ def cutadapt(in_path: str, out_path: str):
                 ]
             )
             logger.info(" ".join(cutadapt_command))
-            _ = subprocess.run(
+            _ = run_catching_stderr(
                 cutadapt_command,
                 check=True,
                 stdout=out_f,
