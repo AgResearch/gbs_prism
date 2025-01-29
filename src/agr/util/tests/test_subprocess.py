@@ -1,6 +1,6 @@
 import pytest
 import tempfile
-from agr.util.subprocess import run_catching_stderr, CalledProcessError
+from agr.util.subprocess import run_catching_stderr
 
 
 def test_run_catching_stderr_returncode():
@@ -14,27 +14,29 @@ def test_run_catching_stderr_returncode():
 
 
 def test_run_catching_stderr():
-    with pytest.raises(CalledProcessError) as excinfo:
+    cmd = "echo hello-to-stdout ; echo >&2 oops-on-stderr ; exit 1"
+    with pytest.raises(Exception) as excinfo:
         run_catching_stderr(
-            ["echo hello-to-stdout ; echo >&2 oops-on-stderr ; exit 1"],
+            [cmd],
             shell=True,
             text=True,
             check=True,
         )
-    assert excinfo.value.stderr == "oops-on-stderr\n"
+    assert str(excinfo.value) == f"`{cmd}` failed:\noops-on-stderr\n"
 
 
 def test_run_catching_stderr_and_saving():
+    cmd = "echo hello-to-stdout ; echo >&2 oops-on-stderr ; exit 1"
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        with pytest.raises(CalledProcessError) as excinfo:
+        with pytest.raises(Exception) as excinfo:
             run_catching_stderr(
-                ["echo hello-to-stdout ; echo >&2 oops-on-stderr ; exit 1"],
+                [cmd],
                 stderr=tmp_f,
                 shell=True,
                 text=True,
                 check=True,
             )
-        assert excinfo.value.stderr == "oops-on-stderr\n"
+        assert str(excinfo.value) == f"`{cmd}` failed:\noops-on-stderr\n"
 
         # check we also saved stderr
         _ = tmp_f.seek(0)
