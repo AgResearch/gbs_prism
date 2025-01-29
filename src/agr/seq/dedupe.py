@@ -1,4 +1,6 @@
+import glob
 import logging
+import os
 import os.path
 
 from agr.util.subprocess import run_catching_stderr
@@ -15,25 +17,33 @@ def dedupe(
 ):
     # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
     out_dir = os.path.dirname(out_path)
-    stdout_path = "%s.stdout" % out_path
-    stderr_path = "%s.stderr" % out_path
-    with open(stdout_path, "w") as stdout_f:
-        with open(stderr_path, "w") as stderr_f:
-            cmd = (
-                ["clumpify.sh"]
-                + jvm_args
-                + clumpify_args
-                + [
-                    "tmpdir=%s" % tmp_dir,
-                    "in=%s" % in_path,
-                    "out=%s" % out_path,
-                ]
-            )
-            logger.info(" ".join(cmd))
+    base_path = out_path.removesuffix(".gz").removesuffix(".fastq")
+    log_path = f"{base_path}.clumpfy.log"
+    with open(log_path, "w") as log_f:
+        cmd = (
+            ["clumpify.sh"]
+            + jvm_args
+            + clumpify_args
+            + [
+                "tmpdir=%s" % tmp_dir,
+                "in=%s" % in_path,
+                "out=%s" % out_path,
+            ]
+        )
+        logger.info(" ".join(cmd))
+        try:
             _ = run_catching_stderr(
                 cmd,
                 check=True,
-                stdout=stdout_f,
-                stderr=stderr_f,
+                stdout=log_f,
+                stderr=log_f,
                 cwd=out_dir,
             )
+        finally:
+            # remove any turds dropped by clumpify, because these break keyfile_table_import
+            # filenames are like SQ5051_S1_L001_R1_001_clumpify_p1_temp0_20b4208f2aae2ca8.fastq.gz
+            for turd in glob.glob(f"{base_path}_clumpify_*"):
+                try:
+                    os.remove(turd)
+                except FileNotFoundError:
+                    pass
