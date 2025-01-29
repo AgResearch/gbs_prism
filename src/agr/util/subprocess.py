@@ -2,14 +2,17 @@ import io
 import shutil
 import subprocess
 import tempfile
+from typing import List
 
 
 class CalledProcessError(Exception):
-    def __init__(self, stderr: str | bytes):
+    def __init__(self, returncode: int, cmd: List[str], stderr: str | bytes):
+        self.returncode = returncode
+        self.cmd = cmd
         self.stderr = stderr
 
     def __str__(self) -> str:
-        return f"stderr:\n{self.stderr}"
+        return f"Command `{' '.join(self.cmd)}` failed with exit status {self.returncode}\n{self.stderr}"
 
 
 def run_catching_stderr(*args, **kwargs):
@@ -40,7 +43,9 @@ def run_catching_stderr(*args, **kwargs):
 
         except subprocess.CalledProcessError as e:
             _ = tmp_f.seek(0)
-            raise CalledProcessError(stderr=tmp_f.read()) from e
+            raise CalledProcessError(
+                returncode=e.returncode, cmd=e.cmd, stderr=tmp_f.read()
+            ) from e
 
         finally:
             if original_stderr is not None:
