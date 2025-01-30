@@ -26,26 +26,27 @@ def run_kgd(
         if os.path.exists(hapmap_path := os.path.join(hapmap_dir, hapmap_file))
     ]
 
-    assert hapmap_paths, "failed to find any of %s in %s" % (
-        ", ".join(hapmap_files),
-        hapmap_dir,
-    )
-    hapmap_path = hapmap_paths[0]
+    # assert hapmap_paths, "failed to find any of %s in %s" % (
+    #     ", ".join(hapmap_files),
+    #     hapmap_dir,
+    # )
+    # hapmap_path = hapmap_paths[0]
 
-    if has_sufficient_snps(hapmap_path):
-        with open(out_path, "w") as out_f:
-            with open(err_path, "w") as err_f:
-                run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
-                logger.info(" ".join(run_kgd_command))
-                _ = run_catching_stderr(
-                    run_kgd_command,
-                    cwd=work_dir,
-                    stdout=out_f,
-                    stderr=err_f,
-                    check=True,
-                )
-    else:
-        print("skipping KGD since insufficient SNPs in %s" % hapmap_path)
+    # if has_sufficient_snps(hapmap_path):
+    with open(out_path, "w") as out_f:
+        with open(err_path, "w") as err_f:
+            # run_kgd_command = ["run_kgd.R", hapmap_path, genotyping_method]
+            run_kgd_command = ["false"]
+            logger.info(" ".join(run_kgd_command))
+            _ = run_catching_stderr(
+                run_kgd_command,
+                cwd=work_dir,
+                stdout=out_f,
+                stderr=err_f,
+                check=True,
+            )
+    # else:
+    # print("skipping KGD since insufficient SNPs in %s" % hapmap_path)
 
 
 def has_sufficient_snps(hapmap_file: str):
