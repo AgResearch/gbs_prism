@@ -75,6 +75,3 @@ When you change directory to anywhere other than the main repo or its children, 
 ## Notes
 
 1. historical_unblind has been omitted, seems not to be required
-
-2. some items which were previously dumped into the filesystem are now simply passed around as lists of strings
-   namely: method, bwa_references
