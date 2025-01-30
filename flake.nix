@@ -32,7 +32,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     redun = {
-      url = "github:AgResearch/redun.nix/nixos-24.05";
+      # TODO reinstate official release when this is fixed and released:
+      # https://github.com/insitro/redun/issues/109
+      url = "github:AgResearch/redun.nix/redun-console-log";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

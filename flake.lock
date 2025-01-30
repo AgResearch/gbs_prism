@@ -398,16 +398,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1737427205,
-        "narHash": "sha256-rQfy39n41NKDO0WQFrWh0dlZAuTGAVmccWsrTvwaZXA=",
+        "lastModified": 1738202548,
+        "narHash": "sha256-wvLTbiBUhmkkHq+7Uz6/lLAlFseH+JZklKlgxasAm5A=",
         "owner": "AgResearch",
         "repo": "redun.nix",
-        "rev": "52495a6effbe1e97294b1f7110892451f14065c9",
+        "rev": "08a7d2e2c0eadff84ab40d84d552164b8b91d85c",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "nixos-24.05",
+        "ref": "redun-console-log",
         "repo": "redun.nix",
         "type": "github"
       }
