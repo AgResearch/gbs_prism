@@ -7,11 +7,11 @@ The design approach is as follows:
 - all rule implementations use in-process invocations of Python code instead of spawning shell scripts, for richer parameter handling (rather than strings passed on command line)
 - the Python library [agr](src/agr) is mostly a refactoring of existing Python code from legacy `gbs_prism` and `seq_prisms`
 
-## Batch Mode
+## Usage
 
 This is the normal way to run the pipeline, and unless there is breakage, should be all that is needed.
 
-Currently Slurm has not been integrated, so the while pipeline runs in the foreground. (This is an early access release!)  So it;s best to run in an interactive Slurm session, as follows (for the test release).
+Currently Slurm has not been integrated, so the while pipeline runs in the foreground. (This is an early access release!)  So it's best to run in an interactive Slurm session, as follows (for the test release).
 
 ```
 login-1$ kinit
@@ -19,6 +19,8 @@ login-1$ module load gbs_prism-test
 login-1$ srun -p compute --mem=256G --pty bash
 compute-3$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
 ```
+
+There is no need to have a local copy of the repo if simply running the pipeline from the environment module like this (but see note on development, below).
 
 Note that the context file is where all path tweaking and memory sizing is done, and may be copied into the current directory for changing and using from there.
 
@@ -55,7 +57,20 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 ## Development
 
-All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv` (still yet to be deployed on eRI, sorry).  Plain old `nix develop` also works, but doesn't cache like `direnv` does, so entering the environment may be time-consuming.
+All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv`.  When doing this, ensure you don't have any `gbs_prism` environment module loaded.
+
+To get going with `direnv` if you don't already have it available by means of Nix Home Manager, add these lines to your `~/.bashrc`:
+
+```
+module load nix-direnv
+eval "$(direnv hook bash)"
+```
+
+Then, for each directory containing a `.envrc` file, you will need to `direnv allow` for it to do anything. In your interactive shell, `cd` into the top-level directory of the `gbs_prism` repo to get prompted to do this.  The first time you do this will take a long time building the Nix flake.  Ensure to do this on `login-1` which is faster by virtue of being the Nix head node.  Subsequent use is cached from `.direnv`.
+
+When working like this, `gbs_prism` itself is made available to Python by virtue of `./src` being on the `PYTHONPATH` (which is set up by the Nix flake).  So any changes made will take immediate effect.  However, all dependencies, including `gquery` and `redun` are consumed via Nix flakes, and therefore not possible to change without rebuilding the flake.
+
+When you change directory to anywhere other than the main repo or its children, the direnv environment is unloaded.
 
 ## Notes
 
