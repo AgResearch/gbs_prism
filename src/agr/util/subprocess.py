@@ -7,10 +7,12 @@ from typing import List
 
 
 class CalledProcessError(Exception):
-    def __init__(self, returncode: int, cmd: List[str], stderr: str | bytes):
+    def __init__(self, stderr: str | bytes, returncode: int = 0, cmd: List[str] = []):
+        """To avoid showing as Unknown in redun console, the constructor must have only one parameter without default value."""
+        self.stderr = stderr
         self.returncode = returncode
         self.cmd = cmd
-        self.stderr = stderr
+        super().__init__(str(self))
 
     def __str__(self) -> str:
         return f"Command `{' '.join(self.cmd)}` failed with exit status {self.returncode}\n{self.stderr}"
@@ -44,10 +46,8 @@ def run_catching_stderr(*args, **kwargs):
 
         except subprocess.CalledProcessError as e:
             _ = tmp_f.seek(0)
-            # if we attempt to use our own exception class here, redun doesn't understand it,
-            # and we simply see Unknown in the console
             raise CalledProcessError(
-                returncode=e.returncode, cmd=e.cmd, stderr=tmp_f.read()
+                stderr=tmp_f.read(), returncode=e.returncode, cmd=e.cmd
             ) from e
 
         finally:
