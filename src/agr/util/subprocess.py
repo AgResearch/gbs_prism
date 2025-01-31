@@ -3,17 +3,19 @@ import shutil
 import subprocess
 import tempfile
 
-# see comment below about own exception class
-# TODO: find out what's broken with redun not understanding own exceptions, and reinstate this
-#
-# class CalledProcessError(Exception):
-#     def __init__(self, returncode: int, cmd: List[str], stderr: str | bytes):
-#         self.returncode = returncode
-#         self.cmd = cmd
-#         self.stderr = stderr
+from typing import List
 
-#     def __str__(self) -> str:
-#         return f"Command `{' '.join(self.cmd)}` failed with exit status {self.returncode}\n{self.stderr}"
+
+class CalledProcessError(Exception):
+    def __init__(self, stderr: str | bytes, returncode: int = 0, cmd: List[str] = []):
+        """To avoid showing as Unknown in redun console, the constructor must have only one parameter without default value."""
+        self.stderr = stderr
+        self.returncode = returncode
+        self.cmd = cmd
+        super().__init__(str(self))
+
+    def __str__(self) -> str:
+        return f"Command `{' '.join(self.cmd)}` failed with exit status {self.returncode}\n{self.stderr}"
 
 
 def run_catching_stderr(*args, **kwargs):
@@ -44,9 +46,9 @@ def run_catching_stderr(*args, **kwargs):
 
         except subprocess.CalledProcessError as e:
             _ = tmp_f.seek(0)
-            # if we attempt to use our own exception class here, redun doesn't understand it,
-            # and we simply see Unknown in the console
-            raise Exception(f"`{' '.join(e.cmd)}` failed:\n{tmp_f.read()}") from e
+            raise CalledProcessError(
+                stderr=tmp_f.read(), returncode=e.returncode, cmd=e.cmd
+            ) from e
 
         finally:
             if original_stderr is not None:
