@@ -21,7 +21,7 @@ def dedupe(
     log_path = f"{base_path}.clumpfy.log"
     with open(log_path, "w") as log_f:
         cmd = (
-            ["clumpify.sh"]
+            ["false", "clumpify.sh"]
             + jvm_args
             + clumpify_args
             + [
