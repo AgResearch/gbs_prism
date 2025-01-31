@@ -8,6 +8,7 @@ from typing import List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.redun import one_forall, all_forall
+from agr.util.subprocess import run_catching_stderr
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -226,10 +227,20 @@ def get_gbs_targets(
 
 @dataclass
 class Stage1Output:
+    dummy: int
     fastqc: List[File]
     kmer_analysis: List[File]
     spec: GbsTargetSpec
     gbs_paths: GbsPaths
+
+
+@task
+def dummy_failing_task(sample_sheet_path: str) -> int:
+    _ = run_catching_stderr(
+        ["false"],
+        check=True,
+    )
+    return 1
 
 
 @task()
@@ -246,6 +257,8 @@ def run_stage1(
     seq = cook_sample_sheet(
         sequencer_run=sequencer_run, postprocessing_root=postprocessing_root
     )
+
+    dummy_value = dummy_failing_task(seq.sample_sheet.path)
 
     fastq_files = bclconvert(
         sequencer_run.dir,
@@ -282,6 +295,7 @@ def run_stage1(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
+        dummy=dummy_value,
         fastqc=fastqc_files,
         kmer_analysis=kmer_analysis,
         spec=gbs_targets.spec,
