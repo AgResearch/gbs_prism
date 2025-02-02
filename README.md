@@ -66,6 +66,14 @@ module load nix-direnv
 eval "$(direnv hook bash)"
 ```
 
+To hook in the optimised Nix variant of `direnv`, run these commands directly just once for initial setup:
+
+```
+mkdir -p ~/.config/direnv && rm -f ~/.config/direnv/direnvrc && echo 'source $NIX_DIRENVRC' > ~/.config/direnv/direnvrc && cat ~/.config/direnv/direnvrc
+```
+
+If this fails to print `source $NIX_DIRENVRC` perhaps you omitted the single quotes.  It is important not to expand the environment variable ahead of time.
+
 Then, for each directory containing a `.envrc` file, you will need to `direnv allow` for it to do anything. In your interactive shell, `cd` into the top-level directory of the `gbs_prism` repo to get prompted to do this.  The first time you do this will take a long time building the Nix flake.  Ensure to do this on `login-1` which is faster by virtue of being the Nix head node.  Subsequent use is cached from `.direnv`.
 
 When working like this, `gbs_prism` itself is made available to Python by virtue of `./src` being on the `PYTHONPATH` (which is set up by the Nix flake).  So any changes made will take immediate effect.  However, all dependencies, including `gquery` and `redun` are consumed via Nix flakes, and therefore not possible to change without rebuilding the flake.
