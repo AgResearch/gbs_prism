@@ -1,8 +1,9 @@
 /.direnv/
 /.redun/
+/redun.log
 __pycache__/
-/log/
 /result*
 /gbs_prism.log
+/*.json
 *.pickle
 kmer_binning.txt.*
