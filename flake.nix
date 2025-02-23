@@ -189,6 +189,7 @@
                 fastqc
                 seqtk
                 gzip
+                poppler_utils
               ]);
             };
 
