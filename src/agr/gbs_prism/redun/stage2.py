@@ -11,7 +11,7 @@ redun_namespace = "agr.gbs_prism"
 from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
-from agr.util.redun import concat, one_forall
+from agr.redun import concat, one_forall
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
