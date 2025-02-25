@@ -1,9 +1,11 @@
 import logging
 
-from agr.util.subprocess import run_catching_stderr
+import agr.util.cluster as cluster
 
 
 logger = logging.getLogger(__name__)
+
+CUTADAPT_TOOL_NAME = "cutadapt"
 
 # adapter phrase taken from
 # https://github.com/AgResearch/gbs_prism/blob/dc5a71a6a2c554cd8952614d151a46ddce6892d1/ag_gbs_qc_prism.sh#L292
@@ -30,23 +32,18 @@ _ADAPTERS = [
 ]
 
 
-def cutadapt(in_path: str, out_path: str):
+def cutadapt_job_spec(in_path: str, out_path: str) -> cluster.Job1Spec:
     err_path = "%s.report" % out_path.removesuffix(".fastq")
-    with open(out_path, "w") as out_f:
-        with open(err_path, "w") as err_f:
-            cutadapt_command = (
-                [
-                    "cutadapt",
-                ]
-                + [arg for adapter in _ADAPTERS for arg in ["-a", adapter]]
-                + [
-                    in_path,
-                ]
-            )
-            logger.info(" ".join(cutadapt_command))
-            _ = run_catching_stderr(
-                cutadapt_command,
-                check=True,
-                stdout=out_f,
-                stderr=err_f,
-            )
+    return cluster.Job1Spec(
+        tool=CUTADAPT_TOOL_NAME,
+        args=[
+            "cutadapt",
+        ]
+        + [arg for adapter in _ADAPTERS for arg in ["-a", adapter]]
+        + [
+            in_path,
+        ],
+        stdout_path=out_path,
+        stderr_path=err_path,
+        expected_path=out_path,
+    )
