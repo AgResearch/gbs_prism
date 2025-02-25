@@ -1,12 +1,14 @@
 import os.path
 from dataclasses import dataclass
 
+from agr.gbs_prism.deployment_config import get_deployment_config
 from redun import task, File
 from redun.context import get_context
 from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
+from agr.dask import ClusterClientRegistry
 from agr.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
@@ -72,16 +74,20 @@ def bclconvert(
     sample_sheet_path: str,
     expected_fastq: Set[str],
     out_dir: str,
-    bcl_convert_context=get_context("tools.bcl_convert"),
+    tool_context=get_context("tools.bcl_convert"),
 ) -> List[File]:
     os.makedirs(out_dir, exist_ok=True)
+
     bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
         sample_sheet_path=sample_sheet_path,
         out_dir=out_dir,
-        bcl_convert_context=bcl_convert_context,
+        tool_context=tool_context,
     )
-    bclconvert.run()
+
+    client = ClusterClientRegistry(get_deployment_config()).get_client("bcl_convert")
+    _ = client.submit(bclconvert.run).result()
+
     bclconvert.check_expected_fastq_files(expected_fastq)
     return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
 

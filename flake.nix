@@ -75,6 +75,43 @@
             ];
           }));
 
+          dask-jobqueue = with pkgs;
+            python3Packages.buildPythonPackage {
+              name = "dask-jobqueue";
+              src = pkgs.fetchFromGitHub {
+                owner = "dask";
+                repo = "dask-jobqueue";
+                rev = "0.9.0";
+                hash = "sha256-YujfhjOJzl4xsjjsyrQkEu/CBR04RwJ79c1iSTcMIgw=";
+              };
+              pyproject = true;
+
+              nativeBuildInputs = with python3Packages;
+                [
+                  hatch-fixed
+                  hatchling
+                  setuptools
+                ];
+
+              buildInputs = with python3Packages;
+                [
+                  dask
+                  distributed
+                ];
+            };
+
+          pipeline-packages = with pkgs.python3Packages;
+            [
+              biopython
+              dask
+              dask-jobqueue
+              distributed
+              jsonnet
+              pdf2image
+              pydantic
+              flakePkgs.gquery-api
+            ];
+
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
               name = "gbs-prism-api";
@@ -86,13 +123,7 @@
                 python3Packages.hatchling
               ];
 
-              propagatedBuildInputs = with python3Packages;
-                [
-                  biopython
-                  pdf2image
-                  pydantic
-                  flakePkgs.gquery-api
-                ];
+              propagatedBuildInputs = pipeline-packages;
             };
 
           run_kgd = pkgs.stdenv.mkDerivation {
@@ -151,12 +182,7 @@
 
           # for development, we use a redun with only gquery, and pick up the gbs-prism locally
           redun-with-gquery = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = with pkgs.python3Packages; [
-              biopython
-              pdf2image
-              pydantic
-              flakePkgs.gquery-api
-            ];
+            propagatedBuildInputs = pipeline-packages;
           };
 
           gbs-prism-pipeline = pkgs.symlinkJoin
@@ -242,6 +268,7 @@
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${gquery-export-env "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
+                export GBS_PRISM_DEPLOYMENT_CONFIG=$(pwd)/config/legacy-hpc-deployment.jsonnet
               '';
             };
           };
