@@ -31,8 +31,8 @@ def fastq_name_for_tassel3(
 
 
 class Tassel3:
-    def __init__(self, tassel3_context: Any):
-        self._context = tassel3_context
+    def __init__(self, tool_context: Any):
+        self._tool_context = tool_context
 
     def _jvm_args_for_plugin(self, plugin: str) -> List[str]:
         """Look up java_max_heap and java_initial_heap in tassel3 context for plugin, or fallback to default."""
@@ -40,11 +40,11 @@ class Tassel3:
         JAVA_INITIAL_HEAP = "java_initial_heap"
         max_heap = None
         initial_heap = None
-        if isinstance(self._context, dict):
-            if isinstance(plugin_context := self._context.get(plugin), dict):
+        if isinstance(self._tool_context, dict):
+            if isinstance(plugin_context := self._tool_context.get(plugin), dict):
                 max_heap = plugin_context.get(JAVA_MAX_HEAP)
                 initial_heap = plugin_context.get(JAVA_INITIAL_HEAP)
-            if isinstance(default_context := self._context.get("default"), dict):
+            if isinstance(default_context := self._tool_context.get("default"), dict):
                 if max_heap is None:
                     max_heap = default_context.get(JAVA_MAX_HEAP)
                 if initial_heap is None:

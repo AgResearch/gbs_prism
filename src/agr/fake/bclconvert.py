@@ -76,12 +76,9 @@ class FakeBclConvert(BclConvert):
 
 
 def create_real_or_fake_bcl_convert(
-    in_dir: str, sample_sheet_path: str, out_dir: str, bcl_convert_context
+    in_dir: str, sample_sheet_path: str, out_dir: str, tool_context
 ) -> BclConvert | FakeBclConvert:
-    if (
-        bcl_convert_context is not None
-        and (fake := bcl_convert_context.get("fake")) is not None
-    ):
+    if tool_context is not None and (fake := tool_context.get("fake")) is not None:
         return FakeBclConvert(
             in_dir=in_dir,
             sample_sheet_path=sample_sheet_path,
