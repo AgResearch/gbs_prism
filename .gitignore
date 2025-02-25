@@ -4,6 +4,7 @@
 __pycache__/
 /result*
 /gbs_prism.log
+/dask.logs
 /*.json
 *.pickle
 kmer_binning.txt.*
