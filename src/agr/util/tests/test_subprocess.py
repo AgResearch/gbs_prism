@@ -22,7 +22,10 @@ def test_run_catching_stderr():
             text=True,
             check=True,
         )
-    assert str(excinfo.value) == f"`{cmd}` failed:\noops-on-stderr\n"
+    assert (
+        str(excinfo.value)
+        == f"Command `{cmd}` failed with exit status 1\noops-on-stderr\n"
+    )
 
 
 def test_run_catching_stderr_and_saving():
@@ -36,7 +39,10 @@ def test_run_catching_stderr_and_saving():
                 text=True,
                 check=True,
             )
-        assert str(excinfo.value) == f"`{cmd}` failed:\noops-on-stderr\n"
+        assert (
+            str(excinfo.value)
+            == f"Command `{cmd}` failed with exit status 1\noops-on-stderr\n"
+        )
 
         # check we also saved stderr
         _ = tmp_f.seek(0)
