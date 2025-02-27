@@ -75,37 +75,9 @@
             ];
           }));
 
-          dask-jobqueue = with pkgs;
-            python3Packages.buildPythonPackage {
-              name = "dask-jobqueue";
-              src = pkgs.fetchFromGitHub {
-                owner = "dask";
-                repo = "dask-jobqueue";
-                rev = "0.9.0";
-                hash = "sha256-YujfhjOJzl4xsjjsyrQkEu/CBR04RwJ79c1iSTcMIgw=";
-              };
-              pyproject = true;
-
-              nativeBuildInputs = with python3Packages;
-                [
-                  hatch-fixed
-                  hatchling
-                  setuptools
-                ];
-
-              buildInputs = with python3Packages;
-                [
-                  dask
-                  distributed
-                ];
-            };
-
           pipeline-packages = with pkgs.python3Packages;
             [
               biopython
-              dask
-              dask-jobqueue
-              distributed
               jsonnet
               pdf2image
               pydantic
@@ -261,6 +233,7 @@
                   gbs-prism-dependencies
                   gbs-prism-scripts
                   python3Packages.pytest
+                  jsonnet
                 ];
 
               shellHook = ''
