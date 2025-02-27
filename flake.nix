@@ -75,6 +75,39 @@
             ];
           }));
 
+          psij-python = with pkgs;
+            python3Packages.buildPythonPackage {
+              name = "psij";
+              src = pkgs.fetchFromGitHub {
+                owner = "ExaWorks";
+                repo = "psij-python";
+                rev = "0.9.9";
+                hash = "sha256-eyrkj3hcQCDwtyfzkBfe0j+rHJY4K7QWNF8GRuPlAsM=";
+              };
+
+              format = "setuptools";
+
+              # Tests seem to require a network-mounted home directory
+              doCheck = false;
+
+              nativeBuildInputs = with python3Packages;
+                [
+                  setuptools
+                ];
+
+              buildInputs = with python3Packages;
+                [
+                  packaging
+                ];
+
+              propagatedBuildInputs = with python3Packages;
+                [
+                  psutil
+                  pystache
+                  typeguard
+                ];
+            };
+
           pipeline-packages = with pkgs.python3Packages;
             [
               biopython
@@ -82,6 +115,7 @@
               pdf2image
               pydantic
               flakePkgs.gquery-api
+              psij-python
             ];
 
           gbs-prism-api = with pkgs;
@@ -241,7 +275,7 @@
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${gquery-export-env "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
-                export GBS_PRISM_DEPLOYMENT_CONFIG=$(pwd)/config/legacy-hpc-deployment.jsonnet
+                export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
               '';
             };
           };
