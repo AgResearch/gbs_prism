@@ -8,7 +8,6 @@ from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.dask import ClusterClientRegistry
 from agr.redun import one_forall, all_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
@@ -85,9 +84,7 @@ def bclconvert(
         tool_context=tool_context,
     )
 
-    client = ClusterClientRegistry(get_deployment_config()).get_client("bcl_convert")
-    _ = client.submit(bclconvert.run).result()
-
+    bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
     return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
 

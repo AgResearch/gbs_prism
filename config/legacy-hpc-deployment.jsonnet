@@ -1,56 +1,57 @@
 // deployment configuration, that is, values which have no effect on pipeline ouput, only performance, etc.
-{
-  "clusters": {
-    "default": {
-      "slurm": {
-        "queue": "inv-iranui",
-        "log_directory": "dask.logs"
-      }
+
+local ToolDefault = {
+  executor: 'slurm',
+  job_attributes: {
+    queue_name: 'inv-iranui',  // TODO change for eRI
+    custom_attributes: {
+      // all string-valued
+      ntasks: '1',
+      'cpus-per-task': '1',
+      mem: '4G',
+      // time: '24:00:00', // this is the eRI default
     },
-    "small": {
-      "slurm": {
-        "cores": 1,
-        "processes": 1,
-        "memory": "4GB"
-      },
-      "adapt": {
-        "minimum_jobs": 1,
-        "maximum_jobs": 10
-      }
-    },
-    "large": {
-      "slurm": {
-        "cores": 8,
-        "processes": 1,
-        "memory": "128GB"
-      },
-      "adapt": {
-        "minimum_jobs": 1,
-        "maximum_jobs": 2
-      }
-    }
   },
-  "tools": {
-    "default": {
-      "cluster": "small"
+};
+
+local Tassel3Default = ToolDefault {
+  java_initial_heap: '512M',
+  java_max_heap: '20G',
+  job_attributes+: {
+    custom_attributes+: {
+      mem: '20G',
     },
-    "dedupe":
-    {
-      "java_max_heap": "200G",
-      "cluster": "large"
-    },
-    "tassel3":
-    {
-      "default": {
-        "java_initial_heap": "512M",
-        "java_max_heap": "20G",
-        "cluster": "large"
+  },
+};
+
+{
+  tools: {
+    dedupe: ToolDefault {
+      java_max_heap: '200G',
+      job_attributes+: {
+        custom_attributes+: {
+          mem: '8G',
+        },
       },
-      "FastqToTagCount":
-      {
-        "java_max_heap": "5G",
-        "cluster": "small"
-      }
-    }
-  }
+    },
+
+    FastqToTagCount: Tassel3Default {
+      java_max_heap: '5G',
+      job_attributes+: {
+        custom_attributes+: {
+          mem: '5G',
+        },
+      },
+    },
+
+    MergeTaxaTagCount: Tassel3Default,
+
+    TagCountToTagPair: Tassel3Default,
+
+    TagPairToTBT: Tassel3Default,
+
+    TBTToMapInfo: Tassel3Default,
+
+    MapInfoToHapMap: Tassel3Default,
+  },
 }
