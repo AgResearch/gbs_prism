@@ -1,7 +1,6 @@
 import os.path
 from dataclasses import dataclass
 
-from agr.gbs_prism.deployment_config import get_deployment_config
 from redun import task, File
 from redun.context import get_context
 from typing import List, Literal, Set
@@ -13,8 +12,8 @@ from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
 # Fake bcl-convert may be selected in context
-# from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import create_real_or_fake_bcl_convert
+from agr.seq.bclconvert import BclConvertError
+from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
@@ -27,6 +26,8 @@ from agr.gbs_prism.gbs_target_spec import (
 from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
+from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.redun.cluster_executor import run_job_n
 
 
 @dataclass
@@ -84,9 +85,44 @@ def bclconvert(
         tool_context=tool_context,
     )
 
-    bclconvert.run()
-    bclconvert.check_expected_fastq_files(expected_fastq)
-    return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
+    # we only run the real bclconvert via the executor
+    if isinstance(bclconvert, FakeBclConvert):
+        bclconvert.run()
+        return [
+            File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
+        ]
+    else:
+        fastq_files = run_job_n(
+            EXECUTOR_CONFIG_PATH_ENV,
+            "bcl_convert",
+            args=bclconvert.args,
+            stdout_path=bclconvert.stdout_path,
+            stderr_path=bclconvert.stderr_path,
+            result_glob=bclconvert.result_glob,
+            result_reject_re=bclconvert.result_reject_re,
+        )
+        return check_bclconvert(fastq_files, expected_fastq)
+
+
+@task()
+def check_bclconvert(fastq_files: List[File], expected: Set[str]) -> List[File]:
+    """Check what we got is what we expected."""
+    actual = {fastq_file.basename() for fastq_file in fastq_files}
+    if actual != expected:
+        anomalies = []
+        missing = expected - actual
+        unexpected = actual - expected
+        if any(missing):
+            anomalies.append(
+                "failed to find expected fastq files: %s" % ", ".join(sorted(missing))
+            )
+        if any(unexpected):
+            anomalies.append(
+                "found unexpected fastq files: %s" % ", ".join(sorted(unexpected))
+            )
+
+        raise BclConvertError("; ".join(anomalies))
+    return fastq_files
 
 
 @task()

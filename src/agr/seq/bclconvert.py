@@ -1,6 +1,5 @@
 import logging
 import os.path
-import pathlib
 from typing import Optional
 
 from agr.util.subprocess import run_catching_stderr
@@ -26,14 +25,11 @@ class BclConvert:
         self._sample_sheet_path = sample_sheet_path
         self._out_dir = out_dir
         self._log_dir = os.path.join(self._out_dir, "Logs")
+        os.makedirs(self._log_dir, exist_ok=True)
 
     @property
     def top_unknown_path(self) -> str:
         return os.path.join(self._out_dir, "Reports", "Top_Unknown_Barcodes.csv")
-
-    @property
-    def fastq_complete_path(self) -> str:
-        return os.path.join(self._log_dir, "FastqComplete.txt")
 
     @property
     def log_path(self) -> str:
@@ -45,8 +41,6 @@ class BclConvert:
 
     @property
     def fastq_files(self) -> set[str]:
-        if not os.path.exists(self.fastq_complete_path):
-            raise BclConvertError("attempting to get fastq_filenames before run")
         return set(
             [
                 filename
@@ -59,41 +53,41 @@ class BclConvert:
     def fastq_path(self, fastq_file: str):
         return os.path.join(self._out_dir, fastq_file)
 
+    @property
+    def args(self) -> list[str]:
+        return [
+            "bcl-convert",
+            "--force",
+            "--bcl-input-directory",
+            self._in_dir,
+            "--sample-sheet",
+            self._sample_sheet_path,
+            "--output-directory",
+            self._out_dir,
+        ]
+
+    @property
+    def stdout_path(self) -> str:
+        return self.log_path
+
+    @property
+    def stderr_path(self) -> str:
+        return self.log_path
+
+    @property
+    def result_glob(self) -> str:
+        return f"{self._out_dir}/*.fastq.gz"
+
+    @property
+    def result_reject_re(self) -> str:
+        return "/Undetermined"
+
+    # TODO remove this which is now obsolete now we're using Slurm
     def run(self):
-        os.makedirs(self._log_dir, exist_ok=True)
         with open(self.log_path, "w") as log_f:
             _ = run_catching_stderr(
-                [
-                    "bcl-convert",
-                    "--force",
-                    "--bcl-input-directory",
-                    self._in_dir,
-                    "--sample-sheet",
-                    self._sample_sheet_path,
-                    "--output-directory",
-                    self._out_dir,
-                ],
+                self.args,
                 check=True,
                 stdout=log_f,
                 stderr=log_f,
             )
-        # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
-        pathlib.Path(self.fastq_complete_path).touch()
-
-    def check_expected_fastq_files(self, expected: set[str]):
-        actual = self.fastq_files
-        if actual != expected:
-            anomalies = []
-            missing = expected - actual
-            unexpected = actual - expected
-            if any(missing):
-                anomalies.append(
-                    "failed to find expected fastq files: %s"
-                    % ", ".join(sorted(missing))
-                )
-            if any(unexpected):
-                anomalies.append(
-                    "found unexpected fastq files: %s" % ", ".join(sorted(unexpected))
-                )
-
-            raise BclConvertError("; ".join(anomalies))
