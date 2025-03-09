@@ -32,6 +32,22 @@ class BclConvert:
         return os.path.join(self._out_dir, "Reports", "Top_Unknown_Barcodes.csv")
 
     @property
+    def adapter_metrics(self) -> str:
+        return os.path.join(self._out_dir, "Reports", "Adapter_Metrics.csv")
+
+    @property
+    def demultiplex_stats(self) -> str:
+        return os.path.join(self._out_dir, "Reports", "Demultiplex_Stats.csv")
+
+    @property
+    def quality_metrics(self) -> str:
+        return os.path.join(self._out_dir, "Reports", "Quality_Metrics.csv")
+
+    @property
+    def run_info_xml(self) -> str:
+        return os.path.join(self._out_dir, "Reports", "RunInfo.xml")
+
+    @property
     def fastq_complete_path(self) -> str:
         return os.path.join(self._log_dir, "FastqComplete.txt")
 
