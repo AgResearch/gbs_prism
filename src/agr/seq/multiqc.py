@@ -6,19 +6,21 @@ from agr.util.subprocess import run_catching_stderr
 logger = logging.getLogger(__name__)
 
 
-def multiqc(in_path: str, out_dir: str, run : str):
-    """Generate a MultiQC report from a directory of FastQC reports.
+def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : str):
+    """
+    Generate a MultiQC report from FastQC and BCLConvert reports.
 
     Args:
-        in_path (str): Input directory of FastQC reports.
-        out_dir (str): Output dieectory for the MultiQC.
+        fastqc_in_path (str): Input top level directory of FastQC reports.
+        bclconvert_in_path (str): Input top level directory of BCLConvert reports.
+        out_dir (str): Output directory for the MultiQC report.
         run (str): Input run name for the MultiQC report naming.
     """
     os.makedirs(out_dir, exist_ok=True)
+
     log_path = os.path.join(
         out_dir,
-        "%s_multiqc.log"
-        % os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq"),
+        run + "_multiqc.log"
     )
 
     out_report = os.path.join(
@@ -36,7 +38,8 @@ def multiqc(in_path: str, out_dir: str, run : str):
                 out_dir,
                 "--filename",
                 out_report,
-                in_path,
+                bclconvert_in_path,
+                fastqc_in_path,
             ],
             check=True,
             stdout=log_f,
