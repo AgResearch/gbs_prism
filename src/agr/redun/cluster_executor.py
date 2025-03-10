@@ -44,6 +44,35 @@ class ClusterExecutorError(Exception):
         super().__init__(message)
 
 
+class ConfigError(Exception):
+    def __init__(
+        self,
+        message: str,
+        path: Optional[str] = None,
+        tool: Optional[str] = None,
+        cause: Optional[Exception] = None,
+    ):
+        self.message = message
+        self.path = path
+        self.tool = tool
+        # cause is explicit so we can format it into the base Exception class
+        # which is required for redun to show it in the console,
+        # and this is the reason we don't use raise from and ex.__cause__
+        self.cause = cause
+        super().__init__(str(self))
+
+    def __str__(self) -> str:
+        result = "Configuration error"
+        if self.tool is not None:
+            result += f" for {self.tool}"
+        if self.path is not None:
+            result += f" in {self.path}"
+        result += f": {self.message}"
+        if self.cause is not None:
+            result += f": {type(self.cause).__name__} {str(self.cause)}"
+        return result
+
+
 def _create_job_attributes(
     configured_attributes: Dict[str, Any], executor_name: str, job_name: str
 ) -> JobAttributes:
@@ -53,7 +82,13 @@ def _create_job_attributes(
     }
 
     if configured_duration := configured_attributes.get("duration"):
-        duration = timedelta(**configured_duration)
+        try:
+            duration = timedelta(**configured_duration)
+        except TypeError as err:
+            raise ConfigError(
+                "invalid duration, must be dict with fields as per timedelta constructor with integer values",
+                cause=err,
+            )
         duration_attribute = {"duration": duration}
     else:
         duration_attribute = {}
@@ -74,30 +109,44 @@ def _create_job_spec(
     stderr_path: str,
     cwd: Optional[str] = None,
 ) -> tuple[JobSpec, str]:
-    config = ClusterExecutorConfig(config_path_env)
-    tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
-    logger.info(f"tool_config: {tool_config}")
+    assert (
+        config_path_env in os.environ
+    ), f"Missing environment variable {config_path_env}"
+    config_path = os.environ[config_path_env]
+    try:
+        config = ClusterExecutorConfig(config_path)
+        tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
+        logger.info(f"tool_config: {tool_config}")
 
-    executor_name = tool_config["executor"]
-    job_prefix = tool_config.get("job_prefix", "")
+        executor_name = tool_config["executor"]
+        job_prefix = tool_config.get("job_prefix", "")
 
-    job_attributes = _create_job_attributes(
-        configured_attributes=tool_config.get("job_attributes", {}),
-        executor_name=executor_name,
-        job_name=f"{job_prefix}{tool}",
-    )
+        job_attributes = _create_job_attributes(
+            configured_attributes=tool_config.get("job_attributes", {}),
+            executor_name=executor_name,
+            job_name=f"{job_prefix}{tool}",
+        )
 
-    return (
-        JobSpec(
-            executable=args[0],
-            arguments=args[1:],
-            directory=cwd or os.getcwd(),
-            stdout_path=stdout_path,
-            stderr_path=stderr_path,
-            attributes=job_attributes,
-        ),
-        executor_name,
-    )
+        return (
+            JobSpec(
+                executable=args[0],
+                arguments=args[1:],
+                directory=cwd or os.getcwd(),
+                stdout_path=stdout_path,
+                stderr_path=stderr_path,
+                attributes=job_attributes,
+            ),
+            executor_name,
+        )
+    except ConfigError as err:
+        if err.path is not None and err.tool is not None:
+            raise
+        else:
+            raise ConfigError(
+                message=err.message, path=config_path, tool=tool, cause=err.cause
+            )
+    except Exception as ex:
+        raise ConfigError(message=str(ex), path=config_path, cause=ex)
 
 
 def _create_executor(executor_name: str):
@@ -342,15 +391,16 @@ def deep_get(values: Any, path: str, default: Any = None) -> Any:
 
 @singleton
 class ClusterExecutorConfig:
-    def __init__(self, config_path_env):
-        assert (
-            config_path_env in os.environ
-        ), f"Missing environment variable {config_path_env}"
-        config_path = os.environ[config_path_env]
-        with open(config_path, "r") as config_f:
-            raw_config = config_f.read()
-            json_config = _jsonnet.evaluate_snippet(config_path, raw_config)
-            self._config = json.loads(json_config)
+    def __init__(self, config_path: str):
+        try:
+            with open(config_path, "r") as config_f:
+                raw_config = config_f.read()
+                json_config = _jsonnet.evaluate_snippet(config_path, raw_config)
+                self._config = json.loads(json_config)
+        except Exception as ex:
+            raise ConfigError(
+                message="invalid Jsonnet configuration", path=config_path, cause=ex
+            )
 
     def get(self, path: str, default: Any = None) -> Any:
         return deep_get(self._config, path, default=default)
