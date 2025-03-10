@@ -16,6 +16,7 @@ from agr.seq.sample_sheet import SampleSheet
 from agr.fake.bclconvert import create_real_or_fake_bcl_convert
 from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import fastqc
+from agr.seq.multiqc import multiqc
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -109,7 +110,7 @@ def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
     )
     return [
         File(os.path.join(out_dir, "%s%s" % (basename, ext)))
-        for ext in ["_fastqc.html", "_fastqc.zip"]
+        for ext in ["_fastqc.zip"]
     ]
 
 
@@ -120,19 +121,17 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-# TODO: Capture the output of the previous task, such as the list of FastQC and BCLConvert report files.
 def multiqc_report(
-    fastqc_in_path: str, 
-    bclconvert_in_path: str, 
-    out_dir: str, 
-    run: str):
+    fastqc_in: List[File],
+    bclconvert_in_path: str, #TODO add arguments for each bclconvert report
+    out_dir: str,
+    run: str
+) -> File:
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
-    
-    out_dir = os.path.join(out_dir, "multiqc")
-
-    multiqc(fastqc_in_path, bclconvert_in_path, out_dir, run)
-
-    return File(os.path.join(out_dir, "%s_multiqc_report.html" % run))
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
+    multiqc(fastqc_in, bclconvert_in_path, out_dir, out_path)
+    return File(out_path)
 
 
 @task()
@@ -257,6 +256,7 @@ def get_gbs_targets(
 @dataclass
 class Stage1Output:
     fastqc: List[File]
+    multiqc: File
     kmer_analysis: List[File]
     spec: GbsTargetSpec
     gbs_paths: GbsPaths
@@ -286,12 +286,12 @@ def run_stage1(
 
     fastqc_files = fastqc_all(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
 
-    multiqc_report = multiqc_report(
-        fastqc_in = seq.paths.fastqc_dir,
-        bclconvert_report_path=seq.paths.bclconvert_dir,
+    multiqc_report_out = multiqc_report(
+        fastqc_in = fastqc_files,
+        bclconvert_in_path=seq.paths.bclconvert_dir, #TODO expand arguments for each bclconvert report
         out_dir=seq.paths.multiqc_dir,
-        run=seq.paths.run_root
-    )
+        run=sequencer_run.name)
+
 
     kmer_samples = kmer_sample_all(bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
 
@@ -320,6 +320,7 @@ def run_stage1(
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
         fastqc=fastqc_files,
+        multiqc=multiqc_report_out,
         kmer_analysis=kmer_analysis,
         spec=gbs_targets.spec,
         gbs_paths=gbs_targets.paths,

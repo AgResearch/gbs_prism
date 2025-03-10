@@ -1,12 +1,13 @@
 import logging
 import os.path
+from typing import List
 
 from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
 
-def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : str): #TODO pass inputs as lists?
+def multiqc(fastqc_in_paths: List[str], bclconvert_in_path: str, out_dir: str, out_path: str): #TODO arguments for each bclconvert report
     """
     Generate a MultiQC report from FastQC and BCLConvert reports.
 
@@ -16,17 +17,9 @@ def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : st
         out_dir (str): Output directory for the MultiQC report.
         run (str): Input run name for the MultiQC report naming.
     """
-    os.makedirs(out_dir, exist_ok=True)
+    log_path = out_path.removesuffix(".html") + ".log"
 
-    log_path = os.path.join(
-        out_dir,
-        run + "_multiqc.log"
-    )
-
-    out_report = os.path.join(
-        out_dir,
-        run + "_multiqc_report.html"
-        )
+    out_report = out_path
 
     with open(log_path, "w") as log_f:
         _ = run_catching_stderr(
@@ -38,9 +31,9 @@ def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : st
                 out_dir,
                 "--filename",
                 out_report,
-                bclconvert_in_path,
-                fastqc_in_path,
-            ],
+                bclconvert_in_path] + #TODO add arguments for each bclconvert report
+                fastqc_in_paths
+            ,
             check=True,
             stdout=log_f,
             stderr=log_f,
