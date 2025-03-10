@@ -45,6 +45,7 @@ def _create_job_spec(
 ) -> tuple[JobSpec, str]:
     config = ClusterExecutorConfig(config_path_env)
     tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
+    executor = tool_config["executor"]
     logger.info(f"tool_config: {tool_config}")
 
     job_attributes = tool_config.get("job_attributes", {})
@@ -53,7 +54,7 @@ def _create_job_spec(
     job_name = f"{job_prefix}{tool}"
 
     augmented_custom_attributes = job_attributes.get("custom_attributes", {}) | {
-        "job-name": job_name
+        f"{executor}.job-name": job_name
     }
 
     job_attributes = job_attributes | {"custom_attributes": augmented_custom_attributes}
@@ -68,7 +69,7 @@ def _create_job_spec(
             stderr_path=stderr_path,
             attributes=JobAttributes(**job_attributes),
         ),
-        tool_config["executor"],
+        executor,
     )
 
 
