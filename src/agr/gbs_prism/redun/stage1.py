@@ -66,7 +66,8 @@ def cook_sample_sheet(
         gbs_libraries=sample_sheet.gbs_libraries,
     )
 
-@dataclass 
+
+@dataclass
 class BclConvertOutput:
     fastq_files: List[File]
     adapter_metrics: File
@@ -93,12 +94,16 @@ def bclconvert(
     )
     bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
-    return BclConvertOutput(fastq_files = [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq], 
-                            adapter_metrics=File(bclconvert.adapter_metrics),
-                            demultiplexing_metrics=File(bclconvert.demultiplex_stats),
-                            quality_metrics=File(bclconvert.quality_metrics),
-                            run_info_xml=File(bclconvert.run_info_xml),
-                            top_unknown_path=File(bclconvert.top_unknown_path))
+    return BclConvertOutput(
+        fastq_files=[
+            File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
+        ],
+        adapter_metrics=File(bclconvert.adapter_metrics),
+        demultiplexing_metrics=File(bclconvert.demultiplex_stats),
+        quality_metrics=File(bclconvert.quality_metrics),
+        run_info_xml=File(bclconvert.run_info_xml),
+        top_unknown_path=File(bclconvert.top_unknown_path),
+    )
 
 
 @task()
@@ -109,8 +114,7 @@ def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
     )
     return [
-        File(os.path.join(out_dir, "%s%s" % (basename, ext)))
-        for ext in ["_fastqc.zip"]
+        File(os.path.join(out_dir, "%s%s" % (basename, ext))) for ext in ["_fastqc.zip"]
     ]
 
 
@@ -123,14 +127,27 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 @task()
 def multiqc_report(
     fastqc_in: List[File],
-    bclconvert_in_path: str, #TODO add arguments for each bclconvert report
+    bclconvert_top_unknowns: str,
+    bclconvert_adapter_metrics: str,
+    bclconvert_demultiplex_stats: str,
+    bclconvert_quality_metrics: str,
+    bclconvert_run_info_xml: str,
     out_dir: str,
-    run: str
+    run: str,
 ) -> File:
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
-    multiqc(fastqc_in, bclconvert_in_path, out_dir, out_path)
+    multiqc(
+        fastqc_in,
+        bclconvert_top_unknowns,
+        bclconvert_adapter_metrics,
+        bclconvert_demultiplex_stats,
+        bclconvert_quality_metrics,
+        bclconvert_run_info_xml,
+        out_dir,
+        out_path,
+    )
     return File(out_path)
 
 
@@ -284,20 +301,30 @@ def run_stage1(
         out_dir=seq.paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc_all(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
+    fastqc_files = fastqc_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir
+    )
 
     multiqc_report_out = multiqc_report(
-        fastqc_in = fastqc_files,
-        bclconvert_in_path=seq.paths.bclconvert_dir, #TODO expand arguments for each bclconvert report
+        fastqc_in=fastqc_files,
+        bclconvert_top_unknowns=bclconvert_output.top_unknown_path,
+        bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
+        bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
+        bclconvert_quality_metrics=bclconvert_output.quality_metrics,
+        bclconvert_run_info_xml=bclconvert_output.run_info_xml,
         out_dir=seq.paths.multiqc_dir,
-        run=sequencer_run.name)
+        run=sequencer_run.name,
+    )
 
-
-    kmer_samples = kmer_sample_all(bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
+    kmer_samples = kmer_sample_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir
+    )
 
     kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)
 
-    deduped_fastq = dedupe_all(bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir)
+    deduped_fastq = dedupe_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir
+    )
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
