@@ -12,12 +12,15 @@ local ToolDefault = {
   job_prefix: 'playpen.',
   job_attributes: {
     queue_name: 'compute',
+    duration: {
+      // fields are Python datetime.timedelta
+      hours: 1,
+    },
     custom_attributes: customised({
       // all string-valued
       ntasks: '1',
       'cpus-per-task': '1',
       mem: '4G',
-      // time: '24:00:00', // this is the eRI default
     }),
   },
 };
@@ -26,7 +29,7 @@ local Tassel3Default = ToolDefault {
   java_initial_heap: '512M',
   java_max_heap: '20G',
   job_attributes+: {
-    custom_attributes: customised({
+    custom_attributes+: customised({
       mem: '20G',
     }),
   },
@@ -36,10 +39,18 @@ local Tassel3Default = ToolDefault {
   tools: {
     default: ToolDefault,
 
+    bcl_convert: ToolDefault {
+      job_attributes+: {
+        custom_attributes+: customised({
+          mem: '100G',
+        }),
+      },
+    },
+
     dedupe: ToolDefault {
       java_max_heap: '200G',
       job_attributes+: {
-        custom_attributes: customised({
+        custom_attributes+: customised({
           mem: '8G',
         }),
       },
@@ -48,7 +59,7 @@ local Tassel3Default = ToolDefault {
     'tassel3-FastqToTagCount': Tassel3Default {
       java_max_heap: '5G',
       job_attributes+: {
-        custom_attributes: customised({
+        custom_attributes+: customised({
           mem: '5G',
         }),
       },

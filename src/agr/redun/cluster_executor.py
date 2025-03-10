@@ -4,6 +4,7 @@ import json
 import os
 import os.path
 import re
+from datetime import timedelta
 from redun import File
 from redun.task import task, scheduler_task
 from redun.scheduler import Job as SchedulerJob, Scheduler
@@ -57,7 +58,11 @@ def _create_job_spec(
         f"{executor}.job-name": job_name
     }
 
-    job_attributes = job_attributes | {"custom_attributes": augmented_custom_attributes}
+    job_attributes = (
+        job_attributes
+        | {"duration": timedelta(**(job_attributes["duration"]))}
+        | {"custom_attributes": augmented_custom_attributes}
+    )
     logger.info(f"job_attributes: {job_attributes}")
 
     return (
