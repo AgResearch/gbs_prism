@@ -120,9 +120,18 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
-def multiqc_report(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run: str): #TODO Does this need to capture the output of a previous task as input?
+# TODO: Capture the output of the previous task, such as the list of FastQC and BCLConvert report files.
+def multiqc_report(
+    fastqc_in_path: str, 
+    bclconvert_in_path: str, 
+    out_dir: str, 
+    run: str):
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
+    
+    out_dir = os.path.join(out_dir, "multiqc")
+
     multiqc(fastqc_in_path, bclconvert_in_path, out_dir, run)
+
     return File(os.path.join(out_dir, "%s_multiqc_report.html" % run))
 
 
@@ -277,7 +286,12 @@ def run_stage1(
 
     fastqc_files = fastqc_all(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
 
-    
+    multiqc_report = multiqc_report(
+        fastqc_in = seq.paths.fastqc_dir,
+        bclconvert_report_path=seq.paths.bclconvert_dir,
+        out_dir=seq.paths.multiqc_dir,
+        run=seq.paths.run_root
+    )
 
     kmer_samples = kmer_sample_all(bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
 
