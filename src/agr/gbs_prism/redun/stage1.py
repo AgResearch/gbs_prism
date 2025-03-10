@@ -65,6 +65,15 @@ def cook_sample_sheet(
         gbs_libraries=sample_sheet.gbs_libraries,
     )
 
+@dataclass 
+class BclConvertOutput:
+    fastq_files: List[File]
+    adapter_metrics: File
+    demultiplexing_metrics: File
+    quality_metrics: File
+    run_info_xml: File
+    top_unknown_path: File
+
 
 @task()
 def bclconvert(
@@ -73,7 +82,7 @@ def bclconvert(
     expected_fastq: Set[str],
     out_dir: str,
     bcl_convert_context=get_context("tools.bcl_convert"),
-) -> List[File]:
+) -> BclConvertOutput:
     os.makedirs(out_dir, exist_ok=True)
     bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
@@ -83,7 +92,12 @@ def bclconvert(
     )
     bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
-    return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
+    return BclConvertOutput(fastq_files = [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq], 
+                            adapter_metrics=File(bclconvert.adapter_metrics),
+                            demultiplexing_metrics=File(bclconvert.demultiplex_stats),
+                            quality_metrics=File(bclconvert.quality_metrics),
+                            run_info_xml=File(bclconvert.run_info_xml),
+                            top_unknown_path=File(bclconvert.top_unknown_path))
 
 
 @task()
@@ -247,20 +261,22 @@ def run_stage1(
         sequencer_run=sequencer_run, postprocessing_root=postprocessing_root
     )
 
-    fastq_files = bclconvert(
+    bclconvert_output = bclconvert(
         sequencer_run.dir,
         sample_sheet_path=seq.sample_sheet.path,
         expected_fastq=seq.expected_fastq,
         out_dir=seq.paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc_all(fastq_files, out_dir=seq.paths.fastqc_dir)
+    fastqc_files = fastqc_all(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
 
-    kmer_samples = kmer_sample_all(fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
+    
+
+    kmer_samples = kmer_sample_all(bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
 
     kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)
 
-    deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
+    deduped_fastq = dedupe_all(bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir)
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
