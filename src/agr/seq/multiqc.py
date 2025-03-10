@@ -6,7 +6,7 @@ from agr.util.subprocess import run_catching_stderr
 logger = logging.getLogger(__name__)
 
 
-def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : str):
+def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : str): #TODO pass inputs as lists?
     """
     Generate a MultiQC report from FastQC and BCLConvert reports.
 
@@ -25,7 +25,7 @@ def multiqc(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run : st
 
     out_report = os.path.join(
         out_dir,
-        run + "_multiqc.html"
+        run + "_multiqc_report.html"
         )
 
     with open(log_path, "w") as log_f:
