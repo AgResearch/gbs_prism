@@ -45,6 +45,10 @@ class SeqPaths:
         return os.path.join(self.sample_sheet_dir, "fastqc_run", "fastqc")
 
     @property
+    def multiqc_dir(self) -> str:
+        return os.path.join(self.sample_sheet_dir, "multiqc")
+
+    @property
     def kmer_fastq_sample_dir(self) -> str:
         return os.path.join(self.sample_sheet_dir, "kmer_run", "fastq_sample")
 
@@ -60,6 +64,7 @@ class SeqPaths:
         _makedir(self.sample_sheet_dir)
         _makedir(self.bclconvert_dir)
         _makedir(self.fastqc_dir)
+        _makedir(self.multiqc_dir)
         _makedir(self.kmer_fastq_sample_dir)
         _makedir(self.kmer_analysis_dir)
         _makedir(self.dedupe_dir)

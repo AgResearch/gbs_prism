@@ -106,6 +106,13 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
+def multiqc_report(fastqc_in_path: str, bclconvert_in_path: str, out_dir: str, run: str): #TODO Does this need to capture the output of a previous task as input?
+    """Run MultiQC aggregating FastQC and BCLConvert reports."""
+    multiqc(fastqc_in_path, bclconvert_in_path, out_dir, run)
+    return File(os.path.join(out_dir, "%s_multiqc_report.html" % run))
+
+
+@task()
 def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
     """Sample a single fastq file as required for kmer analysis."""
     os.makedirs(out_dir, exist_ok=True)
