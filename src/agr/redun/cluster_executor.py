@@ -5,14 +5,22 @@ import os
 import os.path
 import re
 from datetime import timedelta
+from pathlib import Path
 from redun import File
 from redun.task import task, scheduler_task
 from redun.scheduler import Job as SchedulerJob, Scheduler
 from redun.expression import SchedulerExpression
 from redun.promise import Promise
-from typing import List, Any, TYPE_CHECKING
-from psij import Job, JobAttributes, JobExecutor, JobSpec, JobState, JobStatus
-
+from typing import Dict, List, Any, TYPE_CHECKING
+from psij import (
+    Job,
+    JobAttributes,
+    JobExecutor,
+    JobSpec,
+    JobState,
+    JobStatus,
+)
+from psij.executors.batch.batch_scheduler_executor import BatchSchedulerExecutorConfig
 
 from typing import List, Optional
 
@@ -36,6 +44,28 @@ class ClusterExecutorError(Exception):
         super().__init__(message)
 
 
+def _create_job_attributes(
+    configured_attributes: Dict[str, Any], executor_name: str, job_name: str
+) -> JobAttributes:
+    augmented_custom_attributes = {
+        "custom_attributes": configured_attributes.get("custom_attributes", {})
+        | {f"{executor_name}.job-name": job_name}
+    }
+
+    if configured_duration := configured_attributes.get("duration"):
+        duration = timedelta(**configured_duration)
+        duration_attribute = {"duration": duration}
+    else:
+        duration_attribute = {}
+
+    attributes = (
+        configured_attributes | duration_attribute | augmented_custom_attributes
+    )
+    logger.info(f"job_attributes: {attributes}")
+
+    return JobAttributes(**attributes)
+
+
 def _create_job_spec(
     config_path_env: str,
     tool: str,
@@ -46,24 +76,16 @@ def _create_job_spec(
 ) -> tuple[JobSpec, str]:
     config = ClusterExecutorConfig(config_path_env)
     tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
-    executor = tool_config["executor"]
     logger.info(f"tool_config: {tool_config}")
 
-    job_attributes = tool_config.get("job_attributes", {})
-
+    executor_name = tool_config["executor"]
     job_prefix = tool_config.get("job_prefix", "")
-    job_name = f"{job_prefix}{tool}"
 
-    augmented_custom_attributes = job_attributes.get("custom_attributes", {}) | {
-        f"{executor}.job-name": job_name
-    }
-
-    job_attributes = (
-        job_attributes
-        | {"duration": timedelta(**(job_attributes["duration"]))}
-        | {"custom_attributes": augmented_custom_attributes}
+    job_attributes = _create_job_attributes(
+        configured_attributes=tool_config.get("job_attributes", {}),
+        executor_name=executor_name,
+        job_name=f"{job_prefix}{tool}",
     )
-    logger.info(f"job_attributes: {job_attributes}")
 
     return (
         JobSpec(
@@ -72,9 +94,27 @@ def _create_job_spec(
             directory=cwd or os.getcwd(),
             stdout_path=stdout_path,
             stderr_path=stderr_path,
-            attributes=JobAttributes(**job_attributes),
+            attributes=job_attributes,
         ),
-        executor,
+        executor_name,
+    )
+
+
+def _create_executor(executor_name: str):
+    # PSI/J defaults to home directory, which is not what we want
+    cwd = os.getcwd()
+    launcher_log_file = os.path.join(cwd, "cluster.log")
+    work_directory = os.path.join(cwd, ".psij")
+
+    return JobExecutor.get_instance(
+        executor_name,
+        # alas we really do need to instantiate a BatchSchedulerExecutorConfig rather than a JobExecutorConfig,
+        # because the latter is an abstract base class which does not set the required defaults like initial_queue_polling_delay
+        # https://github.com/ExaWorks/psij-python/issues/511
+        config=BatchSchedulerExecutorConfig(
+            launcher_log_file=Path(launcher_log_file),
+            work_directory=Path(work_directory),
+        ),
     )
 
 
@@ -145,7 +185,7 @@ def run_job_1(
     Even so, it is here for now until we work out how to use Promises in tasks, to avoid the
     thread-spawning job.wait() in PSI/J.
     """
-    job_spec, executor = _create_job_spec(
+    job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
         tool=spec.tool,
         args=spec.args,
@@ -155,7 +195,7 @@ def run_job_1(
     )
 
     job = Job(job_spec)
-    JobExecutor.get_instance(executor).submit(job)
+    _create_executor(executor_name).submit(job)
 
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
@@ -182,7 +222,7 @@ def _run_job_1_uncached(
         # suppress unused parameters
         _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
 
-    job_spec, executor = _create_job_spec(
+    job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
         tool=spec.tool,
         args=spec.args,
@@ -192,7 +232,7 @@ def _run_job_1_uncached(
     )
 
     job = Job(job_spec)
-    JobExecutor.get_instance(executor).submit(job)
+    _create_executor(executor_name).submit(job)
 
     promise = Promise()
 
@@ -221,7 +261,7 @@ def run_job_n(
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
 
-    job_spec, executor = _create_job_spec(
+    job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
         tool=spec.tool,
         args=spec.args,
@@ -231,7 +271,7 @@ def run_job_n(
     )
 
     job = Job(job_spec)
-    JobExecutor.get_instance(executor).submit(job)
+    _create_executor(executor_name).submit(job)
 
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
@@ -263,7 +303,7 @@ def _run_job_n_uncached(
         # suppress unused parameters
         _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
 
-    job_spec, executor = _create_job_spec(
+    job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
         tool=spec.tool,
         args=spec.args,
@@ -273,7 +313,7 @@ def _run_job_n_uncached(
     )
 
     job = Job(job_spec)
-    JobExecutor.get_instance(executor).submit(job)
+    _create_executor(executor_name).submit(job)
 
     promise = Promise()
 
