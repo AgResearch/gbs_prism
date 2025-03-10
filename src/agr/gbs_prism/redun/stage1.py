@@ -92,15 +92,7 @@ def bclconvert(
             File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
         ]
     else:
-        fastq_files = run_job_n(
-            EXECUTOR_CONFIG_PATH_ENV,
-            "bcl_convert",
-            args=bclconvert.args,
-            stdout_path=bclconvert.stdout_path,
-            stderr_path=bclconvert.stderr_path,
-            result_glob=bclconvert.result_glob,
-            result_reject_re=bclconvert.result_reject_re,
-        )
+        fastq_files = run_job_n(EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec)
         return check_bclconvert(fastq_files, expected_fastq)
 
 

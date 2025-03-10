@@ -16,6 +16,7 @@ from psij import Job, JobAttributes, JobExecutor, JobSpec, JobState, JobStatus
 from typing import List, Optional
 
 from agr.util import singleton
+import agr.util.cluster as cluster
 
 # TODO remove
 import logging
@@ -71,7 +72,9 @@ def _create_job_spec(
     )
 
 
-def _raise_exception_on_failure(job: Job, status: JobStatus | None, stderr_path: str):
+def _raise_exception_on_failure(
+    job: Job, status: JobStatus | None, spec: cluster.CommonJobSpec
+):
     if status is None:
         logger.debug(f"job {job.native_id} status is None")
         raise ClusterExecutorError(f"job {job.native_id} status is None")
@@ -79,10 +82,31 @@ def _raise_exception_on_failure(job: Job, status: JobStatus | None, stderr_path:
         logger.debug(f"job {job.native_id} canceled")
         raise ClusterExecutorError(f"job {job.native_id} canceled")
     elif status.state == JobState.FAILED:
-        with open(stderr_path, "r") as stderr_f:
+        with open(spec.stderr_path, "r") as stderr_f:
+            if status.exit_code is None:
+                exit_text = ""
+            elif status.exit_code > 128:
+                signal = status.exit_code - 128
+                exit_text = f" because {'killed' if signal == 9 else ' received signal %d' % signal}"
+            else:
+                exit_text = f" with exit code {status.exit_code}"
+            failure_text = (
+                f"failed ({status.message})" if status.message is not None else "failed"
+            ) + exit_text
+            metadata_text = (
+                " ".join(["%s=%s" % (k, str(v)) for k, v in status.metadata])
+                if status.metadata is not None
+                else ""
+            )
+            cwd = spec.cwd or os.getcwd()
+            command_text = " ".join(spec.args)
             stderr_text = stderr_f.read()
-            logger.debug(f"job {job.native_id} failed: {stderr_text}")
-            raise ClusterExecutorError(f"job {job.native_id} failed\n{stderr_text}")
+            logger.debug(
+                f"job {job.native_id} {command_text} {failure_text} cwd={cwd} {metadata_text}: {stderr_text}"
+            )
+            raise ClusterExecutorError(
+                f"job {job.native_id} {failure_text}\nmetadata: {metadata_text}\ncwd: {cwd}\ncmd: {command_text}\n{stderr_text}"
+            )
 
 
 def _reject_on_failure(
@@ -106,12 +130,7 @@ def _reject_on_failure(
 @task()
 def run_job_1(
     config_path_env: str,
-    tool: str,
-    args: List[str],
-    stdout_path: str,
-    stderr_path: str,
-    result_path: str,
-    cwd: Optional[str] = None,
+    spec: cluster.Job1Spec,
 ) -> File:
     """
     Run a job on the defined cluster, which is expected to produce the single file `result_path`
@@ -122,20 +141,20 @@ def run_job_1(
     """
     job_spec, executor = _create_job_spec(
         config_path_env=config_path_env,
-        tool=tool,
-        args=args,
-        stdout_path=stdout_path,
-        stderr_path=stderr_path,
-        cwd=cwd,
+        tool=spec.tool,
+        args=spec.args,
+        stdout_path=spec.stdout_path,
+        stderr_path=spec.stderr_path,
+        cwd=spec.cwd,
     )
 
     job = Job(job_spec)
     JobExecutor.get_instance(executor).submit(job)
 
     status = job.wait()
-    _raise_exception_on_failure(job, status, stderr_path)
+    _raise_exception_on_failure(job, status, spec)
 
-    return File(result_path)
+    return File(spec.result_path)
 
 
 @scheduler_task()
@@ -144,12 +163,7 @@ def _run_job_1_uncached(
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
     config_path_env: str,
-    tool: str,
-    args: List[str],
-    stdout_path: str,
-    stderr_path: str,
-    result_path: str,
-    cwd: Optional[str] = None,
+    spec: cluster.Job1Spec,
 ) -> Promise[File]:
     """
     Run a job on the defined cluster, which is expected to produce the single file `result_path`
@@ -164,11 +178,11 @@ def _run_job_1_uncached(
 
     job_spec, executor = _create_job_spec(
         config_path_env=config_path_env,
-        tool=tool,
-        args=args,
-        stdout_path=stdout_path,
-        stderr_path=stderr_path,
-        cwd=cwd,
+        tool=spec.tool,
+        args=spec.args,
+        stdout_path=spec.stdout_path,
+        stderr_path=spec.stderr_path,
+        cwd=spec.cwd,
     )
 
     job = Job(job_spec)
@@ -177,14 +191,14 @@ def _run_job_1_uncached(
     promise = Promise()
 
     def job_status_callback(job: Job, status: JobStatus):
-        if not _reject_on_failure(promise, job, status, stderr_path):
+        if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
-            if os.path.exists(result_path):
-                promise.do_resolve(File(result_path))
+            if os.path.exists(spec.result_path):
+                promise.do_resolve(File(spec.result_path))
             else:
                 _ = promise.do_reject(
                     ClusterExecutorError(
-                        f"job {job.native_id} failed to write file {result_path}"
+                        f"job {job.native_id} failed to write file {spec.result_path}"
                     )
                 )
 
@@ -195,13 +209,7 @@ def _run_job_1_uncached(
 @task()
 def run_job_n(
     config_path_env: str,
-    tool: str,
-    args: List[str],
-    stdout_path: str,
-    stderr_path: str,
-    result_glob: str,
-    result_reject_re: Optional[str] = None,
-    cwd: Optional[str] = None,
+    spec: cluster.JobNSpec,
 ) -> List[File]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
@@ -209,23 +217,24 @@ def run_job_n(
 
     job_spec, executor = _create_job_spec(
         config_path_env=config_path_env,
-        tool=tool,
-        args=args,
-        stdout_path=stdout_path,
-        stderr_path=stderr_path,
-        cwd=cwd,
+        tool=spec.tool,
+        args=spec.args,
+        stdout_path=spec.stdout_path,
+        stderr_path=spec.stderr_path,
+        cwd=spec.cwd,
     )
 
     job = Job(job_spec)
     JobExecutor.get_instance(executor).submit(job)
 
     status = job.wait()
-    _raise_exception_on_failure(job, status, stderr_path)
+    _raise_exception_on_failure(job, status, spec)
 
     files = [
         File(path)
-        for path in glob.glob(result_glob)
-        if result_reject_re is None or re.search(result_reject_re, path) is None
+        for path in glob.glob(spec.result_glob)
+        if spec.result_reject_re is None
+        or re.search(spec.result_reject_re, path) is None
     ]
     return files
 
@@ -235,13 +244,7 @@ def _run_job_n_uncached(
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
     config_path_env: str,
-    tool: str,
-    args: List[str],
-    stdout_path: str,
-    stderr_path: str,
-    result_glob: str,
-    result_reject_re: Optional[str] = None,
-    cwd: Optional[str] = None,
+    spec: cluster.JobNSpec,
 ) -> Promise[List[File]]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
@@ -256,11 +259,11 @@ def _run_job_n_uncached(
 
     job_spec, executor = _create_job_spec(
         config_path_env=config_path_env,
-        tool=tool,
-        args=args,
-        stdout_path=stdout_path,
-        stderr_path=stderr_path,
-        cwd=cwd,
+        tool=spec.tool,
+        args=spec.args,
+        stdout_path=spec.stdout_path,
+        stderr_path=spec.stderr_path,
+        cwd=spec.cwd,
     )
 
     job = Job(job_spec)
@@ -269,12 +272,13 @@ def _run_job_n_uncached(
     promise = Promise()
 
     def job_status_callback(job: Job, status: JobStatus):
-        if not _reject_on_failure(promise, job, status, stderr_path):
+        if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
             files = [
                 File(path)
-                for path in glob.glob(result_glob)
-                if result_reject_re is None or re.search(result_reject_re, path) is None
+                for path in glob.glob(spec.result_glob)
+                if spec.result_reject_re is None
+                or re.search(spec.result_reject_re, path) is None
             ]
             promise.do_resolve(files)
 

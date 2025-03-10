@@ -2,7 +2,7 @@ import logging
 import os.path
 from typing import Optional
 
-from agr.util.subprocess import run_catching_stderr
+import agr.util.cluster as cluster
 
 logger = logging.getLogger(__name__)
 
@@ -54,40 +54,21 @@ class BclConvert:
         return os.path.join(self._out_dir, fastq_file)
 
     @property
-    def args(self) -> list[str]:
-        return [
-            "bcl-convert",
-            "--force",
-            "--bcl-input-directory",
-            self._in_dir,
-            "--sample-sheet",
-            self._sample_sheet_path,
-            "--output-directory",
-            self._out_dir,
-        ]
-
-    @property
-    def stdout_path(self) -> str:
-        return self.log_path
-
-    @property
-    def stderr_path(self) -> str:
-        return self.log_path
-
-    @property
-    def result_glob(self) -> str:
-        return f"{self._out_dir}/*.fastq.gz"
-
-    @property
-    def result_reject_re(self) -> str:
-        return "/Undetermined"
-
-    # TODO remove this which is now obsolete now we're using Slurm
-    def run(self):
-        with open(self.log_path, "w") as log_f:
-            _ = run_catching_stderr(
-                self.args,
-                check=True,
-                stdout=log_f,
-                stderr=log_f,
-            )
+    def job_spec(self) -> cluster.JobNSpec:
+        return cluster.JobNSpec(
+            tool="bcl_convert",
+            args=[
+                "bcl-convert",
+                "--force",
+                "--bcl-input-directory",
+                self._in_dir,
+                "--sample-sheet",
+                self._sample_sheet_path,
+                "--output-directory",
+                self._out_dir,
+            ],
+            stdout_path=self.log_path,
+            stderr_path=self.log_path,
+            result_glob=f"{self._out_dir}/*.fastq.gz",
+            result_reject_re="/Undetermined",
+        )
