@@ -1,3 +1,26 @@
+"""
+This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
+Tasks:
+    cook_sample_sheet: Process a raw sample sheet.
+    bclconvert: Run bclconvert and return fastq files and summary metrics.
+    fastqc_one: Run fastqc on a single fastq file, returning  .zip results.
+    fastqc_all: Run fastqc on multiple files, returning list of .zip results.
+    multiqc_report: Run MultiQC .html aggregating FastQC and BCLConvert reports.
+    kmer_sample_one: Sample a single fastq file as required for kmer analysis.
+    kmer_sample_all: Sample all fastq files as required for kmer analysis.
+    kmer_analysis_one: Run kmer analysis for a single fastq file.
+    kmer_analysis_all: Run kmer analysis for multiple fastq files.
+    dedupe_one: Dedupe a single fastq file.
+    dedupe_all: Dedupe multiple fastq files.
+    get_gbs_keyfiles: Get GBS keyfiles.
+    get_gbs_targets: Get GBS targets for stage 2.
+    run_stage1: Triggers running of the tasks via redun.
+Dataclasses:
+    CookSampleSheetOutput: Collect the outputs of processed sample sheet.
+    BclConvertOutput: Collect the outputs of bclconvert.
+    GbsTargetsOutput: Collect targets and paths for gbs_prism stage 2.
+    Stage1Output: Collect the outputs of stage 1.
+"""
 import os.path
 from dataclasses import dataclass
 
@@ -31,6 +54,7 @@ from agr.gbs_prism.paths import SeqPaths, GbsPaths
 
 @dataclass
 class CookSampleSheetOutput:
+    """Dataclass to collect the outputs of processed sample sheet."""
     sample_sheet: File
     illumina_platform_root: str
     paths: SeqPaths
@@ -69,6 +93,7 @@ def cook_sample_sheet(
 
 @dataclass
 class BclConvertOutput:
+    """Dataclass to collect the outputs of bclconvert."""
     fastq_files: List[File]
     adapter_metrics: File
     demultiplexing_metrics: File
@@ -85,6 +110,7 @@ def bclconvert(
     out_dir: str,
     bcl_convert_context=get_context("tools.bcl_convert"),
 ) -> BclConvertOutput:
+    """Run bclconvert and return fastq files and metrics."""
     os.makedirs(out_dir, exist_ok=True)
     bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
@@ -209,7 +235,7 @@ def dedupe_one(
     dedupe(
         in_path=fastq_file.path,
         out_path=out_path,
-        tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+        tmp_dir="/tmp",  #TODO maybe need tmp_dir on large scratch partition
         jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
     )
     return File(out_path)
@@ -252,6 +278,7 @@ def get_gbs_keyfiles(
 
 @dataclass
 class GbsTargetsOutput:
+    """Dataclass to collect targets and paths for gbs_prism stage 2."""
     paths: GbsPaths
     spec: GbsTargetSpec
 
@@ -272,6 +299,7 @@ def get_gbs_targets(
 
 @dataclass
 class Stage1Output:
+    """Dataclass to collect the outputs of stage 1."""
     fastqc: List[File]
     multiqc: File
     kmer_analysis: List[File]
@@ -288,6 +316,7 @@ def run_stage1(
     fastq_link_farm: str,
     run: str,
 ) -> Stage1Output:
+    """Stage 1: bclconvert, fastqc, multiqc, kmer analysis, deduplication, GBS keyfile creation."""
     sequencer_run = SequencerRun(seq_root, run)
 
     seq = cook_sample_sheet(
