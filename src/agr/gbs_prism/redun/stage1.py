@@ -152,7 +152,7 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 @task()
 def multiqc_report(
-    fastqc_in_paths: List[str],
+    fastqc_files: List[File],
     bclconvert_top_unknowns: str,
     bclconvert_adapter_metrics: str,
     bclconvert_demultiplex_stats: str,
@@ -165,7 +165,7 @@ def multiqc_report(
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
     multiqc(
-        fastqc_in_paths,
+        [fastqc_file.path for fastqc_file in fastqc_files],
         bclconvert_top_unknowns,
         bclconvert_adapter_metrics,
         bclconvert_demultiplex_stats,
@@ -335,7 +335,7 @@ def run_stage1(
     )
 
     multiqc_report_out = multiqc_report(
-        fastqc_in_paths=fastqc_files,
+        fastqc_files=fastqc_files,
         bclconvert_top_unknowns=bclconvert_output.top_unknown_path,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
