@@ -49,10 +49,15 @@ local Tassel3Default = ToolDefault {
     },
 
     dedupe: ToolDefault {
-      java_max_heap: '200G',
+      java_max_heap: '520G',
       job_attributes+: {
+        queue_name: 'hugemem',
+        duration: {
+          hours: 2,
+        },
         custom_attributes+: customised({
-          mem: '8G',
+          'cpus-per-task': '1',
+          mem: '550G',
         }),
       },
     },

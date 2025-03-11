@@ -11,7 +11,7 @@ from redun.task import task, scheduler_task
 from redun.scheduler import Job as SchedulerJob, Scheduler
 from redun.expression import SchedulerExpression
 from redun.promise import Promise
-from typing import Dict, List, Any, TYPE_CHECKING
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 from psij import (
     Job,
     JobAttributes,
@@ -109,15 +109,8 @@ def _create_job_spec(
     stderr_path: str,
     cwd: Optional[str] = None,
 ) -> tuple[JobSpec, str]:
-    assert (
-        config_path_env in os.environ
-    ), f"Missing environment variable {config_path_env}"
-    config_path = os.environ[config_path_env]
+    tool_config, config_path = get_tool_config(config_path_env, tool)
     try:
-        config = ClusterExecutorConfig(config_path)
-        tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
-        logger.info(f"tool_config: {tool_config}")
-
         executor_name = tool_config["executor"]
         job_prefix = tool_config.get("job_prefix", "")
 
@@ -388,6 +381,13 @@ def deep_get(values: Any, path: str, default: Any = None) -> Any:
     return values
 
 
+def get_config_path(config_path_env: str) -> str:
+    assert (
+        config_path_env in os.environ
+    ), f"Missing environment variable {config_path_env}"
+    return os.environ[config_path_env]
+
+
 @singleton
 class ClusterExecutorConfig:
     def __init__(self, config_path: str):
@@ -403,3 +403,15 @@ class ClusterExecutorConfig:
 
     def get(self, path: str, default: Any = None) -> Any:
         return deep_get(self._config, path, default=default)
+
+
+def get_tool_config(config_path_env: str, tool: str) -> Tuple[Dict[str, Any], str]:
+    """Return tool config and config path."""
+    assert (
+        config_path_env in os.environ
+    ), f"Missing environment variable {config_path_env}"
+    config_path = os.environ[config_path_env]
+    config = ClusterExecutorConfig(config_path)
+    tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
+    logger.info(f"{tool} config: {tool_config}")
+    return tool_config, config_path
