@@ -6,6 +6,8 @@ import agr.util.cluster as cluster
 
 logger = logging.getLogger(__name__)
 
+BCLCONVERT_TOOL_NAME = "bcl_convert"
+
 
 class BclConvertError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
@@ -56,7 +58,7 @@ class BclConvert:
     @property
     def job_spec(self) -> cluster.JobNSpec:
         return cluster.JobNSpec(
-            tool="bcl_convert",
+            tool=BCLCONVERT_TOOL_NAME,
             args=[
                 "bcl-convert",
                 "--force",
