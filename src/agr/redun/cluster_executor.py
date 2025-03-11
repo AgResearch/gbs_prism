@@ -152,8 +152,7 @@ def _create_job_spec(
 def _create_executor(executor_name: str):
     # PSI/J defaults to home directory, which is not what we want
     cwd = os.getcwd()
-    launcher_log_file = os.path.join(cwd, "cluster.log")
-    work_directory = os.path.join(cwd, ".psij")
+    psij_dir = os.path.join(cwd, ".psij")
 
     return JobExecutor.get_instance(
         executor_name,
@@ -161,8 +160,8 @@ def _create_executor(executor_name: str):
         # because the latter is an abstract base class which does not set the required defaults like initial_queue_polling_delay
         # https://github.com/ExaWorks/psij-python/issues/511
         config=BatchSchedulerExecutorConfig(
-            launcher_log_file=Path(launcher_log_file),
-            work_directory=Path(work_directory),
+            launcher_log_file=Path(psij_dir),
+            work_directory=Path(cwd),
         ),
     )
 
