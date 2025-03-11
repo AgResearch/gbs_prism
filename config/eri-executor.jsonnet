@@ -9,7 +9,7 @@ local customised(attrs) = { [executor + '.' + k]: attrs[k] for k in std.objectFi
 
 local ToolDefault = {
   executor: executor,
-  job_prefix: 'playpen.',
+  job_prefix: 'gbs_prism.',
   job_attributes: {
     queue_name: 'compute',
     duration: {
