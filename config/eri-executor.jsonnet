@@ -14,13 +14,15 @@ local ToolDefault = {
     queue_name: 'compute',
     duration: {
       // fields are Python datetime.timedelta
-      hours: 1,
+      // TODO reduce this down again
+      hours: 4,
     },
     custom_attributes: customised({
       // all string-valued
       ntasks: '1',
-      'cpus-per-task': '1',
-      mem: '4G',
+      // TODO bumped up the defaults for tuning resource requirements, need to drop them down again
+      'cpus-per-task': '8',
+      mem: '250G',
     }),
   },
 };
@@ -48,6 +50,8 @@ local Tassel3Default = ToolDefault {
       },
     },
 
+    fastqc: ToolDefault,
+
     dedupe: ToolDefault {
       java_max_heap: '520G',
       job_attributes+: {
@@ -56,7 +60,6 @@ local Tassel3Default = ToolDefault {
           hours: 2,
         },
         custom_attributes+: customised({
-          'cpus-per-task': '1',
           mem: '550G',
         }),
       },
