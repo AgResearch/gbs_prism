@@ -147,8 +147,18 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
         out_dir,
         "%s.fastq.%s.fastq" % (os.path.basename(fastq_file.path), kmer_sample.moniker),
     )
-    kmer_sample.run(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+
+    rate_sample = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        kmer_sample.rate_job_spec(in_path=fastq_file.path, out_path=out_path),
+    )
+    if kmer_sample.is_minsize_job_required(in_path=fastq_file.path, out_path=out_path):
+        return run_job_1(
+            EXECUTOR_CONFIG_PATH_ENV,
+            kmer_sample.minsize_job_spec(in_path=fastq_file.path, out_path=out_path),
+        )
+    else:
+        return rate_sample
 
 
 @task()

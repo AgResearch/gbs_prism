@@ -12,6 +12,7 @@ from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
 from agr.redun import concat, one_forall
+from agr.redun.cluster_executor import run_job_1
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt
@@ -24,6 +25,7 @@ from agr.gbs_prism.GUSbase import run_GUSbase
 from agr.gbs_prism.kgd import run_kgd
 from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
 from agr.gbs_prism.types import Cohort, flowcell_id
+from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
 
 
 @dataclass
@@ -80,8 +82,22 @@ def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
         "%s.fastq.%s.fastq"
         % (os.path.basename(fastq_file.path), spec.bwa_sample.moniker),
     )
-    spec.bwa_sample.run(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+
+    rate_sample = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        spec.bwa_sample.rate_job_spec(in_path=fastq_file.path, out_path=out_path),
+    )
+    if spec.bwa_sample.is_minsize_job_required(
+        in_path=fastq_file.path, out_path=out_path
+    ):
+        return run_job_1(
+            EXECUTOR_CONFIG_PATH_ENV,
+            spec.bwa_sample.minsize_job_spec(
+                in_path=fastq_file.path, out_path=out_path
+            ),
+        )
+    else:
+        return rate_sample
 
 
 @task()
