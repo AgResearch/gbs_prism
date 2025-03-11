@@ -8,6 +8,7 @@ from typing import List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.redun import one_forall
+from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -27,11 +28,12 @@ from agr.gbs_prism.gbs_target_spec import (
     write_gbs_target_spec,
     GbsTargetSpec,
 )
-from agr.gbs_prism.kmer_analysis import run_kmer_analysis
+from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
-from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
+
+from agr.util.path import remove_if_exists
 
 
 @dataclass
@@ -170,21 +172,27 @@ def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
 @task()
 def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
     """Run kmer analysis for a single fastq file."""
-    os.makedirs(out_dir, exist_ok=True)
+    kmer_prism_workdir = os.path.join(out_dir, "work")
+    os.makedirs(kmer_prism_workdir, exist_ok=True)
     kmer_size = 6
     out_path = os.path.join(
         out_dir,
         "%s.k%d.1" % (os.path.basename(fastq_file.path), kmer_size),
     )
-    run_kmer_analysis(
-        in_path=fastq_file.path,
-        out_path=out_path,
-        input_filetype="fasta",
-        kmer_size=kmer_size,
-        # this causes it to crash: 😩
-        # assemble_low_entropy_kmers=True
+    remove_if_exists(out_path)
+
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        kmer_analysis_job_spec(
+            in_path=fastq_file.path,
+            out_path=out_path,
+            input_filetype="fasta",
+            kmer_size=kmer_size,
+            # kmer_prism drops turds in the current directory and doesn't pickup after itself,
+            # so we run with cwd as a subdirectory of the output file
+            cwd=kmer_prism_workdir,
+        ),
     )
-    return File(out_path)
 
 
 @task()
