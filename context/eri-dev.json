@@ -7,10 +7,6 @@
     "fastq_link_farm": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.dev/fastq-link-farm"
   },
   "tools": {
-    "dedupe":
-    {
-      "java_max_heap": "200G"
-    },
     "tassel3":
     {
       "default": {

@@ -271,6 +271,7 @@
                 ];
 
               shellHook = ''
+                export REDUN_CONFIG=$(pwd)/.redun
                 # enable use of gbs_prism from current directory during development
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${gquery-export-env "dev"}

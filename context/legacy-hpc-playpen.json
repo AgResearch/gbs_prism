@@ -7,10 +7,6 @@
     "fastq_link_farm": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/fastq-link-farm"
   },
   "tools": {
-    "dedupe":
-    {
-      "java_max_heap": "200G"
-    },
     "tassel3":
     {
       "default": {

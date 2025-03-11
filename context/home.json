@@ -12,10 +12,6 @@
         "n_reads": 2000000
       }
     },
-    "dedupe":
-    {
-      "java_max_heap": "200G"
-    },
     "tassel3":
     {
       "default": {

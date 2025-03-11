@@ -14,7 +14,11 @@ from agr.seq.sample_sheet import SampleSheet
 # Fake bcl-convert may be selected in context
 from agr.seq.bclconvert import BclConvertError
 from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
-from agr.seq.dedupe import dedupe
+from agr.seq.dedupe import (
+    dedupe_job_spec,
+    remove_dedupe_turds,
+    DEDUPE_TOOL_NAME,
+)
 from agr.seq.fastqc import fastqc
 from agr.seq.fastq_sample import FastqSample
 
@@ -27,7 +31,7 @@ from agr.gbs_prism.kmer_analysis import run_kmer_analysis
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
-from agr.redun.cluster_executor import run_job_n
+from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 
 
 @dataclass
@@ -186,18 +190,25 @@ def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
 def dedupe_one(
     fastq_file: File,
     out_dir: str,
-    java_max_heap=get_context("tools.dedupe.java_max_heap"),
 ) -> File:
     """Dedupe a single fastq file."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
-    dedupe(
-        in_path=fastq_file.path,
-        out_path=out_path,
-        tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
-        jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
+
+    tool_config, _ = get_tool_config(EXECUTOR_CONFIG_PATH_ENV, DEDUPE_TOOL_NAME)
+    java_max_heap = tool_config.get("java_max_heap")
+
+    result = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        dedupe_job_spec(
+            in_path=fastq_file.path,
+            out_path=out_path,
+            tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+            jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
+        ),
     )
-    return File(out_path)
+    remove_dedupe_turds(out_path)
+    return result
 
 
 @task()
