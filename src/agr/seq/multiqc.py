@@ -1,3 +1,6 @@
+"""
+This module wraps MultiQC to generate a report from FastQC and BCLConvert reports.
+"""
 import logging
 from typing import List
 
@@ -20,10 +23,14 @@ def multiqc(
     Generate a MultiQC report from FastQC and BCLConvert reports.
 
     Args:
-        fastqc_in_path (str): Input top level directory of FastQC reports.
-        bclconvert_in_path (str): Input top level directory of BCLConvert reports.
+        fastqc_in_paths (List[str]): List of input paths for FastQC reports.
+        bclconvert_top_unknowns (str): Path to BCLConvert top unknowns report.
+        bclconvert_adapter_metrics (str): Path to BCLConvert adapter metrics report.
+        bclconvert_demultiplex_stats (str): Path to BCLConvert demultiplex stats report.
+        bclconvert_quality_metrics (str): Path to BCLConvert quality metrics report.
+        bclconvert_run_info_xml (str): Path to BCLConvert run info XML.
         out_dir (str): Output directory for the MultiQC report.
-        run (str): Input run name for the MultiQC report naming.
+        out_path (str): Output path for the MultiQC report.
     """
     log_path = out_path.removesuffix(".html") + ".log"
 
