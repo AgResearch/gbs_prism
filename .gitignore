@@ -1,6 +1,7 @@
 /.direnv/
 /.redun/
 /redun.log
+/.psij/
 __pycache__/
 /result*
 /gbs_prism.log
