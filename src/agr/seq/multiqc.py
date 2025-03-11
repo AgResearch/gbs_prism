@@ -1,6 +1,4 @@
-"""
-This module wraps MultiQC to generate a report from FastQC and BCLConvert reports.
-"""
+"""This module wraps MultiQC to generate a report from FastQC and BCLConvert reports."""
 import logging
 from typing import List
 
