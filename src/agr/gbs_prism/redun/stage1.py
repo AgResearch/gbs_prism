@@ -134,7 +134,7 @@ def bclconvert(
 
 @task()
 def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
-    """Run fastqc on a single file, returning the zip results."""
+    """Run fastqc on a single file, returning a list of the zip results."""
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
@@ -147,12 +147,12 @@ def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Run fastqc on multiple files, returning concatenation of all the zip results."""
-    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
+    return all_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
 def multiqc_report(
-    fastqc_in: List[File],
+    fastqc_in_paths: List[str],
     bclconvert_top_unknowns: str,
     bclconvert_adapter_metrics: str,
     bclconvert_demultiplex_stats: str,
@@ -165,7 +165,7 @@ def multiqc_report(
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
     multiqc(
-        fastqc_in,
+        fastqc_in_paths,
         bclconvert_top_unknowns,
         bclconvert_adapter_metrics,
         bclconvert_demultiplex_stats,
@@ -335,7 +335,7 @@ def run_stage1(
     )
 
     multiqc_report_out = multiqc_report(
-        fastqc_in=fastqc_files,
+        fastqc_in_paths=fastqc_files,
         bclconvert_top_unknowns=bclconvert_output.top_unknown_path,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
