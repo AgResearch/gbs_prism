@@ -42,7 +42,8 @@ local Tassel3Default = ToolDefault {
     bcl_convert: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
-          mem: '100G',
+          'cpus-per-task': '8',
+          mem: '50G',
         }),
       },
     },
