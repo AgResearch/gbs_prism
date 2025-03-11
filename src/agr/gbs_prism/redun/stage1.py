@@ -7,7 +7,7 @@ from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.redun import one_forall, all_forall
+from agr.redun import one_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -19,7 +19,7 @@ from agr.seq.dedupe import (
     remove_dedupe_turds,
     DEDUPE_TOOL_NAME,
 )
-from agr.seq.fastqc import fastqc
+from agr.seq.fastqc import fastqc_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -122,22 +122,19 @@ def check_bclconvert(fastq_files: List[File], expected: Set[str]) -> List[File]:
 
 
 @task()
-def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
-    """Run fastqc on a single file, returning both the html and zip results."""
-    fastqc(in_path=fastq_file.path, out_dir=out_dir)
-    basename = (
-        os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
+def fastqc_one(fastq_file: File, out_dir: str) -> File:
+    """Run fastqc on a single file, returning just the zip file."""
+    os.makedirs(out_dir, exist_ok=True)
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
     )
-    return [
-        File(os.path.join(out_dir, "%s%s" % (basename, ext)))
-        for ext in ["_fastqc.html", "_fastqc.zip"]
-    ]
 
 
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
-    """Run fastqc on multiple files, returning concatenation of all the html and zip results."""
-    return all_forall(fastqc_one, fastq_files, out_dir=out_dir)
+    """Run fastqc on multiple files, returning just the zip files."""
+    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
