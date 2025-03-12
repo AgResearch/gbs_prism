@@ -77,6 +77,7 @@ def _create_job_attributes(
     configured_attributes: Dict[str, Any],
     executor_name: str,
     job_name: str,
+    comment: Optional[str],
 ) -> JobAttributes:
     augmented_custom_attributes = {
         "custom_attributes": (
@@ -84,6 +85,13 @@ def _create_job_attributes(
             | {
                 f"{executor_name}.job-name": job_name,
             }
+            | (
+                {
+                    f"{executor_name}.comment": comment,
+                }
+                if comment is not None
+                else {}
+            )
         )
     }
 
@@ -120,6 +128,7 @@ def _create_job_spec(
             configured_attributes=tool_config.get("job_attributes", {}),
             executor_name=executor_name,
             job_name=f"{job_prefix}{spec.tool}",
+            comment=spec.comment,
         )
 
         return (

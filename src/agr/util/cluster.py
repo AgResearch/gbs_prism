@@ -11,6 +11,7 @@ class CommonJobSpec:
     stdout_path: str
     stderr_path: str
     cwd: Optional[str] = None
+    comment: Optional[str] = None
 
 
 @dataclass(kw_only=True)
