@@ -74,11 +74,17 @@ class ConfigError(Exception):
 
 
 def _create_job_attributes(
-    configured_attributes: Dict[str, Any], executor_name: str, job_name: str
+    configured_attributes: Dict[str, Any],
+    executor_name: str,
+    job_name: str,
 ) -> JobAttributes:
     augmented_custom_attributes = {
-        "custom_attributes": configured_attributes.get("custom_attributes", {})
-        | {f"{executor_name}.job-name": job_name}
+        "custom_attributes": (
+            configured_attributes.get("custom_attributes", {})
+            | {
+                f"{executor_name}.job-name": job_name,
+            }
+        )
     }
 
     if configured_duration := configured_attributes.get("duration"):
@@ -103,13 +109,9 @@ def _create_job_attributes(
 
 def _create_job_spec(
     config_path_env: str,
-    tool: str,
-    args: List[str],
-    stdout_path: str,
-    stderr_path: str,
-    cwd: Optional[str] = None,
+    spec: cluster.CommonJobSpec,
 ) -> tuple[JobSpec, str]:
-    tool_config, config_path = get_tool_config(config_path_env, tool)
+    tool_config, config_path = get_tool_config(config_path_env, spec.tool)
     try:
         executor_name = tool_config["executor"]
         job_prefix = tool_config.get("job_prefix", "")
@@ -117,16 +119,16 @@ def _create_job_spec(
         job_attributes = _create_job_attributes(
             configured_attributes=tool_config.get("job_attributes", {}),
             executor_name=executor_name,
-            job_name=f"{job_prefix}{tool}",
+            job_name=f"{job_prefix}{spec.tool}",
         )
 
         return (
             JobSpec(
-                executable=args[0],
-                arguments=args[1:],
-                directory=cwd or os.getcwd(),
-                stdout_path=stdout_path,
-                stderr_path=stderr_path,
+                executable=spec.args[0],
+                arguments=spec.args[1:],
+                directory=spec.cwd or os.getcwd(),
+                stdout_path=spec.stdout_path,
+                stderr_path=spec.stderr_path,
                 attributes=job_attributes,
             ),
             executor_name,
@@ -136,7 +138,7 @@ def _create_job_spec(
             raise
         else:
             raise ConfigError(
-                message=err.message, path=config_path, tool=tool, cause=err.cause
+                message=err.message, path=config_path, tool=spec.tool, cause=err.cause
             )
     except Exception as ex:
         raise ConfigError(message=str(ex), path=config_path, cause=ex)
@@ -228,11 +230,7 @@ def run_job_1(
     """
     job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
-        tool=spec.tool,
-        args=spec.args,
-        stdout_path=spec.stdout_path,
-        stderr_path=spec.stderr_path,
-        cwd=spec.cwd,
+        spec=spec,
     )
 
     job = Job(job_spec)
@@ -265,11 +263,7 @@ def _run_job_1_uncached(
 
     job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
-        tool=spec.tool,
-        args=spec.args,
-        stdout_path=spec.stdout_path,
-        stderr_path=spec.stderr_path,
-        cwd=spec.cwd,
+        spec=spec,
     )
 
     job = Job(job_spec)
@@ -304,11 +298,7 @@ def run_job_n(
 
     job_spec, executor_name = _create_job_spec(
         config_path_env=config_path_env,
-        tool=spec.tool,
-        args=spec.args,
-        stdout_path=spec.stdout_path,
-        stderr_path=spec.stderr_path,
-        cwd=spec.cwd,
+        spec=spec,
     )
 
     job = Job(job_spec)
@@ -345,12 +335,7 @@ def _run_job_n_uncached(
         _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
 
     job_spec, executor_name = _create_job_spec(
-        config_path_env=config_path_env,
-        tool=spec.tool,
-        args=spec.args,
-        stdout_path=spec.stdout_path,
-        stderr_path=spec.stderr_path,
-        cwd=spec.cwd,
+        config_path_env=config_path_env, spec=spec
     )
 
     job = Job(job_spec)
