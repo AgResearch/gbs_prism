@@ -15,7 +15,7 @@ from agr.redun import concat, one_forall
 from agr.redun.cluster_executor import run_job_1
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
-from agr.seq.cutadapt import cutadapt
+from agr.seq.cutadapt import cutadapt_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
@@ -112,8 +112,10 @@ def cutadapt_one(fastq_file: File, out_dir: str) -> File:
         out_dir,
         "%s.trimmed.fastq" % os.path.basename(fastq_file.path).removesuffix(".fastq"),
     )
-    cutadapt(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        cutadapt_job_spec(in_path=fastq_file.path, out_path=out_path),
+    )
 
 
 @task()

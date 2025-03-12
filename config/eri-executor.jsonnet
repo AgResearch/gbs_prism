@@ -67,6 +67,9 @@ local Tassel3Default = ToolDefault {
       },
     },
 
+
+    cutadapt: ToolDefault,
+
     'tassel3-FastqToTagCount': Tassel3Default {
       java_max_heap: '5G',
       job_attributes+: {
