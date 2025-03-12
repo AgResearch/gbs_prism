@@ -4,14 +4,14 @@ Tasks:
     cook_sample_sheet: Process a raw sample sheet.
     bclconvert: Run bclconvert and return fastq files and summary metrics.
     fastqc_one: Run fastqc on a single fastq file, returning  .zip results.
-    fastqc_all: Run fastqc on multiple files, returning list of .zip results.
-    multiqc_report: Run MultiQC .html aggregating FastQC and BCLConvert reports.
+    fastqc_all: Run fastqc_one on multiple files, returning list of .zip results.
+    multiqc_report: Run MultiQC aggregating FastQC and BCLConvert reports.
     kmer_sample_one: Sample a single fastq file as required for kmer analysis.
-    kmer_sample_all: Sample all fastq files as required for kmer analysis.
+    kmer_sample_all: Run kmer_sample_one on all fastq files.
     kmer_analysis_one: Run kmer analysis for a single fastq file.
-    kmer_analysis_all: Run kmer analysis for multiple fastq files.
+    kmer_analysis_all: Run kmer_analysis_one on all fastq files.
     dedupe_one: Dedupe a single fastq file.
-    dedupe_all: Dedupe multiple fastq files.
+    dedupe_all: Run dedupe_one on all fastq files.
     get_gbs_keyfiles: Get GBS keyfiles.
     get_gbs_targets: Get GBS targets for stage 2.
     run_stage1: Triggers running of the tasks via redun.
