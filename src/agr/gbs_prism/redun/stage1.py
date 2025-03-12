@@ -136,8 +136,10 @@ def bclconvert(
 def fastqc_one(fastq_file: File, out_dir: str) -> File:
     """Run fastqc on a single file, returning a list of the zip results."""
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
-    report = fastq_file.path.removesuffix(".gz").removesuffix(".fastq") + "_fastqc.zip"
-    return File(report)
+    basename = (
+        os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
+    )
+    return File(os.path.join(out_dir, basename) + "_fastqc.zip")
 
 
 @task()
