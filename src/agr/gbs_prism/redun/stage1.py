@@ -99,7 +99,7 @@ class BclConvertOutput:
     demultiplexing_metrics: File
     quality_metrics: File
     run_info_xml: File
-    top_unknown_path: File
+    top_unknown: File
 
 
 @task()
@@ -124,11 +124,11 @@ def bclconvert(
         fastq_files=[
             File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
         ],
-        adapter_metrics=File(bclconvert.adapter_metrics),
-        demultiplexing_metrics=File(bclconvert.demultiplex_stats),
-        quality_metrics=File(bclconvert.quality_metrics),
-        run_info_xml=File(bclconvert.run_info_xml),
-        top_unknown_path=File(bclconvert.top_unknown_path),
+        adapter_metrics=File(bclconvert.adapter_metrics_path),
+        demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
+        quality_metrics=File(bclconvert.quality_metrics_path),
+        run_info_xml=File(bclconvert.run_info_xml_path),
+        top_unknown=File(bclconvert.top_unknown_path),
     )
 
 
@@ -153,11 +153,11 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 @task()
 def multiqc_report(
     fastqc_files: List[File],
-    bclconvert_top_unknowns: str,
-    bclconvert_adapter_metrics: str,
-    bclconvert_demultiplex_stats: str,
-    bclconvert_quality_metrics: str,
-    bclconvert_run_info_xml: str,
+    bclconvert_top_unknowns: File,
+    bclconvert_adapter_metrics: File,
+    bclconvert_demultiplex_stats: File,
+    bclconvert_quality_metrics: File,
+    bclconvert_run_info_xml: File,
     out_dir: str,
     run: str,
 ) -> File:
@@ -166,11 +166,11 @@ def multiqc_report(
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
     multiqc(
         [fastqc_file.path for fastqc_file in fastqc_files],
-        bclconvert_top_unknowns,
-        bclconvert_adapter_metrics,
-        bclconvert_demultiplex_stats,
-        bclconvert_quality_metrics,
-        bclconvert_run_info_xml,
+        bclconvert_top_unknowns.path,
+        bclconvert_adapter_metrics.path,
+        bclconvert_demultiplex_stats.path,
+        bclconvert_quality_metrics.path,
+        bclconvert_run_info_xml.path,
         out_dir,
         out_path,
     )
@@ -336,7 +336,7 @@ def run_stage1(
 
     multiqc_report_out = multiqc_report(
         fastqc_files=fastqc_files,
-        bclconvert_top_unknowns=bclconvert_output.top_unknown_path,
+        bclconvert_top_unknowns=bclconvert_output.top_unknown,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
         bclconvert_quality_metrics=bclconvert_output.quality_metrics,
