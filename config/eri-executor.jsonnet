@@ -52,6 +52,8 @@ local Tassel3Default = ToolDefault {
 
     fastqc: ToolDefault,
 
+    seqtk_sample: ToolDefault,
+
     dedupe: ToolDefault {
       java_max_heap: '520G',
       job_attributes+: {

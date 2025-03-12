@@ -6,7 +6,7 @@ import agr.util.cluster as cluster
 
 logger = logging.getLogger(__name__)
 
-FASTQ_SAMPLE_TOOL_NAME = "seqtk-sample"
+FASTQ_SAMPLE_TOOL_NAME = "seqtk_sample"
 
 
 class FastqSample:
