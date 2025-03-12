@@ -38,6 +38,7 @@ def multiqc(
         _ = run_catching_stderr(
             [
                 "multiqc",
+                "--no-clean-up",
                 "--interactive",
                 "--force",
                 "--outdir",
