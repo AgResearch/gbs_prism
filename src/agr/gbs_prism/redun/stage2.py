@@ -134,12 +134,18 @@ def bwa_aln_one(
     fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
 ) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
+    os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(
         out_dir,
         "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
     )
-    bwa.aln(in_path=fastq_file.path, out_path=out_path, reference=ref_path)
-    return BwaAlnOutput(fastq=fastq_file, sai=File(out_path))
+    sai_file = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        bwa.aln_job_spec(
+            in_path=fastq_file.path, out_path=out_path, reference=ref_path
+        ),
+    )
+    return BwaAlnOutput(fastq=fastq_file, sai=sai_file)
 
 
 @task()
@@ -161,13 +167,15 @@ def bwa_aln_all(
 def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, bwa: Bwa) -> File:
     """bwa samse for a single file with a single reference genome."""
     out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
-    bwa.samse(
-        sai_path=aln.sai.path,
-        fastq_path=aln.fastq.path,
-        out_path=out_path,
-        reference=ref_path,
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        bwa.samse_job_spec(
+            sai_path=aln.sai.path,
+            fastq_path=aln.fastq.path,
+            out_path=out_path,
+            reference=ref_path,
+        ),
     )
-    return File(out_path)
 
 
 @task()
