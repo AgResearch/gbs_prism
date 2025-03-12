@@ -133,7 +133,7 @@ def bclconvert(
 
 
 @task()
-def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
+def fastqc_one(fastq_file: File, out_dir: str) -> File:
     """Run fastqc on a single file, returning a list of the zip results."""
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
@@ -147,7 +147,7 @@ def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
     """Run fastqc on multiple files, returning concatenation of all the zip results."""
-    return all_forall(fastqc_one, fastq_files, out_dir=out_dir)
+    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
