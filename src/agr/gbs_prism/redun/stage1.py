@@ -208,6 +208,7 @@ def get_gbs_keyfiles(
 class GbsTargetsOutput:
     paths: GbsPaths
     spec: GbsTargetSpec
+    spec_file: File
 
 
 @task()
@@ -221,7 +222,9 @@ def get_gbs_targets(
     os.makedirs(paths.run_root, exist_ok=True)
     gbs_target_spec = gquery_gbs_target_spec(run, fastq_link_farm)
     write_gbs_target_spec(paths.target_spec_path, gbs_target_spec)
-    return GbsTargetsOutput(paths=paths, spec=gbs_target_spec)
+    return GbsTargetsOutput(
+        paths=paths, spec=gbs_target_spec, spec_file=File(paths.target_spec_path)
+    )
 
 
 @dataclass
@@ -229,6 +232,7 @@ class Stage1Output:
     fastqc: List[File]
     kmer_analysis: List[File]
     spec: GbsTargetSpec
+    spec_file: File
     gbs_paths: GbsPaths
 
 
@@ -285,6 +289,7 @@ def run_stage1(
         fastqc=fastqc_files,
         kmer_analysis=kmer_analysis,
         spec=gbs_targets.spec,
+        spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,
     )
     # kmer_analysis + is troublesome for now because of in-process problems, but should be fixed and returned
