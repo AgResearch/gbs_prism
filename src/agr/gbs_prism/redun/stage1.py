@@ -30,7 +30,7 @@ from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.redun import one_forall, all_forall
+from agr.redun import one_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
