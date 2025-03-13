@@ -2,8 +2,9 @@ import logging
 import os.path
 import pathlib
 import re
-from typing import Any, List
+from typing import Any, Dict, List
 
+import agr.util.cluster as cluster
 from agr.util.path import remove_if_exists
 from agr.util.subprocess import run_catching_stderr
 
@@ -11,6 +12,10 @@ from .enzyme_sub import enzyme_sub_for_uneak
 from .types import Cohort
 
 logger = logging.getLogger(__name__)
+
+
+FASTQ_TO_TAG_COUNT_STDOUT = "stdout"
+FASTQ_TO_TAG_COUNT_COUNTS = "counts"
 
 
 # TODO review this!!!
@@ -54,6 +59,65 @@ class Tassel3:
             [f"-Xms{initial_heap}"] if initial_heap is not None else []
         )
 
+    def _tassel_plugin_job_1_spec(
+        self,
+        plugin: str,
+        plugin_args: List[str],
+        work_dir: str,
+        result_path: str,
+    ) -> cluster.Job1Spec:
+        return cluster.Job1Spec(
+            tool=f"tassel3_{plugin}",
+            args=self._tassel_plugin_args(
+                plugin,
+                plugin_args,
+                work_dir=work_dir,
+            ),
+            stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
+            stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
+            result_path=result_path,
+        )
+
+    def _tassel_plugin_job_n_spec(
+        self,
+        plugin: str,
+        plugin_args: List[str],
+        work_dir: str,
+        result_paths: Dict[str, str | cluster.FilteredGlob],
+    ) -> cluster.JobNSpec:
+        return cluster.JobNSpec(
+            tool=f"tassel3_{plugin}",
+            args=self._tassel_plugin_args(
+                plugin,
+                plugin_args,
+                work_dir=work_dir,
+            ),
+            stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
+            stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
+            result_paths=result_paths,
+        )
+
+    def _tassel_plugin_args(
+        self, plugin: str, plugin_args: List[str], work_dir: str
+    ) -> List[str]:
+        return (
+            [
+                "run_pipeline.pl",
+            ]
+            + self._jvm_args_for_plugin(plugin)
+            + [
+                "-fork1",
+                "-U%sPlugin" % plugin,
+                "-w",
+                work_dir,
+            ]
+            + plugin_args
+            + [
+                "-endPlugin",
+                "-runfork1",
+            ]
+        )
+
     def _run_tassel_plugin(
         self, plugin: str, plugin_args: List[str], work_dir: str, done_file: str
     ):
@@ -84,23 +148,33 @@ class Tassel3:
             )
         pathlib.Path(os.path.join(work_dir, done_file)).touch()
 
-    def fastq_to_tag_count(self, in_path: str, cohort_str: str, work_dir: str):
-        cohort = Cohort.parse(cohort_str)
+    def _key_dir(self, work_dir: str) -> str:
+        return os.path.join(work_dir, "key")
 
-        # TODO create key directory as required by Tassel3, Illumina dir assumed to already exist
-        key_dir = os.path.join(work_dir, "key")
-        key_path = os.path.join(key_dir, os.path.basename(in_path))
-        os.makedirs(key_dir, exist_ok=True)
+    #
+    # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
+    # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
+
+    def _tag_counts_dir(self, work_dir: str) -> str:
+        return os.path.join(work_dir, "tagCounts")
+
+    def create_directories(self, work_dir):
+        # create key directory as required by Tassel3, Illumina dir assumed to already exist
+        os.makedirs(self._key_dir(work_dir), exist_ok=True)
+
+    def symlink_key(self, in_path: str, work_dir: str):
+        key_path = os.path.join(self._key_dir(work_dir), os.path.basename(in_path))
         remove_if_exists(key_path)
         logger.info("symlink %s %s" % (in_path, key_path))
         os.symlink(in_path, key_path)
 
-        tag_counts_dir = os.path.join(work_dir, "tagCounts")
-        os.makedirs(tag_counts_dir, exist_ok=True)
-
-        self._run_tassel_plugin(
-            "FastqToTagCount",
-            [
+    def fastq_to_tag_count_job_spec(
+        self, cohort_str: str, work_dir: str
+    ) -> cluster.JobNSpec:
+        cohort = Cohort.parse(cohort_str)
+        return self._tassel_plugin_job_n_spec(
+            plugin="FastqToTagCount",
+            plugin_args=[
                 "-c",
                 "1",
                 "-e",
@@ -109,7 +183,14 @@ class Tassel3:
                 "900000000",
             ],
             work_dir=work_dir,
-            done_file="tagCounts.done",
+            result_paths={
+                FASTQ_TO_TAG_COUNT_STDOUT: os.path.join(
+                    work_dir, "FastqToTagCount.stdout"
+                ),
+                FASTQ_TO_TAG_COUNT_COUNTS: cluster.FilteredGlob(
+                    "%s/*" % self._tag_counts_dir(work_dir)
+                ),
+            },
         )
 
     def merge_taxa_tag_count(self, work_dir: str):

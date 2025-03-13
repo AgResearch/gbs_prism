@@ -20,7 +20,7 @@ class Job1Spec(CommonJobSpec):
     result_path: str
 
 
-@dataclass(kw_only=True)
+@dataclass
 class FilteredGlob:
     """A file glob optionally without any paths matched by `reject_re`."""
 

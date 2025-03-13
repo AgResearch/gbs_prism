@@ -12,7 +12,7 @@ from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
 from agr.redun import concat, one_forall
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt_job_spec
@@ -23,7 +23,12 @@ from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import run_GUSbase
 from agr.gbs_prism.kgd import run_kgd
-from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
+from agr.gbs_prism.tassel3 import (
+    Tassel3,
+    fastq_name_for_tassel3,
+    FASTQ_TO_TAG_COUNT_STDOUT,
+    FASTQ_TO_TAG_COUNT_COUNTS,
+)
 from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
 
@@ -309,15 +314,19 @@ def get_fastq_to_tag_count(
     spec: CohortSpec, keyfile: File, tool_context=get_context("tools.tassel3")
 ) -> FastqToTagCountOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
-    # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
-    tag_counts_dir = os.path.join(cohort_blind_dir, "tagCounts")
     tassel3 = Tassel3(tool_context)
-    tassel3.fastq_to_tag_count(
-        in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
+    tassel3.create_directories(work_dir=cohort_blind_dir)
+    tassel3.symlink_key(in_path=keyfile.path, work_dir=cohort_blind_dir)
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.fastq_to_tag_count_job_spec(
+            cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
+        ),
     )
-    stdout = File(os.path.join(cohort_blind_dir, "FastqToTagCount.stdout"))
-    tag_counts = [File(path) for path in glob_file("%s/*" % tag_counts_dir)]
+    stdout = result_files[FASTQ_TO_TAG_COUNT_STDOUT]
+    tag_counts = result_files[FASTQ_TO_TAG_COUNT_COUNTS]
+    assert isinstance(stdout, File)
+    assert isinstance(tag_counts, List)
 
     return FastqToTagCountOutput(stdout=stdout, tag_counts=tag_counts)
 
