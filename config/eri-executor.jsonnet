@@ -54,6 +54,8 @@ local Tassel3Default = ToolDefault {
 
     seqtk_sample: ToolDefault,
 
+    kmer_prism: ToolDefault,
+
     dedupe: ToolDefault {
       java_max_heap: '520G',
       job_attributes+: {
@@ -67,10 +69,9 @@ local Tassel3Default = ToolDefault {
       },
     },
 
-
     cutadapt: ToolDefault,
 
-    'tassel3-FastqToTagCount': Tassel3Default {
+    tassel3_FastqToTagCount: Tassel3Default {
       java_max_heap: '5G',
       job_attributes+: {
         custom_attributes+: customised({
@@ -79,14 +80,14 @@ local Tassel3Default = ToolDefault {
       },
     },
 
-    'tassel3-MergeTaxaTagCount': Tassel3Default,
+    tassel3_MergeTaxaTagCount: Tassel3Default,
 
-    'tassel3-TagCountToTagPair': Tassel3Default,
+    tassel3_TagCountToTagPair: Tassel3Default,
 
-    'tassel3-TagPairToTBT': Tassel3Default,
+    tassel3_TagPairToTBT: Tassel3Default,
 
-    'tassel3-TBTToMapInfo': Tassel3Default,
+    tassel3_TBTToMapInfo: Tassel3Default,
 
-    'tassel3-MapInfoToHapMap': Tassel3Default,
+    tassel3_MapInfoToHapMap: Tassel3Default,
   },
 }
