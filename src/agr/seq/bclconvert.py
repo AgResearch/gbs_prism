@@ -8,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 BCLCONVERT_TOOL_NAME = "bcl_convert"
 
+# key for job spec and result files
+BCLCONVERT_JOB_FASTQ = "fastq"
+
 
 class BclConvertError(Exception):
     def __init__(self, msg: str, e: Optional[Exception] = None):
@@ -71,6 +74,10 @@ class BclConvert:
             ],
             stdout_path=self.log_path,
             stderr_path=self.log_path,
-            result_glob=f"{self._out_dir}/*.fastq.gz",
-            result_reject_re="/Undetermined",
+            result_paths={
+                BCLCONVERT_JOB_FASTQ: cluster.FilteredGlob(
+                    glob=f"{self._out_dir}/*.fastq.gz",
+                    reject_re="/Undetermined",
+                )
+            },
         )

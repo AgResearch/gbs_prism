@@ -13,7 +13,7 @@ from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
 # Fake bcl-convert may be selected in context
-from agr.seq.bclconvert import BclConvertError
+from agr.seq.bclconvert import BCLCONVERT_JOB_FASTQ, BclConvertError
 from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 from agr.seq.dedupe import (
     dedupe_job_spec,
@@ -98,7 +98,10 @@ def bclconvert(
             File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
         ]
     else:
-        fastq_files = run_job_n(EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec)
+        fastq_files = run_job_n(EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec)[
+            BCLCONVERT_JOB_FASTQ
+        ]
+        assert isinstance(fastq_files, List)
         return check_bclconvert(fastq_files, expected_fastq)
 
 

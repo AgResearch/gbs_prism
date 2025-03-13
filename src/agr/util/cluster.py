@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 @dataclass(kw_only=True)
@@ -21,8 +21,21 @@ class Job1Spec(CommonJobSpec):
 
 
 @dataclass(kw_only=True)
-class JobNSpec(CommonJobSpec):
-    """For jobs which produce multiple files with paths matching the glob, exluding any matched by the regex."""
+class FilteredGlob:
+    """A file glob optionally without any paths matched by `reject_re`."""
 
-    result_glob: str
-    result_reject_re: Optional[str] = None
+    glob: str
+    reject_re: Optional[str] = None
+
+
+@dataclass(kw_only=True)
+class JobNSpec(CommonJobSpec):
+    """
+    For jobs which produce multiple files with paths matching the glob, exluding any matched by the regex.
+
+    As many conbinations of globs and paths may be expected, in a dict whose keys are arbitrary strings.
+    Result files will be returned in a dict with the same keys.
+    """
+
+    # each value is either a result path or a filtered glob
+    result_paths: Dict[str, str | FilteredGlob]

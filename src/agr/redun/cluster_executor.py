@@ -287,11 +287,31 @@ def _run_job_1_uncached(
     return promise
 
 
+def _result_files(
+    expected: Dict[str, str | cluster.FilteredGlob]
+) -> Dict[str, File | List[File]]:
+    """Return result files for expected paths, or those matching filtered glob."""
+
+    def result_files_1(expected_1: str | cluster.FilteredGlob) -> File | List[File]:
+        if isinstance(expected_1, str):
+            return File(expected_1)
+        else:
+            assert isinstance(expected_1, cluster.FilteredGlob)
+            return [
+                File(path)
+                for path in glob.glob(expected_1.glob)
+                if expected_1.reject_re is None
+                or re.search(expected_1.reject_re, path) is None
+            ]
+
+    return {k: result_files_1(v) for (k, v) in expected}
+
+
 @task()
 def run_job_n(
     config_path_env: str,
     spec: cluster.JobNSpec,
-) -> List[File]:
+) -> Dict[str, File | List[File]]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
@@ -307,13 +327,7 @@ def run_job_n(
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
 
-    files = [
-        File(path)
-        for path in glob.glob(spec.result_glob)
-        if spec.result_reject_re is None
-        or re.search(spec.result_reject_re, path) is None
-    ]
-    return files
+    return _result_files(spec.result_paths)
 
 
 def _run_job_n_uncached(
@@ -322,7 +336,7 @@ def _run_job_n_uncached(
     scheduler_expr: SchedulerExpression,
     config_path_env: str,
     spec: cluster.JobNSpec,
-) -> Promise[List[File]]:
+) -> Promise[Dict[str, File | List[File]]]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
 
@@ -346,12 +360,7 @@ def _run_job_n_uncached(
     def job_status_callback(job: Job, status: JobStatus):
         if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
-            files = [
-                File(path)
-                for path in glob.glob(spec.result_glob)
-                if spec.result_reject_re is None
-                or re.search(spec.result_reject_re, path) is None
-            ]
+            files = _result_files(spec.result_paths)
             promise.do_resolve(files)
 
     job.set_job_status_callback(job_status_callback)
