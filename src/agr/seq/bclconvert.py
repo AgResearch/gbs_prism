@@ -74,7 +74,8 @@ class BclConvert:
             ],
             stdout_path=self.log_path,
             stderr_path=self.log_path,
-            result_paths={
+            expected_paths={},
+            expected_globs={
                 BCLCONVERT_JOB_FASTQ: cluster.FilteredGlob(
                     glob=f"{self._out_dir}/*.fastq.gz",
                     reject_re="/Undetermined",

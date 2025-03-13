@@ -39,7 +39,7 @@ def dedupe_job_spec(
         stdout_path=log_path,
         stderr_path=log_path,
         cwd=out_dir,
-        result_path=out_path,
+        expected_path=out_path,
     )
 
 

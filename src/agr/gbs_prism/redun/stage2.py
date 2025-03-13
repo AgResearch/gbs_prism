@@ -323,12 +323,11 @@ def get_fastq_to_tag_count(
             cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
         ),
     )
-    stdout = result_files[FASTQ_TO_TAG_COUNT_STDOUT]
-    tag_counts = result_files[FASTQ_TO_TAG_COUNT_COUNTS]
-    assert isinstance(stdout, File)
-    assert isinstance(tag_counts, List)
 
-    return FastqToTagCountOutput(stdout=stdout, tag_counts=tag_counts)
+    return FastqToTagCountOutput(
+        stdout=result_files.expected_files[FASTQ_TO_TAG_COUNT_STDOUT],
+        tag_counts=result_files.globbed_files[FASTQ_TO_TAG_COUNT_COUNTS],
+    )
 
 
 @task()

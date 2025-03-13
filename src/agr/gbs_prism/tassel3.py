@@ -75,7 +75,7 @@ class Tassel3:
             ),
             stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
             stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
-            result_path=result_path,
+            expected_path=result_path,
         )
 
     def _tassel_plugin_job_n_spec(
@@ -83,7 +83,8 @@ class Tassel3:
         plugin: str,
         plugin_args: List[str],
         work_dir: str,
-        result_paths: Dict[str, str | cluster.FilteredGlob],
+        expected_paths: Dict[str, str],
+        expected_globs: Dict[str, cluster.FilteredGlob],
     ) -> cluster.JobNSpec:
         return cluster.JobNSpec(
             tool=f"tassel3_{plugin}",
@@ -94,7 +95,8 @@ class Tassel3:
             ),
             stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
             stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
-            result_paths=result_paths,
+            expected_paths=expected_paths,
+            expected_globs=expected_globs,
         )
 
     def _tassel_plugin_args(
@@ -183,10 +185,12 @@ class Tassel3:
                 "900000000",
             ],
             work_dir=work_dir,
-            result_paths={
+            expected_paths={
                 FASTQ_TO_TAG_COUNT_STDOUT: os.path.join(
                     work_dir, "FastqToTagCount.stdout"
                 ),
+            },
+            expected_globs={
                 FASTQ_TO_TAG_COUNT_COUNTS: cluster.FilteredGlob(
                     "%s/*" % self._tag_counts_dir(work_dir)
                 ),

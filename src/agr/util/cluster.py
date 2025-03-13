@@ -17,7 +17,7 @@ class CommonJobSpec:
 class Job1Spec(CommonJobSpec):
     """For jobs which produce a single file whose path is known in advance."""
 
-    result_path: str
+    expected_path: str
 
 
 @dataclass
@@ -38,4 +38,5 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    result_paths: Dict[str, str | FilteredGlob]
+    expected_paths: Dict[str, str]
+    expected_globs: Dict[str, FilteredGlob]

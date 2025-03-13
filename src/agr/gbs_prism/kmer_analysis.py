@@ -33,5 +33,5 @@ def kmer_analysis_job_spec(
         stdout_path=log_path,
         stderr_path=log_path,
         cwd=cwd,
-        result_path=out_path,
+        expected_path=out_path,
     )

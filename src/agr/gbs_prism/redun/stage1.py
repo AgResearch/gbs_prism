@@ -98,10 +98,10 @@ def bclconvert(
             File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
         ]
     else:
-        fastq_files = run_job_n(EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec)[
-            BCLCONVERT_JOB_FASTQ
-        ]
-        assert isinstance(fastq_files, List)
+        fastq_files = run_job_n(
+            EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec
+        ).globbed_files[BCLCONVERT_JOB_FASTQ]
+
         return check_bclconvert(fastq_files, expected_fastq)
 
 

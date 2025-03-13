@@ -45,5 +45,5 @@ def cutadapt_job_spec(in_path: str, out_path: str) -> cluster.Job1Spec:
         ],
         stdout_path=out_path,
         stderr_path=err_path,
-        result_path=out_path,
+        expected_path=out_path,
     )

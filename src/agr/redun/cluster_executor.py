@@ -4,6 +4,7 @@ import json
 import os
 import os.path
 import re
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from redun import File
@@ -11,7 +12,6 @@ from redun.task import task, scheduler_task
 from redun.scheduler import Job as SchedulerJob, Scheduler
 from redun.expression import SchedulerExpression
 from redun.promise import Promise
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 from psij import (
     Job,
     JobAttributes,
@@ -22,7 +22,7 @@ from psij import (
 )
 from psij.executors.batch.batch_scheduler_executor import BatchSchedulerExecutorConfig
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from agr.util import singleton
 import agr.util.cluster as cluster
@@ -239,7 +239,7 @@ def run_job_1(
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
 
-    return File(spec.result_path)
+    return File(spec.expected_path)
 
 
 @scheduler_task()
@@ -274,12 +274,12 @@ def _run_job_1_uncached(
     def job_status_callback(job: Job, status: JobStatus):
         if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
-            if os.path.exists(spec.result_path):
-                promise.do_resolve(File(spec.result_path))
+            if os.path.exists(spec.expected_path):
+                promise.do_resolve(File(spec.expected_path))
             else:
                 _ = promise.do_reject(
                     ClusterExecutorError(
-                        f"job {job.native_id} failed to write file {spec.result_path}"
+                        f"job {job.native_id} failed to write file {spec.expected_path}"
                     )
                 )
 
@@ -287,31 +287,37 @@ def _run_job_1_uncached(
     return promise
 
 
+@dataclass
+class ResultFiles:
+    expected_files: Dict[str, File]
+    globbed_files: Dict[str, List[File]]
+
+
 def _result_files(
-    expected: Dict[str, str | cluster.FilteredGlob]
-) -> Dict[str, File | List[File]]:
+    expected_paths: Dict[str, str],
+    expected_globs: Dict[str, cluster.FilteredGlob],
+) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
 
-    def result_files_1(expected_1: str | cluster.FilteredGlob) -> File | List[File]:
-        if isinstance(expected_1, str):
-            return File(expected_1)
-        else:
-            assert isinstance(expected_1, cluster.FilteredGlob)
-            return [
+    return ResultFiles(
+        expected_files={k: File(path) for (k, path) in expected_paths.items()},
+        globbed_files={
+            k: [
                 File(path)
-                for path in glob.glob(expected_1.glob)
-                if expected_1.reject_re is None
-                or re.search(expected_1.reject_re, path) is None
+                for path in glob.glob(expected.glob)
+                if expected.reject_re is None
+                or re.search(expected.reject_re, path) is None
             ]
-
-    return {k: result_files_1(v) for (k, v) in expected}
+            for (k, expected) in expected_globs.items()
+        },
+    )
 
 
 @task()
 def run_job_n(
     config_path_env: str,
     spec: cluster.JobNSpec,
-) -> Dict[str, File | List[File]]:
+) -> ResultFiles:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
@@ -327,7 +333,7 @@ def run_job_n(
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
 
-    return _result_files(spec.result_paths)
+    return _result_files(spec.expected_paths, spec.expected_globs)
 
 
 def _run_job_n_uncached(
@@ -336,7 +342,7 @@ def _run_job_n_uncached(
     scheduler_expr: SchedulerExpression,
     config_path_env: str,
     spec: cluster.JobNSpec,
-) -> Promise[Dict[str, File | List[File]]]:
+) -> Promise[ResultFiles]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
 
@@ -360,7 +366,7 @@ def _run_job_n_uncached(
     def job_status_callback(job: Job, status: JobStatus):
         if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
-            files = _result_files(spec.result_paths)
+            files = _result_files(spec.expected_paths, spec.expected_globs)
             promise.do_resolve(files)
 
     job.set_job_status_callback(job_status_callback)

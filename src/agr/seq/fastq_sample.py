@@ -30,7 +30,7 @@ class FastqSample:
             ],
             stdout_path=out_path,
             stderr_path="%s.rate.err" % out_path,
-            result_path=out_path,
+            expected_path=out_path,
         )
 
     def minsize_job_spec(self, in_path: str, out_path: str) -> cluster.Job1Spec:
@@ -45,7 +45,7 @@ class FastqSample:
             ],
             stdout_path=out_path,
             stderr_path="%s.minsize.err" % out_path,
-            result_path=out_path,
+            expected_path=out_path,
         )
 
     def is_minsize_job_required(self, in_path: str, out_path: str) -> bool:

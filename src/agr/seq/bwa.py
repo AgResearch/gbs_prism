@@ -31,7 +31,7 @@ class Bwa:
             ],
             stdout_path=out_path,
             stderr_path=f"{out_path}.err",
-            result_path=out_path,
+            expected_path=out_path,
         )
 
     def samse_job_spec(
@@ -48,5 +48,5 @@ class Bwa:
             ],
             stdout_path=out_path,
             stderr_path=f"{out_path}.err",
-            result_path=out_path,
+            expected_path=out_path,
         )
