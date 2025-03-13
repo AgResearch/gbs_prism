@@ -48,19 +48,21 @@ class FastqSample:
             expected_path=out_path,
         )
 
-    def is_minsize_job_required(self, in_path: str, out_path: str) -> bool:
+    def is_minsize_job_required(self, in_path: str, rate_sample_path: str) -> bool:
         """After running the primary job, check the sample size output to see whether a bigger resample is required."""
         seqtk_size = run_catching_stderr(
             [
                 "seqtk",
                 "size",
-                out_path,
+                rate_sample_path,
             ],
             check=True,
             text=True,
             stdout=subprocess.PIPE,
         )
-        logger.debug("seqtk size %s raw output ''%s'" % (out_path, seqtk_size.stdout))
+        logger.debug(
+            "seqtk size %s raw output ''%s'" % (rate_sample_path, seqtk_size.stdout)
+        )
         n_samples = int(seqtk_size.stdout.split()[0])
         if n_samples < self._minimum_sample_size:
             logger.debug(
