@@ -143,6 +143,24 @@ def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
 
 
 @task()
+def kmer_sample_one_minsize_if_required(
+    fastq_file: File, kmer_sample: FastqSample, rate_sample: File
+) -> File:
+    if kmer_sample.is_minsize_job_required(
+        in_path=fastq_file.path, rate_sample_path=rate_sample.path
+    ):
+        # overwrite the too-small rate sample with a minsize sample
+        return run_job_1(
+            EXECUTOR_CONFIG_PATH_ENV,
+            kmer_sample.minsize_job_spec(
+                in_path=fastq_file.path, out_path=rate_sample.path
+            ),
+        )
+    else:
+        return rate_sample
+
+
+@task()
 def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
     """Sample a single fastq file as required for kmer analysis."""
     os.makedirs(out_dir, exist_ok=True)
@@ -157,13 +175,9 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
         EXECUTOR_CONFIG_PATH_ENV,
         kmer_sample.rate_job_spec(in_path=fastq_file.path, out_path=out_path),
     )
-    if kmer_sample.is_minsize_job_required(in_path=fastq_file.path, out_path=out_path):
-        return run_job_1(
-            EXECUTOR_CONFIG_PATH_ENV,
-            kmer_sample.minsize_job_spec(in_path=fastq_file.path, out_path=out_path),
-        )
-    else:
-        return rate_sample
+    return kmer_sample_one_minsize_if_required(
+        fastq_file=fastq_file, kmer_sample=kmer_sample, rate_sample=rate_sample
+    )
 
 
 @task()
