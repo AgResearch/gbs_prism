@@ -1,3 +1,26 @@
+"""
+This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
+Tasks:
+    cook_sample_sheet: Process a raw sample sheet.
+    bclconvert: Run bclconvert and return fastq files and summary metrics.
+    fastqc_one: Run fastqc on a single fastq file, returning  .zip results.
+    fastqc_all: Run fastqc_one on multiple files, returning list of .zip results.
+    multiqc_report: Run MultiQC aggregating FastQC and BCLConvert reports.
+    kmer_sample_one: Sample a single fastq file as required for kmer analysis.
+    kmer_sample_all: Run kmer_sample_one on all fastq files.
+    kmer_analysis_one: Run kmer analysis for a single fastq file.
+    kmer_analysis_all: Run kmer_analysis_one on all fastq files.
+    dedupe_one: Dedupe a single fastq file.
+    dedupe_all: Run dedupe_one on all fastq files.
+    get_gbs_keyfiles: Get GBS keyfiles.
+    get_gbs_targets: Get GBS targets for stage 2.
+    run_stage1: Triggers running of the tasks via redun.
+Dataclasses:
+    CookSampleSheetOutput: Collect the outputs of processed sample sheet.
+    BclConvertOutput: Collect the outputs of bclconvert.
+    GbsTargetsOutput: Collect targets and paths for gbs_prism stage 2.
+    Stage1Output: Collect the outputs of stage 1.
+"""
 import os.path
 from dataclasses import dataclass
 
@@ -7,7 +30,7 @@ from typing import List, Literal, Set
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.redun import one_forall, all_forall
+from agr.redun import one_forall
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
@@ -16,6 +39,7 @@ from agr.seq.sample_sheet import SampleSheet
 from agr.fake.bclconvert import create_real_or_fake_bcl_convert
 from agr.seq.dedupe import dedupe
 from agr.seq.fastqc import fastqc
+from agr.seq.multiqc import multiqc
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -30,6 +54,7 @@ from agr.gbs_prism.paths import SeqPaths, GbsPaths
 
 @dataclass
 class CookSampleSheetOutput:
+    """Dataclass to collect the outputs of processed sample sheet."""
     sample_sheet: File
     illumina_platform_root: str
     paths: SeqPaths
@@ -66,6 +91,17 @@ def cook_sample_sheet(
     )
 
 
+@dataclass
+class BclConvertOutput:
+    """Dataclass to collect the outputs of bclconvert."""
+    fastq_files: List[File]
+    adapter_metrics: File
+    demultiplexing_metrics: File
+    quality_metrics: File
+    run_info_xml: File
+    top_unknown: File
+
+
 @task()
 def bclconvert(
     in_dir: str,
@@ -73,7 +109,8 @@ def bclconvert(
     expected_fastq: Set[str],
     out_dir: str,
     bcl_convert_context=get_context("tools.bcl_convert"),
-) -> List[File]:
+) -> BclConvertOutput:
+    """Run bclconvert and return fastq files and metrics."""
     os.makedirs(out_dir, exist_ok=True)
     bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
@@ -83,26 +120,59 @@ def bclconvert(
     )
     bclconvert.run()
     bclconvert.check_expected_fastq_files(expected_fastq)
-    return [File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq]
+    return BclConvertOutput(
+        fastq_files=[
+            File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
+        ],
+        adapter_metrics=File(bclconvert.adapter_metrics_path),
+        demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
+        quality_metrics=File(bclconvert.quality_metrics_path),
+        run_info_xml=File(bclconvert.run_info_xml_path),
+        top_unknown=File(bclconvert.top_unknown_path),
+    )
 
 
 @task()
-def fastqc_one(fastq_file: File, out_dir: str) -> List[File]:
-    """Run fastqc on a single file, returning both the html and zip results."""
+def fastqc_one(fastq_file: File, out_dir: str) -> File:
+    """Run fastqc on a single fastq file, returning a zip results file."""
     fastqc(in_path=fastq_file.path, out_dir=out_dir)
     basename = (
         os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
     )
-    return [
-        File(os.path.join(out_dir, "%s%s" % (basename, ext)))
-        for ext in ["_fastqc.html", "_fastqc.zip"]
-    ]
+    return File(os.path.join(out_dir, basename) + "_fastqc.zip")
 
 
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
-    """Run fastqc on multiple files, returning concatenation of all the html and zip results."""
-    return all_forall(fastqc_one, fastq_files, out_dir=out_dir)
+    """Run fastqc on multiple files, returning concatenation of all the zip results."""
+    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
+
+
+@task()
+def multiqc_report(
+    fastqc_files: List[File],
+    bclconvert_top_unknowns: File,
+    bclconvert_adapter_metrics: File,
+    bclconvert_demultiplex_stats: File,
+    bclconvert_quality_metrics: File,
+    bclconvert_run_info_xml: File,
+    out_dir: str,
+    run: str,
+) -> File:
+    """Run MultiQC aggregating FastQC and BCLConvert reports."""
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
+    multiqc(
+        [fastqc_file.path for fastqc_file in fastqc_files],
+        bclconvert_top_unknowns.path,
+        bclconvert_adapter_metrics.path,
+        bclconvert_demultiplex_stats.path,
+        bclconvert_quality_metrics.path,
+        bclconvert_run_info_xml.path,
+        out_dir,
+        out_path,
+    )
+    return File(out_path)
 
 
 @task()
@@ -163,7 +233,7 @@ def dedupe_one(
     dedupe(
         in_path=fastq_file.path,
         out_path=out_path,
-        tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+        tmp_dir="/tmp",  #TODO maybe need tmp_dir on large scratch partition
         jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
     )
     return File(out_path)
@@ -206,6 +276,7 @@ def get_gbs_keyfiles(
 
 @dataclass
 class GbsTargetsOutput:
+    """Dataclass to collect targets and paths for gbs_prism stage 2."""
     paths: GbsPaths
     spec: GbsTargetSpec
     spec_file: File
@@ -229,7 +300,9 @@ def get_gbs_targets(
 
 @dataclass
 class Stage1Output:
+    """Dataclass to collect the outputs of stage 1."""
     fastqc: List[File]
+    multiqc: File
     kmer_analysis: List[File]
     spec: GbsTargetSpec
     spec_file: File
@@ -245,26 +318,44 @@ def run_stage1(
     fastq_link_farm: str,
     run: str,
 ) -> Stage1Output:
+    """Stage 1: bclconvert, fastqc, multiqc, kmer analysis, deduplication, GBS keyfile creation."""
     sequencer_run = SequencerRun(seq_root, run)
 
     seq = cook_sample_sheet(
         sequencer_run=sequencer_run, postprocessing_root=postprocessing_root
     )
 
-    fastq_files = bclconvert(
+    bclconvert_output = bclconvert(
         sequencer_run.dir,
         sample_sheet_path=seq.sample_sheet.path,
         expected_fastq=seq.expected_fastq,
         out_dir=seq.paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc_all(fastq_files, out_dir=seq.paths.fastqc_dir)
+    fastqc_files = fastqc_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir
+    )
 
-    kmer_samples = kmer_sample_all(fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir)
+    multiqc_report_out = multiqc_report(
+        fastqc_files=fastqc_files,
+        bclconvert_top_unknowns=bclconvert_output.top_unknown,
+        bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
+        bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
+        bclconvert_quality_metrics=bclconvert_output.quality_metrics,
+        bclconvert_run_info_xml=bclconvert_output.run_info_xml,
+        out_dir=seq.paths.multiqc_dir,
+        run=sequencer_run.name,
+    )
+
+    kmer_samples = kmer_sample_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir
+    )
 
     kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)
 
-    deduped_fastq = dedupe_all(fastq_files, out_dir=seq.paths.dedupe_dir)
+    deduped_fastq = dedupe_all(
+        bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir
+    )
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
@@ -287,6 +378,7 @@ def run_stage1(
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
         fastqc=fastqc_files,
+        multiqc=multiqc_report_out,
         kmer_analysis=kmer_analysis,
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,

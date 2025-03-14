@@ -2,6 +2,8 @@
   description = "Flake for gbs_prism";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
       url = "github:AgResearch/bbmap.nix/main";
@@ -47,6 +49,10 @@
             inherit system;
           };
 
+          nixpkgs-unstable = import inputs.nixpkgs-unstable {
+            inherit system;
+          };
+
           flakePkgs = {
             bbmap = inputs.bbmap.packages.${system}.default;
             bcl-convert = inputs.bcl-convert.packages.${system}.default;
@@ -74,6 +80,28 @@
               "test_plugin_dependencies_unmet"
             ];
           }));
+
+          # Wrapped multiqc which ignores PYTHONPATH from the environment.
+          # This is required because our Python package dependencies export PYTHONPATH for Python 3.11,
+          # which breaks multiqc from nixpkgs-unstable, because that uses Python 3.12.
+          # As soon as we switch to a later version of nixpkgs this won't be necessary.
+          # Alternatively, and probably anyway, the redun packaging should be improved to not
+          # pollute the PYTHONPATH.
+          multiqc = pkgs.stdenv.mkDerivation {
+            name = "multiqc";
+            src = null;
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            dontUnpack = true;
+            dontBuild = true;
+
+            installPhase = ''
+              mkdir -p $out/bin
+            '';
+
+            postFixup = ''
+              makeWrapper "${nixpkgs-unstable.multiqc}/bin/multiqc" $out/bin/multiqc --unset PYTHONPATH
+            '';
+          };
 
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
@@ -178,6 +206,7 @@
               paths = [
                 run_kgd
                 run_GUSbase
+                multiqc
               ] ++ (with flakePkgs; [
                 bbmap
                 bcl-convert
