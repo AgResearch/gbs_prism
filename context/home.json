@@ -11,17 +11,6 @@
       "fake": {
         "n_reads": 2000000
       }
-    },
-    "tassel3":
-    {
-      "default": {
-        "java_initial_heap": "512M",
-        "java_max_heap": "20G"
-      },
-      "FastqToTagCount":
-      {
-        "java_max_heap": "5G"
-      }
     }
   }
 }

@@ -11,10 +11,20 @@ from .types import Cohort
 
 logger = logging.getLogger(__name__)
 
+FASTQ_TO_TAG_COUNT_PLUGIN = "FastqToTagCount"
+MERGE_TAXA_TAG_COUNT_PLUGIN = "MergeTaxaTagCount"
+TAG_COUNT_TO_TAG_PAIR_PLUGIN = "TagCountToTagPair"
+TAG_PAIR_TO_TBT_PLUGIN = "TagPairToTBT"
+MAP_INFO_TO_HAP_MAP_PLUGIN = "MapInfoToHapMap"
+TBT_TO_MAP_INFO_PLUGIN = "TBTToMapInfo"
 
 FASTQ_TO_TAG_COUNT_STDOUT = "stdout"
 FASTQ_TO_TAG_COUNT_COUNTS = "counts"
 HAP_MAP_FILES = "hap_map_files"
+
+
+def tassel3_tool_name(plugin: str) -> str:
+    return f"tassel3_{plugin}"
 
 
 # TODO review this!!!
@@ -35,45 +45,35 @@ def fastq_name_for_tassel3(
 
 
 class Tassel3:
-    def __init__(self, tool_context: Any):
-        self._tool_context = tool_context
+    def __init__(self, work_dir: str, tool_config: Dict[str, Any]):
+        self._work_dir = work_dir
+        self._java_max_heap = tool_config.get("java_max_heap")
+        self._java_initial_heap = tool_config.get("java_initial_heap")
 
-    def _jvm_args_for_plugin(self, plugin: str) -> List[str]:
-        """Look up java_max_heap and java_initial_heap in tassel3 context for plugin, or fallback to default."""
-        JAVA_MAX_HEAP = "java_max_heap"
-        JAVA_INITIAL_HEAP = "java_initial_heap"
-        max_heap = None
-        initial_heap = None
-        if isinstance(self._tool_context, dict):
-            if isinstance(plugin_context := self._tool_context.get(plugin), dict):
-                max_heap = plugin_context.get(JAVA_MAX_HEAP)
-                initial_heap = plugin_context.get(JAVA_INITIAL_HEAP)
-            if isinstance(default_context := self._tool_context.get("default"), dict):
-                if max_heap is None:
-                    max_heap = default_context.get(JAVA_MAX_HEAP)
-                if initial_heap is None:
-                    initial_heap = default_context.get(JAVA_INITIAL_HEAP)
-
-        return ([f"-Xmx{max_heap}"] if max_heap is not None else []) + (
-            [f"-Xms{initial_heap}"] if initial_heap is not None else []
+    @property
+    def _jvm_args(self) -> List[str]:
+        return (
+            [f"-Xmx{self._java_max_heap}"] if self._java_max_heap is not None else []
+        ) + (
+            [f"-Xms{self._java_initial_heap}"]
+            if self._java_initial_heap is not None
+            else []
         )
 
     def _tassel_plugin_job_1_spec(
         self,
         plugin: str,
         plugin_args: List[str],
-        work_dir: str,
         result_path: str,
     ) -> cluster.Job1Spec:
         return cluster.Job1Spec(
-            tool=f"tassel3_{plugin}",
+            tool=tassel3_tool_name(plugin),
             args=self._tassel_plugin_args(
                 plugin,
                 plugin_args,
-                work_dir=work_dir,
             ),
-            stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
-            stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
+            stdout_path=os.path.join(self._work_dir, "%s.stdout" % plugin),
+            stderr_path=os.path.join(self._work_dir, "%s.stderr" % plugin),
             expected_path=result_path,
         )
 
@@ -81,36 +81,32 @@ class Tassel3:
         self,
         plugin: str,
         plugin_args: List[str],
-        work_dir: str,
         expected_paths: Dict[str, str],
         expected_globs: Dict[str, cluster.FilteredGlob],
     ) -> cluster.JobNSpec:
         return cluster.JobNSpec(
-            tool=f"tassel3_{plugin}",
+            tool=tassel3_tool_name(plugin),
             args=self._tassel_plugin_args(
                 plugin,
                 plugin_args,
-                work_dir=work_dir,
             ),
-            stdout_path=os.path.join(work_dir, "%s.stdout" % plugin),
-            stderr_path=os.path.join(work_dir, "%s.stderr" % plugin),
+            stdout_path=os.path.join(self._work_dir, "%s.stdout" % plugin),
+            stderr_path=os.path.join(self._work_dir, "%s.stderr" % plugin),
             expected_paths=expected_paths,
             expected_globs=expected_globs,
         )
 
-    def _tassel_plugin_args(
-        self, plugin: str, plugin_args: List[str], work_dir: str
-    ) -> List[str]:
+    def _tassel_plugin_args(self, plugin: str, plugin_args: List[str]) -> List[str]:
         return (
             [
                 "run_pipeline.pl",
             ]
-            + self._jvm_args_for_plugin(plugin)
+            + self._jvm_args
             + [
                 "-fork1",
                 "-U%sPlugin" % plugin,
                 "-w",
-                work_dir,
+                self._work_dir,
             ]
             + plugin_args
             + [
@@ -119,52 +115,57 @@ class Tassel3:
             ]
         )
 
-    def _key_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "key")
+    @property
+    def _key_dir(self) -> str:
+        return os.path.join(self._work_dir, "key")
 
     #
     # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
     # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
 
-    def _tag_counts_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "tagCounts")
+    @property
+    def _tag_counts_dir(self) -> str:
+        return os.path.join(self._work_dir, "tagCounts")
 
-    def _merged_tag_counts_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "mergedTagCounts")
+    @property
+    def _merged_tag_counts_dir(self) -> str:
+        return os.path.join(self._work_dir, "mergedTagCounts")
 
-    def _tag_pair_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "tagPair")
+    @property
+    def _tag_pair_dir(self) -> str:
+        return os.path.join(self._work_dir, "tagPair")
 
-    def _tags_by_taxa_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "tagsByTaxa")
+    @property
+    def _tags_by_taxa_dir(self) -> str:
+        return os.path.join(self._work_dir, "tagsByTaxa")
 
-    def _map_info_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "mapInfo")
+    @property
+    def _map_info_dir(self) -> str:
+        return os.path.join(self._work_dir, "mapInfo")
 
-    def _hap_map_dir(self, work_dir: str) -> str:
-        return os.path.join(work_dir, "hapMap")
+    @property
+    def _hap_map_dir(self) -> str:
+        return os.path.join(self._work_dir, "hapMap")
 
-    def create_directories(self, work_dir):
+    def create_directories(self):
         # create all directories required by Tassel3, Illumina directory assumed to already exist
-        os.makedirs(self._key_dir(work_dir), exist_ok=True)
-        os.makedirs(self._merged_tag_counts_dir(work_dir), exist_ok=True)
-        os.makedirs(self._tag_pair_dir(work_dir), exist_ok=True)
-        os.makedirs(self._tags_by_taxa_dir(work_dir), exist_ok=True)
-        os.makedirs(self._map_info_dir(work_dir), exist_ok=True)
-        os.makedirs(self._hap_map_dir(work_dir), exist_ok=True)
+        os.makedirs(self._key_dir, exist_ok=True)
+        os.makedirs(self._merged_tag_counts_dir, exist_ok=True)
+        os.makedirs(self._tag_pair_dir, exist_ok=True)
+        os.makedirs(self._tags_by_taxa_dir, exist_ok=True)
+        os.makedirs(self._map_info_dir, exist_ok=True)
+        os.makedirs(self._hap_map_dir, exist_ok=True)
 
-    def symlink_key(self, in_path: str, work_dir: str):
-        key_path = os.path.join(self._key_dir(work_dir), os.path.basename(in_path))
+    def symlink_key(self, in_path: str):
+        key_path = os.path.join(self._key_dir, os.path.basename(in_path))
         remove_if_exists(key_path)
         logger.info("symlink %s %s" % (in_path, key_path))
         os.symlink(in_path, key_path)
 
-    def fastq_to_tag_count_job_spec(
-        self, cohort_str: str, work_dir: str
-    ) -> cluster.JobNSpec:
+    def fastq_to_tag_count_job_spec(self, cohort_str: str) -> cluster.JobNSpec:
         cohort = Cohort.parse(cohort_str)
         return self._tassel_plugin_job_n_spec(
-            plugin="FastqToTagCount",
+            plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-c",
                 "1",
@@ -173,22 +174,22 @@ class Tassel3:
                 "-s",
                 "900000000",
             ],
-            work_dir=work_dir,
             expected_paths={
                 FASTQ_TO_TAG_COUNT_STDOUT: os.path.join(
-                    work_dir, "FastqToTagCount.stdout"
+                    self._work_dir, "FastqToTagCount.stdout"
                 ),
             },
             expected_globs={
                 FASTQ_TO_TAG_COUNT_COUNTS: cluster.FilteredGlob(
-                    "%s/*" % self._tag_counts_dir(work_dir)
+                    "%s/*" % self._tag_counts_dir
                 ),
             },
         )
 
-    def merge_taxa_tag_count_job_spec(self, work_dir: str) -> cluster.Job1Spec:
+    @property
+    def merge_taxa_tag_count_job_spec(self) -> cluster.Job1Spec:
         return self._tassel_plugin_job_1_spec(
-            plugin="MergeTaxaTagCount",
+            plugin=MERGE_TAXA_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-t",
                 "n",
@@ -199,45 +200,40 @@ class Tassel3:
                 "-c",
                 "5",
             ],
-            work_dir=work_dir,
-            result_path=os.path.join(
-                self._merged_tag_counts_dir(work_dir), "mergedAll.cnt"
-            ),
+            result_path=os.path.join(self._merged_tag_counts_dir, "mergedAll.cnt"),
         )
 
-    def tag_count_to_tag_pair_job_spec(self, work_dir: str) -> cluster.Job1Spec:
+    @property
+    def tag_count_to_tag_pair_job_spec(self) -> cluster.Job1Spec:
         return self._tassel_plugin_job_1_spec(
-            plugin="TagCountToTagPair",
+            plugin=TAG_COUNT_TO_TAG_PAIR_PLUGIN,
             plugin_args=["-e", "0.03"],
-            work_dir=work_dir,
-            result_path=os.path.join(self._tag_pair_dir(work_dir), "tagPair.tps"),
+            result_path=os.path.join(self._tag_pair_dir, "tagPair.tps"),
         )
 
-    def tag_pair_to_tbt_job_spec(self, work_dir: str) -> cluster.Job1Spec:
+    @property
+    def tag_pair_to_tbt_job_spec(self) -> cluster.Job1Spec:
         return self._tassel_plugin_job_1_spec(
-            plugin="TagPairToTBT",
+            plugin=TAG_PAIR_TO_TBT_PLUGIN,
             plugin_args=[],
-            work_dir=work_dir,
-            result_path=os.path.join(self._tags_by_taxa_dir(work_dir), "tbt.bin"),
+            result_path=os.path.join(self._tags_by_taxa_dir, "tbt.bin"),
         )
 
-    def tbt_to_map_info_job_spec(self, work_dir: str) -> cluster.Job1Spec:
+    @property
+    def tbt_to_map_info_job_spec(self) -> cluster.Job1Spec:
         return self._tassel_plugin_job_1_spec(
-            plugin="TBTToMapInfo",
+            plugin=TBT_TO_MAP_INFO_PLUGIN,
             plugin_args=[],
-            work_dir=work_dir,
-            result_path=os.path.join(self._map_info_dir(work_dir), "mapInfo.bin"),
+            result_path=os.path.join(self._map_info_dir, "mapInfo.bin"),
         )
 
-    def map_info_to_hap_map_job_spec(self, work_dir: str) -> cluster.JobNSpec:
+    @property
+    def map_info_to_hap_map_job_spec(self) -> cluster.JobNSpec:
         return self._tassel_plugin_job_n_spec(
-            plugin="MapInfoToHapMap",
+            plugin=MAP_INFO_TO_HAP_MAP_PLUGIN,
             plugin_args=["-mnMAF", "0.03", "-mxMAF", "0.5", "-mnC", "0.1"],
-            work_dir=work_dir,
             expected_paths={},
             expected_globs={
-                HAP_MAP_FILES: cluster.FilteredGlob(
-                    "%s/*" % self._hap_map_dir(work_dir)
-                ),
+                HAP_MAP_FILES: cluster.FilteredGlob("%s/*" % self._hap_map_dir),
             },
         )

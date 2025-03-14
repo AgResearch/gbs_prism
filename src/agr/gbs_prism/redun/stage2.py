@@ -2,7 +2,6 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
-from redun.context import get_context
 from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
@@ -11,7 +10,7 @@ from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import remove_if_exists
 from agr.redun import concat, one_forall
-from agr.redun.cluster_executor import run_job_1, run_job_n
+from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt_job_spec
@@ -23,11 +22,18 @@ from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import run_GUSbase
 from agr.gbs_prism.kgd import run_kgd
 from agr.gbs_prism.tassel3 import (
+    FASTQ_TO_TAG_COUNT_PLUGIN,
+    MAP_INFO_TO_HAP_MAP_PLUGIN,
+    MERGE_TAXA_TAG_COUNT_PLUGIN,
+    TAG_COUNT_TO_TAG_PAIR_PLUGIN,
+    TAG_PAIR_TO_TBT_PLUGIN,
+    TBT_TO_MAP_INFO_PLUGIN,
     Tassel3,
     fastq_name_for_tassel3,
     FASTQ_TO_TAG_COUNT_STDOUT,
     FASTQ_TO_TAG_COUNT_COUNTS,
     HAP_MAP_FILES,
+    tassel3_tool_name,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
@@ -320,18 +326,19 @@ class FastqToTagCountOutput:
 
 
 @task()
-def get_fastq_to_tag_count(
-    spec: CohortSpec, keyfile: File, tool_context=get_context("tools.tassel3")
-) -> FastqToTagCountOutput:
+def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
-    tassel3.create_directories(work_dir=cohort_blind_dir)
-    tassel3.symlink_key(in_path=keyfile.path, work_dir=cohort_blind_dir)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)
+        )[0],
+    )
+    tassel3.create_directories()
+    tassel3.symlink_key(in_path=keyfile.path)
     result_files = run_job_n(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.fastq_to_tag_count_job_spec(
-            cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
-        ),
+        tassel3.fastq_to_tag_count_job_spec(cohort_str=spec.cohort.name),
     )
 
     return FastqToTagCountOutput(
@@ -378,14 +385,18 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
 def merge_taxa_tag_count(
     spec: CohortSpec,
     tag_counts: List[File],
-    tool_context=get_context("tools.tassel3"),
 ) -> File:
     _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)
+        )[0],
+    )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.merge_taxa_tag_count_job_spec(work_dir=cohort_blind_dir),
+        tassel3.merge_taxa_tag_count_job_spec,
     )
 
 
@@ -393,54 +404,76 @@ def merge_taxa_tag_count(
 def tag_count_to_tag_pair(
     spec: CohortSpec,
     merged_all_count: File,
-    tool_context=get_context("tools.tassel3"),
 ) -> File:
     _ = merged_all_count  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)
+        )[0],
+    )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.tag_count_to_tag_pair_job_spec(work_dir=cohort_blind_dir),
+        tassel3.tag_count_to_tag_pair_job_spec,
     )
 
 
 @task()
 def tag_pair_to_tbt(
-    spec: CohortSpec, tag_pair: File, tool_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    tag_pair: File,
 ) -> File:
     _ = tag_pair  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)
+        )[0],
+    )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.tag_pair_to_tbt_job_spec(work_dir=cohort_blind_dir),
+        tassel3.tag_pair_to_tbt_job_spec,
     )
 
 
 @task()
 def tbt_to_map_info(
-    spec: CohortSpec, tags_by_taxa: File, tool_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    tags_by_taxa: File,
 ) -> File:
     _ = tags_by_taxa  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)
+        )[0],
+    )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.tbt_to_map_info_job_spec(work_dir=cohort_blind_dir),
+        tassel3.tbt_to_map_info_job_spec,
     )
 
 
 @task()
 def map_info_to_hap_map(
-    spec: CohortSpec, map_info: File, tool_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    map_info: File,
 ) -> List[File]:
     _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tool_context)
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)
+        )[0],
+    )
 
     result_files = run_job_n(
         EXECUTOR_CONFIG_PATH_ENV,
-        tassel3.map_info_to_hap_map_job_spec(work_dir=cohort_blind_dir),
+        tassel3.map_info_to_hap_map_job_spec,
     )
     return result_files.globbed_files[HAP_MAP_FILES]
 
