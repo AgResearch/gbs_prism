@@ -3,7 +3,6 @@ import tempfile
 from dataclasses import dataclass
 from redun import task, File
 from redun.context import get_context
-from redun.file import glob_file
 from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
@@ -28,6 +27,7 @@ from agr.gbs_prism.tassel3 import (
     fastq_name_for_tassel3,
     FASTQ_TO_TAG_COUNT_STDOUT,
     FASTQ_TO_TAG_COUNT_COUNTS,
+    HAP_MAP_FILES,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
@@ -383,8 +383,10 @@ def merge_taxa_tag_count(
     _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(tool_context)
-    tassel3.merge_taxa_tag_count(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "mergedTagCounts", "mergedAll.cnt"))
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.merge_taxa_tag_count_job_spec(work_dir=cohort_blind_dir),
+    )
 
 
 @task()
@@ -396,8 +398,10 @@ def tag_count_to_tag_pair(
     _ = merged_all_count  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(tool_context)
-    tassel3.tag_count_to_tag_pair(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "tagPair", "tagPair.tps"))
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tag_count_to_tag_pair_job_spec(work_dir=cohort_blind_dir),
+    )
 
 
 @task()
@@ -407,8 +411,10 @@ def tag_pair_to_tbt(
     _ = tag_pair  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(tool_context)
-    tassel3.tag_pair_to_tbt(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "tagsByTaxa", "tbt.bin"))
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tag_pair_to_tbt_job_spec(work_dir=cohort_blind_dir),
+    )
 
 
 @task()
@@ -418,8 +424,10 @@ def tbt_to_map_info(
     _ = tags_by_taxa  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(tool_context)
-    tassel3.tbt_to_map_info(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "mapInfo", "mapInfo.bin"))
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tbt_to_map_info_job_spec(work_dir=cohort_blind_dir),
+    )
 
 
 @task()
@@ -429,9 +437,12 @@ def map_info_to_hap_map(
     _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(tool_context)
-    tassel3.map_info_to_hap_map(work_dir=cohort_blind_dir)
-    hap_map_dir = os.path.join(cohort_blind_dir, "hapMap")
-    return [File(path) for path in glob_file("%s/*" % hap_map_dir)]
+
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.map_info_to_hap_map_job_spec(work_dir=cohort_blind_dir),
+    )
+    return result_files.globbed_files[HAP_MAP_FILES]
 
 
 @dataclass
