@@ -133,9 +133,17 @@ def bclconvert(
     # we only run the real bclconvert via the executor
     if isinstance(bclconvert, FakeBclConvert):
         bclconvert.run()
-        return [
-            File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
-        ]
+
+        return BclConvertOutput(
+            fastq_files=[
+                File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
+            ],
+            adapter_metrics=File(bclconvert.adapter_metrics_path),
+            demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
+            quality_metrics=File(bclconvert.quality_metrics_path),
+            run_info_xml=File(bclconvert.run_info_xml_path),
+            top_unknown=File(bclconvert.top_unknown_path),
+        )
     else:
         fastq_files = run_job_n(
             EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec

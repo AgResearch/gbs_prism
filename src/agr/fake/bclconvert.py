@@ -41,9 +41,7 @@ class FakeBclConvert(BclConvert):
         self._real_fastq_dir = os.path.join(
             candidate_run_dir, "SampleSheet", "bclconvert"
         )
-        self._real_top_unknown_path = os.path.join(
-            self._real_fastq_dir, "Reports", "Top_Unknown_Barcodes.csv"
-        )
+        self._real_reports_dir = os.path.join(self._real_fastq_dir, "Reports")
         self._n_reads = n_reads
 
     def run(self):
@@ -64,9 +62,11 @@ class FakeBclConvert(BclConvert):
                         line = next(real_gz)
                         _ = fake_gz.write(line)
 
+        # copy all the reports since they're now being returned as BclConvertOutput
         reports_dir = os.path.join(self._out_dir, "Reports")
-        os.makedirs(reports_dir, exist_ok=True)
-        _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
+        _ = shutil.copytree(
+            self._real_reports_dir, reports_dir, symlinks=True, dirs_exist_ok=True
+        )
 
 
 def create_real_or_fake_bcl_convert(
