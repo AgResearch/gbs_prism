@@ -45,7 +45,7 @@ from agr.seq.dedupe import (
     DEDUPE_TOOL_NAME,
 )
 from agr.seq.fastqc import fastqc_job_spec
-from agr.seq.multiqc import multiqc
+from agr.seq.multiqc import multiqc_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -210,17 +210,19 @@ def multiqc_report(
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
-    multiqc(
-        [fastqc_file.path for fastqc_file in fastqc_files],
-        bclconvert_top_unknowns.path,
-        bclconvert_adapter_metrics.path,
-        bclconvert_demultiplex_stats.path,
-        bclconvert_quality_metrics.path,
-        bclconvert_run_info_xml.path,
-        out_dir,
-        out_path,
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        multiqc_job_spec(
+            fastqc_in_paths=[fastqc_file.path for fastqc_file in fastqc_files],
+            bclconvert_top_unknowns=bclconvert_top_unknowns.path,
+            bclconvert_adapter_metrics=bclconvert_adapter_metrics.path,
+            bclconvert_demultiplex_stats=bclconvert_demultiplex_stats.path,
+            bclconvert_quality_metrics=bclconvert_quality_metrics.path,
+            bclconvert_run_info_xml=bclconvert_run_info_xml.path,
+            out_dir=out_dir,
+            out_path=out_path,
+        ),
     )
-    return File(out_path)
 
 
 @task()

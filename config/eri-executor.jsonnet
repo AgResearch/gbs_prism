@@ -52,6 +52,8 @@ local Tassel3Default = ToolDefault {
 
     fastqc: ToolDefault,
 
+    multiqc: ToolDefault,
+
     seqtk_sample: ToolDefault,
 
     kmer_prism: ToolDefault,
