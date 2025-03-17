@@ -1,6 +1,7 @@
 import logging
 from redun import task, File
 from redun.context import get_context
+from redun.scheduler import catch_all
 from typing import List
 
 from agr.util.path import expand
@@ -24,11 +25,23 @@ logging.basicConfig(
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
+MainResults = tuple[Stage1Output, Stage2Output, List[File]]
+
+
+@task()
+def recover(results: MainResults) -> MainResults:
+    """
+    Recovery is not currently attempted, but having the catch_all is enough to ensure
+    we loiter until all tasks are done or failed.
+    """
+    return results
+
+
 @task()
 def main(
     run: str,
     path_context=get_context("path"),
-) -> tuple[Stage1Output, Stage2Output, List[File]]:
+) -> MainResults:
 
     path = {k: expand(v) for (k, v) in path_context.items()}
 
@@ -50,4 +63,4 @@ def main(
         stage2=stage2,
     )
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
-    return (stage1, stage2, peacock)
+    return catch_all((stage1, stage2, peacock), Exception, recover)
