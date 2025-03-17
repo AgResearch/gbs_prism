@@ -215,6 +215,7 @@ def multiqc_report(
     return File(out_path)
 
 
+@task()
 def kmer_sample_one_minsize_if_required(
     fastq_file: File, kmer_sample: FastqSample, rate_sample: File
 ) -> File:
