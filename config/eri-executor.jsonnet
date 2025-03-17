@@ -92,4 +92,7 @@ local Tassel3Default = ToolDefault {
 
     tassel3_MapInfoToHapMap: Tassel3Default,
   },
+
+  KGD: ToolDefault,
+
 }

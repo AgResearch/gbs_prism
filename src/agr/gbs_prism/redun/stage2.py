@@ -20,7 +20,7 @@ from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import run_GUSbase
-from agr.gbs_prism.kgd import run_kgd
+from agr.gbs_prism.kgd import kgd_job_spec, KGD_SAMPLE_STATS, KGD_GUSBASE_RDATA
 from agr.gbs_prism.tassel3 import (
     FASTQ_TO_TAG_COUNT_PLUGIN,
     MAP_INFO_TO_HAP_MAP_PLUGIN,
@@ -489,15 +489,22 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
     _ = hap_map_files  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
+    hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
     os.makedirs(out_dir, exist_ok=True)
-    # KGD already knows what input files it expects to see under `base_dir`
-    run_kgd(
-        base_dir=cohort_blind_dir,
-        genotyping_method=spec.target.genotyping_method,
+    os.makedirs(hapmap_dir, exist_ok=True)
+
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        kgd_job_spec(
+            out_dir=out_dir,
+            hapmap_dir=hapmap_dir,
+            genotyping_method=spec.target.genotyping_method,
+        ),
     )
+
     return KgdOutput(
-        sample_stats_csv=File(os.path.join(out_dir, "SampleStats.csv")),
-        gusbase_rdata=File(os.path.join(out_dir, "GUSbase.RData")),
+        sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
+        gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
     )
 
 
