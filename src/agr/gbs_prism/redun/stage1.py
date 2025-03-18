@@ -226,40 +226,46 @@ def multiqc_report(
 
 
 @task()
-def kmer_sample_one_minsize_if_required(
-    fastq_file: File, kmer_sample: FastqSample, rate_sample: File
-) -> File:
-    if kmer_sample.is_minsize_job_required(
-        in_path=fastq_file.path, rate_sample_path=rate_sample.path
-    ):
-        # overwrite the too-small rate sample with a minsize sample
-        return run_job_1(
-            EXECUTOR_CONFIG_PATH_ENV,
-            kmer_sample.minsize_job_spec(
-                in_path=fastq_file.path, out_path=rate_sample.path
-            ),
-        )
-    else:
-        return rate_sample
-
-
-@task()
 def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
+    @task()
+    def sample_minsize_if_required(
+        fastq_file: File, sample_spec: FastqSample, rate_sample: File, out_path: str
+    ) -> File:
+        if sample_spec.is_minsize_job_required(
+            in_path=fastq_file.path, rate_sample_path=rate_sample.path
+        ):
+            return run_job_1(
+                EXECUTOR_CONFIG_PATH_ENV,
+                sample_spec.minsize_job_spec(
+                    in_path=fastq_file.path, out_path=out_path
+                ),
+            )
+        else:
+            return rate_sample
+
     """Sample a single fastq file as required for kmer analysis."""
     os.makedirs(out_dir, exist_ok=True)
-    kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
+    sample_spec = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
     # the ugly name is copied from legacy gbs_prism
-    out_path = os.path.join(
+    basename = os.path.basename(fastq_file.path)
+    rate_out_path = os.path.join(
         out_dir,
-        "%s.fastq.%s.fastq" % (os.path.basename(fastq_file.path), kmer_sample.moniker),
+        "%s.fastq.%s.fastq" % (basename, sample_spec.rate_moniker),
+    )
+    minsize_out_path = os.path.join(
+        out_dir,
+        "%s.fastq.%s.fastq" % (basename, sample_spec.minsize_moniker),
     )
 
     rate_sample = run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        kmer_sample.rate_job_spec(in_path=fastq_file.path, out_path=out_path),
+        sample_spec.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
     )
-    return kmer_sample_one_minsize_if_required(
-        fastq_file=fastq_file, kmer_sample=kmer_sample, rate_sample=rate_sample
+    return sample_minsize_if_required(
+        fastq_file=fastq_file,
+        sample_spec=sample_spec,
+        rate_sample=rate_sample,
+        out_path=minsize_out_path,
     )
 
 

@@ -15,8 +15,12 @@ class FastqSample:
         self._minimum_sample_size = minimum_sample_size
 
     @property
-    def moniker(self) -> str:
+    def rate_moniker(self) -> str:
         return "s%s" % ("%f" % self._sample_rate).strip("0")
+
+    @property
+    def minsize_moniker(self) -> str:
+        return "m%d" % self._minimum_sample_size
 
     def rate_job_spec(self, in_path: str, out_path: str) -> cluster.Job1Spec:
         """Return the primary job spec, based on sample rate."""
@@ -25,6 +29,7 @@ class FastqSample:
             args=[
                 "seqtk",
                 "sample",
+                "-2",
                 in_path,
                 "%f" % self._sample_rate,
             ],
@@ -40,6 +45,7 @@ class FastqSample:
             args=[
                 "seqtk",
                 "sample",
+                "-2",
                 in_path,
                 "%d" % self._minimum_sample_size,
             ],

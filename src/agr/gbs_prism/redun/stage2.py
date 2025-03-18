@@ -90,40 +90,45 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
 
 
 @task()
-def sample_one_minsize_for_bwa_if_required(
-    fastq_file: File, spec: CohortSpec, rate_sample: File
-) -> File:
-    if spec.bwa_sample.is_minsize_job_required(
-        in_path=fastq_file.path, rate_sample_path=rate_sample.path
-    ):
-        # overwrite the too-small rate sample with a minsize sample
-        return run_job_1(
-            EXECUTOR_CONFIG_PATH_ENV,
-            spec.bwa_sample.minsize_job_spec(
-                in_path=fastq_file.path, out_path=rate_sample.path
-            ),
-        )
-    else:
-        return rate_sample
-
-
-@task()
 def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
+    @task()
+    def sample_minsize_if_required(
+        fastq_file: File, sample_spec: FastqSample, rate_sample: File, out_path: str
+    ) -> File:
+        if sample_spec.is_minsize_job_required(
+            in_path=fastq_file.path, rate_sample_path=rate_sample.path
+        ):
+            return run_job_1(
+                EXECUTOR_CONFIG_PATH_ENV,
+                sample_spec.minsize_job_spec(
+                    in_path=fastq_file.path, out_path=out_path
+                ),
+            )
+        else:
+            return rate_sample
+
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
-    out_path = os.path.join(
+    basename = os.path.basename(fastq_file.path)
+    rate_out_path = os.path.join(
         out_dir,
-        "%s.fastq.%s.fastq"
-        % (os.path.basename(fastq_file.path), spec.bwa_sample.moniker),
+        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.rate_moniker),
+    )
+    minsize_out_path = os.path.join(
+        out_dir,
+        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.minsize_moniker),
     )
 
     rate_sample = run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
-        spec.bwa_sample.rate_job_spec(in_path=fastq_file.path, out_path=out_path),
+        spec.bwa_sample.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
     )
-    return sample_one_minsize_for_bwa_if_required(
-        fastq_file=fastq_file, spec=spec, rate_sample=rate_sample
+    return sample_minsize_if_required(
+        fastq_file=fastq_file,
+        sample_spec=spec.bwa_sample,
+        rate_sample=rate_sample,
+        out_path=minsize_out_path,
     )
 
 
