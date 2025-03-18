@@ -3,11 +3,9 @@ import shutil
 import subprocess
 import tempfile
 
-from typing import List
-
 
 class CalledProcessError(Exception):
-    def __init__(self, stderr: str | bytes, returncode: int = 0, cmd: List[str] = []):
+    def __init__(self, stderr: str | bytes, returncode: int = 0, cmd: list[str] = []):
         """To avoid showing as Unknown in redun console, the constructor must have only one parameter without default value."""
         self.stderr = stderr
         self.returncode = returncode

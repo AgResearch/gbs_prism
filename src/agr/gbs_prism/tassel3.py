@@ -1,7 +1,7 @@
 import logging
 import os.path
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 import agr.util.cluster as cluster
 from agr.util.path import symlink
@@ -45,13 +45,13 @@ def fastq_name_for_tassel3(
 
 
 class Tassel3:
-    def __init__(self, work_dir: str, tool_config: Dict[str, Any]):
+    def __init__(self, work_dir: str, tool_config: dict[str, Any]):
         self._work_dir = work_dir
         self._java_max_heap = tool_config.get("java_max_heap")
         self._java_initial_heap = tool_config.get("java_initial_heap")
 
     @property
-    def _jvm_args(self) -> List[str]:
+    def _jvm_args(self) -> list[str]:
         return (
             [f"-Xmx{self._java_max_heap}"] if self._java_max_heap is not None else []
         ) + (
@@ -63,7 +63,7 @@ class Tassel3:
     def _tassel_plugin_job_1_spec(
         self,
         plugin: str,
-        plugin_args: List[str],
+        plugin_args: list[str],
         result_path: str,
     ) -> cluster.Job1Spec:
         return cluster.Job1Spec(
@@ -80,9 +80,9 @@ class Tassel3:
     def _tassel_plugin_job_n_spec(
         self,
         plugin: str,
-        plugin_args: List[str],
-        expected_paths: Dict[str, str],
-        expected_globs: Dict[str, cluster.FilteredGlob],
+        plugin_args: list[str],
+        expected_paths: dict[str, str],
+        expected_globs: dict[str, cluster.FilteredGlob],
     ) -> cluster.JobNSpec:
         return cluster.JobNSpec(
             tool=tassel3_tool_name(plugin),
@@ -96,7 +96,7 @@ class Tassel3:
             expected_globs=expected_globs,
         )
 
-    def _tassel_plugin_args(self, plugin: str, plugin_args: List[str]) -> List[str]:
+    def _tassel_plugin_args(self, plugin: str, plugin_args: list[str]) -> list[str]:
         return (
             [
                 "run_pipeline.pl",

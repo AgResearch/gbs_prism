@@ -27,7 +27,7 @@ from dataclasses import dataclass
 
 from redun import task, File
 from redun.context import get_context
-from typing import List, Literal, Set
+from typing import Literal
 
 redun_namespace = "agr.gbs_prism"
 
@@ -69,8 +69,8 @@ class CookSampleSheetOutput:
     sample_sheet: File
     illumina_platform_root: str
     paths: SeqPaths
-    expected_fastq: Set[str]
-    gbs_libraries: List[str]
+    expected_fastq: set[str]
+    gbs_libraries: list[str]
 
 
 @task()
@@ -106,7 +106,7 @@ def cook_sample_sheet(
 class BclConvertOutput:
     """Dataclass to collect the outputs of bclconvert."""
 
-    fastq_files: List[File]
+    fastq_files: list[File]
     adapter_metrics: File
     demultiplexing_metrics: File
     quality_metrics: File
@@ -118,7 +118,7 @@ class BclConvertOutput:
 def bclconvert(
     in_dir: str,
     sample_sheet_path: str,
-    expected_fastq: Set[str],
+    expected_fastq: set[str],
     out_dir: str,
     tool_context=get_context("tools.bcl_convert"),
 ) -> BclConvertOutput:
@@ -161,7 +161,7 @@ def bclconvert(
 
 
 @task()
-def check_bclconvert(fastq_files: List[File], expected: Set[str]) -> List[File]:
+def check_bclconvert(fastq_files: list[File], expected: set[str]) -> list[File]:
     """Check what we got is what we expected."""
     actual = {fastq_file.basename() for fastq_file in fastq_files}
     if actual != expected:
@@ -192,14 +192,14 @@ def fastqc_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
+def fastqc_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Run fastqc on multiple files, returning just the zip files."""
     return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
 def multiqc_report(
-    fastqc_files: List[File],
+    fastqc_files: list[File],
     bclconvert_top_unknowns: File,
     bclconvert_adapter_metrics: File,
     bclconvert_demultiplex_stats: File,
@@ -255,7 +255,7 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
+def kmer_sample_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Sample all fastq files as required for kmer analysis."""
     return one_forall(kmer_sample_one, fastq_files, out_dir=out_dir)
 
@@ -287,7 +287,7 @@ def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
+def kmer_analysis_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Run kmer analysis for multiple fastq files."""
     return one_forall(kmer_analysis_one, fastq_files, out_dir=out_dir)
 
@@ -318,7 +318,7 @@ def dedupe_one(
 
 
 @task()
-def dedupe_all(fastq_files: List[File], out_dir: str) -> List[File]:
+def dedupe_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Dedupe multiple fastq files."""
     return one_forall(dedupe_one, fastq_files, out_dir=out_dir)
 
@@ -327,13 +327,13 @@ def dedupe_all(fastq_files: List[File], out_dir: str) -> List[File]:
 def get_gbs_keyfiles(
     sequencer_run: SequencerRun,
     sample_sheet: File,
-    gbs_libraries: List[str],
-    deduped_fastq_files: List[File],
+    gbs_libraries: list[str],
+    deduped_fastq_files: list[File],
     root: str,
     out_dir: str,
     fastq_link_farm: str,
     backup_dir: str,
-) -> List[File]:
+) -> list[File]:
     """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
     _ = deduped_fastq_files  # depending on existence rather than value
     gbs_keyfiles = GbsKeyfiles(
@@ -363,7 +363,7 @@ class GbsTargetsOutput:
 
 @task()
 def get_gbs_targets(
-    run: str, postprocessing_root: str, fastq_link_farm: str, gbs_keyfiles: List[File]
+    run: str, postprocessing_root: str, fastq_link_farm: str, gbs_keyfiles: list[File]
 ) -> GbsTargetsOutput:
     """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
     _ = gbs_keyfiles  # depending on existence rather than value
@@ -381,9 +381,9 @@ def get_gbs_targets(
 class Stage1Output:
     """Dataclass to collect the outputs of stage 1."""
 
-    fastqc: List[File]
+    fastqc: list[File]
     multiqc: File
-    kmer_analysis: List[File]
+    kmer_analysis: list[File]
     spec: GbsTargetSpec
     spec_file: File
     gbs_paths: GbsPaths

@@ -1,8 +1,6 @@
 import logging
 import os.path
 
-from typing import List
-
 import agr.util.cluster as cluster
 
 logger = logging.getLogger(__name__)
@@ -14,7 +12,7 @@ KGD_GUSBASE_RDATA = "gusbase-rdata"
 KGD_TOOL_NAME = "KGD"
 
 
-def primary_hap_map_path(all_hapmap_paths: List[str]) -> str:
+def primary_hap_map_path(all_hapmap_paths: list[str]) -> str:
     hapmap_candidates = ["HapMap.hmc.txt.blinded", "HapMap.hmc.txt"]
     for hapmap_candidate in hapmap_candidates:
         for hapmap_path in all_hapmap_paths:

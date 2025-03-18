@@ -1,6 +1,5 @@
 import os.path
 from redun import task, File
-from typing import List
 
 from agr.util.subprocess import run_catching_stderr
 
@@ -15,7 +14,7 @@ def create_peacock(
     postprocessing_root: str,
     gbs_run_root: str,
     stage2: Stage2Output,
-) -> List[File]:
+) -> list[File]:
     _ = stage2  # depending on existence rather than value
     out_dir = os.path.join(gbs_run_root, "html")
     os.makedirs(out_dir, exist_ok=True)

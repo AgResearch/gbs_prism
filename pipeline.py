@@ -2,7 +2,6 @@ import logging
 from redun import task, File
 from redun.context import get_context
 from redun.scheduler import catch_all
-from typing import List
 
 from agr.util.path import expand
 from agr.gbs_prism.redun import (
@@ -25,7 +24,7 @@ logging.basicConfig(
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
-MainResults = tuple[Stage1Output, Stage2Output, List[File]]
+MainResults = tuple[Stage1Output, Stage2Output, list[File]]
 
 
 @task()
