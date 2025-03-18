@@ -57,6 +57,7 @@ from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.gbs_prism.redun.common import sample_minsize_if_required
 
 from agr.util.path import remove_if_exists
 
@@ -227,22 +228,6 @@ def multiqc_report(
 
 @task()
 def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
-    @task()
-    def sample_minsize_if_required(
-        fastq_file: File, sample_spec: FastqSample, rate_sample: File, out_path: str
-    ) -> File:
-        if sample_spec.is_minsize_job_required(
-            in_path=fastq_file.path, rate_sample_path=rate_sample.path
-        ):
-            return run_job_1(
-                EXECUTOR_CONFIG_PATH_ENV,
-                sample_spec.minsize_job_spec(
-                    in_path=fastq_file.path, out_path=out_path
-                ),
-            )
-        else:
-            return rate_sample
-
     """Sample a single fastq file as required for kmer analysis."""
     os.makedirs(out_dir, exist_ok=True)
     sample_spec = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)

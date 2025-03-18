@@ -43,6 +43,7 @@ from agr.gbs_prism.tassel3 import (
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
 from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.gbs_prism.redun.common import sample_minsize_if_required
 
 
 @dataclass
@@ -91,21 +92,6 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
 
 @task()
 def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
-    @task()
-    def sample_minsize_if_required(
-        fastq_file: File, sample_spec: FastqSample, rate_sample: File, out_path: str
-    ) -> File:
-        if sample_spec.is_minsize_job_required(
-            in_path=fastq_file.path, rate_sample_path=rate_sample.path
-        ):
-            return run_job_1(
-                EXECUTOR_CONFIG_PATH_ENV,
-                sample_spec.minsize_job_spec(
-                    in_path=fastq_file.path, out_path=out_path
-                ),
-            )
-        else:
-            return rate_sample
 
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
