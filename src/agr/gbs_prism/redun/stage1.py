@@ -310,7 +310,7 @@ def dedupe_one(
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
 
-    tool_config, _ = get_tool_config(EXECUTOR_CONFIG_PATH_ENV, DEDUPE_TOOL_NAME)
+    tool_config = get_tool_config(EXECUTOR_CONFIG_PATH_ENV, DEDUPE_TOOL_NAME)
     java_max_heap = tool_config.get("java_max_heap")
 
     result = run_job_1(

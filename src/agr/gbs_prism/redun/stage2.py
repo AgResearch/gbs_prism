@@ -338,7 +338,7 @@ def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOu
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)
-        )[0],
+        ),
     )
     tassel3.create_directories()
     tassel3.symlink_key(in_path=keyfile.path)
@@ -398,7 +398,7 @@ def merge_taxa_tag_count(
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)
-        )[0],
+        ),
     )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
@@ -417,7 +417,7 @@ def tag_count_to_tag_pair(
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)
-        )[0],
+        ),
     )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
@@ -436,7 +436,7 @@ def tag_pair_to_tbt(
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)
-        )[0],
+        ),
     )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
@@ -455,7 +455,7 @@ def tbt_to_map_info(
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)
-        )[0],
+        ),
     )
     return run_job_1(
         EXECUTOR_CONFIG_PATH_ENV,
@@ -474,7 +474,7 @@ def map_info_to_hap_map(
         cohort_blind_dir,
         get_tool_config(
             EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)
-        )[0],
+        ),
     )
 
     result_files = run_job_n(

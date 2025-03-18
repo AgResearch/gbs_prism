@@ -111,7 +111,7 @@ def _create_job_spec(
     config_path_env: str,
     spec: cluster.CommonJobSpec,
 ) -> tuple[JobSpec, str]:
-    tool_config, config_path = get_tool_config(config_path_env, spec.tool)
+    tool_config, config_path = get_tool_config_and_path(config_path_env, spec.tool)
     try:
         executor_name = tool_config["executor"]
         job_prefix = tool_config.get("job_prefix", "")
@@ -405,7 +405,9 @@ class ClusterExecutorConfig:
         return deep_get(self._config, path, default=default)
 
 
-def get_tool_config(config_path_env: str, tool: str) -> Tuple[Dict[str, Any], str]:
+def get_tool_config_and_path(
+    config_path_env: str, tool: str
+) -> Tuple[Dict[str, Any], str]:
     """Return tool config and config path."""
     assert (
         config_path_env in os.environ
@@ -415,3 +417,8 @@ def get_tool_config(config_path_env: str, tool: str) -> Tuple[Dict[str, Any], st
     tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
     logger.info(f"{tool} config: {tool_config}")
     return tool_config, config_path
+
+
+def get_tool_config(config_path_env: str, tool: str) -> Dict[str, Any]:
+    """Return tool config only."""
+    return get_tool_config_and_path(config_path_env, tool)[0]
