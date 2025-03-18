@@ -20,7 +20,12 @@ from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import run_GUSbase
-from agr.gbs_prism.kgd import kgd_job_spec, KGD_SAMPLE_STATS, KGD_GUSBASE_RDATA
+from agr.gbs_prism.kgd import (
+    primary_hap_map_path,
+    kgd_job_spec,
+    KGD_SAMPLE_STATS,
+    KGD_GUSBASE_RDATA,
+)
 from agr.gbs_prism.tassel3 import (
     FASTQ_TO_TAG_COUNT_PLUGIN,
     MAP_INFO_TO_HAP_MAP_PLUGIN,
@@ -486,7 +491,12 @@ class KgdOutput:
 
 @task()
 def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
-    _ = hap_map_files  # depending on existence rather than value
+    @task()
+    def get_primary_hap_map_file(hap_map_files: List[File]) -> File:
+        return File(
+            primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
+        )
+
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
     hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
@@ -497,7 +507,7 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
         EXECUTOR_CONFIG_PATH_ENV,
         kgd_job_spec(
             out_dir=out_dir,
-            hapmap_dir=hapmap_dir,
+            hapmap_path=get_primary_hap_map_file(hap_map_files).path,
             genotyping_method=spec.target.genotyping_method,
         ),
     )
