@@ -95,4 +95,5 @@ local Tassel3Default = ToolDefault {
 
   KGD: ToolDefault,
 
+  GUSbase: ToolDefault,
 }
