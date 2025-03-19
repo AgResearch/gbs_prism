@@ -91,6 +91,9 @@ local Tassel3Default = ToolDefault {
     bwa_samse: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
+          // very short running jobs require more frequent sampling to measure resource usage,
+          // but this comes with a cost, so should be only a temporary setting
+          // 'acctg-freq': '1',
           mem: '8G',
         }),
       },
