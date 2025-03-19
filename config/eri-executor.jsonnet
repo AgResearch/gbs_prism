@@ -21,18 +21,19 @@ local ToolDefault = {
       // all string-valued
       ntasks: '1',
       // TODO bumped up the defaults for tuning resource requirements, need to drop them down again
-      'cpus-per-task': '8',
-      mem: '250G',
+      'cpus-per-task': '1',
+      mem: '1G',
     }),
   },
 };
 
 local Tassel3Default = ToolDefault {
   java_initial_heap: '512M',
-  java_max_heap: '20G',
+  java_max_heap: '2G',
   job_attributes+: {
     custom_attributes+: customised({
-      mem: '20G',
+      'cpus-per-task': '1',
+      mem: '2G',
     }),
   },
 };
@@ -50,7 +51,14 @@ local Tassel3Default = ToolDefault {
       },
     },
 
-    fastqc: ToolDefault,
+    fastqc: ToolDefault {
+      job_attributes+: {
+        custom_attributes+: customised({
+          'cpus-per-task': '1',
+          mem: '4G',
+        }),
+      },
+    },
 
     multiqc: ToolDefault,
 
@@ -73,27 +81,59 @@ local Tassel3Default = ToolDefault {
 
     cutadapt: ToolDefault,
 
-    tassel3_FastqToTagCount: Tassel3Default {
-      java_max_heap: '5G',
+    bwa_aln: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
-          mem: '5G',
+          'cpus-per-task': '1',
+          mem: '8G',
         }),
       },
     },
 
-    tassel3_MergeTaxaTagCount: Tassel3Default,
+    bwa_samse: ToolDefault,
+
+    tassel3_FastqToTagCount: Tassel3Default,
+
+    tassel3_MergeTaxaTagCount: Tassel3Default {
+      java_max_heap: '32G',
+      job_attributes+: {
+        custom_attributes+: customised({
+          mem: '32G',
+        }),
+      },
+    },
 
     tassel3_TagCountToTagPair: Tassel3Default,
 
-    tassel3_TagPairToTBT: Tassel3Default,
+    tassel3_TagPairToTBT: Tassel3Default {
+      java_max_heap: '8G',
+      job_attributes+: {
+        custom_attributes+: customised({
+          mem: '8G',
+        }),
+      },
+    },
 
     tassel3_TBTToMapInfo: Tassel3Default,
 
     tassel3_MapInfoToHapMap: Tassel3Default,
+
+    KGD: ToolDefault {
+      job_attributes+: {
+        custom_attributes+: customised({
+          'cpus-per-task': '4',
+          mem: '32G',
+        }),
+      },
+    },
+
+    GUSbase: ToolDefault {
+      job_attributes+: {
+        custom_attributes+: customised({
+          'cpus-per-task': '1',
+          mem: '8G',
+        }),
+      },
+    },
   },
-
-  KGD: ToolDefault,
-
-  GUSbase: ToolDefault,
 }
