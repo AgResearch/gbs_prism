@@ -39,6 +39,12 @@
       url = "github:AgResearch/redun.nix/redun-console-log";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    seffs = {
+      url = "github:AgResearch/seffs/main";
+      # TODO revert this to main nixpkgs once we have something newer than 24.05.
+      # We do this for now because the Elvish in 24.05 is too old.
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs = inputs:
@@ -63,6 +69,7 @@
             gquery-api = inputs.gquery.packages.${system}.api;
             gquery-cli = inputs.gquery.packages.${system}.cli;
             gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
+            seffs = inputs.seffs.packages.${system}.default;
           };
 
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
@@ -297,6 +304,7 @@
                   gbs-prism-scripts
                   python3Packages.pytest
                   jsonnet
+                  flakePkgs.seffs
                 ];
 
               shellHook = ''
