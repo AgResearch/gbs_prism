@@ -56,7 +56,6 @@ from agr.gbs_prism.gbs_target_spec import (
 from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
-from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
 from agr.gbs_prism.redun.common import sample_minsize_if_required
 
 from agr.util.path import remove_if_exists
@@ -146,9 +145,7 @@ def bclconvert(
             top_unknown=File(bclconvert.top_unknown_path),
         )
     else:
-        fastq_files = run_job_n(
-            EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec
-        ).globbed_files[BCLCONVERT_JOB_FASTQ]
+        fastq_files = run_job_n(bclconvert.job_spec).globbed_files[BCLCONVERT_JOB_FASTQ]
 
         return BclConvertOutput(
             fastq_files=check_bclconvert(fastq_files, expected_fastq),
@@ -186,7 +183,6 @@ def fastqc_one(fastq_file: File, out_dir: str) -> File:
     """Run fastqc on a single file, returning just the zip file."""
     os.makedirs(out_dir, exist_ok=True)
     return run_job_1(
-        EXECUTOR_CONFIG_PATH_ENV,
         fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
     )
 
@@ -212,7 +208,6 @@ def multiqc_report(
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
     return run_job_1(
-        EXECUTOR_CONFIG_PATH_ENV,
         multiqc_job_spec(
             fastqc_in_paths=[fastqc_file.path for fastqc_file in fastqc_files],
             bclconvert_top_unknowns=bclconvert_top_unknowns.path,
@@ -243,7 +238,6 @@ def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
     )
 
     rate_sample = run_job_1(
-        EXECUTOR_CONFIG_PATH_ENV,
         sample_spec.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
     )
     return sample_minsize_if_required(
@@ -273,7 +267,6 @@ def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
     remove_if_exists(out_path)
 
     return run_job_1(
-        EXECUTOR_CONFIG_PATH_ENV,
         kmer_analysis_job_spec(
             in_path=fastq_file.path,
             out_path=out_path,
@@ -301,11 +294,10 @@ def dedupe_one(
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
 
-    tool_config = get_tool_config(EXECUTOR_CONFIG_PATH_ENV, DEDUPE_TOOL_NAME)
+    tool_config = get_tool_config(DEDUPE_TOOL_NAME)
     java_max_heap = tool_config.get("java_max_heap")
 
     result = run_job_1(
-        EXECUTOR_CONFIG_PATH_ENV,
         dedupe_job_spec(
             in_path=fastq_file.path,
             out_path=out_path,

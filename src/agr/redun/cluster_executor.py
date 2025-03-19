@@ -108,10 +108,9 @@ def _create_job_attributes(
 
 
 def _create_job_spec(
-    config_path_env: str,
     spec: cluster.CommonJobSpec,
 ) -> tuple[JobSpec, str]:
-    tool_config, config_path = get_tool_config_and_path(config_path_env, spec.tool)
+    tool_config, config_path = get_tool_config_and_path(spec.tool)
     try:
         executor_name = tool_config["executor"]
         job_prefix = tool_config.get("job_prefix", "")
@@ -218,7 +217,6 @@ def _reject_on_failure(
 
 @task()
 def run_job_1(
-    config_path_env: str,
     spec: cluster.Job1Spec,
 ) -> File:
     """
@@ -229,7 +227,6 @@ def run_job_1(
     thread-spawning job.wait() in PSI/J.
     """
     job_spec, executor_name = _create_job_spec(
-        config_path_env=config_path_env,
         spec=spec,
     )
 
@@ -247,7 +244,6 @@ def _run_job_1_uncached(
     scheduler: Scheduler,
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
-    config_path_env: str,
     spec: cluster.Job1Spec,
 ) -> Promise[File]:
     """
@@ -262,7 +258,6 @@ def _run_job_1_uncached(
         _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
 
     job_spec, executor_name = _create_job_spec(
-        config_path_env=config_path_env,
         spec=spec,
     )
 
@@ -315,7 +310,6 @@ def _result_files(
 
 @task()
 def run_job_n(
-    config_path_env: str,
     spec: cluster.JobNSpec,
 ) -> ResultFiles:
     """
@@ -323,7 +317,6 @@ def run_job_n(
     """
 
     job_spec, executor_name = _create_job_spec(
-        config_path_env=config_path_env,
         spec=spec,
     )
 
@@ -340,7 +333,6 @@ def _run_job_n_uncached(
     scheduler: Scheduler,
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
-    config_path_env: str,
     spec: cluster.JobNSpec,
 ) -> Promise[ResultFiles]:
     """
@@ -354,9 +346,7 @@ def _run_job_n_uncached(
         # suppress unused parameters
         _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
 
-    job_spec, executor_name = _create_job_spec(
-        config_path_env=config_path_env, spec=spec
-    )
+    job_spec, executor_name = _create_job_spec(spec=spec)
 
     job = Job(job_spec)
     _create_executor(executor_name).submit(job)
@@ -390,35 +380,45 @@ def get_config_path(config_path_env: str) -> str:
 
 @singleton
 class ClusterExecutorConfig:
-    def __init__(self, config_path: str):
+    def __init__(self):
+        self._configured = False
+        self._path = None
+
+    @property
+    def path(self) -> str:
+        assert (
+            self._path is not None
+        ), "ClusterExecutorConfig is not configured, need an early call to read_config()"
+
+        return self._path
+
+    def read_config(self, path: str):
         try:
-            with open(config_path, "r") as config_f:
+            with open(path, "r") as config_f:
                 raw_config = config_f.read()
-                json_config = _jsonnet.evaluate_snippet(config_path, raw_config)
+                json_config = _jsonnet.evaluate_snippet(path, raw_config)
                 self._config = json.loads(json_config)
         except Exception as ex:
             raise ConfigError(
-                message="invalid Jsonnet configuration", path=config_path, cause=ex
+                message="invalid Jsonnet configuration", path=path, cause=ex
             )
+        self._configured = True
 
     def get(self, path: str, default: Any = None) -> Any:
+        assert (
+            self._configured
+        ), "ClusterExecutorConfig is not configured, need an early call to read_config()"
         return deep_get(self._config, path, default=default)
 
 
-def get_tool_config_and_path(
-    config_path_env: str, tool: str
-) -> tuple[dict[str, Any], str]:
-    """Return tool config and config path."""
-    assert (
-        config_path_env in os.environ
-    ), f"Missing environment variable {config_path_env}"
-    config_path = os.environ[config_path_env]
-    config = ClusterExecutorConfig(config_path)
+def get_tool_config_and_path(tool: str) -> tuple[dict[str, Any], str]:
+    """Return tool config and config path, assuming the singleton object has been configured."""
+    config = ClusterExecutorConfig()
     tool_config = config.get("tools.default", {}) | config.get(f"tools.{tool}", {})
     logger.info(f"{tool} config: {tool_config}")
-    return tool_config, config_path
+    return tool_config, config.path
 
 
-def get_tool_config(config_path_env: str, tool: str) -> dict[str, Any]:
+def get_tool_config(tool: str) -> dict[str, Any]:
     """Return tool config only."""
-    return get_tool_config_and_path(config_path_env, tool)[0]
+    return get_tool_config_and_path(tool)[0]
