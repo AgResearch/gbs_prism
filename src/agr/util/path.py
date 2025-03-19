@@ -24,6 +24,20 @@ def remove_if_exists(path: str):
             raise
 
 
+def symlink(
+    src: str,
+    dst: str,
+    *,
+    force=False,
+    target_is_directory: bool = False,
+    dir_fd: int | None = None,
+):
+    """Like os.symlink except supports a force argument, which Python should support natively, bah!."""
+    if force:
+        remove_if_exists(dst)
+    os.symlink(src, dst, target_is_directory=target_is_directory, dir_fd=dir_fd)
+
+
 def expand(path: str) -> str:
     """Expand both tildes and environment variables."""
     return os.path.expanduser(os.path.expandvars(path))

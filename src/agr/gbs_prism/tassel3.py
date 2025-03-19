@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, List
 
 import agr.util.cluster as cluster
-from agr.util.path import remove_if_exists
+from agr.util.path import symlink
 
 from .enzyme_sub import enzyme_sub_for_uneak
 from .types import Cohort
@@ -159,9 +159,8 @@ class Tassel3:
 
     def symlink_key(self, in_path: str):
         key_path = os.path.join(self._key_dir, os.path.basename(in_path))
-        remove_if_exists(key_path)
         logger.info("symlink %s %s" % (in_path, key_path))
-        os.symlink(in_path, key_path)
+        symlink(in_path, key_path, force=True)
 
     def fastq_to_tag_count_job_spec(self, cohort_str: str) -> cluster.JobNSpec:
         cohort = Cohort.parse(cohort_str)

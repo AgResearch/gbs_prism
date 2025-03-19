@@ -8,7 +8,7 @@ redun_namespace = "agr.gbs_prism"
 
 from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
-from agr.util.path import remove_if_exists
+from agr.util.path import symlink
 from agr.redun import concat, one_forall
 from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
@@ -80,9 +80,7 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
                     )
                 ),
             )
-            # Python should really support ln -sf, bah!
-            remove_if_exists(link)
-            os.symlink(sanitised_realpath(fastq_link), link)
+            symlink(sanitised_realpath(fastq_link), link, force=True)
             if blind:
                 cohort_munged_links.append(File(link))
             else:
@@ -482,13 +480,14 @@ class KgdOutput:
 
 
 @task()
-def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
-    @task()
-    def get_primary_hap_map_file(hap_map_files: List[File]) -> File:
-        return File(
-            primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
-        )
+def _get_primary_hap_map_file(hap_map_files: List[File]) -> File:
+    return File(
+        primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
+    )
 
+
+@task()
+def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
     hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
@@ -499,7 +498,7 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
         EXECUTOR_CONFIG_PATH_ENV,
         kgd_job_spec(
             out_dir=out_dir,
-            hapmap_path=get_primary_hap_map_file(hap_map_files).path,
+            hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
             genotyping_method=spec.target.genotyping_method,
         ),
     )
@@ -511,12 +510,13 @@ def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
 
 
 @task()
-def gusbase(gusbase_rdata: File) -> File:
-    @task()
-    def convert_output(GUSbase_out_file: File) -> File:
-        return File(convert_GUSbase_output(GUSbase_out_file.path))
+def _get_converted_GUSbase_output(GUSbase_out_file: File) -> File:
+    return File(convert_GUSbase_output(GUSbase_out_file.path))
 
-    return convert_output(
+
+@task()
+def gusbase(gusbase_rdata: File) -> File:
+    return _get_converted_GUSbase_output(
         run_job_1(
             EXECUTOR_CONFIG_PATH_ENV,
             gusbase_job_spec(gusbase_rdata.path),

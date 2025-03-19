@@ -19,7 +19,7 @@ def primary_hap_map_path(all_hapmap_paths: List[str]) -> str:
     for hapmap_candidate in hapmap_candidates:
         for hapmap_path in all_hapmap_paths:
             if os.path.basename(hapmap_path) == hapmap_candidate:
-                return hapmap_candidate
+                return hapmap_path
 
     assert False, "failed to find any of %s in %s" % (
         ", ".join(hapmap_candidates),
@@ -40,6 +40,7 @@ def kgd_job_spec(
         args=["run_kgd.R", hapmap_path, genotyping_method],
         stdout_path=out_path,
         stderr_path=err_path,
+        cwd=out_dir,
         expected_paths={
             KGD_SAMPLE_STATS: os.path.join(out_dir, "SampleStats.csv"),
             KGD_GUSBASE_RDATA: os.path.join(out_dir, "GUSbase.RData"),
