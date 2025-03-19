@@ -1,17 +1,13 @@
 import json
 import logging
-import os.path
 from functools import cached_property
 from typing import Literal
 
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
-from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
-from agr.seq.dedupe import dedupe
 from agr.util.path import expand
 
 logging.basicConfig(
@@ -80,15 +76,6 @@ class RunContext:
         )
 
     @cached_property
-    def bclconvert(self) -> BclConvert | FakeBclConvert:
-        return create_real_or_fake_bcl_convert(
-            self.sequencer_run.dir,
-            sample_sheet_path=self.paths.seq.sample_sheet_path,
-            out_dir=self.paths.seq.bclconvert_dir,
-            bcl_convert_context=self._context.get("bcl_convert"),
-        )
-
-    @cached_property
     def gbs_keyfiles(self) -> GbsKeyfiles:
         return GbsKeyfiles(
             sequencer_run=self.sequencer_run,
@@ -97,14 +84,4 @@ class RunContext:
             out_dir=self.keyfiles_dir,
             fastq_link_farm=self.fastq_link_farm,
             backup_dir=self.gbs_backup_dir,
-        )
-
-    def dedupe(self, fastq_path: str):
-        """Dedupe a single fastq file (full path), info the configured output directory."""
-        out_dir = self.paths.seq.dedupe_dir
-        out_path = os.path.join(out_dir, os.path.basename(fastq_path))
-        dedupe(
-            in_path=fastq_path,
-            out_path=out_path,
-            tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
         )

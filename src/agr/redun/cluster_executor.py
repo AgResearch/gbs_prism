@@ -160,6 +160,23 @@ def _create_executor(executor_name: str):
     )
 
 
+def job_description(
+    job: Job,
+    spec: cluster.CommonJobSpec,
+    annotation: Optional[str] = None,
+    multiline: bool = False,
+) -> str:
+    cwd = spec.cwd or os.getcwd()
+    command_text = " ".join(spec.args)
+    padded_annotation = f" {annotation}" if annotation is not None else ""
+    if multiline:
+        return (
+            f"job {job.native_id}{padded_annotation}\ncwd: {cwd}\ncmd: {command_text}\n"
+        )
+    else:
+        return f"job {job.native_id} {command_text}{padded_annotation} cwd={cwd}"
+
+
 def _raise_exception_on_failure(
     job: Job, status: JobStatus | None, spec: cluster.CommonJobSpec
 ):
@@ -186,14 +203,12 @@ def _raise_exception_on_failure(
                 if status.metadata is not None
                 else ""
             )
-            cwd = spec.cwd or os.getcwd()
-            command_text = " ".join(spec.args)
             stderr_text = stderr_f.read()
             logger.debug(
-                f"job {job.native_id} {command_text} {failure_text} cwd={cwd} {metadata_text}: {stderr_text}"
+                f"{job_description(job, spec, annotation=failure_text)} {metadata_text}: {stderr_text}"
             )
             raise ClusterExecutorError(
-                f"job {job.native_id} {failure_text}\nmetadata: {metadata_text}\ncwd: {cwd}\ncmd: {command_text}\n{stderr_text}"
+                f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}"
             )
 
 
@@ -221,10 +236,6 @@ def run_job_1(
 ) -> File:
     """
     Run a job on the defined cluster, which is expected to produce the single file `result_path`
-
-    This function was written before understanding that scheduler tasks are not cached.
-    Even so, it is here for now until we work out how to use Promises in tasks, to avoid the
-    thread-spawning job.wait() in PSI/J.
     """
     job_spec, executor_name = _create_job_spec(
         spec=spec,
@@ -235,6 +246,11 @@ def run_job_1(
 
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
+
+    if not os.path.exists(spec.expected_path):
+        raise ClusterExecutorError(
+            f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
+        )
 
     return File(spec.expected_path)
 
@@ -274,7 +290,7 @@ def _run_job_1_uncached(
             else:
                 _ = promise.do_reject(
                     ClusterExecutorError(
-                        f"job {job.native_id} failed to write file {spec.expected_path}"
+                        f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
                     )
                 )
 
@@ -289,10 +305,17 @@ class ResultFiles:
 
 
 def _result_files(
+    job: Job,
+    spec: cluster.CommonJobSpec,
     expected_paths: dict[str, str],
     expected_globs: dict[str, cluster.FilteredGlob],
 ) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
+    for k, path in expected_paths.items():
+        if not os.path.exists(path):
+            raise ClusterExecutorError(
+                f"{job_description(job, spec, annotation=f'failed to create {k}={path}', multiline=True)}"
+            )
 
     return ResultFiles(
         expected_files={k: File(path) for (k, path) in expected_paths.items()},
@@ -326,7 +349,7 @@ def run_job_n(
     status = job.wait()
     _raise_exception_on_failure(job, status, spec)
 
-    return _result_files(spec.expected_paths, spec.expected_globs)
+    return _result_files(job, spec, spec.expected_paths, spec.expected_globs)
 
 
 def _run_job_n_uncached(
@@ -356,7 +379,7 @@ def _run_job_n_uncached(
     def job_status_callback(job: Job, status: JobStatus):
         if not _reject_on_failure(promise, job, status, spec.stderr_path):
             logger.debug(f"job {job.native_id} completed")
-            files = _result_files(spec.expected_paths, spec.expected_globs)
+            files = _result_files(job, spec, spec.expected_paths, spec.expected_globs)
             promise.do_resolve(files)
 
     job.set_job_status_callback(job_status_callback)
@@ -403,6 +426,7 @@ class ClusterExecutorConfig:
                 message="invalid Jsonnet configuration", path=path, cause=ex
             )
         self._configured = True
+        self._path = path
 
     def get(self, path: str, default: Any = None) -> Any:
         assert (

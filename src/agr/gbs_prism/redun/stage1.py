@@ -26,19 +26,14 @@ import os.path
 from dataclasses import dataclass
 
 from redun import task, File
-from redun.context import get_context
 from typing import Literal
 
 redun_namespace = "agr.gbs_prism"
 
 from agr.redun import one_forall
-from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
+from agr.redun.cluster_executor import get_tool_config, run_job_1
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
-
-# Fake bcl-convert may be selected in context
-from agr.seq.bclconvert import BCLCONVERT_JOB_FASTQ, BclConvertError
-from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
 from agr.seq.dedupe import (
     dedupe_job_spec,
     remove_dedupe_turds,
@@ -57,6 +52,7 @@ from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism.redun.common import sample_minsize_if_required
+from agr.redun.tasks.fake_bcl_convert import real_or_fake_bcl_convert
 
 from agr.util.path import remove_if_exists
 
@@ -99,83 +95,6 @@ def cook_sample_sheet(
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
     )
-
-
-@dataclass
-class BclConvertOutput:
-    """Dataclass to collect the outputs of bclconvert."""
-
-    fastq_files: list[File]
-    adapter_metrics: File
-    demultiplexing_metrics: File
-    quality_metrics: File
-    run_info_xml: File
-    top_unknown: File
-
-
-@task()
-def bclconvert(
-    in_dir: str,
-    sample_sheet_path: str,
-    expected_fastq: set[str],
-    out_dir: str,
-    tool_context=get_context("tools.bcl_convert"),
-) -> BclConvertOutput:
-    os.makedirs(out_dir, exist_ok=True)
-
-    bclconvert = create_real_or_fake_bcl_convert(
-        in_dir=in_dir,
-        sample_sheet_path=sample_sheet_path,
-        out_dir=out_dir,
-        tool_context=tool_context,
-    )
-
-    # we only run the real bclconvert via the executor
-    if isinstance(bclconvert, FakeBclConvert):
-        bclconvert.run()
-
-        return BclConvertOutput(
-            fastq_files=[
-                File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
-            ],
-            adapter_metrics=File(bclconvert.adapter_metrics_path),
-            demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
-            quality_metrics=File(bclconvert.quality_metrics_path),
-            run_info_xml=File(bclconvert.run_info_xml_path),
-            top_unknown=File(bclconvert.top_unknown_path),
-        )
-    else:
-        fastq_files = run_job_n(bclconvert.job_spec).globbed_files[BCLCONVERT_JOB_FASTQ]
-
-        return BclConvertOutput(
-            fastq_files=check_bclconvert(fastq_files, expected_fastq),
-            adapter_metrics=File(bclconvert.adapter_metrics_path),
-            demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
-            quality_metrics=File(bclconvert.quality_metrics_path),
-            run_info_xml=File(bclconvert.run_info_xml_path),
-            top_unknown=File(bclconvert.top_unknown_path),
-        )
-
-
-@task()
-def check_bclconvert(fastq_files: list[File], expected: set[str]) -> list[File]:
-    """Check what we got is what we expected."""
-    actual = {fastq_file.basename() for fastq_file in fastq_files}
-    if actual != expected:
-        anomalies = []
-        missing = expected - actual
-        unexpected = actual - expected
-        if any(missing):
-            anomalies.append(
-                "failed to find expected fastq files: %s" % ", ".join(sorted(missing))
-            )
-        if any(unexpected):
-            anomalies.append(
-                "found unexpected fastq files: %s" % ", ".join(sorted(unexpected))
-            )
-
-        raise BclConvertError("; ".join(anomalies))
-    return fastq_files
 
 
 @task()
@@ -397,7 +316,7 @@ def run_stage1(
         sequencer_run=sequencer_run, postprocessing_root=postprocessing_root
     )
 
-    bclconvert_output = bclconvert(
+    bclconvert_output = real_or_fake_bcl_convert(
         sequencer_run.dir,
         sample_sheet_path=seq.sample_sheet.path,
         expected_fastq=seq.expected_fastq,

@@ -1,6 +1,5 @@
 from redun import task, File
-from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
-from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.redun.cluster_executor import run_job_1
 from agr.seq.fastq_sample import FastqSample
 
 
@@ -12,7 +11,6 @@ def sample_minsize_if_required(
         in_path=fastq_file.path, rate_sample_path=rate_sample.path
     ):
         return run_job_1(
-            EXECUTOR_CONFIG_PATH_ENV,
             sample_spec.minsize_job_spec(in_path=fastq_file.path, out_path=out_path),
         )
     else:
