@@ -54,7 +54,6 @@ local Tassel3Default = ToolDefault {
     fastqc: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
-          'cpus-per-task': '1',
           mem: '4G',
         }),
       },
@@ -84,13 +83,18 @@ local Tassel3Default = ToolDefault {
     bwa_aln: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
-          'cpus-per-task': '1',
           mem: '8G',
         }),
       },
     },
 
-    bwa_samse: ToolDefault,
+    bwa_samse: ToolDefault {
+      job_attributes+: {
+        custom_attributes+: customised({
+          mem: '8G',
+        }),
+      },
+    },
 
     tassel3_FastqToTagCount: Tassel3Default,
 
@@ -130,7 +134,6 @@ local Tassel3Default = ToolDefault {
     GUSbase: ToolDefault {
       job_attributes+: {
         custom_attributes+: customised({
-          'cpus-per-task': '1',
           mem: '8G',
         }),
       },
