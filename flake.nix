@@ -103,6 +103,49 @@
             '';
           };
 
+          psij-python = with pkgs;
+            python3Packages.buildPythonPackage {
+              name = "psij";
+              src = pkgs.fetchFromGitHub {
+                owner = "ExaWorks";
+                repo = "psij-python";
+                rev = "0.9.9";
+                hash = "sha256-eyrkj3hcQCDwtyfzkBfe0j+rHJY4K7QWNF8GRuPlAsM=";
+              };
+
+              format = "setuptools";
+
+              # Tests seem to require a network-mounted home directory
+              doCheck = false;
+
+              nativeBuildInputs = with python3Packages;
+                [
+                  setuptools
+                ];
+
+              buildInputs = with python3Packages;
+                [
+                  packaging
+                ];
+
+              propagatedBuildInputs = with python3Packages;
+                [
+                  psutil
+                  pystache
+                  typeguard
+                ];
+            };
+
+          pipeline-packages = with pkgs.python3Packages;
+            [
+              biopython
+              jsonnet
+              pdf2image
+              pydantic
+              flakePkgs.gquery-api
+              psij-python
+            ];
+
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
               name = "gbs-prism-api";
@@ -114,13 +157,7 @@
                 python3Packages.hatchling
               ];
 
-              propagatedBuildInputs = with python3Packages;
-                [
-                  biopython
-                  pdf2image
-                  pydantic
-                  flakePkgs.gquery-api
-                ];
+              propagatedBuildInputs = pipeline-packages;
             };
 
           run_kgd = pkgs.stdenv.mkDerivation {
@@ -179,12 +216,7 @@
 
           # for development, we use a redun with only gquery, and pick up the gbs-prism locally
           redun-with-gquery = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = with pkgs.python3Packages; [
-              biopython
-              pdf2image
-              pydantic
-              flakePkgs.gquery-api
-            ];
+            propagatedBuildInputs = pipeline-packages;
           };
 
           gbs-prism-pipeline = pkgs.symlinkJoin
@@ -264,13 +296,16 @@
                   gbs-prism-dependencies
                   gbs-prism-scripts
                   python3Packages.pytest
+                  jsonnet
                 ];
 
               shellHook = ''
+                export REDUN_CONFIG=$(pwd)/.redun
                 # enable use of gbs_prism from current directory during development
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${gquery-export-env "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
+                export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
               '';
             };
           };

@@ -10,6 +10,8 @@ import os
 import re
 import itertools
 
+from agr.util.path import symlink
+
 BARCODE_LENGTH = 10
 
 
@@ -189,8 +191,10 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
                     if not os.path.exists(
                         os.path.join(key_folder, os.path.basename(link))
                     ):
-                        os.symlink(
-                            link, os.path.join(illumina_folder, os.path.basename(link))
+                        symlink(
+                            link,
+                            os.path.join(illumina_folder, os.path.basename(link)),
+                            force=True,
                         )
 
             part_number += 1
@@ -243,7 +247,7 @@ def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str)
             unique_count_files.add(base)
             target = os.path.join(merge_folder, base)
             source = os.path.join(part_folder, "tagCounts", base)
-            os.symlink(source, target)
+            symlink(source, target, force=True)
 
 
 def merge_counts(output_folder: str, sub_tassel_prefix: str):

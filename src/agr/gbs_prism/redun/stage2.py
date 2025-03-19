@@ -2,28 +2,48 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
-from redun.context import get_context
-from redun.file import glob_file
 from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
 
 from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
-from agr.util.path import remove_if_exists
+from agr.util.path import symlink
 from agr.redun import concat, one_forall
+from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
-from agr.seq.cutadapt import cutadapt
+from agr.seq.cutadapt import cutadapt_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
-from agr.gbs_prism.GUSbase import run_GUSbase
-from agr.gbs_prism.kgd import run_kgd
-from agr.gbs_prism.tassel3 import Tassel3, fastq_name_for_tassel3
+from agr.gbs_prism.GUSbase import gusbase_job_spec
+from agr.gbs_prism.kgd import (
+    primary_hap_map_path,
+    kgd_job_spec,
+    KGD_SAMPLE_STATS,
+    KGD_GUSBASE_RDATA,
+)
+from agr.gbs_prism.GUSbase import gusbase_job_spec, convert_GUSbase_output
+from agr.gbs_prism.tassel3 import (
+    FASTQ_TO_TAG_COUNT_PLUGIN,
+    MAP_INFO_TO_HAP_MAP_PLUGIN,
+    MERGE_TAXA_TAG_COUNT_PLUGIN,
+    TAG_COUNT_TO_TAG_PAIR_PLUGIN,
+    TAG_PAIR_TO_TBT_PLUGIN,
+    TBT_TO_MAP_INFO_PLUGIN,
+    Tassel3,
+    fastq_name_for_tassel3,
+    FASTQ_TO_TAG_COUNT_STDOUT,
+    FASTQ_TO_TAG_COUNT_COUNTS,
+    HAP_MAP_FILES,
+    tassel3_tool_name,
+)
 from agr.gbs_prism.types import Cohort, flowcell_id
+from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.gbs_prism.redun.common import sample_minsize_if_required
 
 
 @dataclass
@@ -60,9 +80,7 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
                     )
                 ),
             )
-            # Python should really support ln -sf, bah!
-            remove_if_exists(link)
-            os.symlink(sanitised_realpath(fastq_link), link)
+            symlink(sanitised_realpath(fastq_link), link, force=True)
             if blind:
                 cohort_munged_links.append(File(link))
             else:
@@ -72,16 +90,30 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]
 
 @task()
 def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
+
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
-    out_path = os.path.join(
+    basename = os.path.basename(fastq_file.path)
+    rate_out_path = os.path.join(
         out_dir,
-        "%s.fastq.%s.fastq"
-        % (os.path.basename(fastq_file.path), spec.bwa_sample.moniker),
+        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.rate_moniker),
     )
-    spec.bwa_sample.run(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+    minsize_out_path = os.path.join(
+        out_dir,
+        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.minsize_moniker),
+    )
+
+    rate_sample = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        spec.bwa_sample.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
+    )
+    return sample_minsize_if_required(
+        fastq_file=fastq_file,
+        sample_spec=spec.bwa_sample,
+        rate_sample=rate_sample,
+        out_path=minsize_out_path,
+    )
 
 
 @task()
@@ -96,8 +128,10 @@ def cutadapt_one(fastq_file: File, out_dir: str) -> File:
         out_dir,
         "%s.trimmed.fastq" % os.path.basename(fastq_file.path).removesuffix(".fastq"),
     )
-    cutadapt(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        cutadapt_job_spec(in_path=fastq_file.path, out_path=out_path),
+    )
 
 
 @task()
@@ -116,12 +150,18 @@ def bwa_aln_one(
     fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
 ) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
+    os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(
         out_dir,
         "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
     )
-    bwa.aln(in_path=fastq_file.path, out_path=out_path, reference=ref_path)
-    return BwaAlnOutput(fastq=fastq_file, sai=File(out_path))
+    sai_file = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        bwa.aln_job_spec(
+            in_path=fastq_file.path, out_path=out_path, reference=ref_path
+        ),
+    )
+    return BwaAlnOutput(fastq=fastq_file, sai=sai_file)
 
 
 @task()
@@ -143,13 +183,15 @@ def bwa_aln_all(
 def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, bwa: Bwa) -> File:
     """bwa samse for a single file with a single reference genome."""
     out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
-    bwa.samse(
-        sai_path=aln.sai.path,
-        fastq_path=aln.fastq.path,
-        out_path=out_path,
-        reference=ref_path,
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        bwa.samse_job_spec(
+            sai_path=aln.sai.path,
+            fastq_path=aln.fastq.path,
+            out_path=out_path,
+            reference=ref_path,
+        ),
     )
-    return File(out_path)
 
 
 @task()
@@ -279,21 +321,25 @@ class FastqToTagCountOutput:
 
 
 @task()
-def get_fastq_to_tag_count(
-    spec: CohortSpec, keyfile: File, tassel3_context=get_context("tools.tassel3")
-) -> FastqToTagCountOutput:
+def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
-    # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
-    tag_counts_dir = os.path.join(cohort_blind_dir, "tagCounts")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.fastq_to_tag_count(
-        in_path=keyfile.path, cohort_str=spec.cohort.name, work_dir=cohort_blind_dir
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)
+        ),
     )
-    stdout = File(os.path.join(cohort_blind_dir, "FastqToTagCount.stdout"))
-    tag_counts = [File(path) for path in glob_file("%s/*" % tag_counts_dir)]
+    tassel3.create_directories()
+    tassel3.symlink_key(in_path=keyfile.path)
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.fastq_to_tag_count_job_spec(cohort_str=spec.cohort.name),
+    )
 
-    return FastqToTagCountOutput(stdout=stdout, tag_counts=tag_counts)
+    return FastqToTagCountOutput(
+        stdout=result_files.expected_files[FASTQ_TO_TAG_COUNT_STDOUT],
+        tag_counts=result_files.globbed_files[FASTQ_TO_TAG_COUNT_COUNTS],
+    )
 
 
 @task()
@@ -334,60 +380,97 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
 def merge_taxa_tag_count(
     spec: CohortSpec,
     tag_counts: List[File],
-    tassel3_context=get_context("tools.tassel3"),
 ) -> File:
     _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.merge_taxa_tag_count(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "mergedTagCounts", "mergedAll.cnt"))
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)
+        ),
+    )
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.merge_taxa_tag_count_job_spec,
+    )
 
 
 @task()
 def tag_count_to_tag_pair(
     spec: CohortSpec,
     merged_all_count: File,
-    tassel3_context=get_context("tools.tassel3"),
 ) -> File:
     _ = merged_all_count  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.tag_count_to_tag_pair(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "tagPair", "tagPair.tps"))
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)
+        ),
+    )
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tag_count_to_tag_pair_job_spec,
+    )
 
 
 @task()
 def tag_pair_to_tbt(
-    spec: CohortSpec, tag_pair: File, tassel3_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    tag_pair: File,
 ) -> File:
     _ = tag_pair  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.tag_pair_to_tbt(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "tagsByTaxa", "tbt.bin"))
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)
+        ),
+    )
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tag_pair_to_tbt_job_spec,
+    )
 
 
 @task()
 def tbt_to_map_info(
-    spec: CohortSpec, tags_by_taxa: File, tassel3_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    tags_by_taxa: File,
 ) -> File:
     _ = tags_by_taxa  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.tbt_to_map_info(work_dir=cohort_blind_dir)
-    return File(os.path.join(cohort_blind_dir, "mapInfo", "mapInfo.bin"))
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)
+        ),
+    )
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.tbt_to_map_info_job_spec,
+    )
 
 
 @task()
 def map_info_to_hap_map(
-    spec: CohortSpec, map_info: File, tassel3_context=get_context("tools.tassel3")
+    spec: CohortSpec,
+    map_info: File,
 ) -> List[File]:
     _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(tassel3_context)
-    tassel3.map_info_to_hap_map(work_dir=cohort_blind_dir)
-    hap_map_dir = os.path.join(cohort_blind_dir, "hapMap")
-    return [File(path) for path in glob_file("%s/*" % hap_map_dir)]
+    tassel3 = Tassel3(
+        cohort_blind_dir,
+        get_tool_config(
+            EXECUTOR_CONFIG_PATH_ENV, tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)
+        ),
+    )
+
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        tassel3.map_info_to_hap_map_job_spec,
+    )
+    return result_files.globbed_files[HAP_MAP_FILES]
 
 
 @dataclass
@@ -397,28 +480,48 @@ class KgdOutput:
 
 
 @task()
-def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
-    _ = hap_map_files  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    out_dir = os.path.join(cohort_blind_dir, "KGD")
-    os.makedirs(out_dir, exist_ok=True)
-    # KGD already knows what input files it expects to see under `base_dir`
-    run_kgd(
-        base_dir=cohort_blind_dir,
-        genotyping_method=spec.target.genotyping_method,
-    )
-    return KgdOutput(
-        sample_stats_csv=File(os.path.join(out_dir, "SampleStats.csv")),
-        gusbase_rdata=File(os.path.join(out_dir, "GUSbase.RData")),
+def _get_primary_hap_map_file(hap_map_files: List[File]) -> File:
+    return File(
+        primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
     )
 
 
 @task()
-def gusbase(spec: CohortSpec, gusbase_rdata: File) -> File:
+def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
-    run_GUSbase(gusbase_rdata.path)
-    return File(os.path.join(out_dir, "GUSbase_comet.jpg"))
+    hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(hapmap_dir, exist_ok=True)
+
+    result_files = run_job_n(
+        EXECUTOR_CONFIG_PATH_ENV,
+        kgd_job_spec(
+            out_dir=out_dir,
+            hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
+            genotyping_method=spec.target.genotyping_method,
+        ),
+    )
+
+    return KgdOutput(
+        sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
+        gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
+    )
+
+
+@task()
+def _get_converted_GUSbase_output(GUSbase_out_file: File) -> File:
+    return File(convert_GUSbase_output(GUSbase_out_file.path))
+
+
+@task()
+def gusbase(gusbase_rdata: File) -> File:
+    return _get_converted_GUSbase_output(
+        run_job_1(
+            EXECUTOR_CONFIG_PATH_ENV,
+            gusbase_job_spec(gusbase_rdata.path),
+        )
+    )
 
 
 @dataclass
@@ -465,7 +568,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     map_info = tbt_to_map_info(spec, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(spec, map_info)
     kgd_output = kgd(spec, hap_map_files)
-    gusbase_comet = gusbase(spec, kgd_output.gusbase_rdata)
+    gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
     output = CohortOutput(
         fastq_links=fastq_links,

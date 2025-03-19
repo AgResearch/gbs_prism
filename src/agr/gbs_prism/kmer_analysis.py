@@ -1,35 +1,37 @@
 import logging
-import os.path
 
-from agr.util.path import remove_if_exists
-from agr.util.subprocess import run_catching_stderr
+import agr.util.cluster as cluster
 
 logger = logging.getLogger(__name__)
 
+KMER_PRISM_TOOL_NAME = "kmer_prism"
 
-def run_kmer_analysis(in_path: str, out_path: str, input_filetype: str, kmer_size: int):
+
+def kmer_analysis_job_spec(
+    in_path: str,
+    out_path: str,
+    input_filetype: str,
+    kmer_size: int,
+    cwd: str,
+) -> cluster.Job1Spec:
     log_path = "%s.log" % out_path.removesuffix(".1")
-    with open(log_path, "w") as log_f:
-        remove_if_exists(out_path)
-        # kmer_prism drops turds in the current directory and doesn't pickup after itself,
-        # so we run with cwd as a subdirectory of the output file
-        out_dir = os.path.dirname(out_path)
-        kmer_prism_workdir = os.path.join(out_dir, "work")
-        os.makedirs(kmer_prism_workdir, exist_ok=True)
-        _ = run_catching_stderr(
-            [
-                "kmer_prism",
-                "--input_filetype",
-                input_filetype,
-                "--kmer_size",
-                str(kmer_size),
-                "--output_filename",
-                out_path,
-                in_path,
-            ],
-            stdout=log_f,
-            stderr=log_f,
-            text=True,
-            check=True,
-            cwd=kmer_prism_workdir,
-        )
+
+    return cluster.Job1Spec(
+        tool=KMER_PRISM_TOOL_NAME,
+        args=[
+            "kmer_prism",
+            "--input_filetype",
+            input_filetype,
+            "--kmer_size",
+            str(kmer_size),
+            "--output_filename",
+            out_path,
+            in_path,
+            # this causes it to crash: 😩
+            # assemble_low_entropy_kmers=True
+        ],
+        stdout_path=log_path,
+        stderr_path=log_path,
+        cwd=cwd,
+        expected_path=out_path,
+    )

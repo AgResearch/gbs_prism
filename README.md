@@ -11,13 +11,13 @@ The design approach is as follows:
 
 This is the normal way to run the pipeline, and unless there is breakage, should be all that is needed.
 
-Currently Slurm has not been integrated, so the while pipeline runs in the foreground. (This is an early access release!)  So it's best to run in an interactive Slurm session, as follows (for the test release).
+The pipeline uses the cluster configuration in `$GBS_PRISM_EXECUTOR_CONFIG`, which is expected to point at a valid [Jsonnet](https://jsonnet.org/) file.
+To see the post-processed configuration, view the output of `jsonnet $GBS_PRISM_EXECUTOR_CONFIG`.
 
 ```
 login-1$ kinit
 login-1$ module load gbs_prism-test
-login-1$ srun -p compute --mem=256G --pty bash
-compute-3$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
+login-1$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
 ```
 
 There is no need to have a local copy of the repo if simply running the pipeline from the environment module like this (but see note on development, below).

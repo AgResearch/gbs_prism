@@ -1,7 +1,6 @@
 import gzip
 import logging
 import os.path
-import pathlib
 import shutil
 
 from agr.seq.sample_sheet import SampleSheet
@@ -42,9 +41,7 @@ class FakeBclConvert(BclConvert):
         self._real_fastq_dir = os.path.join(
             candidate_run_dir, "SampleSheet", "bclconvert"
         )
-        self._real_top_unknown_path = os.path.join(
-            self._real_fastq_dir, "Reports", "Top_Unknown_Barcodes.csv"
-        )
+        self._real_reports_dir = os.path.join(self._real_fastq_dir, "Reports")
         self._n_reads = n_reads
 
     def run(self):
@@ -65,23 +62,17 @@ class FakeBclConvert(BclConvert):
                         line = next(real_gz)
                         _ = fake_gz.write(line)
 
+        # copy all the reports since they're now being returned as BclConvertOutput
         reports_dir = os.path.join(self._out_dir, "Reports")
-        os.makedirs(reports_dir, exist_ok=True)
-        _ = shutil.copyfile(self._real_top_unknown_path, self.top_unknown_path)
-
-        # TODO: probably eventually remove this, seems no good reason to keep the fastq complete marker file:
-        fastq_complete_dir = os.path.dirname(self.fastq_complete_path)
-        os.makedirs(fastq_complete_dir, exist_ok=True)
-        pathlib.Path(self.fastq_complete_path).touch()
+        _ = shutil.copytree(
+            self._real_reports_dir, reports_dir, symlinks=True, dirs_exist_ok=True
+        )
 
 
 def create_real_or_fake_bcl_convert(
-    in_dir: str, sample_sheet_path: str, out_dir: str, bcl_convert_context
+    in_dir: str, sample_sheet_path: str, out_dir: str, tool_context
 ) -> BclConvert | FakeBclConvert:
-    if (
-        bcl_convert_context is not None
-        and (fake := bcl_convert_context.get("fake")) is not None
-    ):
+    if tool_context is not None and (fake := tool_context.get("fake")) is not None:
         return FakeBclConvert(
             in_dir=in_dir,
             sample_sheet_path=sample_sheet_path,

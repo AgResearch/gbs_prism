@@ -21,6 +21,7 @@ Dataclasses:
     GbsTargetsOutput: Collect targets and paths for gbs_prism stage 2.
     Stage1Output: Collect the outputs of stage 1.
 """
+
 import os.path
 from dataclasses import dataclass
 
@@ -31,15 +32,20 @@ from typing import List, Literal, Set
 redun_namespace = "agr.gbs_prism"
 
 from agr.redun import one_forall
+from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
 # Fake bcl-convert may be selected in context
-# from agr.seq.bclconvert import BclConvert
-from agr.fake.bclconvert import create_real_or_fake_bcl_convert
-from agr.seq.dedupe import dedupe
-from agr.seq.fastqc import fastqc
-from agr.seq.multiqc import multiqc
+from agr.seq.bclconvert import BCLCONVERT_JOB_FASTQ, BclConvertError
+from agr.fake.bclconvert import FakeBclConvert, create_real_or_fake_bcl_convert
+from agr.seq.dedupe import (
+    dedupe_job_spec,
+    remove_dedupe_turds,
+    DEDUPE_TOOL_NAME,
+)
+from agr.seq.fastqc import fastqc_job_spec
+from agr.seq.multiqc import multiqc_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -47,14 +53,19 @@ from agr.gbs_prism.gbs_target_spec import (
     write_gbs_target_spec,
     GbsTargetSpec,
 )
-from agr.gbs_prism.kmer_analysis import run_kmer_analysis
+from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
+from agr.gbs_prism import EXECUTOR_CONFIG_PATH_ENV
+from agr.gbs_prism.redun.common import sample_minsize_if_required
+
+from agr.util.path import remove_if_exists
 
 
 @dataclass
 class CookSampleSheetOutput:
     """Dataclass to collect the outputs of processed sample sheet."""
+
     sample_sheet: File
     illumina_platform_root: str
     paths: SeqPaths
@@ -94,6 +105,7 @@ def cook_sample_sheet(
 @dataclass
 class BclConvertOutput:
     """Dataclass to collect the outputs of bclconvert."""
+
     fastq_files: List[File]
     adapter_metrics: File
     demultiplexing_metrics: File
@@ -108,43 +120,80 @@ def bclconvert(
     sample_sheet_path: str,
     expected_fastq: Set[str],
     out_dir: str,
-    bcl_convert_context=get_context("tools.bcl_convert"),
+    tool_context=get_context("tools.bcl_convert"),
 ) -> BclConvertOutput:
-    """Run bclconvert and return fastq files and metrics."""
     os.makedirs(out_dir, exist_ok=True)
+
     bclconvert = create_real_or_fake_bcl_convert(
         in_dir=in_dir,
         sample_sheet_path=sample_sheet_path,
         out_dir=out_dir,
-        bcl_convert_context=bcl_convert_context,
+        tool_context=tool_context,
     )
-    bclconvert.run()
-    bclconvert.check_expected_fastq_files(expected_fastq)
-    return BclConvertOutput(
-        fastq_files=[
-            File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
-        ],
-        adapter_metrics=File(bclconvert.adapter_metrics_path),
-        demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
-        quality_metrics=File(bclconvert.quality_metrics_path),
-        run_info_xml=File(bclconvert.run_info_xml_path),
-        top_unknown=File(bclconvert.top_unknown_path),
-    )
+
+    # we only run the real bclconvert via the executor
+    if isinstance(bclconvert, FakeBclConvert):
+        bclconvert.run()
+
+        return BclConvertOutput(
+            fastq_files=[
+                File(os.path.join(out_dir, fastq_file)) for fastq_file in expected_fastq
+            ],
+            adapter_metrics=File(bclconvert.adapter_metrics_path),
+            demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
+            quality_metrics=File(bclconvert.quality_metrics_path),
+            run_info_xml=File(bclconvert.run_info_xml_path),
+            top_unknown=File(bclconvert.top_unknown_path),
+        )
+    else:
+        fastq_files = run_job_n(
+            EXECUTOR_CONFIG_PATH_ENV, bclconvert.job_spec
+        ).globbed_files[BCLCONVERT_JOB_FASTQ]
+
+        return BclConvertOutput(
+            fastq_files=check_bclconvert(fastq_files, expected_fastq),
+            adapter_metrics=File(bclconvert.adapter_metrics_path),
+            demultiplexing_metrics=File(bclconvert.demultiplex_stats_path),
+            quality_metrics=File(bclconvert.quality_metrics_path),
+            run_info_xml=File(bclconvert.run_info_xml_path),
+            top_unknown=File(bclconvert.top_unknown_path),
+        )
+
+
+@task()
+def check_bclconvert(fastq_files: List[File], expected: Set[str]) -> List[File]:
+    """Check what we got is what we expected."""
+    actual = {fastq_file.basename() for fastq_file in fastq_files}
+    if actual != expected:
+        anomalies = []
+        missing = expected - actual
+        unexpected = actual - expected
+        if any(missing):
+            anomalies.append(
+                "failed to find expected fastq files: %s" % ", ".join(sorted(missing))
+            )
+        if any(unexpected):
+            anomalies.append(
+                "found unexpected fastq files: %s" % ", ".join(sorted(unexpected))
+            )
+
+        raise BclConvertError("; ".join(anomalies))
+    return fastq_files
 
 
 @task()
 def fastqc_one(fastq_file: File, out_dir: str) -> File:
-    """Run fastqc on a single fastq file, returning a zip results file."""
-    fastqc(in_path=fastq_file.path, out_dir=out_dir)
-    basename = (
-        os.path.basename(fastq_file.path).removesuffix(".gz").removesuffix(".fastq")
+    """Run fastqc on a single file, returning just the zip file."""
+    os.makedirs(out_dir, exist_ok=True)
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
     )
-    return File(os.path.join(out_dir, basename) + "_fastqc.zip")
 
 
 @task()
 def fastqc_all(fastq_files: List[File], out_dir: str) -> List[File]:
-    """Run fastqc on multiple files, returning concatenation of all the zip results."""
+    """Run fastqc on multiple files, returning just the zip files."""
     return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
@@ -162,31 +211,47 @@ def multiqc_report(
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
-    multiqc(
-        [fastqc_file.path for fastqc_file in fastqc_files],
-        bclconvert_top_unknowns.path,
-        bclconvert_adapter_metrics.path,
-        bclconvert_demultiplex_stats.path,
-        bclconvert_quality_metrics.path,
-        bclconvert_run_info_xml.path,
-        out_dir,
-        out_path,
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        multiqc_job_spec(
+            fastqc_in_paths=[fastqc_file.path for fastqc_file in fastqc_files],
+            bclconvert_top_unknowns=bclconvert_top_unknowns.path,
+            bclconvert_adapter_metrics=bclconvert_adapter_metrics.path,
+            bclconvert_demultiplex_stats=bclconvert_demultiplex_stats.path,
+            bclconvert_quality_metrics=bclconvert_quality_metrics.path,
+            bclconvert_run_info_xml=bclconvert_run_info_xml.path,
+            out_dir=out_dir,
+            out_path=out_path,
+        ),
     )
-    return File(out_path)
 
 
 @task()
 def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
     """Sample a single fastq file as required for kmer analysis."""
     os.makedirs(out_dir, exist_ok=True)
-    kmer_sample = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
+    sample_spec = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
     # the ugly name is copied from legacy gbs_prism
-    out_path = os.path.join(
+    basename = os.path.basename(fastq_file.path)
+    rate_out_path = os.path.join(
         out_dir,
-        "%s.fastq.%s.fastq" % (os.path.basename(fastq_file.path), kmer_sample.moniker),
+        "%s.fastq.%s.fastq" % (basename, sample_spec.rate_moniker),
     )
-    kmer_sample.run(in_path=fastq_file.path, out_path=out_path)
-    return File(out_path)
+    minsize_out_path = os.path.join(
+        out_dir,
+        "%s.fastq.%s.fastq" % (basename, sample_spec.minsize_moniker),
+    )
+
+    rate_sample = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        sample_spec.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
+    )
+    return sample_minsize_if_required(
+        fastq_file=fastq_file,
+        sample_spec=sample_spec,
+        rate_sample=rate_sample,
+        out_path=minsize_out_path,
+    )
 
 
 @task()
@@ -198,21 +263,27 @@ def kmer_sample_all(fastq_files: List[File], out_dir: str) -> List[File]:
 @task()
 def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
     """Run kmer analysis for a single fastq file."""
-    os.makedirs(out_dir, exist_ok=True)
+    kmer_prism_workdir = os.path.join(out_dir, "work")
+    os.makedirs(kmer_prism_workdir, exist_ok=True)
     kmer_size = 6
     out_path = os.path.join(
         out_dir,
         "%s.k%d.1" % (os.path.basename(fastq_file.path), kmer_size),
     )
-    run_kmer_analysis(
-        in_path=fastq_file.path,
-        out_path=out_path,
-        input_filetype="fasta",
-        kmer_size=kmer_size,
-        # this causes it to crash: 😩
-        # assemble_low_entropy_kmers=True
+    remove_if_exists(out_path)
+
+    return run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        kmer_analysis_job_spec(
+            in_path=fastq_file.path,
+            out_path=out_path,
+            input_filetype="fasta",
+            kmer_size=kmer_size,
+            # kmer_prism drops turds in the current directory and doesn't pickup after itself,
+            # so we run with cwd as a subdirectory of the output file
+            cwd=kmer_prism_workdir,
+        ),
     )
-    return File(out_path)
 
 
 @task()
@@ -225,18 +296,25 @@ def kmer_analysis_all(fastq_files: List[File], out_dir: str) -> List[File]:
 def dedupe_one(
     fastq_file: File,
     out_dir: str,
-    java_max_heap=get_context("tools.dedupe.java_max_heap"),
 ) -> File:
     """Dedupe a single fastq file."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
-    dedupe(
-        in_path=fastq_file.path,
-        out_path=out_path,
-        tmp_dir="/tmp",  #TODO maybe need tmp_dir on large scratch partition
-        jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
+
+    tool_config = get_tool_config(EXECUTOR_CONFIG_PATH_ENV, DEDUPE_TOOL_NAME)
+    java_max_heap = tool_config.get("java_max_heap")
+
+    result = run_job_1(
+        EXECUTOR_CONFIG_PATH_ENV,
+        dedupe_job_spec(
+            in_path=fastq_file.path,
+            out_path=out_path,
+            tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
+            jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
+        ),
     )
-    return File(out_path)
+    remove_dedupe_turds(out_path)
+    return result
 
 
 @task()
@@ -277,6 +355,7 @@ def get_gbs_keyfiles(
 @dataclass
 class GbsTargetsOutput:
     """Dataclass to collect targets and paths for gbs_prism stage 2."""
+
     paths: GbsPaths
     spec: GbsTargetSpec
     spec_file: File
@@ -301,6 +380,7 @@ def get_gbs_targets(
 @dataclass
 class Stage1Output:
     """Dataclass to collect the outputs of stage 1."""
+
     fastqc: List[File]
     multiqc: File
     kmer_analysis: List[File]
