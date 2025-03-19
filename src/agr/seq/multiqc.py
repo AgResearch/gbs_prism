@@ -1,7 +1,6 @@
 """This module wraps MultiQC to generate a report from FastQC and BCLConvert reports."""
 
 import logging
-from typing import List
 
 import agr.util.cluster as cluster
 
@@ -11,7 +10,7 @@ MULTIQC_TOOL_NAME = "multiqc"
 
 
 def multiqc_job_spec(
-    fastqc_in_paths: List[str],
+    fastqc_in_paths: list[str],
     bclconvert_top_unknowns: str,
     bclconvert_adapter_metrics: str,
     bclconvert_demultiplex_stats: str,
@@ -24,7 +23,7 @@ def multiqc_job_spec(
     Generate a MultiQC report from FastQC and BCLConvert reports.
 
     Args:
-        fastqc_in_paths (List[str]): List of input paths for FastQC reports.
+        fastqc_in_paths (list[str]): List of input paths for FastQC reports.
         bclconvert_top_unknowns (str): Path to BCLConvert top unknowns report.
         bclconvert_adapter_metrics (str): Path to BCLConvert adapter metrics report.
         bclconvert_demultiplex_stats (str): Path to BCLConvert demultiplex stats report.

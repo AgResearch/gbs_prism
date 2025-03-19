@@ -22,7 +22,7 @@ from psij import (
 )
 from psij.executors.batch.batch_scheduler_executor import BatchSchedulerExecutorConfig
 
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from agr.util import singleton
 import agr.util.cluster as cluster
@@ -74,7 +74,7 @@ class ConfigError(Exception):
 
 
 def _create_job_attributes(
-    configured_attributes: Dict[str, Any],
+    configured_attributes: dict[str, Any],
     executor_name: str,
     job_name: str,
 ) -> JobAttributes:
@@ -289,13 +289,13 @@ def _run_job_1_uncached(
 
 @dataclass
 class ResultFiles:
-    expected_files: Dict[str, File]
-    globbed_files: Dict[str, List[File]]
+    expected_files: dict[str, File]
+    globbed_files: dict[str, list[File]]
 
 
 def _result_files(
-    expected_paths: Dict[str, str],
-    expected_globs: Dict[str, cluster.FilteredGlob],
+    expected_paths: dict[str, str],
+    expected_globs: dict[str, cluster.FilteredGlob],
 ) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
 
@@ -407,7 +407,7 @@ class ClusterExecutorConfig:
 
 def get_tool_config_and_path(
     config_path_env: str, tool: str
-) -> Tuple[Dict[str, Any], str]:
+) -> tuple[dict[str, Any], str]:
     """Return tool config and config path."""
     assert (
         config_path_env in os.environ
@@ -419,6 +419,6 @@ def get_tool_config_and_path(
     return tool_config, config_path
 
 
-def get_tool_config(config_path_env: str, tool: str) -> Dict[str, Any]:
+def get_tool_config(config_path_env: str, tool: str) -> dict[str, Any]:
     """Return tool config only."""
     return get_tool_config_and_path(config_path_env, tool)[0]

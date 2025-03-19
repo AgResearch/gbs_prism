@@ -2,7 +2,6 @@ import os.path
 import tempfile
 from dataclasses import dataclass
 from redun import task, File
-from typing import Dict, List
 
 redun_namespace = "agr.gbs_prism"
 
@@ -57,7 +56,7 @@ class CohortSpec:
 
 
 @task
-def create_cohort_fastq_links(spec: CohortSpec) -> tuple[List[File], List[File]]:
+def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]:
     """Link the fastq files for a single cohort separately.
 
     So that subsequent dependencies can be properly captured in wildcarded paths.
@@ -117,7 +116,7 @@ def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
 
 
 @task()
-def sample_all_for_bwa(fastq_files: List[File], spec: CohortSpec) -> List[File]:
+def sample_all_for_bwa(fastq_files: list[File], spec: CohortSpec) -> list[File]:
     return one_forall(sample_one_for_bwa, fastq_files, spec=spec)
 
 
@@ -135,7 +134,7 @@ def cutadapt_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def cutadapt_all(fastq_files: List[File], out_dir: str) -> List[File]:
+def cutadapt_all(fastq_files: list[File], out_dir: str) -> list[File]:
     return one_forall(cutadapt_one, fastq_files, out_dir=out_dir)
 
 
@@ -166,8 +165,8 @@ def bwa_aln_one(
 
 @task()
 def bwa_aln_all(
-    fastq_files: List[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
-) -> List[BwaAlnOutput]:
+    fastq_files: list[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
+) -> list[BwaAlnOutput]:
     """bwa aln for multiple files with a single reference genome."""
     return one_forall(
         bwa_aln_one,
@@ -195,7 +194,7 @@ def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, bwa: Bwa) -> File:
 
 
 @task()
-def bwa_samse_all(alns: List[BwaAlnOutput], ref_path: str, bwa: Bwa) -> List[File]:
+def bwa_samse_all(alns: list[BwaAlnOutput], ref_path: str, bwa: Bwa) -> list[File]:
     """bwa samse for multiple files with a single reference genome."""
     return one_forall(
         bwa_samse_one,
@@ -206,7 +205,7 @@ def bwa_samse_all(alns: List[BwaAlnOutput], ref_path: str, bwa: Bwa) -> List[Fil
 
 
 @task()
-def bwa_all_reference_genomes(fastq_files: List[File], spec: CohortSpec) -> List[File]:
+def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list[File]:
     """bwa_aln and bwa_samse for each file for each of the reference genomes."""
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
@@ -240,7 +239,7 @@ def bam_stats_one(bam_file: File) -> File:
 
 
 @task()
-def bam_stats_all(bam_files: List[File]) -> List[File]:
+def bam_stats_all(bam_files: list[File]) -> list[File]:
     """bwa samse for multiple files with a single reference genome."""
     return one_forall(bam_stats_one, bam_files)
 
@@ -317,7 +316,7 @@ def get_keyfile_for_gbsx(spec: CohortSpec) -> File:
 @dataclass
 class FastqToTagCountOutput:
     stdout: File
-    tag_counts: List[File]
+    tag_counts: list[File]
 
 
 @task()
@@ -379,7 +378,7 @@ def get_tags_reads_cv(tags_reads_summary: File) -> File:
 @task()
 def merge_taxa_tag_count(
     spec: CohortSpec,
-    tag_counts: List[File],
+    tag_counts: list[File],
 ) -> File:
     _ = tag_counts  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
@@ -456,7 +455,7 @@ def tbt_to_map_info(
 def map_info_to_hap_map(
     spec: CohortSpec,
     map_info: File,
-) -> List[File]:
+) -> list[File]:
     _ = map_info  # depending on existence rather than value
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     tassel3 = Tassel3(
@@ -480,14 +479,14 @@ class KgdOutput:
 
 
 @task()
-def _get_primary_hap_map_file(hap_map_files: List[File]) -> File:
+def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
     return File(
         primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
     )
 
 
 @task()
-def kgd(spec: CohortSpec, hap_map_files: List[File]) -> KgdOutput:
+def kgd(spec: CohortSpec, hap_map_files: list[File]) -> KgdOutput:
     cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
     out_dir = os.path.join(cohort_blind_dir, "KGD")
     hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
@@ -527,12 +526,12 @@ def gusbase(gusbase_rdata: File) -> File:
 @dataclass
 class CohortOutput:
     # TODO remove the ones we don't need
-    fastq_links: List[File]
-    munged_fastq_links_for_tassel: List[File]
-    bwa_sampled: List[File]
-    trimmed: List[File]
-    bam_files: List[File]
-    bam_stats_files: List[File]
+    fastq_links: list[File]
+    munged_fastq_links_for_tassel: list[File]
+    bwa_sampled: list[File]
+    trimmed: list[File]
+    bam_files: list[File]
+    bam_stats_files: list[File]
     keyfile_for_tassel: File
     keyfile_for_gbsx: File
     tag_count: File
@@ -542,7 +541,7 @@ class CohortOutput:
     tag_pair: File
     tags_by_taxa: File
     map_info: File
-    hap_map_files: List[File]
+    hap_map_files: list[File]
     kgd_output: KgdOutput
     gusbase_comet: File
 
@@ -595,7 +594,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 
 @dataclass
 class Stage2Output:
-    cohorts: Dict[str, CohortOutput]
+    cohorts: dict[str, CohortOutput]
 
 
 @task()

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Optional
 
 
 @dataclass(kw_only=True)
@@ -7,7 +7,7 @@ class CommonJobSpec:
     """The spec in common for any job to run on the compute cluster."""
 
     tool: str
-    args: List[str]
+    args: list[str]
     stdout_path: str
     stderr_path: str
     cwd: Optional[str] = None
@@ -38,5 +38,5 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    expected_paths: Dict[str, str]
-    expected_globs: Dict[str, FilteredGlob]
+    expected_paths: dict[str, str]
+    expected_globs: dict[str, FilteredGlob]
