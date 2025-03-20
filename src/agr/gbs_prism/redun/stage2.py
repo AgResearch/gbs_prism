@@ -7,17 +7,11 @@ redun_namespace = "agr.gbs_prism"
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
 from agr.redun import concat
-from agr.redun.cluster_executor import run_job_1, run_job_n
+from agr.redun.cluster_executor import run_job_1
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import gusbase_job_spec
-from agr.gbs_prism.kgd import (
-    primary_hap_map_path,
-    kgd_job_spec,
-    KGD_SAMPLE_STATS,
-    KGD_GUSBASE_RDATA,
-)
 from agr.gbs_prism.GUSbase import gusbase_job_spec, convert_GUSbase_output
 from agr.seq.types import flowcell_id, Cohort
 from agr.redun.tasks import (
@@ -28,6 +22,8 @@ from agr.redun.tasks import (
     fastq_sample,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
+    kgd,
+    # Tassel:
     get_fastq_to_tag_count,
     get_tag_count,
     get_tags_reads_summary,
@@ -41,6 +37,7 @@ from agr.redun.tasks import (
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
+from agr.redun.tasks.kgd import KgdOutput
 
 
 @dataclass
@@ -127,41 +124,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
 #         ).run()
 
 
-@dataclass
-class KgdOutput:
-    sample_stats_csv: File
-    gusbase_rdata: File
-
-
-@task()
-def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
-    return File(
-        primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
-    )
-
-
-@task()
-def kgd(spec: CohortSpec, hap_map_files: list[File]) -> KgdOutput:
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    out_dir = os.path.join(cohort_blind_dir, "KGD")
-    hapmap_dir = os.path.join(cohort_blind_dir, "hapMap")
-    os.makedirs(out_dir, exist_ok=True)
-    os.makedirs(hapmap_dir, exist_ok=True)
-
-    result_files = run_job_n(
-        kgd_job_spec(
-            out_dir=out_dir,
-            hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
-            genotyping_method=spec.target.genotyping_method,
-        ),
-    )
-
-    return KgdOutput(
-        sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
-        gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
-    )
-
-
 @task()
 def _get_converted_GUSbase_output(GUSbase_out_file: File) -> File:
     return File(convert_GUSbase_output(GUSbase_out_file.path))
@@ -233,7 +195,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair)
     map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
-    kgd_output = kgd(spec, hap_map_files)
+    kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
     output = CohortOutput(

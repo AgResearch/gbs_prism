@@ -12,7 +12,7 @@ from .kmer_analysis import kmer_analysis
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
 from .samtools import bam_stats
-
+from .kgd import kgd
 from .tassel3 import (
     get_fastq_to_tag_count,
     get_tag_count,
@@ -39,6 +39,7 @@ __all__ = [
     "get_gbs_keyfiles",
     "get_keyfile_for_tassel",
     "get_keyfile_for_gbsx",
+    "kgd",
     "kmer_analysis",
     "multiqc",
     "real_or_fake_bcl_convert",

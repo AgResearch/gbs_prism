@@ -251,6 +251,7 @@ def get_fastq_to_tag_count(
         get_tool_config(tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)),
     )
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
+
     tassel3.symlink_key(in_path=keyfile.path)
     result_files = run_job_n(
         tassel3.fastq_to_tag_count_job_spec(cohort),
@@ -264,12 +265,6 @@ def get_fastq_to_tag_count(
 
 @task()
 def get_tag_count(fastqToTagCountStdout: File) -> File:
-    os.makedirs(tassel3.merged_tag_counts_dir, exist_ok=True)
-    os.makedirs(tassel3.tag_pair_dir, exist_ok=True)
-    os.makedirs(tassel3.tags_by_taxa_dir, exist_ok=True)
-    os.makedirs(tassel3.map_info_dir, exist_ok=True)
-    os.makedirs(tassel3.hap_map_dir, exist_ok=True)
-
     out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
     with open(fastqToTagCountStdout.path, "r") as in_f:
         with open(out_path, "w") as out_f:
@@ -310,6 +305,8 @@ def merge_taxa_tag_count(
         work_dir,
         get_tool_config(tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)),
     )
+    os.makedirs(tassel3.merged_tag_counts_dir, exist_ok=True)
+
     return run_job_1(
         tassel3.merge_taxa_tag_count_job_spec,
     )
@@ -325,6 +322,8 @@ def tag_count_to_tag_pair(
         work_dir,
         get_tool_config(tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)),
     )
+    os.makedirs(tassel3.tag_pair_dir, exist_ok=True)
+
     return run_job_1(
         tassel3.tag_count_to_tag_pair_job_spec,
     )
@@ -340,6 +339,8 @@ def tag_pair_to_tbt(
         work_dir,
         get_tool_config(tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)),
     )
+    os.makedirs(tassel3.tags_by_taxa_dir, exist_ok=True)
+
     return run_job_1(
         tassel3.tag_pair_to_tbt_job_spec,
     )
@@ -355,6 +356,8 @@ def tbt_to_map_info(
         work_dir,
         get_tool_config(tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)),
     )
+    os.makedirs(tassel3.map_info_dir, exist_ok=True)
+
     return run_job_1(
         tassel3.tbt_to_map_info_job_spec,
     )
@@ -370,6 +373,7 @@ def map_info_to_hap_map(
         work_dir,
         get_tool_config(tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)),
     )
+    os.makedirs(tassel3.hap_map_dir, exist_ok=True)
 
     result_files = run_job_n(
         tassel3.map_info_to_hap_map_job_spec,

@@ -1,7 +1,10 @@
 import logging
 import os.path
+from dataclasses import dataclass
+from redun import task, File
 
 import agr.util.cluster as cluster
+from agr.redun.cluster_executor import run_job_n
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +15,7 @@ KGD_GUSBASE_RDATA = "gusbase-rdata"
 KGD_TOOL_NAME = "KGD"
 
 
-def primary_hap_map_path(all_hapmap_paths: list[str]) -> str:
+def _primary_hap_map_path(all_hapmap_paths: list[str]) -> str:
     hapmap_candidates = ["HapMap.hmc.txt.blinded", "HapMap.hmc.txt"]
     for hapmap_candidate in hapmap_candidates:
         for hapmap_path in all_hapmap_paths:
@@ -25,7 +28,7 @@ def primary_hap_map_path(all_hapmap_paths: list[str]) -> str:
     )
 
 
-def kgd_job_spec(
+def _kgd_job_spec(
     out_dir: str,
     hapmap_path: str,
     genotyping_method: str,
@@ -44,4 +47,38 @@ def kgd_job_spec(
             KGD_GUSBASE_RDATA: os.path.join(out_dir, "GUSbase.RData"),
         },
         expected_globs={},
+    )
+
+
+@dataclass
+class KgdOutput:
+    sample_stats_csv: File
+    gusbase_rdata: File
+
+
+@task()
+def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
+    return File(
+        _primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
+    )
+
+
+@task()
+def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput:
+    out_dir = os.path.join(work_dir, "KGD")
+    hapmap_dir = os.path.join(work_dir, "hapMap")
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(hapmap_dir, exist_ok=True)
+
+    result_files = run_job_n(
+        _kgd_job_spec(
+            out_dir=out_dir,
+            hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
+            genotyping_method=genotyping_method,
+        ),
+    )
+
+    return KgdOutput(
+        sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
+        gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
     )
