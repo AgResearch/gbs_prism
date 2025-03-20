@@ -1,7 +1,6 @@
 """
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
-    cook_sample_sheet: Process a raw sample sheet.
     get_gbs_keyfiles: Get GBS keyfiles.
     get_gbs_targets: Get GBS targets for stage 2.
     run_stage1: Triggers running of the tasks via redun.
@@ -21,7 +20,6 @@ from typing import Literal
 redun_namespace = "agr.gbs_prism"
 
 from agr.seq.sequencer_run import SequencerRun
-from agr.seq.sample_sheet import SampleSheet
 from agr.gbs_prism.gbs_target_spec import (
     gquery_gbs_target_spec,
     write_gbs_target_spec,
@@ -30,6 +28,7 @@ from agr.gbs_prism.gbs_target_spec import (
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.redun.tasks import (
+    cook_sample_sheet,
     real_or_fake_bcl_convert,
     dedupe,
     fastq_sample,
@@ -38,46 +37,6 @@ from agr.redun.tasks import (
     multiqc,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-
-
-@dataclass
-class CookSampleSheetOutput:
-    """Dataclass to collect the outputs of processed sample sheet."""
-
-    sample_sheet: File
-    illumina_platform_root: str
-    paths: SeqPaths
-    expected_fastq: set[str]
-    gbs_libraries: list[str]
-
-
-@task()
-def cook_sample_sheet(
-    sequencer_run: SequencerRun,
-    postprocessing_root: str,
-    platform: Literal["iseq", "miseq", "novaseq"] = "novaseq",
-    impute_lanes=[1, 2],
-) -> CookSampleSheetOutput:
-    """Process a raw sample sheet into a form compatiable with bclconvert et al."""
-    sample_sheet = SampleSheet(
-        sequencer_run.sample_sheet_path, impute_lanes=impute_lanes
-    )
-    # TODO remove the corresponding stuff from Paths class
-    illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
-    illumina_platform_run_root = os.path.join(
-        illumina_platform_root, sequencer_run.name
-    )
-    seq_paths = SeqPaths(illumina_platform_run_root)
-    os.makedirs(seq_paths.sample_sheet_dir, exist_ok=True)
-    sample_sheet.write(seq_paths.sample_sheet_path)
-
-    return CookSampleSheetOutput(
-        sample_sheet=File(seq_paths.sample_sheet_path),
-        illumina_platform_root=illumina_platform_root,
-        paths=seq_paths,
-        expected_fastq=sample_sheet.fastq_files,
-        gbs_libraries=sample_sheet.gbs_libraries,
-    )
 
 
 @task()
@@ -157,19 +116,26 @@ def run_stage1(
 ) -> Stage1Output:
     """Stage 1: bclconvert, fastqc, multiqc, kmer analysis, deduplication, GBS keyfile creation."""
     sequencer_run = SequencerRun(seq_root, run)
+    platform: Literal["iseq", "miseq", "novaseq"] = "novaseq"
+    illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
+    illumina_platform_run_root = os.path.join(
+        illumina_platform_root, sequencer_run.name
+    )
+    seq_paths = SeqPaths(illumina_platform_run_root)
 
     seq = cook_sample_sheet(
-        sequencer_run=sequencer_run, postprocessing_root=postprocessing_root
+        in_path=sequencer_run.sample_sheet_path,
+        out_path=seq_paths.sample_sheet_path,
     )
 
     bclconvert_output = real_or_fake_bcl_convert(
         sequencer_run.dir,
         sample_sheet_path=seq.sample_sheet.path,
         expected_fastq=seq.expected_fastq,
-        out_dir=seq.paths.bclconvert_dir,
+        out_dir=seq_paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
+    fastqc_files = fastqc(bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir)
 
     multiqc_report = multiqc(
         fastqc_files=fastqc_files,
@@ -178,28 +144,28 @@ def run_stage1(
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
         bclconvert_quality_metrics=bclconvert_output.quality_metrics,
         bclconvert_run_info_xml=bclconvert_output.run_info_xml,
-        out_dir=seq.paths.multiqc_dir,
+        out_dir=seq_paths.multiqc_dir,
         run=sequencer_run.name,
     )
 
     kmer_samples = fastq_sample(
         bclconvert_output.fastq_files,
         spec=FastqSampleSpec(rate=0.0002, minimum_sample_size=10000),
-        out_dir=seq.paths.kmer_fastq_sample_dir,
+        out_dir=seq_paths.kmer_fastq_sample_dir,
     )
 
     kmer_analysis_reports = kmer_analysis(
-        kmer_samples, out_dir=seq.paths.kmer_analysis_dir
+        kmer_samples, out_dir=seq_paths.kmer_analysis_dir
     )
 
-    deduped_fastq = dedupe(bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir)
+    deduped_fastq = dedupe(bclconvert_output.fastq_files, out_dir=seq_paths.dedupe_dir)
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
         sample_sheet=seq.sample_sheet,
         gbs_libraries=seq.gbs_libraries,
         deduped_fastq_files=deduped_fastq,
-        root=seq.illumina_platform_root,
+        root=illumina_platform_root,
         out_dir=keyfiles_dir,
         fastq_link_farm=fastq_link_farm,
         backup_dir=gbs_backup_dir,
