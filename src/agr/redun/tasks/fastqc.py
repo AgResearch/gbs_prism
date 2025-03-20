@@ -1,14 +1,17 @@
 import logging
 import os.path
+from redun import task, File
 
 import agr.util.cluster as cluster
+from agr.redun.cluster_executor import run_job_1
+from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
 
 FASTQC_TOOL_NAME = "fastqc"
 
 
-def fastqc_job_spec(
+def _fastqc_job_spec(
     in_path: str, out_dir: str, num_threads: int = 8
 ) -> cluster.Job1Spec:
     basename = os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq")
@@ -33,3 +36,18 @@ def fastqc_job_spec(
         cwd=out_dir,
         expected_path=out_path,
     )
+
+
+@task()
+def _fastqc_one(fastq_file: File, out_dir: str) -> File:
+    """Run fastqc on a single file, returning just the zip file."""
+    os.makedirs(out_dir, exist_ok=True)
+    return run_job_1(
+        _fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
+    )
+
+
+@task()
+def fastqc(fastq_files: list[File], out_dir: str) -> list[File]:
+    """Run fastqc on multiple files, returning just the zip files."""
+    return one_forall(_fastqc_one, fastq_files, out_dir=out_dir)

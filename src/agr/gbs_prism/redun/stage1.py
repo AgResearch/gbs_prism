@@ -39,7 +39,6 @@ from agr.seq.dedupe import (
     remove_dedupe_turds,
     DEDUPE_TOOL_NAME,
 )
-from agr.seq.fastqc import fastqc_job_spec
 from agr.seq.multiqc import multiqc_job_spec
 from agr.seq.fastq_sample import FastqSample
 
@@ -52,7 +51,7 @@ from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism.redun.common import sample_minsize_if_required
-from agr.redun.tasks.fake_bcl_convert import real_or_fake_bcl_convert
+from agr.redun.tasks import real_or_fake_bcl_convert, fastqc
 
 from agr.util.path import remove_if_exists
 
@@ -95,21 +94,6 @@ def cook_sample_sheet(
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
     )
-
-
-@task()
-def fastqc_one(fastq_file: File, out_dir: str) -> File:
-    """Run fastqc on a single file, returning just the zip file."""
-    os.makedirs(out_dir, exist_ok=True)
-    return run_job_1(
-        fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
-    )
-
-
-@task()
-def fastqc_all(fastq_files: list[File], out_dir: str) -> list[File]:
-    """Run fastqc on multiple files, returning just the zip files."""
-    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
 
 
 @task()
@@ -323,9 +307,7 @@ def run_stage1(
         out_dir=seq.paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc_all(
-        bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir
-    )
+    fastqc_files = fastqc(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
 
     multiqc_report_out = multiqc_report(
         fastqc_files=fastqc_files,

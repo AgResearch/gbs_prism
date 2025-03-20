@@ -2,7 +2,6 @@ import gzip
 import logging
 import os.path
 import shutil
-from agr.redun.tasks.bcl_convert import BclConvertOutput, bcl_convert
 from redun import task, File
 from redun.context import get_context
 
