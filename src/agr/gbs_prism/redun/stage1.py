@@ -2,10 +2,6 @@
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
     cook_sample_sheet: Process a raw sample sheet.
-    bclconvert: Run bclconvert and return fastq files and summary metrics.
-    fastqc_one: Run fastqc on a single fastq file, returning  .zip results.
-    fastqc_all: Run fastqc_one on multiple files, returning list of .zip results.
-    multiqc_report: Run MultiQC aggregating FastQC and BCLConvert reports.
     kmer_sample_one: Sample a single fastq file as required for kmer analysis.
     kmer_sample_all: Run kmer_sample_one on all fastq files.
     kmer_analysis_one: Run kmer analysis for a single fastq file.
@@ -39,7 +35,6 @@ from agr.seq.dedupe import (
     remove_dedupe_turds,
     DEDUPE_TOOL_NAME,
 )
-from agr.seq.multiqc import multiqc_job_spec
 from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.gbs_target_spec import (
@@ -51,7 +46,7 @@ from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.gbs_prism.redun.common import sample_minsize_if_required
-from agr.redun.tasks import real_or_fake_bcl_convert, fastqc
+from agr.redun.tasks import real_or_fake_bcl_convert, fastqc, multiqc
 
 from agr.util.path import remove_if_exists
 
@@ -93,34 +88,6 @@ def cook_sample_sheet(
         paths=seq_paths,
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
-    )
-
-
-@task()
-def multiqc_report(
-    fastqc_files: list[File],
-    bclconvert_top_unknowns: File,
-    bclconvert_adapter_metrics: File,
-    bclconvert_demultiplex_stats: File,
-    bclconvert_quality_metrics: File,
-    bclconvert_run_info_xml: File,
-    out_dir: str,
-    run: str,
-) -> File:
-    """Run MultiQC aggregating FastQC and BCLConvert reports."""
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "%s_multiqc_report.html" % run)
-    return run_job_1(
-        multiqc_job_spec(
-            fastqc_in_paths=[fastqc_file.path for fastqc_file in fastqc_files],
-            bclconvert_top_unknowns=bclconvert_top_unknowns.path,
-            bclconvert_adapter_metrics=bclconvert_adapter_metrics.path,
-            bclconvert_demultiplex_stats=bclconvert_demultiplex_stats.path,
-            bclconvert_quality_metrics=bclconvert_quality_metrics.path,
-            bclconvert_run_info_xml=bclconvert_run_info_xml.path,
-            out_dir=out_dir,
-            out_path=out_path,
-        ),
     )
 
 
@@ -309,7 +276,7 @@ def run_stage1(
 
     fastqc_files = fastqc(bclconvert_output.fastq_files, out_dir=seq.paths.fastqc_dir)
 
-    multiqc_report_out = multiqc_report(
+    multiqc_report = multiqc(
         fastqc_files=fastqc_files,
         bclconvert_top_unknowns=bclconvert_output.top_unknown,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
@@ -351,7 +318,7 @@ def run_stage1(
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
         fastqc=fastqc_files,
-        multiqc=multiqc_report_out,
+        multiqc=multiqc_report,
         kmer_analysis=kmer_analysis,
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,
