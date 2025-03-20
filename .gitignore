@@ -2,7 +2,7 @@
 /.redun/
 /redun.log
 /.psij/
-__pycache__/
+__pycache__*
 /result*
 /gbs_prism.log
 /*.json

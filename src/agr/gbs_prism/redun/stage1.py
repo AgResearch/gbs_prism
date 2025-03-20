@@ -2,8 +2,6 @@
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
     cook_sample_sheet: Process a raw sample sheet.
-    kmer_sample_one: Sample a single fastq file as required for kmer analysis.
-    kmer_sample_all: Run kmer_sample_one on all fastq files.
     kmer_analysis_one: Run kmer analysis for a single fastq file.
     kmer_analysis_all: Run kmer_analysis_one on all fastq files.
     dedupe_one: Dedupe a single fastq file.
@@ -35,8 +33,6 @@ from agr.seq.dedupe import (
     remove_dedupe_turds,
     DEDUPE_TOOL_NAME,
 )
-from agr.seq.fastq_sample import FastqSample
-
 from agr.gbs_prism.gbs_target_spec import (
     gquery_gbs_target_spec,
     write_gbs_target_spec,
@@ -45,8 +41,8 @@ from agr.gbs_prism.gbs_target_spec import (
 from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
-from agr.gbs_prism.redun.common import sample_minsize_if_required
-from agr.redun.tasks import real_or_fake_bcl_convert, fastqc, multiqc
+from agr.redun.tasks import real_or_fake_bcl_convert, fastq_sample, fastqc, multiqc
+from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
 from agr.util.path import remove_if_exists
 
@@ -89,39 +85,6 @@ def cook_sample_sheet(
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
     )
-
-
-@task()
-def kmer_sample_one(fastq_file: File, out_dir: str) -> File:
-    """Sample a single fastq file as required for kmer analysis."""
-    os.makedirs(out_dir, exist_ok=True)
-    sample_spec = FastqSample(sample_rate=0.0002, minimum_sample_size=10000)
-    # the ugly name is copied from legacy gbs_prism
-    basename = os.path.basename(fastq_file.path)
-    rate_out_path = os.path.join(
-        out_dir,
-        "%s.fastq.%s.fastq" % (basename, sample_spec.rate_moniker),
-    )
-    minsize_out_path = os.path.join(
-        out_dir,
-        "%s.fastq.%s.fastq" % (basename, sample_spec.minsize_moniker),
-    )
-
-    rate_sample = run_job_1(
-        sample_spec.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
-    )
-    return sample_minsize_if_required(
-        fastq_file=fastq_file,
-        sample_spec=sample_spec,
-        rate_sample=rate_sample,
-        out_path=minsize_out_path,
-    )
-
-
-@task()
-def kmer_sample_all(fastq_files: list[File], out_dir: str) -> list[File]:
-    """Sample all fastq files as required for kmer analysis."""
-    return one_forall(kmer_sample_one, fastq_files, out_dir=out_dir)
 
 
 @task()
@@ -287,8 +250,10 @@ def run_stage1(
         run=sequencer_run.name,
     )
 
-    kmer_samples = kmer_sample_all(
-        bclconvert_output.fastq_files, out_dir=seq.paths.kmer_fastq_sample_dir
+    kmer_samples = fastq_sample(
+        bclconvert_output.fastq_files,
+        spec=FastqSampleSpec(rate=0.0002, minimum_sample_size=10000),
+        out_dir=seq.paths.kmer_fastq_sample_dir,
     )
 
     kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)

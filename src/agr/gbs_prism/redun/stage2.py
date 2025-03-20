@@ -13,7 +13,6 @@ from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
 from agr.seq.cutadapt import cutadapt_job_spec
-from agr.seq.fastq_sample import FastqSample
 
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
@@ -41,7 +40,8 @@ from agr.gbs_prism.tassel3 import (
     tassel3_tool_name,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
-from agr.gbs_prism.redun.common import sample_minsize_if_required
+from agr.redun.tasks import fastq_sample
+from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
 
 @dataclass
@@ -50,7 +50,7 @@ class CohortSpec:
     cohort: Cohort
     target: CohortTargetSpec
     paths: GbsPaths
-    bwa_sample: FastqSample
+    bwa_sample: FastqSampleSpec
     bwa: Bwa
 
 
@@ -84,38 +84,6 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]
             else:
                 cohort_links.append(File(link))
     return (cohort_links, cohort_munged_links)
-
-
-@task()
-def sample_one_for_bwa(fastq_file: File, spec: CohortSpec) -> File:
-
-    out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
-    os.makedirs(out_dir, exist_ok=True)
-    # the ugly name is copied from legacy gbs_prism
-    basename = os.path.basename(fastq_file.path)
-    rate_out_path = os.path.join(
-        out_dir,
-        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.rate_moniker),
-    )
-    minsize_out_path = os.path.join(
-        out_dir,
-        "%s.fastq.%s.fastq" % (basename, spec.bwa_sample.minsize_moniker),
-    )
-
-    rate_sample = run_job_1(
-        spec.bwa_sample.rate_job_spec(in_path=fastq_file.path, out_path=rate_out_path),
-    )
-    return sample_minsize_if_required(
-        fastq_file=fastq_file,
-        sample_spec=spec.bwa_sample,
-        rate_sample=rate_sample,
-        out_path=minsize_out_path,
-    )
-
-
-@task()
-def sample_all_for_bwa(fastq_files: list[File], spec: CohortSpec) -> list[File]:
-    return one_forall(sample_one_for_bwa, fastq_files, spec=spec)
 
 
 @task
@@ -524,7 +492,11 @@ class CohortOutput:
 @task()
 def run_cohort(spec: CohortSpec) -> CohortOutput:
     fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
-    bwa_sampled = sample_all_for_bwa(fastq_links, spec)
+    bwa_sampled = fastq_sample(
+        fastq_links,
+        spec=spec.bwa_sample,
+        out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
+    )
     trimmed = cutadapt_all(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
@@ -576,8 +548,8 @@ class Stage2Output:
 def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Output:
     cohort_outputs = {}
 
-    bwa_sample = FastqSample(
-        sample_rate=0.00005,
+    bwa_sample = FastqSampleSpec(
+        rate=0.00005,
         minimum_sample_size=150000,
     )
 
