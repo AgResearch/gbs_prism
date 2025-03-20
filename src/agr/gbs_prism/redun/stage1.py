@@ -38,13 +38,16 @@ from agr.gbs_prism.gbs_target_spec import (
     write_gbs_target_spec,
     GbsTargetSpec,
 )
-from agr.gbs_prism.kmer_analysis import kmer_analysis_job_spec
 from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
-from agr.redun.tasks import real_or_fake_bcl_convert, fastq_sample, fastqc, multiqc
+from agr.redun.tasks import (
+    real_or_fake_bcl_convert,
+    fastq_sample,
+    fastqc,
+    kmer_analysis,
+    multiqc,
+)
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-
-from agr.util.path import remove_if_exists
 
 
 @dataclass
@@ -85,37 +88,6 @@ def cook_sample_sheet(
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
     )
-
-
-@task()
-def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
-    """Run kmer analysis for a single fastq file."""
-    kmer_prism_workdir = os.path.join(out_dir, "work")
-    os.makedirs(kmer_prism_workdir, exist_ok=True)
-    kmer_size = 6
-    out_path = os.path.join(
-        out_dir,
-        "%s.k%d.1" % (os.path.basename(fastq_file.path), kmer_size),
-    )
-    remove_if_exists(out_path)
-
-    return run_job_1(
-        kmer_analysis_job_spec(
-            in_path=fastq_file.path,
-            out_path=out_path,
-            input_filetype="fasta",
-            kmer_size=kmer_size,
-            # kmer_prism drops turds in the current directory and doesn't pickup after itself,
-            # so we run with cwd as a subdirectory of the output file
-            cwd=kmer_prism_workdir,
-        ),
-    )
-
-
-@task()
-def kmer_analysis_all(fastq_files: list[File], out_dir: str) -> list[File]:
-    """Run kmer analysis for multiple fastq files."""
-    return one_forall(kmer_analysis_one, fastq_files, out_dir=out_dir)
 
 
 @task()
@@ -256,7 +228,9 @@ def run_stage1(
         out_dir=seq.paths.kmer_fastq_sample_dir,
     )
 
-    kmer_analysis = kmer_analysis_all(kmer_samples, out_dir=seq.paths.kmer_analysis_dir)
+    kmer_analysis_reports = kmer_analysis(
+        kmer_samples, out_dir=seq.paths.kmer_analysis_dir
+    )
 
     deduped_fastq = dedupe_all(
         bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir
@@ -284,7 +258,7 @@ def run_stage1(
     return Stage1Output(
         fastqc=fastqc_files,
         multiqc=multiqc_report,
-        kmer_analysis=kmer_analysis,
+        kmer_analysis=kmer_analysis_reports,
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,
