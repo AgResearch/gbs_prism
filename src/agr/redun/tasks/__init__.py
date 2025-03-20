@@ -1,6 +1,7 @@
 # re-exports for agr.redun.tasks
 
 from .bcl_convert import bcl_convert
+from .dedupe import dedupe
 from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
 from .fastq_sample import fastq_sample
 from .fastqc import fastqc
@@ -9,6 +10,7 @@ from .multiqc import multiqc
 
 __all__ = [
     "bcl_convert",
+    "dedupe",
     "fake_bcl_convert",
     "fastq_sample",
     "fastqc",

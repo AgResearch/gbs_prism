@@ -2,10 +2,6 @@
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
     cook_sample_sheet: Process a raw sample sheet.
-    kmer_analysis_one: Run kmer analysis for a single fastq file.
-    kmer_analysis_all: Run kmer_analysis_one on all fastq files.
-    dedupe_one: Dedupe a single fastq file.
-    dedupe_all: Run dedupe_one on all fastq files.
     get_gbs_keyfiles: Get GBS keyfiles.
     get_gbs_targets: Get GBS targets for stage 2.
     run_stage1: Triggers running of the tasks via redun.
@@ -24,15 +20,8 @@ from typing import Literal
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.redun import one_forall
-from agr.redun.cluster_executor import get_tool_config, run_job_1
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
-from agr.seq.dedupe import (
-    dedupe_job_spec,
-    remove_dedupe_turds,
-    DEDUPE_TOOL_NAME,
-)
 from agr.gbs_prism.gbs_target_spec import (
     gquery_gbs_target_spec,
     write_gbs_target_spec,
@@ -42,6 +31,7 @@ from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.redun.tasks import (
     real_or_fake_bcl_convert,
+    dedupe,
     fastq_sample,
     fastqc,
     kmer_analysis,
@@ -88,36 +78,6 @@ def cook_sample_sheet(
         expected_fastq=sample_sheet.fastq_files,
         gbs_libraries=sample_sheet.gbs_libraries,
     )
-
-
-@task()
-def dedupe_one(
-    fastq_file: File,
-    out_dir: str,
-) -> File:
-    """Dedupe a single fastq file."""
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
-
-    tool_config = get_tool_config(DEDUPE_TOOL_NAME)
-    java_max_heap = tool_config.get("java_max_heap")
-
-    result = run_job_1(
-        dedupe_job_spec(
-            in_path=fastq_file.path,
-            out_path=out_path,
-            tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
-            jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
-        ),
-    )
-    remove_dedupe_turds(out_path)
-    return result
-
-
-@task()
-def dedupe_all(fastq_files: list[File], out_dir: str) -> list[File]:
-    """Dedupe multiple fastq files."""
-    return one_forall(dedupe_one, fastq_files, out_dir=out_dir)
 
 
 @task()
@@ -232,9 +192,7 @@ def run_stage1(
         kmer_samples, out_dir=seq.paths.kmer_analysis_dir
     )
 
-    deduped_fastq = dedupe_all(
-        bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir
-    )
+    deduped_fastq = dedupe(bclconvert_output.fastq_files, out_dir=seq.paths.dedupe_dir)
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
