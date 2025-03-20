@@ -448,26 +448,12 @@ def get_tool_config(tool: str) -> dict[str, Any]:
     return get_tool_config_and_path(tool)[0]
 
 
-@scheduler_task()
 def create_cluster_executor_config(
-    scheduler: Scheduler,
-    parent_job: SchedulerJob,
-    scheduler_expr: SchedulerExpression,
     config_path: str,
-) -> Promise[ClusterExecutorConfig]:
+):
     """
     Create the cluster executor configuration.
-
-    This must be a scheduler task to avoid caching, since this must
-    be done at the start of every run.
+    Must be done before any configuration may be accessed.
     """
-    if TYPE_CHECKING:
-        # suppress unused parameters
-        _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
-
-    promise = Promise()
     cluster_config = ClusterExecutorConfig()
     cluster_config.read_config(config_path)
-    promise.do_resolve(cluster_config)
-
-    return promise
