@@ -8,7 +8,7 @@ redun_namespace = "agr.gbs_prism"
 from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
-from agr.redun import concat, one_forall
+from agr.redun import concat
 from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 
@@ -38,7 +38,7 @@ from agr.gbs_prism.tassel3 import (
     tassel3_tool_name,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
-from agr.redun.tasks import bwa_aln, bwa_samse, cutadapt, fastq_sample
+from agr.redun.tasks import bam_stats, bwa_aln, bwa_samse, cutadapt, fastq_sample
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
@@ -105,23 +105,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
         )
         out_paths = concat(out_paths, bam_files)
     return out_paths
-
-
-@task()
-def bam_stats_one(bam_file: File) -> File:
-    """run samtools flagstat for a single file."""
-    out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
-    with open(out_path, "w") as out_f:
-        _ = run_catching_stderr(
-            ["samtools", "flagstat", bam_file.path], stdout=out_f, check=True
-        )
-    return File(out_path)
-
-
-@task()
-def bam_stats_all(bam_files: list[File]) -> list[File]:
-    """bwa samse for multiple files with a single reference genome."""
-    return one_forall(bam_stats_one, bam_files)
 
 
 @task()
@@ -418,7 +401,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
     bam_files = bwa_all_reference_genomes(trimmed, spec)
-    bam_stats_files = bam_stats_all(bam_files)
+    bam_stats_files = bam_stats(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(spec)
     keyfile_for_gbsx = get_keyfile_for_gbsx(spec)
     fastq_to_tag_count = get_fastq_to_tag_count(spec, keyfile_for_tassel)

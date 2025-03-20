@@ -11,8 +11,10 @@ from .gbs_keyfiles import get_gbs_keyfiles
 from .kmer_analysis import kmer_analysis
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
+from .samtools import bam_stats
 
 __all__ = [
+    "bam_stats",
     "bcl_convert",
     "bwa_aln",
     "bwa_samse",
