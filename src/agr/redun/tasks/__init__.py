@@ -13,6 +13,18 @@ from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
 from .samtools import bam_stats
 
+from .tassel3 import (
+    get_fastq_to_tag_count,
+    get_tag_count,
+    get_tags_reads_summary,
+    get_tags_reads_cv,
+    merge_taxa_tag_count,
+    tag_count_to_tag_pair,
+    tag_pair_to_tbt,
+    tbt_to_map_info,
+    map_info_to_hap_map,
+)
+
 __all__ = [
     "bam_stats",
     "bcl_convert",
@@ -30,4 +42,14 @@ __all__ = [
     "kmer_analysis",
     "multiqc",
     "real_or_fake_bcl_convert",
+    # Tassel:
+    "get_fastq_to_tag_count",
+    "get_tag_count",
+    "get_tags_reads_summary",
+    "get_tags_reads_cv",
+    "merge_taxa_tag_count",
+    "tag_count_to_tag_pair",
+    "tag_pair_to_tbt",
+    "tbt_to_map_info",
+    "map_info_to_hap_map",
 ]

@@ -7,8 +7,7 @@ redun_namespace = "agr.gbs_prism"
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
 from agr.redun import concat
-from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
-from agr.util.subprocess import run_catching_stderr
+from agr.redun.cluster_executor import run_job_1, run_job_n
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
@@ -20,20 +19,6 @@ from agr.gbs_prism.kgd import (
     KGD_GUSBASE_RDATA,
 )
 from agr.gbs_prism.GUSbase import gusbase_job_spec, convert_GUSbase_output
-from agr.gbs_prism.tassel3 import (
-    FASTQ_TO_TAG_COUNT_PLUGIN,
-    MAP_INFO_TO_HAP_MAP_PLUGIN,
-    MERGE_TAXA_TAG_COUNT_PLUGIN,
-    TAG_COUNT_TO_TAG_PAIR_PLUGIN,
-    TAG_PAIR_TO_TBT_PLUGIN,
-    TBT_TO_MAP_INFO_PLUGIN,
-    Tassel3,
-    fastq_name_for_tassel3,
-    FASTQ_TO_TAG_COUNT_STDOUT,
-    FASTQ_TO_TAG_COUNT_COUNTS,
-    HAP_MAP_FILES,
-    tassel3_tool_name,
-)
 from agr.seq.types import flowcell_id, Cohort
 from agr.redun.tasks import (
     bam_stats,
@@ -43,9 +28,19 @@ from agr.redun.tasks import (
     fastq_sample,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
+    get_fastq_to_tag_count,
+    get_tag_count,
+    get_tags_reads_summary,
+    get_tags_reads_cv,
+    merge_taxa_tag_count,
+    tag_count_to_tag_pair,
+    tag_pair_to_tbt,
+    tbt_to_map_info,
+    map_info_to_hap_map,
 )
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
+from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
 
 
 @dataclass
@@ -130,147 +125,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
 #             items=[self._name.libname],
 #             outfile=script_f,
 #         ).run()
-
-
-@dataclass
-class FastqToTagCountOutput:
-    stdout: File
-    tag_counts: list[File]
-
-
-@task()
-def get_fastq_to_tag_count(spec: CohortSpec, keyfile: File) -> FastqToTagCountOutput:
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)),
-    )
-    tassel3.create_directories()
-    tassel3.symlink_key(in_path=keyfile.path)
-    result_files = run_job_n(
-        tassel3.fastq_to_tag_count_job_spec(cohort_str=spec.cohort.name),
-    )
-
-    return FastqToTagCountOutput(
-        stdout=result_files.expected_files[FASTQ_TO_TAG_COUNT_STDOUT],
-        tag_counts=result_files.globbed_files[FASTQ_TO_TAG_COUNT_COUNTS],
-    )
-
-
-@task()
-def get_tag_count(fastqToTagCountStdout: File) -> File:
-
-    out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
-    with open(fastqToTagCountStdout.path, "r") as in_f:
-        with open(out_path, "w") as out_f:
-            _ = run_catching_stderr(
-                ["get_reads_tags_per_sample"], stdin=in_f, stdout=out_f, check=True
-            )
-    return File(out_path)
-
-
-@task()
-def get_tags_reads_summary(spec: CohortSpec, tagCountCsv: File) -> File:
-    out_dir = spec.paths.cohort_dir(spec.cohort.name)
-    out_path = os.path.join(out_dir, "tags_reads_summary.txt")
-    _ = run_catching_stderr(
-        ["summarise_read_and_tag_counts", "-o", out_path, tagCountCsv.path], check=True
-    )
-    return File(out_path)
-
-
-@task()
-def get_tags_reads_cv(tags_reads_summary: File) -> File:
-    out_path = os.path.join(
-        os.path.dirname(tags_reads_summary.path), "tags_reads_cv.txt"
-    )
-    with open(out_path, "w") as out_f:
-        _ = run_catching_stderr(
-            ["cut", "-f", "1,4,9", tags_reads_summary.path], stdout=out_f, check=True
-        )
-    return File(out_path)
-
-
-@task()
-def merge_taxa_tag_count(
-    spec: CohortSpec,
-    tag_counts: list[File],
-) -> File:
-    _ = tag_counts  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)),
-    )
-    return run_job_1(
-        tassel3.merge_taxa_tag_count_job_spec,
-    )
-
-
-@task()
-def tag_count_to_tag_pair(
-    spec: CohortSpec,
-    merged_all_count: File,
-) -> File:
-    _ = merged_all_count  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)),
-    )
-    return run_job_1(
-        tassel3.tag_count_to_tag_pair_job_spec,
-    )
-
-
-@task()
-def tag_pair_to_tbt(
-    spec: CohortSpec,
-    tag_pair: File,
-) -> File:
-    _ = tag_pair  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)),
-    )
-    return run_job_1(
-        tassel3.tag_pair_to_tbt_job_spec,
-    )
-
-
-@task()
-def tbt_to_map_info(
-    spec: CohortSpec,
-    tags_by_taxa: File,
-) -> File:
-    _ = tags_by_taxa  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)),
-    )
-    return run_job_1(
-        tassel3.tbt_to_map_info_job_spec,
-    )
-
-
-@task()
-def map_info_to_hap_map(
-    spec: CohortSpec,
-    map_info: File,
-) -> list[File]:
-    _ = map_info  # depending on existence rather than value
-    cohort_blind_dir = os.path.join(spec.paths.run_root, spec.cohort.name, "blind")
-    tassel3 = Tassel3(
-        cohort_blind_dir,
-        get_tool_config(tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)),
-    )
-
-    result_files = run_job_n(
-        tassel3.map_info_to_hap_map_job_spec,
-    )
-    return result_files.globbed_files[HAP_MAP_FILES]
 
 
 @dataclass
@@ -362,15 +216,23 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         spec.paths.run_root, spec.run, spec.cohort
     )
     keyfile_for_gbsx = get_keyfile_for_gbsx(spec.paths.run_root, spec.run, spec.cohort)
-    fastq_to_tag_count = get_fastq_to_tag_count(spec, keyfile_for_tassel)
+
+    cohort_blind_dir = spec.paths.cohort_blind_dir(spec.cohort.name)
+    fastq_to_tag_count = get_fastq_to_tag_count(
+        cohort_blind_dir, spec.cohort, keyfile_for_tassel
+    )
     tag_count = get_tag_count(fastq_to_tag_count.stdout)
-    tags_reads_summary = get_tags_reads_summary(spec, tag_count)
+    tags_reads_summary = get_tags_reads_summary(
+        spec.paths.cohort_dir(spec.cohort.name), tag_count
+    )
     tags_reads_cv = get_tags_reads_cv(tags_reads_summary)
-    merged_all_count = merge_taxa_tag_count(spec, fastq_to_tag_count.tag_counts)
-    tag_pair = tag_count_to_tag_pair(spec, merged_all_count)
-    tags_by_taxa = tag_pair_to_tbt(spec, tag_pair)
-    map_info = tbt_to_map_info(spec, tags_by_taxa)
-    hap_map_files = map_info_to_hap_map(spec, map_info)
+    merged_all_count = merge_taxa_tag_count(
+        cohort_blind_dir, fastq_to_tag_count.tag_counts
+    )
+    tag_pair = tag_count_to_tag_pair(cohort_blind_dir, merged_all_count)
+    tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair)
+    map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
+    hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
     kgd_output = kgd(spec, hap_map_files)
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
