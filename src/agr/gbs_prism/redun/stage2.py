@@ -12,7 +12,6 @@ from agr.redun import concat, one_forall
 from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.bwa import Bwa
-from agr.seq.cutadapt import cutadapt_job_spec
 
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
@@ -40,7 +39,7 @@ from agr.gbs_prism.tassel3 import (
     tassel3_tool_name,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
-from agr.redun.tasks import fastq_sample
+from agr.redun.tasks import cutadapt, fastq_sample
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
 
@@ -84,23 +83,6 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]
             else:
                 cohort_links.append(File(link))
     return (cohort_links, cohort_munged_links)
-
-
-@task
-def cutadapt_one(fastq_file: File, out_dir: str) -> File:
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(
-        out_dir,
-        "%s.trimmed.fastq" % os.path.basename(fastq_file.path).removesuffix(".fastq"),
-    )
-    return run_job_1(
-        cutadapt_job_spec(in_path=fastq_file.path, out_path=out_path),
-    )
-
-
-@task()
-def cutadapt_all(fastq_files: list[File], out_dir: str) -> list[File]:
-    return one_forall(cutadapt_one, fastq_files, out_dir=out_dir)
 
 
 @dataclass
@@ -497,7 +479,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         spec=spec.bwa_sample,
         out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
     )
-    trimmed = cutadapt_all(
+    trimmed = cutadapt(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
     bam_files = bwa_all_reference_genomes(trimmed, spec)

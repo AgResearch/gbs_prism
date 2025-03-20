@@ -1,7 +1,10 @@
 import logging
+import os.path
+from redun import task, File
 
 import agr.util.cluster as cluster
-
+from agr.redun.cluster_executor import run_job_1
+from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,7 @@ _ADAPTERS = [
 ]
 
 
-def cutadapt_job_spec(in_path: str, out_path: str) -> cluster.Job1Spec:
+def _cutadapt_job_spec(in_path: str, out_path: str) -> cluster.Job1Spec:
     err_path = "%s.report" % out_path.removesuffix(".fastq")
     return cluster.Job1Spec(
         tool=CUTADAPT_TOOL_NAME,
@@ -47,3 +50,20 @@ def cutadapt_job_spec(in_path: str, out_path: str) -> cluster.Job1Spec:
         stderr_path=err_path,
         expected_path=out_path,
     )
+
+
+@task
+def _cutadapt_one(fastq_file: File, out_dir: str) -> File:
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(
+        out_dir,
+        "%s.trimmed.fastq" % os.path.basename(fastq_file.path).removesuffix(".fastq"),
+    )
+    return run_job_1(
+        _cutadapt_job_spec(in_path=fastq_file.path, out_path=out_path),
+    )
+
+
+@task()
+def cutadapt(fastq_files: list[File], out_dir: str) -> list[File]:
+    return one_forall(_cutadapt_one, fastq_files, out_dir=out_dir)
