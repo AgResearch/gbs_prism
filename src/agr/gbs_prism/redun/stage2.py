@@ -11,7 +11,6 @@ from agr.util.path import symlink
 from agr.redun import concat, one_forall
 from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
-from agr.seq.bwa import Bwa
 
 from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
@@ -39,7 +38,8 @@ from agr.gbs_prism.tassel3 import (
     tassel3_tool_name,
 )
 from agr.gbs_prism.types import Cohort, flowcell_id
-from agr.redun.tasks import cutadapt, fastq_sample
+from agr.redun.tasks import bwa_aln, bwa_samse, cutadapt, fastq_sample
+from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
 
@@ -85,70 +85,6 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]
     return (cohort_links, cohort_munged_links)
 
 
-@dataclass
-class BwaAlnOutput:
-    fastq: File
-    sai: File
-
-
-@task()
-def bwa_aln_one(
-    fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
-) -> BwaAlnOutput:
-    """bwa aln for a single file with a single reference genome."""
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(
-        out_dir,
-        "%s.bwa.%s.%s.sai" % (os.path.basename(fastq_file.path), ref_name, bwa.moniker),
-    )
-    sai_file = run_job_1(
-        bwa.aln_job_spec(
-            in_path=fastq_file.path, out_path=out_path, reference=ref_path
-        ),
-    )
-    return BwaAlnOutput(fastq=fastq_file, sai=sai_file)
-
-
-@task()
-def bwa_aln_all(
-    fastq_files: list[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
-) -> list[BwaAlnOutput]:
-    """bwa aln for multiple files with a single reference genome."""
-    return one_forall(
-        bwa_aln_one,
-        fastq_files,
-        ref_name=ref_name,
-        ref_path=ref_path,
-        bwa=bwa,
-        out_dir=out_dir,
-    )
-
-
-@task()
-def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, bwa: Bwa) -> File:
-    """bwa samse for a single file with a single reference genome."""
-    out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
-    return run_job_1(
-        bwa.samse_job_spec(
-            sai_path=aln.sai.path,
-            fastq_path=aln.fastq.path,
-            out_path=out_path,
-            reference=ref_path,
-        ),
-    )
-
-
-@task()
-def bwa_samse_all(alns: list[BwaAlnOutput], ref_path: str, bwa: Bwa) -> list[File]:
-    """bwa samse for multiple files with a single reference genome."""
-    return one_forall(
-        bwa_samse_one,
-        alns,
-        ref_path=ref_path,
-        bwa=bwa,
-    )
-
-
 @task()
 def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list[File]:
     """bwa_aln and bwa_samse for each file for each of the reference genomes."""
@@ -156,17 +92,16 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
     os.makedirs(out_dir, exist_ok=True)
     out_paths = []
     for ref_name, ref_path in spec.target.alignment_references.items():
-        alns = bwa_aln_all(
+        alns = bwa_aln(
             fastq_files,
             ref_name=ref_name,
             ref_path=ref_path,
             bwa=spec.bwa,
             out_dir=out_dir,
         )
-        bam_files = bwa_samse_all(
+        bam_files = bwa_samse(
             alns,
             ref_path=ref_path,
-            bwa=spec.bwa,
         )
         out_paths = concat(out_paths, bam_files)
     return out_paths
