@@ -5,7 +5,7 @@ from redun.context import get_context
 from redun.scheduler import catch_all
 
 from agr.util.path import expand
-from agr.redun.cluster_executor import ClusterExecutorConfig
+from agr.redun.cluster_executor import create_cluster_executor_config
 from agr.gbs_prism.redun import (
     run_stage1,
     run_stage2,
@@ -44,13 +44,13 @@ def main(
     path_context=get_context("path"),
 ) -> MainResults:
 
-    cluster_config = ClusterExecutorConfig()
+    # initialise cluster executor configuration via uncachable scheduler task
     executor_config_env = "GBS_PRISM_EXECUTOR_CONFIG"
     assert (
         executor_config_env in os.environ
     ), f"Missing environment variable {executor_config_env}"
     config_path = os.environ[executor_config_env]
-    cluster_config.read_config(config_path)
+    _ = create_cluster_executor_config(config_path)
 
     path = {k: expand(v) for (k, v) in path_context.items()}
 
