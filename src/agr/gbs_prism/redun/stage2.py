@@ -7,12 +7,9 @@ redun_namespace = "agr.gbs_prism"
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
 from agr.redun import concat
-from agr.redun.cluster_executor import run_job_1
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
-from agr.gbs_prism.GUSbase import gusbase_job_spec
-from agr.gbs_prism.GUSbase import gusbase_job_spec, convert_GUSbase_output
 from agr.seq.types import flowcell_id, Cohort
 from agr.redun.tasks import (
     bam_stats,
@@ -22,6 +19,7 @@ from agr.redun.tasks import (
     fastq_sample,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
+    gusbase,
     kgd,
     # Tassel:
     get_fastq_to_tag_count,
@@ -122,22 +120,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
 #             items=[self._name.libname],
 #             outfile=script_f,
 #         ).run()
-
-
-@task()
-def _get_converted_GUSbase_output(GUSbase_out_file: File) -> File:
-    return File(convert_GUSbase_output(GUSbase_out_file.path))
-
-
-@task()
-def gusbase(gusbase_rdata: File) -> File:
-    return _get_converted_GUSbase_output(
-        run_job_1(
-            gusbase_job_spec(gusbase_rdata.path),
-        )
-    )
-
-
 @dataclass
 class CohortOutput:
     # TODO remove the ones we don't need
