@@ -1,5 +1,6 @@
 import logging
 import os.path
+from redun import task, File
 
 from agr.gquery import GQuery, GUpdate, Predicates
 from agr.seq.sequencer_run import SequencerRun
@@ -129,3 +130,32 @@ where
             ),
             items=["all"],
         ).run()
+
+
+@task()
+def get_gbs_keyfiles(
+    sequencer_run: SequencerRun,
+    sample_sheet: File,
+    gbs_libraries: list[str],
+    deduped_fastq_files: list[File],
+    root: str,
+    out_dir: str,
+    fastq_link_farm: str,
+    backup_dir: str,
+) -> list[File]:
+    """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
+    _ = deduped_fastq_files  # depending on existence rather than value
+    gbs_keyfiles = GbsKeyfiles(
+        sequencer_run=sequencer_run,
+        sample_sheet_path=sample_sheet.path,
+        root=root,
+        out_dir=out_dir,
+        fastq_link_farm=fastq_link_farm,
+        backup_dir=backup_dir,
+    )
+    gbs_keyfiles.create()
+
+    return [
+        File(os.path.join(out_dir, "%s.generated.txt" % library))
+        for library in gbs_libraries
+    ]

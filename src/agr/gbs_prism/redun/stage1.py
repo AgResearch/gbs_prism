@@ -1,12 +1,9 @@
 """
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
-    get_gbs_keyfiles: Get GBS keyfiles.
     get_gbs_targets: Get GBS targets for stage 2.
     run_stage1: Triggers running of the tasks via redun.
 Dataclasses:
-    CookSampleSheetOutput: Collect the outputs of processed sample sheet.
-    BclConvertOutput: Collect the outputs of bclconvert.
     GbsTargetsOutput: Collect targets and paths for gbs_prism stage 2.
     Stage1Output: Collect the outputs of stage 1.
 """
@@ -25,7 +22,6 @@ from agr.gbs_prism.gbs_target_spec import (
     write_gbs_target_spec,
     GbsTargetSpec,
 )
-from agr.gbs_prism.gbs_keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.redun.tasks import (
     cook_sample_sheet,
@@ -33,39 +29,11 @@ from agr.redun.tasks import (
     dedupe,
     fastq_sample,
     fastqc,
+    get_gbs_keyfiles,
     kmer_analysis,
     multiqc,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-
-
-@task()
-def get_gbs_keyfiles(
-    sequencer_run: SequencerRun,
-    sample_sheet: File,
-    gbs_libraries: list[str],
-    deduped_fastq_files: list[File],
-    root: str,
-    out_dir: str,
-    fastq_link_farm: str,
-    backup_dir: str,
-) -> list[File]:
-    """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
-    _ = deduped_fastq_files  # depending on existence rather than value
-    gbs_keyfiles = GbsKeyfiles(
-        sequencer_run=sequencer_run,
-        sample_sheet_path=sample_sheet.path,
-        root=root,
-        out_dir=out_dir,
-        fastq_link_farm=fastq_link_farm,
-        backup_dir=backup_dir,
-    )
-    gbs_keyfiles.create()
-
-    return [
-        File(os.path.join(out_dir, "%s.generated.txt" % library))
-        for library in gbs_libraries
-    ]
 
 
 @dataclass
@@ -187,4 +155,3 @@ def run_stage1(
         spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,
     )
-    # kmer_analysis + is troublesome for now because of in-process problems, but should be fixed and returned
