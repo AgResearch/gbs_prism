@@ -6,7 +6,7 @@ from typing import Literal
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
-from agr.redun.tasks.gbs_keyfiles import GbsKeyfiles
+from agr.redun.tasks.keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
 from agr.util.path import expand
 

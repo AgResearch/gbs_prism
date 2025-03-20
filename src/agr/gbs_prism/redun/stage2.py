@@ -1,18 +1,15 @@
 import os.path
-import tempfile
 from dataclasses import dataclass
 from redun import task, File
 
 redun_namespace = "agr.gbs_prism"
 
-from agr.gquery import GQuery, Predicates
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
 from agr.redun import concat
 from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
 from agr.util.subprocess import run_catching_stderr
 
-from agr.gbs_prism.enzyme_sub import enzyme_sub_for_uneak
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.gbs_prism.GUSbase import gusbase_job_spec
@@ -37,8 +34,16 @@ from agr.gbs_prism.tassel3 import (
     HAP_MAP_FILES,
     tassel3_tool_name,
 )
-from agr.gbs_prism.types import Cohort, flowcell_id
-from agr.redun.tasks import bam_stats, bwa_aln, bwa_samse, cutadapt, fastq_sample
+from agr.seq.types import flowcell_id, Cohort
+from agr.redun.tasks import (
+    bam_stats,
+    bwa_aln,
+    bwa_samse,
+    cutadapt,
+    fastq_sample,
+    get_keyfile_for_tassel,
+    get_keyfile_for_gbsx,
+)
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 
@@ -105,55 +110,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
         )
         out_paths = concat(out_paths, bam_files)
     return out_paths
-
-
-@task()
-def get_keyfile_for_tassel(spec: CohortSpec) -> File:
-    out_path = os.path.join(
-        spec.paths.run_root, "%s.%s.key" % (spec.run, spec.cohort.name)
-    )
-    fcid = flowcell_id(spec.run)
-    with tempfile.TemporaryFile(mode="w+") as tmp_f:
-        GQuery(
-            task="gbs_keyfile",
-            badge_type="library",
-            predicates=Predicates(
-                flowcell=fcid,
-                enzyme=spec.cohort.enzyme,
-                gbs_cohort=spec.cohort.gbs_cohort,
-                columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
-            ),
-            items=[spec.cohort.libname],
-            outfile=tmp_f,
-        ).run()
-
-        _ = tmp_f.seek(0)
-        with open(out_path, "w") as out_f:
-            for line in tmp_f:
-                _ = out_f.write(enzyme_sub_for_uneak(line))
-    return File(out_path)
-
-
-@task()
-def get_keyfile_for_gbsx(spec: CohortSpec) -> File:
-    out_path = os.path.join(
-        spec.paths.run_root, "%s.%s.gbsx.key" % (spec.run, spec.cohort.name)
-    )
-    fcid = flowcell_id(spec.run)
-    with open(out_path, "w") as out_f:
-        GQuery(
-            task="gbs_keyfile",
-            badge_type="library",
-            predicates=Predicates(
-                flowcell=fcid,
-                enzyme=spec.cohort.enzyme,
-                gbs_cohort=spec.cohort.gbs_cohort,
-                columns="qc_sampleid as sample,Barcode,Enzyme",
-            ),
-            items=[spec.cohort.libname],
-            outfile=out_f,
-        ).run()
-    return File(out_path)
 
 
 # TODO make get_unblind_script a task
@@ -402,8 +358,10 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     )
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats(bam_files)
-    keyfile_for_tassel = get_keyfile_for_tassel(spec)
-    keyfile_for_gbsx = get_keyfile_for_gbsx(spec)
+    keyfile_for_tassel = get_keyfile_for_tassel(
+        spec.paths.run_root, spec.run, spec.cohort
+    )
+    keyfile_for_gbsx = get_keyfile_for_gbsx(spec.paths.run_root, spec.run, spec.cohort)
     fastq_to_tag_count = get_fastq_to_tag_count(spec, keyfile_for_tassel)
     tag_count = get_tag_count(fastq_to_tag_count.stdout)
     tags_reads_summary = get_tags_reads_summary(spec, tag_count)

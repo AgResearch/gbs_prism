@@ -5,9 +5,8 @@ from typing import Any
 
 import agr.util.cluster as cluster
 from agr.util.path import symlink
-
-from .enzyme_sub import enzyme_sub_for_uneak
-from .types import Cohort
+from agr.seq.enzyme_sub import enzyme_sub_for_uneak
+from agr.seq.types import Cohort
 
 logger = logging.getLogger(__name__)
 

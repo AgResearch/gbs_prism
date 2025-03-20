@@ -7,7 +7,7 @@ from .dedupe import dedupe
 from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
 from .fastq_sample import fastq_sample
 from .fastqc import fastqc
-from .gbs_keyfiles import get_gbs_keyfiles
+from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
 from .kmer_analysis import kmer_analysis
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
@@ -25,6 +25,8 @@ __all__ = [
     "fastq_sample",
     "fastqc",
     "get_gbs_keyfiles",
+    "get_keyfile_for_tassel",
+    "get_keyfile_for_gbsx",
     "kmer_analysis",
     "multiqc",
     "real_or_fake_bcl_convert",
