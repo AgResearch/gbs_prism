@@ -2,8 +2,7 @@ import logging
 import os.path
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall
 from agr.util.path import remove_if_exists
 
@@ -18,10 +17,10 @@ def _kmer_analysis_job_spec(
     input_filetype: str,
     kmer_size: int,
     cwd: str,
-) -> cluster.Job1Spec:
+) -> Job1Spec:
     log_path = "%s.log" % out_path.removesuffix(".1")
 
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=KMER_PRISM_TOOL_NAME,
         args=[
             "kmer_prism",

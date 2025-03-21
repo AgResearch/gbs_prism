@@ -4,8 +4,7 @@ import os
 import os.path
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import get_tool_config, run_job_1
+from agr.redun.cluster_executor import get_tool_config, run_job_1, Job1Spec
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -24,12 +23,12 @@ def _dedupe_job_spec(
     tmp_dir: str,
     jvm_args: list[str] = [],
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
-) -> cluster.Job1Spec:
+) -> Job1Spec:
     # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
     out_dir = os.path.dirname(out_path)
     base_path = _base_path(out_path)
     log_path = f"{base_path}.clumpfy.log"
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=DEDUPE_TOOL_NAME,
         args=["clumpify.sh"]
         + jvm_args

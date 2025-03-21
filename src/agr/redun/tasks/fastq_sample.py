@@ -3,9 +3,8 @@ import os.path
 import subprocess
 from redun import task, File
 
-import agr.util.cluster as cluster
 from agr.util.subprocess import run_catching_stderr
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -35,11 +34,9 @@ class FastqSampleSpec:
         return "m%d" % self._minimum_sample_size
 
 
-def _rate_job_spec(
-    in_path: str, spec: FastqSampleSpec, out_path: str
-) -> cluster.Job1Spec:
+def _rate_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job1Spec:
     """Return the primary job spec, based on sample rate."""
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=FASTQ_SAMPLE_TOOL_NAME,
         args=[
             "seqtk",
@@ -54,11 +51,9 @@ def _rate_job_spec(
     )
 
 
-def _minsize_job_spec(
-    in_path: str, spec: FastqSampleSpec, out_path: str
-) -> cluster.Job1Spec:
+def _minsize_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job1Spec:
     """Return the secondary job spec, based on minimum sample size."""
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=FASTQ_SAMPLE_TOOL_NAME,
         args=[
             "seqtk",

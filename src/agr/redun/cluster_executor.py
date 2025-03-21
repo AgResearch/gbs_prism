@@ -21,11 +21,9 @@ from psij import (
     JobStatus,
 )
 from psij.executors.batch.batch_scheduler_executor import BatchSchedulerExecutorConfig
-
 from typing import Any, Optional, TYPE_CHECKING
 
 from agr.util import singleton
-import agr.util.cluster as cluster
 
 # TODO remove
 import logging
@@ -73,6 +71,46 @@ class ConfigError(Exception):
         return result
 
 
+@dataclass(kw_only=True)
+class CommonJobSpec:
+    """The spec in common for any job to run on the compute cluster."""
+
+    tool: str
+    args: list[str]
+    stdout_path: str
+    stderr_path: str
+    cwd: Optional[str] = None
+
+
+@dataclass(kw_only=True)
+class Job1Spec(CommonJobSpec):
+    """For jobs which produce a single file whose path is known in advance."""
+
+    expected_path: str
+
+
+@dataclass
+class FilteredGlob:
+    """A file glob optionally without any paths matched by `reject_re`."""
+
+    glob: str
+    reject_re: Optional[str] = None
+
+
+@dataclass(kw_only=True)
+class JobNSpec(CommonJobSpec):
+    """
+    For jobs which produce multiple files with paths matching the glob, exluding any matched by the regex.
+
+    As many conbinations of globs and paths may be expected, in a dict whose keys are arbitrary strings.
+    Result files will be returned in a dict with the same keys.
+    """
+
+    # each value is either a result path or a filtered glob
+    expected_paths: dict[str, str]
+    expected_globs: dict[str, FilteredGlob]
+
+
 def _create_job_attributes(
     configured_attributes: dict[str, Any],
     executor_name: str,
@@ -108,7 +146,7 @@ def _create_job_attributes(
 
 
 def _create_job_spec(
-    spec: cluster.CommonJobSpec,
+    spec: CommonJobSpec,
 ) -> tuple[JobSpec, str]:
     tool_config, config_path = get_tool_config_and_path(spec.tool)
     try:
@@ -162,7 +200,7 @@ def _create_executor(executor_name: str):
 
 def job_description(
     job: Job,
-    spec: cluster.CommonJobSpec,
+    spec: CommonJobSpec,
     annotation: Optional[str] = None,
     multiline: bool = False,
 ) -> str:
@@ -178,7 +216,7 @@ def job_description(
 
 
 def _raise_exception_on_failure(
-    job: Job, status: JobStatus | None, spec: cluster.CommonJobSpec
+    job: Job, status: JobStatus | None, spec: CommonJobSpec
 ):
     if status is None:
         logger.debug(f"job {job.native_id} status is None")
@@ -232,7 +270,7 @@ def _reject_on_failure(
 
 @task()
 def run_job_1(
-    spec: cluster.Job1Spec,
+    spec: Job1Spec,
 ) -> File:
     """
     Run a job on the defined cluster, which is expected to produce the single file `result_path`
@@ -260,7 +298,7 @@ def _run_job_1_uncached(
     scheduler: Scheduler,
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
-    spec: cluster.Job1Spec,
+    spec: Job1Spec,
 ) -> Promise[File]:
     """
     Run a job on the defined cluster, which is expected to produce the single file `result_path`
@@ -298,6 +336,10 @@ def _run_job_1_uncached(
     return promise
 
 
+# it's here as a basis for future work
+_ = _run_job_1_uncached
+
+
 @dataclass
 class ResultFiles:
     expected_files: dict[str, File]
@@ -306,9 +348,9 @@ class ResultFiles:
 
 def _result_files(
     job: Job,
-    spec: cluster.CommonJobSpec,
+    spec: CommonJobSpec,
     expected_paths: dict[str, str],
-    expected_globs: dict[str, cluster.FilteredGlob],
+    expected_globs: dict[str, FilteredGlob],
 ) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
     for k, path in expected_paths.items():
@@ -333,7 +375,7 @@ def _result_files(
 
 @task()
 def run_job_n(
-    spec: cluster.JobNSpec,
+    spec: JobNSpec,
 ) -> ResultFiles:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
@@ -356,7 +398,7 @@ def _run_job_n_uncached(
     scheduler: Scheduler,
     parent_job: SchedulerJob,
     scheduler_expr: SchedulerExpression,
-    spec: cluster.JobNSpec,
+    spec: JobNSpec,
 ) -> Promise[ResultFiles]:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
@@ -384,6 +426,10 @@ def _run_job_n_uncached(
 
     job.set_job_status_callback(job_status_callback)
     return promise
+
+
+# it's here as a basis for future work
+_ = _run_job_n_uncached
 
 
 def deep_get(values: Any, path: str, default: Any = None) -> Any:

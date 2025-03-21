@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_n
+from agr.redun.cluster_executor import run_job_n, JobNSpec, FilteredGlob
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +72,10 @@ def _bcl_convert_job_spec(
     in_dir: str,
     sample_sheet_path: str,
     out_dir: str,
-) -> cluster.JobNSpec:
+) -> JobNSpec:
     paths = BclConvertPaths(out_dir)
 
-    return cluster.JobNSpec(
+    return JobNSpec(
         tool=BCLCONVERT_TOOL_NAME,
         args=[
             "bcl-convert",
@@ -92,7 +91,7 @@ def _bcl_convert_job_spec(
         stderr_path=paths.log_path,
         expected_paths={},
         expected_globs={
-            BCLCONVERT_JOB_FASTQ: cluster.FilteredGlob(
+            BCLCONVERT_JOB_FASTQ: FilteredGlob(
                 glob=f"{out_dir}/*.fastq.gz",
                 reject_re="/Undetermined",
             )

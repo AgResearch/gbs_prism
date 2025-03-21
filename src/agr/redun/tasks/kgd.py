@@ -3,8 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_n
+from agr.redun.cluster_executor import run_job_n, JobNSpec
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +31,11 @@ def _kgd_job_spec(
     out_dir: str,
     hapmap_path: str,
     genotyping_method: str,
-) -> cluster.JobNSpec:
+) -> JobNSpec:
     out_path = "%s.stdout" % out_dir
     err_path = "%s.stderr" % out_dir
 
-    return cluster.JobNSpec(
+    return JobNSpec(
         tool=KGD_TOOL_NAME,
         args=["run_kgd.R", hapmap_path, genotyping_method],
         stdout_path=out_path,

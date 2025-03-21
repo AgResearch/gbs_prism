@@ -2,8 +2,7 @@ import logging
 import os.path
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -11,9 +10,7 @@ logger = logging.getLogger(__name__)
 FASTQC_TOOL_NAME = "fastqc"
 
 
-def _fastqc_job_spec(
-    in_path: str, out_dir: str, num_threads: int = 8
-) -> cluster.Job1Spec:
+def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> Job1Spec:
     basename = os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq")
     log_path = os.path.join(
         out_dir,
@@ -21,7 +18,7 @@ def _fastqc_job_spec(
         % os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq"),
     )
     out_path = os.path.join(out_dir, "%s%s" % (basename, "_fastqc.zip"))
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=FASTQC_TOOL_NAME,
         args=[
             "fastqc",

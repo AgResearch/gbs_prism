@@ -3,8 +3,7 @@ import os.path
 import pdf2image
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.util.path import symlink
 
 logger = logging.getLogger(__name__)
@@ -12,13 +11,13 @@ logger = logging.getLogger(__name__)
 GUSBASE_TOOL_NAME = "GUSbase"
 
 
-def _gusbase_job_spec(gusbase_rdata_path: str) -> cluster.Job1Spec:
+def _gusbase_job_spec(gusbase_rdata_path: str) -> Job1Spec:
     work_dir = os.path.dirname(gusbase_rdata_path)
     base_path = os.path.join(work_dir, "GUSbase")
     stdout_path = "%s.stdout" % base_path
     stderr_path = "%s.stderr" % base_path
 
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=GUSBASE_TOOL_NAME,
         args=["run_GUSbase.R", gusbase_rdata_path],
         stdout_path=stdout_path,

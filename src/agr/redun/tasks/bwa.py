@@ -3,8 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -28,8 +27,8 @@ class Bwa:
 
 def _aln_job_spec(
     in_path: str, out_path: str, reference: str, barcode_len: int
-) -> cluster.Job1Spec:
-    return cluster.Job1Spec(
+) -> Job1Spec:
+    return Job1Spec(
         tool=BWA_ALN_TOOL_NAME,
         args=[
             "bwa",
@@ -47,8 +46,8 @@ def _aln_job_spec(
 
 def _samse_job_spec(
     sai_path: str, fastq_path: str, out_path: str, reference: str
-) -> cluster.Job1Spec:
-    return cluster.Job1Spec(
+) -> Job1Spec:
+    return Job1Spec(
         tool=BWA_SAMSE_TOOL_NAME,
         args=[
             "bwa",

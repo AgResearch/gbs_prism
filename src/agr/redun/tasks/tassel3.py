@@ -5,12 +5,18 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Any
 
-import agr.util.cluster as cluster
 from agr.util.path import symlink
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 from agr.seq.types import Cohort
-from agr.redun.cluster_executor import get_tool_config, run_job_1, run_job_n
+from agr.redun.cluster_executor import (
+    get_tool_config,
+    run_job_1,
+    run_job_n,
+    Job1Spec,
+    JobNSpec,
+    FilteredGlob,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +78,8 @@ class Tassel3:
         plugin: str,
         plugin_args: list[str],
         result_path: str,
-    ) -> cluster.Job1Spec:
-        return cluster.Job1Spec(
+    ) -> Job1Spec:
+        return Job1Spec(
             tool=tassel3_tool_name(plugin),
             args=self._tassel_plugin_args(
                 plugin,
@@ -89,9 +95,9 @@ class Tassel3:
         plugin: str,
         plugin_args: list[str],
         expected_paths: dict[str, str],
-        expected_globs: dict[str, cluster.FilteredGlob],
-    ) -> cluster.JobNSpec:
-        return cluster.JobNSpec(
+        expected_globs: dict[str, FilteredGlob],
+    ) -> JobNSpec:
+        return JobNSpec(
             tool=tassel3_tool_name(plugin),
             args=self._tassel_plugin_args(
                 plugin,
@@ -160,7 +166,7 @@ class Tassel3:
         logger.info("symlink %s %s" % (in_path, key_path))
         symlink(in_path, key_path, force=True)
 
-    def fastq_to_tag_count_job_spec(self, cohort: Cohort) -> cluster.JobNSpec:
+    def fastq_to_tag_count_job_spec(self, cohort: Cohort) -> JobNSpec:
         return self.tassel_plugin_job_n_spec(
             plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
             plugin_args=[
@@ -177,14 +183,12 @@ class Tassel3:
                 ),
             },
             expected_globs={
-                FASTQ_TO_TAG_COUNT_COUNTS: cluster.FilteredGlob(
-                    "%s/*" % self.tag_counts_dir
-                ),
+                FASTQ_TO_TAG_COUNT_COUNTS: FilteredGlob("%s/*" % self.tag_counts_dir),
             },
         )
 
     @property
-    def merge_taxa_tag_count_job_spec(self) -> cluster.Job1Spec:
+    def merge_taxa_tag_count_job_spec(self) -> Job1Spec:
         return self.tassel_plugin_job_1_spec(
             plugin=MERGE_TAXA_TAG_COUNT_PLUGIN,
             plugin_args=[
@@ -201,7 +205,7 @@ class Tassel3:
         )
 
     @property
-    def tag_count_to_tag_pair_job_spec(self) -> cluster.Job1Spec:
+    def tag_count_to_tag_pair_job_spec(self) -> Job1Spec:
         return self.tassel_plugin_job_1_spec(
             plugin=TAG_COUNT_TO_TAG_PAIR_PLUGIN,
             plugin_args=["-e", "0.03"],
@@ -209,7 +213,7 @@ class Tassel3:
         )
 
     @property
-    def tag_pair_to_tbt_job_spec(self) -> cluster.Job1Spec:
+    def tag_pair_to_tbt_job_spec(self) -> Job1Spec:
         return self.tassel_plugin_job_1_spec(
             plugin=TAG_PAIR_TO_TBT_PLUGIN,
             plugin_args=[],
@@ -217,7 +221,7 @@ class Tassel3:
         )
 
     @property
-    def tbt_to_map_info_job_spec(self) -> cluster.Job1Spec:
+    def tbt_to_map_info_job_spec(self) -> Job1Spec:
         return self.tassel_plugin_job_1_spec(
             plugin=TBT_TO_MAP_INFO_PLUGIN,
             plugin_args=[],
@@ -225,13 +229,13 @@ class Tassel3:
         )
 
     @property
-    def map_info_to_hap_map_job_spec(self) -> cluster.JobNSpec:
+    def map_info_to_hap_map_job_spec(self) -> JobNSpec:
         return self.tassel_plugin_job_n_spec(
             plugin=MAP_INFO_TO_HAP_MAP_PLUGIN,
             plugin_args=["-mnMAF", "0.03", "-mxMAF", "0.5", "-mnC", "0.1"],
             expected_paths={},
             expected_globs={
-                HAP_MAP_FILES: cluster.FilteredGlob("%s/*" % self.hap_map_dir),
+                HAP_MAP_FILES: FilteredGlob("%s/*" % self.hap_map_dir),
             },
         )
 

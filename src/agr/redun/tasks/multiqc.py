@@ -4,8 +4,7 @@ import logging
 import os.path
 from redun import task, File
 
-import agr.util.cluster as cluster
-from agr.redun.cluster_executor import run_job_1
+from agr.redun.cluster_executor import run_job_1, Job1Spec
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ def _multiqc_job_spec(
     bclconvert_run_info_xml: str,
     out_dir: str,
     out_path: str,
-) -> cluster.Job1Spec:
+) -> Job1Spec:
     """
     Generate a MultiQC report from FastQC and BCLConvert reports.
 
@@ -40,7 +39,7 @@ def _multiqc_job_spec(
 
     out_report = out_path
 
-    return cluster.Job1Spec(
+    return Job1Spec(
         tool=MULTIQC_TOOL_NAME,
         args=[
             "multiqc",
