@@ -68,7 +68,7 @@ def main(
 
 def init():
     """Early initialization."""
-    # initialise cluster executor configuration via uncachable scheduler task
+    # initialise cluster executor configuration before anyone needs to use it
     executor_config_env = "GBS_PRISM_EXECUTOR_CONFIG"
     assert (
         executor_config_env in os.environ
