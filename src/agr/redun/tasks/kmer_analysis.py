@@ -42,7 +42,7 @@ def _kmer_analysis_job_spec(
 
 
 @task()
-def _kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
+def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
     """Run kmer analysis for a single fastq file."""
     kmer_prism_workdir = os.path.join(out_dir, "work")
     os.makedirs(kmer_prism_workdir, exist_ok=True)
@@ -67,6 +67,6 @@ def _kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def kmer_analysis(fastq_files: list[File], out_dir: str) -> list[File]:
+def kmer_analysis_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Run kmer analysis for multiple fastq files."""
-    return one_forall(_kmer_analysis_one, fastq_files, out_dir=out_dir)
+    return one_forall(kmer_analysis_one, fastq_files, out_dir=out_dir)

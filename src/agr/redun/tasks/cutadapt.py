@@ -52,7 +52,7 @@ def _cutadapt_job_spec(in_path: str, out_path: str) -> Job1Spec:
 
 
 @task
-def _cutadapt_one(fastq_file: File, out_dir: str) -> File:
+def cutadapt_one(fastq_file: File, out_dir: str) -> File:
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(
         out_dir,
@@ -64,5 +64,5 @@ def _cutadapt_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def cutadapt(fastq_files: list[File], out_dir: str) -> list[File]:
-    return one_forall(_cutadapt_one, fastq_files, out_dir=out_dir)
+def cutadapt_all(fastq_files: list[File], out_dir: str) -> list[File]:
+    return one_forall(cutadapt_one, fastq_files, out_dir=out_dir)

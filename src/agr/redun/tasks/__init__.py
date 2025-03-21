@@ -1,17 +1,17 @@
 # re-exports for agr.redun.tasks
 
 from .bcl_convert import bcl_convert
-from .bwa import bwa_aln, bwa_samse
-from .cutadapt import cutadapt
-from .dedupe import dedupe
+from .bwa import bwa_aln_one, bwa_aln_all, bwa_samse_one, bwa_samse_all
+from .cutadapt import cutadapt_one, cutadapt_all
+from .dedupe import dedupe_one, dedupe_all
 from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
-from .fastq_sample import fastq_sample
-from .fastqc import fastqc
+from .fastq_sample import fastq_sample_one, fastq_sample_all
+from .fastqc import fastqc_one, fastqc_all
 from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
-from .kmer_analysis import kmer_analysis
+from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
-from .samtools import bam_stats
+from .samtools import bam_stats_one, bam_stats_all
 from .kgd import kgd
 from .gusbase import gusbase
 from .tassel3 import (
@@ -27,22 +27,30 @@ from .tassel3 import (
 )
 
 __all__ = [
-    "bam_stats",
+    "bam_stats_one",
+    "bam_stats_all",
     "bcl_convert",
-    "bwa_aln",
-    "bwa_samse",
+    "bwa_aln_one",
+    "bwa_aln_all",
+    "bwa_samse_one",
+    "bwa_samse_all",
     "cook_sample_sheet",
-    "cutadapt",
-    "dedupe",
+    "cutadapt_one",
+    "cutadapt_all",
+    "dedupe_one",
+    "dedupe_all",
     "fake_bcl_convert",
-    "fastq_sample",
-    "fastqc",
+    "fastq_sample_one",
+    "fastq_sample_all",
+    "fastqc_one",
+    "fastqc_all",
     "get_gbs_keyfiles",
     "get_keyfile_for_tassel",
     "get_keyfile_for_gbsx",
     "gusbase",
     "kgd",
-    "kmer_analysis",
+    "kmer_analysis_one",
+    "kmer_analysis_all",
     "multiqc",
     "real_or_fake_bcl_convert",
     # Tassel:

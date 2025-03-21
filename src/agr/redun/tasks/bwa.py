@@ -69,7 +69,7 @@ class BwaAlnOutput:
 
 
 @task()
-def _bwa_aln_one(
+def bwa_aln_one(
     fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
 ) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
@@ -90,12 +90,12 @@ def _bwa_aln_one(
 
 
 @task()
-def bwa_aln(
+def bwa_aln_all(
     fastq_files: list[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
 ) -> list[BwaAlnOutput]:
     """bwa aln for multiple files with a single reference genome."""
     return one_forall(
-        _bwa_aln_one,
+        bwa_aln_one,
         fastq_files,
         ref_name=ref_name,
         ref_path=ref_path,
@@ -105,7 +105,7 @@ def bwa_aln(
 
 
 @task()
-def _bwa_samse_one(aln: BwaAlnOutput, ref_path: str) -> File:
+def bwa_samse_one(aln: BwaAlnOutput, ref_path: str) -> File:
     """bwa samse for a single file with a single reference genome."""
     out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
     return run_job_1(
@@ -119,10 +119,10 @@ def _bwa_samse_one(aln: BwaAlnOutput, ref_path: str) -> File:
 
 
 @task()
-def bwa_samse(alns: list[BwaAlnOutput], ref_path: str) -> list[File]:
+def bwa_samse_all(alns: list[BwaAlnOutput], ref_path: str) -> list[File]:
     """bwa samse for multiple files."""
     return one_forall(
-        _bwa_samse_one,
+        bwa_samse_one,
         alns,
         ref_path=ref_path,
     )

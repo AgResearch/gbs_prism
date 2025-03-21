@@ -12,11 +12,11 @@ from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.seq.types import flowcell_id, Cohort
 from agr.redun.tasks import (
-    bam_stats,
-    bwa_aln,
-    bwa_samse,
-    cutadapt,
-    fastq_sample,
+    bam_stats_all,
+    bwa_aln_all,
+    bwa_samse_all,
+    cutadapt_all,
+    fastq_sample_all,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
     gusbase,
@@ -87,14 +87,14 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
     os.makedirs(out_dir, exist_ok=True)
     out_paths = []
     for ref_name, ref_path in spec.target.alignment_references.items():
-        alns = bwa_aln(
+        alns = bwa_aln_all(
             fastq_files,
             ref_name=ref_name,
             ref_path=ref_path,
             bwa=spec.bwa,
             out_dir=out_dir,
         )
-        bam_files = bwa_samse(
+        bam_files = bwa_samse_all(
             alns,
             ref_path=ref_path,
         )
@@ -146,16 +146,16 @@ class CohortOutput:
 @task()
 def run_cohort(spec: CohortSpec) -> CohortOutput:
     fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
-    bwa_sampled = fastq_sample(
+    bwa_sampled = fastq_sample_all(
         fastq_links,
         spec=spec.bwa_sample,
         out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
     )
-    trimmed = cutadapt(
+    trimmed = cutadapt_all(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
     bam_files = bwa_all_reference_genomes(trimmed, spec)
-    bam_stats_files = bam_stats(bam_files)
+    bam_stats_files = bam_stats_all(bam_files)
     keyfile_for_tassel = get_keyfile_for_tassel(
         spec.paths.run_root, spec.run, spec.cohort
     )

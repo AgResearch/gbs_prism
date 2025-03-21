@@ -57,7 +57,7 @@ def _remove_dedupe_turds(out_path: str):
 
 
 @task()
-def _dedupe_one(
+def dedupe_one(
     fastq_file: File,
     out_dir: str,
 ) -> File:
@@ -81,6 +81,6 @@ def _dedupe_one(
 
 
 @task()
-def dedupe(fastq_files: list[File], out_dir: str) -> list[File]:
+def dedupe_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Dedupe multiple fastq files."""
-    return one_forall(_dedupe_one, fastq_files, out_dir=out_dir)
+    return one_forall(dedupe_one, fastq_files, out_dir=out_dir)

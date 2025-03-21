@@ -36,7 +36,7 @@ def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> Job1Sp
 
 
 @task()
-def _fastqc_one(fastq_file: File, out_dir: str) -> File:
+def fastqc_one(fastq_file: File, out_dir: str) -> File:
     """Run fastqc on a single file, returning just the zip file."""
     os.makedirs(out_dir, exist_ok=True)
     return run_job_1(
@@ -45,6 +45,6 @@ def _fastqc_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def fastqc(fastq_files: list[File], out_dir: str) -> list[File]:
+def fastqc_all(fastq_files: list[File], out_dir: str) -> list[File]:
     """Run fastqc on multiple files, returning just the zip files."""
-    return one_forall(_fastqc_one, fastq_files, out_dir=out_dir)
+    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)

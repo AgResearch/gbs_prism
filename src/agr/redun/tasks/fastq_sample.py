@@ -115,7 +115,7 @@ def _sample_minsize_if_required(
 
 
 @task()
-def _fastq_sample_one(fastq_file: File, spec: FastqSampleSpec, out_dir: str) -> File:
+def fastq_sample_one(fastq_file: File, spec: FastqSampleSpec, out_dir: str) -> File:
     """Sample a single fastq file according to the spec."""
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
@@ -141,8 +141,8 @@ def _fastq_sample_one(fastq_file: File, spec: FastqSampleSpec, out_dir: str) -> 
 
 
 @task()
-def fastq_sample(
+def fastq_sample_all(
     fastq_files: list[File], spec: FastqSampleSpec, out_dir: str
 ) -> list[File]:
     """Sample all fastq files as required for fastq analysis."""
-    return one_forall(_fastq_sample_one, fastq_files, spec=spec, out_dir=out_dir)
+    return one_forall(fastq_sample_one, fastq_files, spec=spec, out_dir=out_dir)

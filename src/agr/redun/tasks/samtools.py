@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 @task()
-def _bam_stats_one(bam_file: File) -> File:
+def bam_stats_one(bam_file: File) -> File:
     """run samtools flagstat for a single file."""
     out_path = "%s.stats" % bam_file.path.removesuffix(".bam")
     with open(out_path, "w") as out_f:
@@ -19,6 +19,6 @@ def _bam_stats_one(bam_file: File) -> File:
 
 
 @task()
-def bam_stats(bam_files: list[File]) -> list[File]:
+def bam_stats_all(bam_files: list[File]) -> list[File]:
     """bwa samse for multiple files with a single reference genome."""
-    return one_forall(_bam_stats_one, bam_files)
+    return one_forall(bam_stats_one, bam_files)

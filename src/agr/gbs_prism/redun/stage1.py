@@ -26,11 +26,11 @@ from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.redun.tasks import (
     cook_sample_sheet,
     real_or_fake_bcl_convert,
-    dedupe,
-    fastq_sample,
-    fastqc,
+    dedupe_all,
+    fastq_sample_all,
+    fastqc_all,
     get_gbs_keyfiles,
-    kmer_analysis,
+    kmer_analysis_all,
     multiqc,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
@@ -103,7 +103,9 @@ def run_stage1(
         out_dir=seq_paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc(bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir)
+    fastqc_files = fastqc_all(
+        bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir
+    )
 
     multiqc_report = multiqc(
         fastqc_files=fastqc_files,
@@ -116,17 +118,19 @@ def run_stage1(
         run=sequencer_run.name,
     )
 
-    kmer_samples = fastq_sample(
+    kmer_samples = fastq_sample_all(
         bclconvert_output.fastq_files,
         spec=FastqSampleSpec(rate=0.0002, minimum_sample_size=10000),
         out_dir=seq_paths.kmer_fastq_sample_dir,
     )
 
-    kmer_analysis_reports = kmer_analysis(
+    kmer_analysis_reports = kmer_analysis_all(
         kmer_samples, out_dir=seq_paths.kmer_analysis_dir
     )
 
-    deduped_fastq = dedupe(bclconvert_output.fastq_files, out_dir=seq_paths.dedupe_dir)
+    deduped_fastq = dedupe_all(
+        bclconvert_output.fastq_files, out_dir=seq_paths.dedupe_dir
+    )
 
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
