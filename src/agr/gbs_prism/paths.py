@@ -90,6 +90,9 @@ class GbsPaths:
     def cohort_dir(self, cohort_name: str) -> str:
         return os.path.join(self._run_root, cohort_name)
 
+    def cohort_blind_dir(self, cohort_name: str) -> str:
+        return os.path.join(self.cohort_dir(cohort_name), "blind")
+
     def fastq_link_dir(self, cohort_name: str, blind=False) -> str:
         """
         Directory of links to fastq files for the cohort, needs to match Tassel3 expectation.
@@ -98,9 +101,9 @@ class GbsPaths:
         which means one is needed in the blind subdirectory, two identical link dirs are maintained.
         """
         return (
-            os.path.join(self._run_root, cohort_name, "blind", "Illumina")
+            os.path.join(self.cohort_blind_dir(cohort_name), "Illumina")
             if blind
-            else os.path.join(self._run_root, cohort_name, "fastq")
+            else os.path.join(self.cohort_dir(cohort_name), "fastq")
         )
 
     def bwa_mapping_dir(self, cohort_name: str) -> str:

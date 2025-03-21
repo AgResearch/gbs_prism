@@ -2,6 +2,8 @@
 
 import csv
 import datetime
+import os
+import os.path
 import re
 from enum import Enum
 from functools import cached_property
@@ -316,6 +318,8 @@ class SampleSheet:
 
     def write(self, path: str):
         """Write sample sheet."""
+        out_dir = os.path.dirname(path)
+        os.makedirs(out_dir, exist_ok=True)
         with open(path, "w") as csvfile:
             csvwriter = csv.writer(csvfile)
             num_cols = max((section.num_cols for section in self._sections), default=0)

@@ -4,9 +4,9 @@ import tempfile
 from pydantic import BaseModel
 
 from agr.gquery import GQuery, Predicates
+from agr.seq.types import flowcell_id, Cohort
 
 from .exceptions import GbsPrismDataException
-from .types import Cohort, flowcell_id
 
 logger = logging.getLogger(__name__)
 

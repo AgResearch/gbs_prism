@@ -12,10 +12,10 @@ def main():
 
     stats_dict = {}
 
-    example = """
-    Total number of reads in lane=243469299
-    Total number of good barcoded reads=199171115
-    """
+    # example = """
+    # Total number of reads in lane=243469299
+    # Total number of good barcoded reads=199171115
+    # """
 
     for linkname in fastq_links:
         r = os.path.realpath(linkname)
