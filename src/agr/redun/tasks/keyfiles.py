@@ -1,8 +1,12 @@
 import logging
 import os.path
+import tempfile
+from redun import task, File
 
 from agr.gquery import GQuery, GUpdate, Predicates
 from agr.seq.sequencer_run import SequencerRun
+from agr.seq.types import flowcell_id, Cohort
+from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 
 logger = logging.getLogger(__name__)
 
@@ -129,3 +133,77 @@ where
             ),
             items=["all"],
         ).run()
+
+
+@task()
+def get_gbs_keyfiles(
+    sequencer_run: SequencerRun,
+    sample_sheet: File,
+    gbs_libraries: list[str],
+    deduped_fastq_files: list[File],
+    root: str,
+    out_dir: str,
+    fastq_link_farm: str,
+    backup_dir: str,
+) -> list[File]:
+    """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
+    _ = deduped_fastq_files  # depending on existence rather than value
+    gbs_keyfiles = GbsKeyfiles(
+        sequencer_run=sequencer_run,
+        sample_sheet_path=sample_sheet.path,
+        root=root,
+        out_dir=out_dir,
+        fastq_link_farm=fastq_link_farm,
+        backup_dir=backup_dir,
+    )
+    gbs_keyfiles.create()
+
+    return [
+        File(os.path.join(out_dir, "%s.generated.txt" % library))
+        for library in gbs_libraries
+    ]
+
+
+@task()
+def get_keyfile_for_tassel(run_root_dir: str, run: str, cohort: Cohort) -> File:
+    out_path = os.path.join(run_root_dir, "%s.%s.key" % (run, cohort.name))
+    fcid = flowcell_id(run)
+    with tempfile.TemporaryFile(mode="w+") as tmp_f:
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=cohort.enzyme,
+                gbs_cohort=cohort.gbs_cohort,
+                columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+            ),
+            items=[cohort.libname],
+            outfile=tmp_f,
+        ).run()
+
+        _ = tmp_f.seek(0)
+        with open(out_path, "w") as out_f:
+            for line in tmp_f:
+                _ = out_f.write(enzyme_sub_for_uneak(line))
+    return File(out_path)
+
+
+@task()
+def get_keyfile_for_gbsx(run_root_dir: str, run: str, cohort: Cohort) -> File:
+    out_path = os.path.join(run_root_dir, "%s.%s.gbsx.key" % (run, cohort.name))
+    fcid = flowcell_id(run)
+    with open(out_path, "w") as out_f:
+        GQuery(
+            task="gbs_keyfile",
+            badge_type="library",
+            predicates=Predicates(
+                flowcell=fcid,
+                enzyme=cohort.enzyme,
+                gbs_cohort=cohort.gbs_cohort,
+                columns="qc_sampleid as sample,Barcode,Enzyme",
+            ),
+            items=[cohort.libname],
+            outfile=out_f,
+        ).run()
+    return File(out_path)

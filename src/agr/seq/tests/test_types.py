@@ -1,4 +1,4 @@
-from agr.gbs_prism.types import flowcell_id, Cohort
+from agr.seq.types import flowcell_id, Cohort
 
 
 def test_flowcell_id():

@@ -1,9 +1,11 @@
 import logging
+import os
 from redun import task, File
 from redun.context import get_context
 from redun.scheduler import catch_all
 
 from agr.util.path import expand
+from agr.redun.cluster_executor import create_cluster_executor_config
 from agr.gbs_prism.redun import (
     run_stage1,
     run_stage2,
@@ -41,7 +43,6 @@ def main(
     run: str,
     path_context=get_context("path"),
 ) -> MainResults:
-
     path = {k: expand(v) for (k, v) in path_context.items()}
 
     stage1 = run_stage1(
@@ -63,3 +64,17 @@ def main(
     )
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return catch_all((stage1, stage2, peacock), Exception, recover)
+
+
+def init():
+    """Early initialization."""
+    # initialise cluster executor configuration before anyone needs to use it
+    executor_config_env = "GBS_PRISM_EXECUTOR_CONFIG"
+    assert (
+        executor_config_env in os.environ
+    ), f"Missing environment variable {executor_config_env}"
+    config_path = os.environ[executor_config_env]
+    _ = create_cluster_executor_config(config_path)
+
+
+init()
