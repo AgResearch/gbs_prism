@@ -33,6 +33,11 @@
       url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    geno-import = {
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/main";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.gquery.follows = "gquery";
+    };
     redun = {
       # TODO reinstate official release when this is fixed and released:
       # https://github.com/insitro/redun/issues/109
@@ -69,6 +74,7 @@
             gquery-api = inputs.gquery.packages.${system}.api;
             gquery-cli = inputs.gquery.packages.${system}.cli;
             gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
+            geno-import = inputs.geno-import.packages.${system}.default;
             seffs = inputs.seffs.packages.${system}.default;
           };
 
@@ -150,6 +156,7 @@
               pdf2image
               pydantic
               flakePkgs.gquery-api
+              flakePkgs.geno-import
               psij-python
             ];
 
@@ -313,6 +320,7 @@
                 export PYTHONPATH=$(pwd)/src:$PYTHONPATH
                 ${gquery-export-env "dev"}
                 export GQUERY_ROOT=$HOME/gquery-logs
+                export GENO_ROOT=$HOME/geno-logs
                 export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
               '';
             };
