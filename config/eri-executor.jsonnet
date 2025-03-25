@@ -99,7 +99,14 @@ local Tassel3Default = ToolDefault {
       },
     },
 
-    tassel3_FastqToTagCount: Tassel3Default,
+    tassel3_FastqToTagCount: Tassel3Default {
+      java_max_heap: '4G',
+      job_attributes+: {
+        custom_attributes+: customised({
+          mem: '4G',
+        }),
+      },
+    },
 
     tassel3_MergeTaxaTagCount: Tassel3Default {
       java_max_heap: '32G',
