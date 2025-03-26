@@ -5,120 +5,121 @@
 import sys
 import re
 import argparse
-import os
 import csv
-from typing import Literal, get_args, Any, Optional, Iterator, Generator
+from redun import task, File
+from typing import Literal, TextIO, get_args, Any, Optional, Iterator, Generator
 
 MACHINES_LITERAL = Literal["novaseq", "hiseq", "miseq", "iseq"]
 MACHINES = list(get_args(MACHINES_LITERAL))
+DEFAULT_MACHINE = "novaseq"
 
 
 def _get_reads_tags(
-    run: str, cohort: str, machine: MACHINES_LITERAL, filenames: list[str]
+    run: str,
+    cohort: str,
+    machine: MACHINES_LITERAL,
+    tag_counts: TextIO,
 ) -> Generator[tuple[str, str, str, str, str, str, str, str], None, None]:
     """ """
-    for filename in filenames:
-        with open(filename, "r") as tag_counts:
-            # e.g.
-            # sample,flowcell,lane,sq,tags,reads
-            # total,H2TTCDMXY,1,SQ1745,,361922664
-            # good,H2TTCDMXY,1,SQ1745,,333623829
-            # qc823992-1,H2TTCDMXY,1,1745,129084,626118
-            # qc824060-1,H2TTCDMXY,1,1745,36105,91036
-            novaseq_counts = {}
-            column_headings = None
-            flowcell = None
-            sq = None
-            for record in tag_counts:
-                if column_headings is None:
-                    column_headings = [
-                        item.lower().strip()
-                        for item in re.split(r"\s*,\s*", record.strip())
-                    ]
-                    if tuple(column_headings) != (
-                        "sample",
-                        "flowcell",
-                        "lane",
-                        "sq",
-                        "tags",
-                        "reads",
-                    ):
-                        raise Exception(
-                            "collate_tags_reads.py : heading = %s, did not expect that"
-                            % str(column_headings)
-                        )
-                    continue
-                fields: list[str] = [
-                    item.strip() for item in re.split(r"\s*,\s*", record.strip())
-                ]
-                if len(fields) == 0:
-                    continue
+    # e.g.
+    # sample,flowcell,lane,sq,tags,reads
+    # total,H2TTCDMXY,1,SQ1745,,361922664
+    # good,H2TTCDMXY,1,SQ1745,,333623829
+    # qc823992-1,H2TTCDMXY,1,1745,129084,626118
+    # qc824060-1,H2TTCDMXY,1,1745,36105,91036
+    novaseq_counts = {}
+    column_headings = None
+    flowcell = None
+    sq = None
+    for record in tag_counts:
+        if column_headings is None:
+            column_headings = [
+                item.lower().strip() for item in re.split(r"\s*,\s*", record.strip())
+            ]
+            if tuple(column_headings) != (
+                "sample",
+                "flowcell",
+                "lane",
+                "sq",
+                "tags",
+                "reads",
+            ):
+                raise Exception(
+                    "collate_tags_reads.py : heading = %s, did not expect that"
+                    % str(column_headings)
+                )
+            continue
+        fields: list[str] = [
+            item.strip() for item in re.split(r"\s*,\s*", record.strip())
+        ]
+        if len(fields) == 0:
+            continue
 
-                if len(fields) != len(column_headings):
-                    raise Exception(
-                        "collate_tags_reads.py : wrong number of fields in %s, should match %s"
-                        % (str(fields), str(column_headings))
-                    )
+        if len(fields) != len(column_headings):
+            raise Exception(
+                "collate_tags_reads.py : wrong number of fields in %s, should match %s"
+                % (str(fields), str(column_headings))
+            )
 
-                field_dict: dict[str, str] = dict(zip(column_headings, fields))
+        field_dict: dict[str, str] = dict(zip(column_headings, fields))
 
-                if field_dict["sample"] in ("total", "good"):
-                    continue
+        if field_dict["sample"] in ("total", "good"):
+            continue
 
-                if flowcell is None:
-                    flowcell = field_dict["flowcell"]
-                    sq = field_dict["sq"]
+        if flowcell is None:
+            flowcell = field_dict["flowcell"]
+            sq = field_dict["sq"]
 
-                if flowcell != field_dict["flowcell"] or sq != field_dict["sq"]:
-                    raise Exception(
-                        "looks like one or more files contains data for more than one flowcell or sq number - this is not supported. First saw %s, then later %s"
-                        % (
-                            str((flowcell, sq)),
-                            str((field_dict["flowcell"], field_dict["sq"])),
-                        )
-                    )
+        if flowcell != field_dict["flowcell"] or sq != field_dict["sq"]:
+            raise Exception(
+                "looks like one or more files contains data for more than one flowcell or sq number - this is not supported. First saw %s, then later %s"
+                % (
+                    str((flowcell, sq)),
+                    str((field_dict["flowcell"], field_dict["sq"])),
+                )
+            )
 
-                if machine == "novaseq":
-                    # the novaseq tag count file has totals for several "lanes", and we want to collpase these
-                    novaseq_counts[field_dict["sample"]] = list(
-                        map(
-                            lambda x, y: x + y,
-                            [int(field_dict["tags"]), int(field_dict["reads"])],
-                            novaseq_counts.get(field_dict["sample"], [0, 0]),
-                        )
-                    )
-                else:
-                    yield (
-                        run,
-                        cohort,
-                    ) + tuple(
-                        field_dict[name]
-                        for name in (
-                            "sample",
-                            "flowcell",
-                            "lane",
-                            "sq",
-                            "tags",
-                            "reads",
-                        )
-                    )  # type: ignore[reportReturnType]
+        if machine == "novaseq":
+            # the novaseq tag count file has totals for several "lanes", and we want to collpase these
+            novaseq_counts[field_dict["sample"]] = list(
+                map(
+                    lambda x, y: x + y,
+                    [int(field_dict["tags"]), int(field_dict["reads"])],
+                    novaseq_counts.get(field_dict["sample"], [0, 0]),
+                )
+            )
+        else:
+            yield (
+                run,
+                cohort,
+            ) + tuple(
+                field_dict[name]
+                for name in (
+                    "sample",
+                    "flowcell",
+                    "lane",
+                    "sq",
+                    "tags",
+                    "reads",
+                )
+            )  # type: ignore[reportReturnType]
 
-            if machine == "novaseq":
-                for sample in novaseq_counts:
-                    yield (
-                        run,
-                        cohort,
-                        sample,
-                        flowcell,
-                        "1",
-                        sq,
-                        str(novaseq_counts[sample][0]),
-                        str(novaseq_counts[sample][1]),
-                    )  # type: ignore[reportReturnType]
+    if machine == "novaseq":
+        for sample in novaseq_counts:
+            yield (
+                run,
+                cohort,
+                sample,
+                flowcell,
+                "1",
+                sq,
+                str(novaseq_counts[sample][0]),
+                str(novaseq_counts[sample][1]),
+            )  # type: ignore[reportReturnType]
 
 
 def _get_reads_tags_kgdstats(
-    kgd_stats_file: str,
+    kgd_stats: TextIO,
     reads_tags: Iterator[tuple[str, str, str, str, str, str, str, str]],
 ):
     """
@@ -132,30 +133,27 @@ def _get_reads_tags_kgdstats(
     # "qc959029-1_merged_2_0_X4",0.770391030698938,2.28579554837881
     # "qc959030-1_merged_2_0_X4",0.724149953208433,1.89357212323614
     # "qc959031-1_merged_2_0_X4",0.79488779198855,2.51852395544709
-    with open(kgd_stats_file, "r") as kgd_stats:
-        kgd_tuples = [row for row in csv.reader(kgd_stats)]
+    kgd_tuples = [row for row in csv.reader(kgd_stats)]
 
-        # key the tuples by the qc sampleid - i.e. by etc
-        kgd_stats_dict = dict(
-            zip(
-                (re.split("_", kgd_tuple[0])[0] for kgd_tuple in kgd_tuples), kgd_tuples
-            )
-        )
-        # entries look like
-        # 'qc823667-1': ['qc823668-1_merged_2_0_X4', '0.328730703259005', '1.7377358490566']
-        # print(kgd_stats_dict)
-        for record in reads_tags:
-            # e.g. 211217_A01439_0043_BH2TTCDMXY   SQ1744.all.PstI-MspI.PstI-MspI  qc823603-1      H2TTCDMXY       1       1744    196401  2251079
-            # (don't include the lane column)
-            yield [
-                record[0],
-                record[1],
-                record[2],
-                record[3],
-                record[5],
-                record[6],
-                record[7],
-            ] + kgd_stats_dict.get(record[2], ["", "", ""])
+    # key the tuples by the qc sampleid - i.e. by etc
+    kgd_stats_dict = dict(
+        zip((re.split("_", kgd_tuple[0])[0] for kgd_tuple in kgd_tuples), kgd_tuples)
+    )
+    # entries look like
+    # 'qc823667-1': ['qc823668-1_merged_2_0_X4', '0.328730703259005', '1.7377358490566']
+    # print(kgd_stats_dict)
+    for record in reads_tags:
+        # e.g. 211217_A01439_0043_BH2TTCDMXY   SQ1744.all.PstI-MspI.PstI-MspI  qc823603-1      H2TTCDMXY       1       1744    196401  2251079
+        # (don't include the lane column)
+        yield [
+            record[0],
+            record[1],
+            record[2],
+            record[3],
+            record[5],
+            record[6],
+            record[7],
+        ] + kgd_stats_dict.get(record[2], ["", "", ""])
 
 
 def _get_options() -> dict[str, Any]:
@@ -201,10 +199,9 @@ python collate_tags_reads.py
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     _ = parser.add_argument(
-        "filenames",
-        type=str,
-        nargs="*",
-        help="space-separated list of tag count files to summarise ",
+        "filename",
+        type=argparse.FileType(mode="r", encoding="UTF-8"),
+        help="tag count file to summarise ",
     )
     _ = parser.add_argument(
         "--run", dest="run", type=str, required=True, help="run name"
@@ -232,36 +229,23 @@ python collate_tags_reads.py
         "--kgd_stats_file",
         dest="kgd_stats_file",
         default=None,
-        type=str,
-        help="name of KGD stats file",
+        type=argparse.FileType(mode="r", encoding="UTF-8"),
+        help="KGD stats file",
     )
 
-    args = vars(parser.parse_args())
-
-    # check args
-    for filepath in args["filenames"]:
-        if not os.path.isfile(filepath):
-            print("%s does not exist" % filepath)
-            sys.exit(1)
-
-    if args["kgd_stats_file"] is not None:
-        if not os.path.isfile(args["kgd_stats_file"]):
-            print("%(kgd_stats_file)s does not exist" % args)
-            sys.exit(1)
-
-    return args
+    return vars(parser.parse_args())
 
 
-def collate_reads_tags(
+def _collate_tags_reads(
     run: str,
     cohort: str,
     machine: MACHINES_LITERAL,
-    filenames: list[str],
+    tag_counts: TextIO,
     out_path: Optional[str] = None,
 ):
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
         for record in _get_reads_tags(
-            run=run, cohort=cohort, machine=machine, filenames=filenames
+            run=run, cohort=cohort, machine=machine, tag_counts=tag_counts
         ):
             print("\t".join(record), file=out_f)
             # e.g.
@@ -273,12 +257,31 @@ def collate_reads_tags(
             # 211217_A01439_0043_BH2TTCDMXY   SQ1744.all.PstI-MspI.PstI-MspI  qc823502-1      H2TTCDMXY       1       1744    134157  1357268
 
 
-def collate_reads_tags_kgdstats(
+@task()
+def collate_tags_reads(
+    run: str,
+    cohort: str,
+    tag_counts: File,
+    out_path: str,
+    machine: MACHINES_LITERAL = DEFAULT_MACHINE,
+) -> File:
+    with open(tag_counts.path, "r") as tag_counts_f:
+        _collate_tags_reads(
+            run=run,
+            cohort=cohort,
+            machine=machine,
+            tag_counts=tag_counts_f,
+            out_path=out_path,
+        )
+    return File(out_path)
+
+
+def _collate_tags_reads_kgdstats(
     run: str,
     cohort: str,
     machine: MACHINES_LITERAL,
-    filenames: list[str],
-    kgd_stats_file: str,
+    tag_counts: TextIO,
+    kgd_stats: TextIO,
     out_path: Optional[str] = None,
 ):
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
@@ -298,12 +301,34 @@ def collate_reads_tags_kgdstats(
             ]
         )
         for record in _get_reads_tags_kgdstats(
-            kgd_stats_file,
-            _get_reads_tags(
-                run=run, cohort=cohort, machine=machine, filenames=filenames
+            kgd_stats=kgd_stats,
+            reads_tags=_get_reads_tags(
+                run=run, cohort=cohort, machine=machine, tag_counts=tag_counts
             ),
         ):
             csv_writer.writerow(record)
+
+
+@task()
+def collate_tags_reads_kgdstats(
+    run: str,
+    cohort: str,
+    tag_counts: File,
+    kgd_stats: File,
+    out_path: str,
+    machine: MACHINES_LITERAL = DEFAULT_MACHINE,
+):
+    with open(tag_counts.path, "r") as tag_counts_f:
+        with open(kgd_stats.path, "r") as kgd_stats_f:
+            _collate_tags_reads_kgdstats(
+                run=run,
+                cohort=cohort,
+                machine=machine,
+                tag_counts=tag_counts_f,
+                kgd_stats=kgd_stats_f,
+                out_path=out_path,
+            )
+    return File(out_path)
 
 
 def _main():
@@ -311,19 +336,19 @@ def _main():
     args = _get_options()
 
     if args["report_name"] == "tags_reads":
-        collate_reads_tags(
+        _collate_tags_reads(
             run=args["run"],
             cohort=args["cohort"],
             machine=args["machine"],
-            filenames=args["filenames"],
+            tag_counts=args["filename"],
         )
     elif args["report_name"] == "tags_reads_kgdstats":
-        collate_reads_tags_kgdstats(
+        _collate_tags_reads_kgdstats(
             run=args["run"],
             cohort=args["cohort"],
             machine=args["machine"],
-            filenames=args["filenames"],
-            kgd_stats_file=args["kgd_stats_file"],
+            tag_counts=args["filename"],
+            kgd_stats=args["kgd_stats_file"],
         )
 
     return 0

@@ -62,9 +62,13 @@ def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
     )
 
 
+def kgd_dir(work_dir: str) -> str:
+    return os.path.join(work_dir, "KGD")
+
+
 @task()
 def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput:
-    out_dir = os.path.join(work_dir, "KGD")
+    out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(hapmap_dir, exist_ok=True)
