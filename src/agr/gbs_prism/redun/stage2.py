@@ -23,6 +23,7 @@ from agr.redun.tasks import (
     get_keyfile_for_gbsx,
     gusbase,
     kgd,
+    import_gbs_read_tag_counts,
     # Tassel:
     get_fastq_to_tag_count,
     get_tag_count,
@@ -135,6 +136,7 @@ class CohortOutput:
     keyfile_for_gbsx: File
     tag_count: File
     collated_tag_count: File
+    imported_gbs_read_tag_counts_marker: File
     tags_reads_summary: File
     tags_reads_cv: File
     merged_all_count: File
@@ -179,6 +181,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
             spec.paths.cohort_blind_dir(spec.cohort.name), "CollatedTagCount.tsv"
         ),
     )
+    imported_gbs_read_tag_counts_marker = import_gbs_read_tag_counts(
+        run=spec.run, collated_tag_count=collated_tag_count
+    )
 
     tags_reads_summary = get_tags_reads_summary(
         spec.paths.cohort_dir(spec.cohort.name), tag_count
@@ -218,6 +223,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         keyfile_for_gbsx=keyfile_for_gbsx,
         tag_count=tag_count,
         collated_tag_count=collated_tag_count,
+        imported_gbs_read_tag_counts_marker=imported_gbs_read_tag_counts_marker,
         tags_reads_summary=tags_reads_summary,
         tags_reads_cv=tags_reads_cv,
         merged_all_count=merged_all_count,

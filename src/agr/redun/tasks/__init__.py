@@ -14,6 +14,7 @@ from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
 from .samtools import bam_stats_one, bam_stats_all
 from .kgd import kgd
+from .gupdate import import_gbs_read_tag_counts
 from .gusbase import gusbase
 from .tassel3 import (
     get_fastq_to_tag_count,
@@ -51,6 +52,7 @@ __all__ = [
     "get_keyfile_for_tassel",
     "get_keyfile_for_gbsx",
     "gusbase",
+    "import_gbs_read_tag_counts",
     "kgd",
     "kmer_analysis_one",
     "kmer_analysis_all",
