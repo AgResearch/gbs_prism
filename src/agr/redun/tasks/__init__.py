@@ -31,6 +31,7 @@ from .tassel3 import (
     tbt_to_map_info,
     map_info_to_hap_map,
 )
+from .unblind import unblind_one, unblind_all, get_unblind_script
 
 __all__ = [
     "bam_stats_one",
@@ -74,4 +75,8 @@ __all__ = [
     "tag_pair_to_tbt",
     "tbt_to_map_info",
     "map_info_to_hap_map",
+    # Unblind:
+    "unblind_one",
+    "unblind_all",
+    "get_unblind_script"
 ]

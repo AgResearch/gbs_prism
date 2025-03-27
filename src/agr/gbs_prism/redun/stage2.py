@@ -40,7 +40,8 @@ from agr.redun.tasks import (
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
-from agr.redun.tasks.kgd import KgdOutput
+from agr.redun.tasks.kgd import KgdOutput, kgd_output_files
+from agr.redun.tasks.unblind import get_unblind_script, unblind_one, unblind_all
 
 
 @dataclass
@@ -107,24 +108,6 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
     return out_paths
 
 
-# TODO make get_unblind_script a task
-# def get_unblind_script(self, out_path: str):
-#     fcid = flowcell_id(self._config.run_name)
-#     with open(out_path, "w") as script_f:
-#         GQuery(
-#             task="gbs_keyfile",
-#             badge_type="library",
-#             predicates=Predicates(
-#                 flowcell=fcid,
-#                 enzyme=self._name.enzyme,
-#                 gbs_cohort=self._name.gbs_cohort,
-#                 unblinding=True,
-#                 columns="qc_sampleid,sample",
-#                 noheading=True,
-#             ),
-#             items=[self._name.libname],
-#             outfile=script_f,
-#         ).run()
 @dataclass
 class CohortOutput:
     # TODO remove the ones we don't need
@@ -150,6 +133,9 @@ class CohortOutput:
     gbs_kgd_stats_import: File
     collated_kgd_stats: File
     gusbase_comet: File
+    tag_count_unblind: File
+    hap_map_files_unblind: list[File]
+    kgd_output_unblind: list[File]
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
@@ -158,23 +144,37 @@ def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
 
 @task()
 def run_cohort(spec: CohortSpec) -> CohortOutput:
+    """Run the entire pipeline for a single cohort."""
+
     fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
+
     bwa_sampled = fastq_sample_all(
         fastq_links,
         spec=spec.bwa_sample,
         out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
     )
+
     trimmed = cutadapt_all(
         bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
     )
+
     bam_files = bwa_all_reference_genomes(trimmed, spec)
     bam_stats_files = bam_stats_all(bam_files)
+
     keyfile_for_tassel = get_keyfile_for_tassel(
         spec.paths.run_root, spec.run, spec.cohort
     )
     keyfile_for_gbsx = get_keyfile_for_gbsx(spec.paths.run_root, spec.run, spec.cohort)
 
     cohort_blind_dir = spec.paths.cohort_blind_dir(spec.cohort.name)
+    unblind_script = get_unblind_script(
+        spec.paths.cohort_blind_dir(spec.cohort.name),
+        flowcell_id(spec.run),
+        spec.cohort.enzyme,
+        spec.cohort.gbs_cohort,
+        spec.cohort.libname,
+    )
+
     fastq_to_tag_count = get_fastq_to_tag_count(
         cohort_blind_dir, spec.cohort, keyfile_for_tassel
     )
@@ -204,6 +204,14 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair)
     map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
+
+    tag_count_unblind = unblind_one(
+        tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
+    )
+    hap_map_files_unblind = unblind_all(
+        hap_map_files, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
+    )
+
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
 
     collated_kgd_stats = collate_tags_reads_kgdstats(
@@ -224,6 +232,11 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     )
 
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
+
+    kgd_blinded = lazy_map(kgd_output, kgd_output_files)
+    kgd_output_unblind = unblind_all(
+        kgd_blinded, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
+    )
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -248,6 +261,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         gbs_kgd_stats_import=gbs_kgd_stats_import,
         collated_kgd_stats=collated_kgd_stats,
         gusbase_comet=gusbase_comet,
+        tag_count_unblind=tag_count_unblind,
+        hap_map_files_unblind=hap_map_files_unblind,
+        kgd_output_unblind=kgd_output_unblind,
     )
     return output
 
