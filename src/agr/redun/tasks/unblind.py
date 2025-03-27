@@ -25,7 +25,7 @@ def get_unblind_script(
 
     out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
 
-    with open(out_path, "w") as sed_script:
+    with open(out_path, "w") as out_f:
         GQuery(
             task="gbs_keyfile",
             badge_type="library",
@@ -38,15 +38,15 @@ def get_unblind_script(
                 noheading=True,
             ),
             items=[library],
-            outfile=sed_script,
+            outfile=out_f,
         ).run()
     return File(out_path)
 
 
 @task()
 def unblind_one(  
-     unblind_script: File,
      blinded_file: File,
+     unblind_script: File,
      out_dir: str,
      ) -> File:
     """
@@ -72,8 +72,8 @@ def unblind_one(
 
 @task()
 def unblind_all(  
-     unblind_script: File,
      blinded_files: list[File],
+     unblind_script: File,
      out_dir: str,
      ) -> list[File]:
     """
@@ -81,8 +81,8 @@ def unblind_all(
     """
     return one_forall(
         task=unblind_one, 
-        unblind_script=unblind_script, 
         items=blinded_files, 
+        unblind_script=unblind_script, 
         out_dir=out_dir
         )
 

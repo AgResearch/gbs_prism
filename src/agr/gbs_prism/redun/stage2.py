@@ -206,9 +206,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
     
     #TODO unblind tag_count
-    tag_count_unblind = unblind_one(unblind_script, tag_count, spec.paths.cohort_dir(spec.cohort.name))
+    tag_count_unblind = unblind_one(tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
     #TODO unblind hap_map_files
-    hap_map_files_unblind = unblind_all(unblind_script, hap_map_files, spec.paths.cohort_dir(spec.cohort.name))
+    hap_map_files_unblind = unblind_all(hap_map_files, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
 
 
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
@@ -235,7 +235,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     #TODO unblind kgd_output
     #FIRST: expand KgdOutput to include all files requiring unblind
     #TODO figure out how to interface with all the results files in the object; list comprehension?
-    kgd_output_unblind = unblind_one(unblind_script, kgd_output.sample_stats_csv, spec.paths.cohort_dir(spec.cohort.name))
+    kgd_output_unblind = unblind_one(kgd_output.sample_stats_csv, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
 
     output = CohortOutput(
         fastq_links=fastq_links,
