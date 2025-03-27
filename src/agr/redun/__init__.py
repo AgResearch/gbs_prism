@@ -2,7 +2,7 @@
 
 from . import cluster_executor
 from .cluster_executor import ClusterExecutorConfig
-from .util import concat, one_forall, all_forall
+from .util import concat, one_forall, all_forall, lazy_map
 
 __all__ = [
     "cluster_executor",
@@ -10,4 +10,5 @@ __all__ = [
     "concat",
     "one_forall",
     "all_forall",
+    "lazy_map",
 ]

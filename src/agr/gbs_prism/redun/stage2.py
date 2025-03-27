@@ -1,12 +1,13 @@
 import os.path
 from dataclasses import dataclass
+from agr.redun.tasks.gupdate import import_gbs_kgd_stats
 from redun import task, File
 
 redun_namespace = "agr.gbs_prism"
 
 from agr.util.legacy import sanitised_realpath
 from agr.util.path import symlink
-from agr.redun import concat
+from agr.redun import concat, lazy_map
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
@@ -24,6 +25,7 @@ from agr.redun.tasks import (
     gusbase,
     kgd,
     import_gbs_read_tag_counts,
+    create_cohort_gbs_kgd_stats_import,
     # Tassel:
     get_fastq_to_tag_count,
     get_tag_count,
@@ -145,8 +147,13 @@ class CohortOutput:
     map_info: File
     hap_map_files: list[File]
     kgd_output: KgdOutput
+    gbs_kgd_stats_import: File
     collated_kgd_stats: File
     gusbase_comet: File
+
+
+def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
+    return cohort_output.gbs_kgd_stats_import
 
 
 @task()
@@ -210,6 +217,12 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         ),
     )
 
+    gbs_kgd_stats_import = create_cohort_gbs_kgd_stats_import(
+        run=spec.run,
+        cohort_name=spec.cohort.name,
+        kgd_stats_csv=kgd_output.sample_stats_csv,
+    )
+
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
     output = CohortOutput(
@@ -232,6 +245,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         map_info=map_info,
         hap_map_files=hap_map_files,
         kgd_output=kgd_output,
+        gbs_kgd_stats_import=gbs_kgd_stats_import,
         collated_kgd_stats=collated_kgd_stats,
         gusbase_comet=gusbase_comet,
     )
@@ -241,6 +255,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 @dataclass
 class Stage2Output:
     cohorts: dict[str, CohortOutput]
+    imported_gbs_kgd_stats: File
 
 
 @task()
@@ -267,7 +282,16 @@ def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Outp
 
         cohort_outputs[name] = run_cohort(target)
 
+    imported_gbs_kgd_stats = import_gbs_kgd_stats(
+        run,
+        [
+            lazy_map(cohort_output, cohort_gbs_kgd_stats_import)
+            for cohort_output in cohort_outputs.values()
+        ],
+        out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
+    )
+
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage2Output(
-        cohorts=cohort_outputs,
+        cohorts=cohort_outputs, imported_gbs_kgd_stats=imported_gbs_kgd_stats
     )

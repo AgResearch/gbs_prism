@@ -1,6 +1,6 @@
 # helpers for redun
 from redun import task, Task
-from typing import Any
+from typing import Any, Callable
 
 redun_namespace = "agr.util"
 
@@ -23,3 +23,9 @@ def all_forall(task: Task, items: list[Any], **kw_task_args) -> list[Any]:
     for item in items:
         results = concat(results, task(item, **kw_task_args))
     return results
+
+
+@task()
+def lazy_map(x: Any, f: Callable[[Any], Any]) -> Any:
+    """Map f over the expression `x`."""
+    return f(x)
