@@ -212,8 +212,8 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         tag_counts=tag_count,
         kgd_stats=kgd_output.sample_stats_csv,
         out_path=os.path.join(
-            kgd_dir(spec.paths.cohort_blind_dir(spec.cohort.name)),
-            "CollatedSampleStats.csv",
+            spec.paths.cohort_blind_dir(spec.cohort.name),
+            "TagCountsAndSampleStats.csv",
         ),
     )
 
