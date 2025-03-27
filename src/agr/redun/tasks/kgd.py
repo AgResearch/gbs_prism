@@ -53,6 +53,7 @@ def _kgd_job_spec(
 class KgdOutput:
     sample_stats_csv: File
     gusbase_rdata: File
+    #TODO: add all files requiring unblind
 
 
 @task()
