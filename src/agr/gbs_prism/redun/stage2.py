@@ -40,7 +40,7 @@ from agr.redun.tasks import (
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
-from agr.redun.tasks.kgd import KgdOutput, kgd_dir
+from agr.redun.tasks.kgd import KgdOutput
 
 
 @dataclass
