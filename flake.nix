@@ -30,7 +30,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # TODO switch back to main when merged
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/get_genophyle_export";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {

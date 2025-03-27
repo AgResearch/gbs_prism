@@ -12,6 +12,7 @@ from agr.gbs_prism.redun import (
     Stage1Output,
     Stage2Output,
     create_peacock,
+    warehouse,
 )
 
 redun_namespace = "agr.gbs_prism"
@@ -26,7 +27,7 @@ logging.basicConfig(
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
-MainResults = tuple[Stage1Output, Stage2Output, list[File]]
+MainResults = tuple[Stage1Output, Stage2Output, list[File], str]
 
 
 @task()
@@ -62,8 +63,13 @@ def main(
         gbs_run_root=stage1.gbs_paths.run_root,
         stage2=stage2,
     )
+
+    warehoused = warehouse(
+        geno_import_dir=path["geno_import_dir"], log_dir=stage1.gbs_paths.run_root
+    )
+
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
-    return catch_all((stage1, stage2, peacock), Exception, recover)
+    return catch_all((stage1, stage2, peacock, warehoused), Exception, recover)
 
 
 def init():

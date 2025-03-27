@@ -4,7 +4,8 @@
     "postprocessing_root": "~/gbs_prism.dev.tiny/postprocessing",
     "gbs_backup_dir": "~/gbs_prism.dev.tiny/backups",
     "keyfiles_dir": "~/gbs_prism.dev.tiny/key-files",
-    "fastq_link_farm": "~/gbs_prism.dev.tiny/fastq-link-farm"
+    "fastq_link_farm": "~/gbs_prism.dev.tiny/fastq-link-farm",
+    "geno_import_dir": "~/gbs_prism.dev.tiny/geno-import"
   },
   "tools": {
     "bcl_convert": {

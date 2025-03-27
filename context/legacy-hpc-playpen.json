@@ -4,6 +4,7 @@
     "postprocessing_root": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/postprocessing",
     "gbs_backup_dir": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/backups",
     "keyfiles_dir": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/key-files",
-    "fastq_link_farm": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/fastq-link-farm"
+    "fastq_link_farm": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/fastq-link-farm",
+    "geno_import_dir": "/dataset/2024_legacy_playpen/scratch/gbs_prism.redun/geno-import"
   }
 }

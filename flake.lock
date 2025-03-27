@@ -357,16 +357,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1742933313,
-        "narHash": "sha256-C9mmfBSfs0jAmkJeGCeOWoxMMtPqxxZANraSkfd5GQ0=",
-        "ref": "refs/heads/main",
-        "rev": "57fc2f3d4468806836962119c02de163d703dd54",
-        "revCount": 418,
+        "lastModified": 1743039623,
+        "narHash": "sha256-QuGZ9GmmjVCdL0RAYhwxuhI34pvH4T77psqItW+Kb20=",
+        "ref": "refs/heads/get_genophyle_export",
+        "rev": "915a6f58403714c875ff806051f3f50e16b16136",
+        "revCount": 419,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/get_genophyle_export",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       }
