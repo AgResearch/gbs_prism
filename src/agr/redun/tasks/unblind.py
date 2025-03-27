@@ -23,7 +23,7 @@ def get_unblind_script(
     Get the unblind script for cohort using GQuery.
     """
 
-    out_path = os.path.join(out_dir, f"{gbs_cohort}.unblind.sed")
+    out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
 
     with open(out_path, "w") as sed_script:
         GQuery(
@@ -64,7 +64,7 @@ def unblind_one(
                 unblind_script.path, 
                 blinded_file.path
             ],
-            stdout=out_path, 
+            stdout=out_f, 
             check=True       
         )
     return File(out_path)
