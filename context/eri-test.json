@@ -4,6 +4,7 @@
     "postprocessing_root": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/postprocessing",
     "gbs_backup_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/backups",
     "keyfiles_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/key-files",
-    "fastq_link_farm": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/fastq-link-farm"
+    "fastq_link_farm": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/fastq-link-farm",
+    "geno_import_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/geno-import"
   }
 }
