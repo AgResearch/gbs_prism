@@ -1,7 +1,7 @@
 import os.path
 from redun import task, File
 
-from agr.util.subprocess import run_catching_stderr
+from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 
 from .stage2 import Stage2Output
 
@@ -19,16 +19,9 @@ def create_peacock(
     out_dir = os.path.join(gbs_run_root, "html")
     os.makedirs(out_dir, exist_ok=True)
     peacock_html_path = os.path.join(out_dir, "peacock.html")
-    _ = run_catching_stderr(
-        [
-            "make_cohort_pages",
-            "-r",
-            run,
-            "--postprocessing_root",
-            postprocessing_root,
-            "-o",
-            peacock_html_path,
-        ],
-        check=True,
+
+    make_cohort_pages(
+        postprocessing_root=postprocessing_root, run=run, out_path=peacock_html_path
     )
+
     return [File(peacock_html_path)]
