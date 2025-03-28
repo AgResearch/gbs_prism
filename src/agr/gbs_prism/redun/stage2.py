@@ -135,7 +135,7 @@ class CohortOutput:
     gusbase_comet: File
     tag_count_unblind: File
     hap_map_files_unblind: list[File]
-    kgd_output_unblind: File
+    kgd_output_unblind: list[File]
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
@@ -233,9 +233,10 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
     #TODO unblind kgd_output
-    #FIRST: expand KgdOutput to include all files requiring unblind
-    #TODO figure out how to interface with all the results files in the object; list comprehension?
-    kgd_output_unblind = unblind_one(kgd_output.sample_stats_csv, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
+    kgd_blinded = []
+    kgd_attributes = vars(kgd_output)
+    kgd_blinded.extend(kgd_attributes.values())
+    kgd_output_unblind = unblind_all(kgd_blinded, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
 
     output = CohortOutput(
         fastq_links=fastq_links,
