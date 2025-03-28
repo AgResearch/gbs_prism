@@ -2,7 +2,7 @@
 
 from .stage1 import run_stage1, Stage1Output
 from .stage2 import run_stage2, Stage2Output
-from .peacock import create_peacock
+from .reports import create_reports
 from .warehouse import warehouse
 
 __all__ = [
@@ -10,6 +10,6 @@ __all__ = [
     "run_stage2",
     "Stage1Output",
     "Stage2Output",
-    "create_peacock",
+    "create_reports",
     "warehouse",
 ]
