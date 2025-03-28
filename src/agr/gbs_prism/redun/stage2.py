@@ -233,10 +233,12 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
     #TODO unblind kgd_output
-    kgd_blinded = []
-    kgd_attributes = vars(kgd_output)
-    kgd_blinded.extend(kgd_attributes.values())
-    kgd_output_unblind = unblind_all(kgd_blinded, unblind_script, spec.paths.cohort_dir(spec.cohort.name))
+    kgd_blinded = [blinded for blinded in vars(kgd_output).values() if isinstance(blinded, File)]
+    kgd_output_unblind = unblind_all(
+        kgd_blinded, 
+        unblind_script, 
+        spec.paths.cohort_dir(spec.cohort.name)
+    )
 
     output = CohortOutput(
         fastq_links=fastq_links,
