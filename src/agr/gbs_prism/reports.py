@@ -4,6 +4,12 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 from typing import Literal, Optional
 
 
+@dataclass
+class PathPair:
+    blind: str
+    unblind: str
+
+
 @dataclass(kw_only=True)
 class Row:
     name: str
@@ -44,7 +50,7 @@ def render_report(report: Report, out_path: str):
 
 def create_report(
     title: str,
-    cohort_target_dirs: dict[str, str],
+    cohort_target_dirs: dict[str, PathPair],
     make_targets_relative_to: Optional[str] = None,
 ) -> Report:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
@@ -59,8 +65,9 @@ def create_report(
                     Row(
                         name="KGD/%s" % name,
                         cohort_targets={
-                            cohort: relpath_or_none(
-                                os.path.join(cohort_target_dir, "KGD", name),
+                            cohort: _blind_relpath_or_none(
+                                cohort_target_dir,
+                                os.path.join("KGD", name),
                                 make_targets_relative_to,
                             )
                             for (
@@ -70,7 +77,7 @@ def create_report(
                         },
                         narration=narration,
                     )
-                    for (name, narration) in KGD_PLOTS_WITH_NARRATION
+                    for (name, narration) in _KGD_PLOTS_WITH_NARRATION
                 ],
             ),
             Group(
@@ -80,8 +87,9 @@ def create_report(
                     Row(
                         name="KGD/%s" % name,
                         cohort_targets={
-                            cohort: relpath_or_none(
-                                os.path.join(cohort_target_dir, "KGD", name),
+                            cohort: _blind_or_unblind_relpath_or_none(
+                                cohort_target_dir,
+                                os.path.join("KGD", name),
                                 make_targets_relative_to,
                             )
                             for (
@@ -90,14 +98,14 @@ def create_report(
                             ) in cohort_target_dirs.items()
                         },
                     )
-                    for name in KGD_TEXT_FILES
+                    for name in _KGD_TEXT_FILES
                 ],
             ),
         ],
     )
 
 
-KGD_PLOTS_WITH_NARRATION = [
+_KGD_PLOTS_WITH_NARRATION = [
     (
         "AlleleFreq.png",
         """
@@ -281,7 +289,7 @@ The same as PlateInb.png but with a different colour gradient for each subplate 
     ),
 ]
 
-KGD_TEXT_FILES = [
+_KGD_TEXT_FILES = [
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
     "GHW05-long.csv",
@@ -297,9 +305,29 @@ KGD_TEXT_FILES = [
     "SampleStats.csv.blinded",
     "seqID.csv",
     "seqID.csv.blinded",
-    "another nonexistent file",
 ]
 
 
-def relpath_or_none(path: str, relbase: Optional[str]) -> Optional[str]:
+def _relpath_or_none(path: str, relbase: Optional[str]) -> Optional[str]:
     return os.path.relpath(path, relbase) if os.path.exists(path) else None
+
+
+def _blind_relpath_or_none(
+    cohort_target: PathPair, target_relpath: str, relbase: Optional[str]
+) -> Optional[str]:
+    path = os.path.join(cohort_target.blind, target_relpath)
+    return _relpath_or_none(path, relbase)
+
+
+def _blind_or_unblind_relpath_or_none(
+    cohort_target: PathPair, annotated_target_relpath: str, relbase: Optional[str]
+) -> Optional[str]:
+    """This is a bit gross, but it looks for a blinded suffix on the path, and in this case uses the blind path."""
+    if annotated_target_relpath.endswith(".blinded"):
+        target_relpath = annotated_target_relpath.removesuffix(".blinded")
+        path = os.path.join(cohort_target.blind, target_relpath)
+    else:
+        target_relpath = annotated_target_relpath
+        path = os.path.join(cohort_target.unblind, target_relpath)
+
+    return _relpath_or_none(path, relbase)
