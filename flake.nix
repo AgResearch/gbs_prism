@@ -152,7 +152,6 @@
           pipeline-packages = with pkgs.python3Packages;
             [
               biopython
-              dominate
               jinja2
               jsonnet
               pdf2image
