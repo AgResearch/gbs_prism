@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 
 @dataclass
-class PathPair:
+class BlindAndUnblindDir:
     blind: str
     unblind: str
 
@@ -50,7 +50,7 @@ def render_report(report: Report, out_path: str):
 
 def create_report(
     title: str,
-    cohort_target_dirs: dict[str, PathPair],
+    cohort_target_dirs: dict[str, BlindAndUnblindDir],
     make_targets_relative_to: Optional[str] = None,
 ) -> Report:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
@@ -336,21 +336,23 @@ def _relpath_or_none(path: str, relbase: Optional[str]) -> Optional[str]:
 
 
 def _blind_relpath_or_none(
-    cohort_target: PathPair, target_relpath: str, relbase: Optional[str]
+    cohort_target: BlindAndUnblindDir, target_relpath: str, relbase: Optional[str]
 ) -> Optional[str]:
     path = os.path.join(cohort_target.blind, target_relpath)
     return _relpath_or_none(path, relbase)
 
 
 def _unblind_relpath_or_none(
-    cohort_target: PathPair, target_relpath: str, relbase: Optional[str]
+    cohort_target: BlindAndUnblindDir, target_relpath: str, relbase: Optional[str]
 ) -> Optional[str]:
     path = os.path.join(cohort_target.unblind, target_relpath)
     return _relpath_or_none(path, relbase)
 
 
 def _blind_or_unblind_relpath_or_none(
-    cohort_target: PathPair, annotated_target_relpath: str, relbase: Optional[str]
+    cohort_target: BlindAndUnblindDir,
+    annotated_target_relpath: str,
+    relbase: Optional[str],
 ) -> Optional[str]:
     """This is a bit gross, but it looks for a blinded suffix on the path, and in this case uses the blind path."""
     if annotated_target_relpath.endswith(".blinded"):

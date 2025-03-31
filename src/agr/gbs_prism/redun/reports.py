@@ -3,7 +3,7 @@ from redun import task, File
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
-from agr.gbs_prism.reports import create_report, render_report, PathPair
+from agr.gbs_prism.reports import create_report, render_report, BlindAndUnblindDir
 from .stage2 import Stage2Output
 
 redun_namespace = "agr.gbs_prism"
@@ -20,7 +20,7 @@ def create_peacock(run: str, postprocessing_root: str, out_path) -> File:
 
 @task()
 def create_cohort_report(
-    target_cohort_dir: PathPair, cohort_name: str, out_path: str
+    target_cohort_dir: BlindAndUnblindDir, cohort_name: str, out_path: str
 ) -> File:
     # TODO should take redun file output from KGD
     report = create_report(
@@ -58,7 +58,7 @@ def create_reports(
         all_reports.append(
             create_cohort_report(
                 # TODO use unblinded results, not blinded?
-                target_cohort_dir=PathPair(
+                target_cohort_dir=BlindAndUnblindDir(
                     blind=gbs_paths.cohort_blind_dir(cohort_name),
                     unblind=gbs_paths.cohort_dir(cohort_name),
                 ),
