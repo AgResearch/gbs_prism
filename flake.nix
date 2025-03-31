@@ -153,6 +153,7 @@
             [
               biopython
               dominate
+              jinja2
               jsonnet
               pdf2image
               pydantic

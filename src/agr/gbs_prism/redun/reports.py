@@ -3,7 +3,7 @@ from redun import task, File
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
-from agr.gbs_prism.reports import make_kgd_cohort_report
+from agr.gbs_prism.reports import create_report, render_report
 from .stage2 import Stage2Output
 
 redun_namespace = "agr.gbs_prism"
@@ -23,9 +23,12 @@ def create_kgd_cohort_report(
     target_cohort_dir: str, cohort_name: str, out_path: str
 ) -> File:
     # TODO should take redun file output from KGD
-    make_kgd_cohort_report(
-        target_cohort_dir=target_cohort_dir, cohort_name=cohort_name, out_path=out_path
+    report = create_report(
+        title=cohort_name,
+        cohort_target_dirs={cohort_name: target_cohort_dir},
+        make_targets_relative_to=os.path.dirname(out_path),
     )
+    render_report(report=report, out_path=out_path)
     return File(out_path)
 
 
@@ -57,7 +60,7 @@ def create_reports(
                 # TODO use unblinded results, not blinded?
                 target_cohort_dir=gbs_paths.cohort_blind_dir(cohort_name),
                 cohort_name=cohort_name,
-                out_path=os.path.join(cohort_report_dir, "KGD.html"),
+                out_path=os.path.join(cohort_report_dir, "report.html"),
             )
         )
 

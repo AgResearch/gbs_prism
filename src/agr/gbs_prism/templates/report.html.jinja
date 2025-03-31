@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Results for {{ title }}</title>
+  </head>
+  <body>
+    <h1>Results for {{ title }}</h1>
+    <table width="90%" align="center">
+      {% for group in groups -%}
+      <tr>
+        <td><h2>{{ group.name }}</h2></td>
+        {% for cohort in cohorts -%}
+        <td><h4>{{ cohort }}</h4></td>
+        {% endfor -%}
+      </tr>
+      {% for row in group.rows -%}
+      <tr>
+        <td>{{ row.name }}</td>
+        {% for cohort in cohorts -%}
+        <td>
+          {% if group.kind == "image" -%}
+          <img
+            src="{{ row.cohort_targets[cohort] }}"
+            title="{{ row.narration }}"
+            height="300"
+            width="300"
+          />
+          {% elif group.kind == "link" -%}
+          <a
+            href="{{ row.cohort_targets[cohort] }}"
+            target="{{ row.cohort_targets[cohort] }}"
+          >
+            {{ row.cohort_targets[cohort] }}
+          </a>
+          {% elif group.kind == "inline" -%}
+          <font size="-2"><pre>{{ row.cohort_targets[cohort] }}</pre></font>
+          {% endif -%}
+        </td>
+        {% endfor -%}
+      </tr>
+      {% endfor -%} {% endfor -%}
+    </table>
+  </body>
+</html>
