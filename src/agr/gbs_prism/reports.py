@@ -101,6 +101,27 @@ def create_report(
                     for name in _KGD_TEXT_FILES
                 ],
             ),
+            Group(
+                name="Hapmap files",
+                kind="link",
+                rows=[
+                    Row(
+                        name="hapMap/%s" % name,
+                        cohort_targets={
+                            cohort: _unblind_relpath_or_none(
+                                cohort_target_dir,
+                                os.path.join("hapMap", name),
+                                make_targets_relative_to,
+                            )
+                            for (
+                                cohort,
+                                cohort_target_dir,
+                            ) in cohort_target_dirs.items()
+                        },
+                    )
+                    for name in _HAPMAP_FILES
+                ],
+            ),
         ],
     )
 
@@ -307,6 +328,8 @@ _KGD_TEXT_FILES = [
     "seqID.csv.blinded",
 ]
 
+_HAPMAP_FILES = ["HapMap.hmc.txt", "HapMap.fas.txt"]
+
 
 def _relpath_or_none(path: str, relbase: Optional[str]) -> Optional[str]:
     return os.path.relpath(path, relbase) if os.path.exists(path) else None
@@ -316,6 +339,13 @@ def _blind_relpath_or_none(
     cohort_target: PathPair, target_relpath: str, relbase: Optional[str]
 ) -> Optional[str]:
     path = os.path.join(cohort_target.blind, target_relpath)
+    return _relpath_or_none(path, relbase)
+
+
+def _unblind_relpath_or_none(
+    cohort_target: PathPair, target_relpath: str, relbase: Optional[str]
+) -> Optional[str]:
+    path = os.path.join(cohort_target.unblind, target_relpath)
     return _relpath_or_none(path, relbase)
 
 
