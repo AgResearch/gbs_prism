@@ -9,7 +9,7 @@ class Row:
     name: str
     narration: Optional[str] = None
     cohort_targets: dict[
-        str, str
+        str, Optional[str]
     ]  # for inline kind this is the file content not the path
 
 
@@ -57,9 +57,9 @@ def create_report(
                 kind="image",
                 rows=[
                     Row(
-                        name=name,
+                        name="KGD/%s" % name,
                         cohort_targets={
-                            cohort: os.path.relpath(
+                            cohort: relpath_or_none(
                                 os.path.join(cohort_target_dir, "KGD", name),
                                 make_targets_relative_to,
                             )
@@ -72,7 +72,27 @@ def create_report(
                     )
                     for (name, narration) in KGD_PLOTS_WITH_NARRATION
                 ],
-            )
+            ),
+            Group(
+                name="KGD (text file links)",
+                kind="link",
+                rows=[
+                    Row(
+                        name="KGD/%s" % name,
+                        cohort_targets={
+                            cohort: relpath_or_none(
+                                os.path.join(cohort_target_dir, "KGD", name),
+                                make_targets_relative_to,
+                            )
+                            for (
+                                cohort,
+                                cohort_target_dir,
+                            ) in cohort_target_dirs.items()
+                        },
+                    )
+                    for name in KGD_TEXT_FILES
+                ],
+            ),
         ],
     )
 
@@ -260,3 +280,26 @@ The same as PlateInb.png but with a different colour gradient for each subplate 
 """,
     ),
 ]
+
+KGD_TEXT_FILES = [
+    "GHW05.csv",
+    "GHW05-Inbreeding.csv",
+    "GHW05-long.csv",
+    "GHW05-pca_metadata.tsv",
+    "GHW05-pca_vectors.tsv",
+    "GHW05-PC.csv",
+    "GHW05.RData",
+    "GHW05.vcf",
+    "HeatmapOrderHWdgm.05.csv",
+    "HeatmapOrderHWdgm.05.csv.blinded",
+    "PCG5HWdgm.05.pdf",
+    "SampleStats.csv",
+    "SampleStats.csv.blinded",
+    "seqID.csv",
+    "seqID.csv.blinded",
+    "another nonexistent file",
+]
+
+
+def relpath_or_none(path: str, relbase: Optional[str]) -> Optional[str]:
+    return os.path.relpath(path, relbase) if os.path.exists(path) else None

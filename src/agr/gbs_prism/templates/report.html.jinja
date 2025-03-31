@@ -18,7 +18,9 @@
         <td>{{ row.name }}</td>
         {% for cohort in cohorts -%}
         <td>
-          {% if group.kind == "image" -%}
+          {% if row.cohort_targets[cohort] is none -%}
+          <span>(missing)</span>
+          {% elif group.kind == "image" -%}
           <img
             src="{{ row.cohort_targets[cohort] }}"
             title="{{ row.narration }}"
@@ -30,7 +32,7 @@
             href="{{ row.cohort_targets[cohort] }}"
             target="{{ row.cohort_targets[cohort] }}"
           >
-            {{ row.cohort_targets[cohort] }}
+            {{ row.name }}
           </a>
           {% elif group.kind == "inline" -%}
           <font size="-2"><pre>{{ row.cohort_targets[cohort] }}</pre></font>
