@@ -225,29 +225,34 @@ def _raise_exception_on_failure(
         logger.debug(f"job {job.native_id} canceled")
         raise ClusterExecutorError(f"job {job.native_id} canceled")
     elif status.state == JobState.FAILED:
-        with open(spec.stderr_path, "r") as stderr_f:
-            if status.exit_code is None:
-                exit_text = ""
-            elif status.exit_code > 128:
-                signal = status.exit_code - 128
-                exit_text = f" because {'killed' if signal == 9 else ' received signal %d' % signal}"
-            else:
-                exit_text = f" with exit code {status.exit_code}"
-            failure_text = (
-                f"failed ({status.message})" if status.message is not None else "failed"
-            ) + exit_text
-            metadata_text = (
-                " ".join(["%s=%s" % (k, str(v)) for k, v in status.metadata])
-                if status.metadata is not None
-                else ""
+        try:
+            with open(spec.stderr_path, "r") as stderr_f:
+                stderr_text = stderr_f.read()
+        except:
+            stderr_text = (
+                f"(stderr unavailable because failed to read {spec.stderr_path})"
             )
-            stderr_text = stderr_f.read()
-            logger.debug(
-                f"{job_description(job, spec, annotation=failure_text)} {metadata_text}: {stderr_text}"
-            )
-            raise ClusterExecutorError(
-                f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}"
-            )
+        if status.exit_code is None:
+            exit_text = ""
+        elif status.exit_code > 128:
+            signal = status.exit_code - 128
+            exit_text = f" because {'killed' if signal == 9 else ' received signal %d' % signal}"
+        else:
+            exit_text = f" with exit code {status.exit_code}"
+        failure_text = (
+            f"failed ({status.message})" if status.message is not None else "failed"
+        ) + exit_text
+        metadata_text = (
+            " ".join(["%s=%s" % (k, str(v)) for k, v in status.metadata])
+            if status.metadata is not None
+            else ""
+        )
+        logger.debug(
+            f"{job_description(job, spec, annotation=failure_text)} {metadata_text}: {stderr_text}"
+        )
+        raise ClusterExecutorError(
+            f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}"
+        )
 
 
 def _reject_on_failure(
@@ -258,12 +263,15 @@ def _reject_on_failure(
         _ = promise.do_reject(ClusterExecutorError(f"job {job.native_id} canceled"))
         return True
     elif status.state == JobState.FAILED:
-        with open(stderr_path, "r") as stderr_f:
-            stderr_text = stderr_f.read()
-            logger.debug(f"job {job.native_id} failed: {stderr_text}")
-            _ = promise.do_reject(
-                ClusterExecutorError(f"job {job.native_id} failed\n{stderr_text}")
-            )
+        try:
+            with open(stderr_path, "r") as stderr_f:
+                stderr_text = stderr_f.read()
+        except:
+            stderr_text = f"(stderr unavailable because failed to read {stderr_path})"
+        logger.debug(f"job {job.native_id} failed: {stderr_text}")
+        _ = promise.do_reject(
+            ClusterExecutorError(f"job {job.native_id} failed\n{stderr_text}")
+        )
         return True
     return False
 
