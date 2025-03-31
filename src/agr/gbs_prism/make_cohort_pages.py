@@ -1,12 +1,5 @@
-#!/usr/bin/env python
-#
-# this script creates an html document for each cohort of
-# a gbs run, which presents the various plots generated , and
-# has links to text output
-
 import os
 import re
-import argparse
 from string import Template
 from typing import Iterable
 
@@ -163,8 +156,25 @@ def get_cohorts(paths):
     return cohort_folders
 
 
-def generate_run_plot(run_name: str, paths: Paths, out_path: str):
-    stats = {"found file count": 0, "no file count": 0, "no sample count": 0}
+def make_cohort_pages(
+    postprocessing_root: str,
+    run: str,
+    out_path: str,
+):
+    """
+    create an html document for each cohort of
+    a gbs run, which presents the various plots generated , and
+    has links to text output
+
+    key file summary looks like :
+
+    run     run_number      lane    samplename      species file_name
+    140624_D00390_0044_BH9PEBADXX   0044    1       SQ0001  Deer    140624_D00390_0044_BH9PEBADXX.gbs/SQ0001.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
+    140624_D00390_0044_BH9PEBADXX   0044    2       SQ0001  Deer    140624_D00390_0044_BH9PEBADXX.gbs/SQ0001.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
+    140904_D00390_0209_BC4U6YACXX   0209    1       SQ0008  Deer    140904_D00390_0209_BC4U6YACXX.gbs/SQ0008.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
+    140904_D00390_0209_BC4U6YACXX   0209
+    """
+    paths = Paths(postprocessing_root, run)
 
     file_group_iter = (
         ("Demultiplex (text file links)", "link"),
@@ -423,7 +433,7 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
 
     with open(out_path, "w") as out_stream:
 
-        _ = out_stream.write("%s\n" % (header1.substitute({"run_name": run_name})))
+        _ = out_stream.write("%s\n" % (header1.substitute({"run_name": run})))
 
         _ = out_stream.write(
             "%s\n"
@@ -553,82 +563,3 @@ A heatmap visualisation of the estimated proportion of low-depth tags hitting a 
             _ = out_stream.write("</table>\n\n")
 
         _ = out_stream.write("%s\n" % footer1)
-
-    print(stats)
-
-
-def get_options():
-    description = """
-    """
-    long_description = """
-example :
-
-./make_cohort_pages.py -r 181012_D00390_0409_ACCWRRANXX -o /dataset/gseq_processing/scratch/gbs/181012_D00390_0409_ACCWRRANXX/html/peacock.html
-key file summary looks like :
-
-run     run_number      lane    samplename      species file_name
-140624_D00390_0044_BH9PEBADXX   0044    1       SQ0001  Deer    140624_D00390_0044_BH9PEBADXX.gbs/SQ0001.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
-140624_D00390_0044_BH9PEBADXX   0044    2       SQ0001  Deer    140624_D00390_0044_BH9PEBADXX.gbs/SQ0001.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
-140904_D00390_0209_BC4U6YACXX   0209    1       SQ0008  Deer    140904_D00390_0209_BC4U6YACXX.gbs/SQ0008.processed_sample/uneak/kmer_analysis/kmer_zipfian_comparisons.jpg
-140904_D00390_0209_BC4U6YACXX   0209
-
-    """
-    parser = argparse.ArgumentParser(
-        description=description,
-        epilog=long_description,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    _ = parser.add_argument(
-        "-r",
-        "--run_folder",
-        dest="run_folder",
-        required=True,
-        type=str,
-        help="run name",
-    )
-    _ = parser.add_argument(
-        "-H",
-        "--image_height",
-        dest="image_height",
-        default=300,
-        type=int,
-        help="image height",
-    )
-    _ = parser.add_argument(
-        "-W",
-        "--image_width",
-        dest="image_width",
-        default=300,
-        type=int,
-        help="image width",
-    )
-    _ = parser.add_argument(
-        "-o",
-        "--output_filename",
-        dest="output_filename",
-        default="peacock.html",
-        type=str,
-        help="name of output file",
-    )
-    _ = parser.add_argument(
-        "--postprocessing_root",
-        dest="postprocessing_root",
-        type=str,
-        help="postprocessing root dir, e.g. /dataset/2024_illumina_sequencing_d/scratch/postprocessing",
-    )
-
-    args = vars(parser.parse_args())
-
-    return args
-
-
-def main():
-
-    options = get_options()
-    paths = Paths(options["postprocessing_root"], options["run_folder"])
-    print(options)
-    generate_run_plot(options["run_folder"], paths, options["output_filename"])
-
-
-if __name__ == "__main__":
-    main()

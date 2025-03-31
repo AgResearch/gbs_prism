@@ -11,7 +11,7 @@ from agr.gbs_prism.redun import (
     run_stage2,
     Stage1Output,
     Stage2Output,
-    create_peacock,
+    create_reports,
     warehouse,
 )
 
@@ -57,10 +57,10 @@ def main(
 
     stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
 
-    peacock = create_peacock(
+    reports = create_reports(
         run=run,
         postprocessing_root=path["postprocessing_root"],
-        gbs_run_root=stage1.gbs_paths.run_root,
+        gbs_paths=stage1.gbs_paths,
         stage2=stage2,
     )
 
@@ -69,7 +69,7 @@ def main(
     )
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
-    return catch_all((stage1, stage2, peacock, warehoused), Exception, recover)
+    return catch_all((stage1, stage2, reports, warehoused), Exception, recover)
 
 
 def init():

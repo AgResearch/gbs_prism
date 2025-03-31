@@ -152,6 +152,7 @@
           pipeline-packages = with pkgs.python3Packages;
             [
               biopython
+              jinja2
               jsonnet
               pdf2image
               pydantic
