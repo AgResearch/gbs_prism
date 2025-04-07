@@ -55,25 +55,14 @@ class BclConvertPaths:
     def run_info_xml_path(self) -> str:
         return os.path.join(self._out_dir, "Reports", "RunInfo.xml")
 
-    @property
-    def fastq_complete_path(self) -> str:
-        return os.path.join(self._log_dir, "FastqComplete.txt")
-
-    @property
-    def log_path(self) -> str:
-        return os.path.join(self._log_dir, "1_run_bclconvert.log")
-
-    @property
-    def benchmark_path(self) -> str:
-        return os.path.join(self._out_dir, "benchmarks", "run_bclconvert.txt")
-
 
 def _bcl_convert_job_spec(
     in_dir: str,
     sample_sheet_path: str,
     out_dir: str,
 ) -> JobNSpec:
-    paths = BclConvertPaths(out_dir)
+    out_path = os.path.join(out_dir, "bclconvert.stdout")
+    err_path = os.path.join(out_dir, "bclconvert.sterr")
 
     return JobNSpec(
         tool=BCLCONVERT_TOOL_NAME,
@@ -87,8 +76,8 @@ def _bcl_convert_job_spec(
             "--output-directory",
             out_dir,
         ],
-        stdout_path=paths.log_path,
-        stderr_path=paths.log_path,
+        stdout_path=out_path,
+        stderr_path=err_path,
         expected_paths={},
         expected_globs={
             BCLCONVERT_JOB_FASTQ: FilteredGlob(
@@ -114,9 +103,9 @@ class BclConvertOutput:
 @task()
 def bcl_convert(
     in_dir: str,
+    out_dir: str,
     sample_sheet_path: str,
     expected_fastq: set[str],
-    out_dir: str,
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
     paths.create_directories()
