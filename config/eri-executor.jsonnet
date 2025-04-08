@@ -73,6 +73,7 @@ local Tassel3Default = ToolDefault {
           hours: 2,
         },
         custom_attributes+: customised({
+          'cpus-per-task': '6',
           mem: '550G',
         }),
       },
