@@ -68,7 +68,6 @@ def _bcl_convert_job_spec(
         tool=BCLCONVERT_TOOL_NAME,
         args=[
             "bcl-convert",
-            "--force",
             "--bcl-input-directory",
             in_dir,
             "--sample-sheet",
