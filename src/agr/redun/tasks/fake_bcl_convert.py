@@ -22,7 +22,6 @@ def fake_bcl_convert(
     in_dir: str, sample_sheet_path: str, out_dir: str, n_reads
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
-    paths.create_directories()
 
     # find the real run
     run_name = os.path.basename(in_dir)
