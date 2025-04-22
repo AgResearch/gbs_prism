@@ -117,7 +117,7 @@ class KgdOutputSuccess(KgdOutput):
 
 @dataclass
 class KgdOutputFailure(KgdOutput):
-    error: str
+    kgd_stderr: File
 
     def kgd_output_files(self) -> list[File]:
         """On failure there are no output files."""
@@ -183,8 +183,6 @@ def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> Kgd
         )
     except ClusterExecutorError as e:
         if e.job_exit_code == -1:
-            with open(kgd_job_spec.stderr_path, "r") as stderr_f:
-                error = stderr_f.read()
-                return KgdOutputFailure(error=error)
+            return KgdOutputFailure(kgd_stderr=File(kgd_job_spec.stderr_path))
         else:
             raise
