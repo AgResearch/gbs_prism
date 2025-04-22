@@ -39,9 +39,11 @@ class ClusterExecutorError(Exception):
         self,
         message: str,
         job_exit_code: Optional[int] = None,
+        job_stderr_text: Optional[str] = None,
     ):
         super().__init__(message)
         self.job_exit_code = job_exit_code
+        self.job_stderr_text = job_stderr_text
 
 
 class ConfigError(Exception):
@@ -255,6 +257,7 @@ def _raise_exception_on_failure(
         raise ClusterExecutorError(
             f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}",
             job_exit_code=status.exit_code,
+            job_stderr_text=stderr_text,
         )
 
 

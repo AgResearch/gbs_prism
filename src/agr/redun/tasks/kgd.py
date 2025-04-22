@@ -2,6 +2,7 @@ import logging
 import os.path
 from dataclasses import dataclass
 from redun import task, File
+from redun.scheduler import catch
 
 from agr.redun.cluster_executor import ClusterExecutorError, run_job_n, JobNSpec
 
@@ -117,7 +118,7 @@ class KgdOutputSuccess(KgdOutput):
 
 @dataclass
 class KgdOutputFailure(KgdOutput):
-    kgd_stderr: File
+    kgd_stderr_text: str
 
     def kgd_output_files(self) -> list[File]:
         """On failure there are no output files."""
@@ -142,7 +143,9 @@ def kgd_dir(work_dir: str) -> str:
 
 
 @task()
-def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput:
+def _kgd(
+    work_dir: str, genotyping_method: str, hap_map_files: list[File]
+) -> KgdOutputSuccess:
     out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")
     os.makedirs(out_dir, exist_ok=True)
@@ -154,35 +157,46 @@ def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> Kgd
         genotyping_method=genotyping_method,
     )
 
-    try:
-        result_files = run_job_n(kgd_job_spec)
+    result_files = run_job_n(kgd_job_spec)
 
-        return KgdOutputSuccess(
-            sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
-            gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
-            ghw05_csv=result_files.expected_files[GHW05_CSV],
-            ghw05_vcf=result_files.expected_files[GHW05_VCF],
-            ghw05_inbreeding_csv=result_files.expected_files[GHW05_INBREEDING_CSV],
-            ghw05_long_csv=result_files.expected_files[GHW05_LONG_CSV],
-            ghw05_PC_csv=result_files.expected_files[GHW05_PC_CSV],
-            ghw05_pca_metadata_tsv=result_files.expected_files[GHW05_PCA_METADATA_TSV],
-            ghw05_pca_vectors_tsv=result_files.expected_files[GHW05_PCA_VECTORS_TSV],
-            heatmap_order_hwdgm05_csv=result_files.expected_files[
-                HEATMAP_ORDER_HWDGM05_CSV
-            ],
-            high_relatedness_csv=result_files.expected_files[HIGH_RELATEDNESS_CSV],
-            high_relateness_split_csv=result_files.expected_files[
-                HIGH_RELATENESS_SPLIT_CSV
-            ],
-            seq_ID_csv=result_files.expected_files[SEQ_ID_CSV],
-            sample_stats_raw_csv=result_files.expected_files[SAMPLE_STATS_RAW_CSV],
-            sample_stats_raw_combined_csv=result_files.expected_files[
-                SAMPLE_STATS_RAW_COMBINED_CSV
-            ],
-            kgd_stdout=result_files.expected_files[KGD_STDOUT],
-        )
-    except ClusterExecutorError as e:
-        if e.job_exit_code == -1:
-            return KgdOutputFailure(kgd_stderr=File(kgd_job_spec.stderr_path))
-        else:
-            raise
+    return KgdOutputSuccess(
+        sample_stats_csv=result_files.expected_files[KGD_SAMPLE_STATS],
+        gusbase_rdata=result_files.expected_files[KGD_GUSBASE_RDATA],
+        ghw05_csv=result_files.expected_files[GHW05_CSV],
+        ghw05_vcf=result_files.expected_files[GHW05_VCF],
+        ghw05_inbreeding_csv=result_files.expected_files[GHW05_INBREEDING_CSV],
+        ghw05_long_csv=result_files.expected_files[GHW05_LONG_CSV],
+        ghw05_PC_csv=result_files.expected_files[GHW05_PC_CSV],
+        ghw05_pca_metadata_tsv=result_files.expected_files[GHW05_PCA_METADATA_TSV],
+        ghw05_pca_vectors_tsv=result_files.expected_files[GHW05_PCA_VECTORS_TSV],
+        heatmap_order_hwdgm05_csv=result_files.expected_files[
+            HEATMAP_ORDER_HWDGM05_CSV
+        ],
+        high_relatedness_csv=result_files.expected_files[HIGH_RELATEDNESS_CSV],
+        high_relateness_split_csv=result_files.expected_files[
+            HIGH_RELATENESS_SPLIT_CSV
+        ],
+        seq_ID_csv=result_files.expected_files[SEQ_ID_CSV],
+        sample_stats_raw_csv=result_files.expected_files[SAMPLE_STATS_RAW_CSV],
+        sample_stats_raw_combined_csv=result_files.expected_files[
+            SAMPLE_STATS_RAW_COMBINED_CSV
+        ],
+        kgd_stdout=result_files.expected_files[KGD_STDOUT],
+    )
+
+
+@task()
+def recover_kgd_failure(e: ClusterExecutorError) -> KgdOutputFailure:
+    if e.job_exit_code == 1 and e.job_stderr_text is not None:
+        return KgdOutputFailure(kgd_stderr_text=e.job_stderr_text)
+    else:
+        raise e
+
+
+@task()
+def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput:
+    return catch(
+        _kgd(work_dir, genotyping_method, hap_map_files),
+        ClusterExecutorError,
+        recover_kgd_failure,
+    )
