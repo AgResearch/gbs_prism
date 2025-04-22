@@ -120,7 +120,7 @@ class KgdOutputSuccess(KgdOutput):
 class KgdOutputFailure(KgdOutput):
     kgd_stderr_text: str
 
-    def kgd_output_files(self) -> list[File]:
+    def files(self) -> list[File]:
         """On failure there are no output files."""
         return []
 
