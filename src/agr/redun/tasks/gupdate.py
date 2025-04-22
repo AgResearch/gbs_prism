@@ -1,6 +1,7 @@
 import csv
 import shutil
 from redun import task, File
+from typing import Optional
 
 from agr.gquery import GUpdate, Predicates
 from agr.util import map_columns
@@ -47,15 +48,21 @@ def create_cohort_gbs_kgd_stats_import(
 
 
 @task()
-def import_gbs_kgd_stats(run: str, cohort_imports: list[File], out_path: str) -> File:
-    """Import all kgd stats import files in one go, since importing individual files
-    seems to result in database deadlock."""
+def import_gbs_kgd_stats(
+    run: str, cohort_imports: list[Optional[File]], out_path: str
+) -> File:
+    """Import all KGD stats import files in one go, since importing individual files
+    seems to result in database deadlock.
+
+    Any cohorts for which KGD failed result in None in place of the import file, and we simply omit these.
+    """
 
     # concatenate all import files
     with open(out_path, "w") as out_f:
         for cohort_import in cohort_imports:
-            with open(cohort_import.path, "r") as cohort_import_f:
-                shutil.copyfileobj(cohort_import_f, out_f)
+            if cohort_import is not None:
+                with open(cohort_import.path, "r") as cohort_import_f:
+                    shutil.copyfileobj(cohort_import_f, out_f)
 
     GUpdate(
         explain=True,

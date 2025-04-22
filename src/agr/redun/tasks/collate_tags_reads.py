@@ -317,7 +317,7 @@ def collate_tags_reads_kgdstats(
     kgd_stats: File,
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
-):
+) -> File:
     with open(tag_counts.path, "r") as tag_counts_f:
         with open(kgd_stats.path, "r") as kgd_stats_f:
             _collate_tags_reads_kgdstats(

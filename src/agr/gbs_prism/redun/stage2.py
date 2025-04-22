@@ -2,6 +2,7 @@ import os.path
 from dataclasses import dataclass
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats
 from redun import task, File
+from typing import Optional
 
 redun_namespace = "agr.gbs_prism"
 
@@ -40,7 +41,7 @@ from agr.redun.tasks import (
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
-from agr.redun.tasks.kgd import KgdOutput, kgd_output_files
+from agr.redun.tasks.kgd import KgdOutput, KgdOutputSuccess, kgd_output_files
 from agr.redun.tasks.unblind import get_unblind_script, unblind_one, unblind_all
 
 
@@ -130,15 +131,15 @@ class CohortOutput:
     map_info: File
     hap_map_files: list[File]
     kgd_output: KgdOutput
-    gbs_kgd_stats_import: File
-    collated_kgd_stats: File
-    gusbase_comet: File
+    gbs_kgd_stats_import: Optional[File]
+    collated_kgd_stats: Optional[File]
+    gusbase_comet: Optional[File]
     tag_count_unblind: File
     hap_map_files_unblind: list[File]
     kgd_output_unblind: list[File]
 
 
-def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
+def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
     return cohort_output.gbs_kgd_stats_import
 
 
@@ -214,24 +215,36 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
 
-    collated_kgd_stats = collate_tags_reads_kgdstats(
-        run=spec.run,
-        cohort=spec.cohort.name,
-        tag_counts=tag_count,
-        kgd_stats=kgd_output.sample_stats_csv,
-        out_path=os.path.join(
-            spec.paths.cohort_blind_dir(spec.cohort.name),
-            "TagCountsAndSampleStats.csv",
-        ),
+    collated_kgd_stats = (
+        collate_tags_reads_kgdstats(
+            run=spec.run,
+            cohort=spec.cohort.name,
+            tag_counts=tag_count,
+            kgd_stats=kgd_output.sample_stats_csv,
+            out_path=os.path.join(
+                spec.paths.cohort_blind_dir(spec.cohort.name),
+                "TagCountsAndSampleStats.csv",
+            ),
+        )
+        if isinstance(kgd_output, KgdOutputSuccess)
+        else None
     )
 
-    gbs_kgd_stats_import = create_cohort_gbs_kgd_stats_import(
-        run=spec.run,
-        cohort_name=spec.cohort.name,
-        kgd_stats_csv=kgd_output.sample_stats_csv,
+    gbs_kgd_stats_import = (
+        create_cohort_gbs_kgd_stats_import(
+            run=spec.run,
+            cohort_name=spec.cohort.name,
+            kgd_stats_csv=kgd_output.sample_stats_csv,
+        )
+        if isinstance(kgd_output, KgdOutputSuccess)
+        else None
     )
 
-    gusbase_comet = gusbase(kgd_output.gusbase_rdata)
+    gusbase_comet = (
+        gusbase(kgd_output.gusbase_rdata)
+        if isinstance(kgd_output, KgdOutputSuccess)
+        else None
+    )
 
     kgd_blinded = lazy_map(kgd_output, kgd_output_files)
     kgd_output_unblind = unblind_all(
