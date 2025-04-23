@@ -13,24 +13,67 @@ from agr.redun.cluster_executor import (
 
 logger = logging.getLogger(__name__)
 
-# keys for files, not filenames
-KGD_SAMPLE_STATS = "sample-stats"
-KGD_GUSBASE_RDATA = "gusbase-rdata"
-GHW05_CSV = "ghw05-csv"
-GHW05_VCF = "ghw05-vcf"
-GHW05_INBREEDING_CSV = "ghw05-inbreeding-csv"
-GHW05_LONG_CSV = "ghw05-long-csv"
-GHW05_PC_CSV = "ghw05-pc-csv"
-GHW05_PCA_METADATA_TSV = "ghw05-pca-metadata-tsv"
-GHW05_PCA_VECTORS_TSV = "ghw05-pca-vectors-tsv"
-HEATMAP_ORDER_HWDGM05_CSV = "heatmap-order-hwdgm05-csv"
-HIGH_RELATEDNESS_CSV = "high-relatedness-csv"
-HIGH_RELATENESS_SPLIT_CSV = "high-relateness-split-csv"
-SEQ_ID_CSV = "seq-id-csv"
-SAMPLE_STATS_RAW_CSV = "sample-stats-raw-csv"
-SAMPLE_STATS_RAW_COMBINED_CSV = "sample-stats-raw-combined-csv"
-KGD_STDOUT = "kgd-stdout"
-KGD_STDERR = "kgd-stderr"
+KGD_STDOUT = "KGD.stdout"
+KGD_STDERR = "KGD.stderr"
+
+KGD_OUTPUT_PLOTS = [
+    "AlleleFreq.png",
+    "CallRate.png",
+    "Co-call-HWdgm.05.png",
+    "Co-call-.png",
+    "ColourKeydepth.png",
+    "ColourKeyHWdgm.05heatmap.png",
+    "finplot.png",
+    "GcompareHWdgm.05.png",
+    "Gcompare.png",
+    "Gdiagdepth.png",
+    "G-diag.png",
+    "GHWdgm.05diagdepth.png",
+    "GHWdgm.05-diag.png",
+    "G.splitdiagdepth.png",
+    "Heatmap-G5HWdgm.05.png",
+    "HWdisMAFsig.png",
+    "InbCompare.png",
+    "LRT-hist.png",
+    "LRT-QQ.png",
+    "MAFHWdgm.05.png",
+    "MAF.png",
+    "PC1v2G5HWdgm.05.png",
+    "PC1vDepthHWdgm.05.png",
+    "PC1vInbHWdgm.05.png",
+    "PCG5HWdgm.05.pdf",
+    "PlateDepth.png",
+    "PlateInb.png",
+    "SampDepthCR.png",
+    "SampDepthHist.png",
+    "SampDepth.png",
+    "SampDepth-scored.png",
+    "SNPCallRate.png",
+    "SNPDepthHist.png",
+    "SNPDepth.png",
+    "SubplateDepth.png",
+    "SubplateInb.png",
+    "X2star-QQ.png",
+]
+
+KGD_OUTPUT_DATA = [
+    "GHW05.csv",
+    "GHW05-Inbreeding.csv",
+    "GHW05-long.csv",
+    "GHW05-pca_metadata.tsv",
+    "GHW05-pca_vectors.tsv",
+    "GHW05-PC.csv",
+    "GHW05.RData",
+    "GHW05.vcf",
+    "GUSbase.RData",
+    "HeatmapOrderHWdgm.05.csv",
+    "HighRelatedness.csv",
+    "HighRelatedness.split.csv",
+    "SampleStats.csv",
+    "SampleStatsRawCombined.csv",
+    "SampleStatsRaw.csv",
+    "seqID.csv",
+]
 
 KGD_TOOL_NAME = "KGD"
 
@@ -63,27 +106,10 @@ def _kgd_job_spec(
         stderr_path=err_path,
         cwd=out_dir,
         expected_paths={
-            KGD_SAMPLE_STATS: os.path.join(out_dir, "SampleStats.csv"),
-            KGD_GUSBASE_RDATA: os.path.join(out_dir, "GUSbase.RData"),
-            GHW05_CSV: os.path.join(out_dir, "GHW05.csv"),
-            GHW05_VCF: os.path.join(out_dir, "GHW05.vcf"),
-            GHW05_INBREEDING_CSV: os.path.join(out_dir, "GHW05-Inbreeding.csv"),
-            GHW05_LONG_CSV: os.path.join(out_dir, "GHW05-long.csv"),
-            GHW05_PC_CSV: os.path.join(out_dir, "GHW05-PC.csv"),
-            GHW05_PCA_METADATA_TSV: os.path.join(out_dir, "GHW05-pca_metadata.tsv"),
-            GHW05_PCA_VECTORS_TSV: os.path.join(out_dir, "GHW05-pca_vectors.tsv"),
-            HEATMAP_ORDER_HWDGM05_CSV: os.path.join(
-                out_dir, "HeatmapOrderHWdgm.05.csv"
-            ),
-            HIGH_RELATEDNESS_CSV: os.path.join(out_dir, "HighRelatedness.csv"),
-            HIGH_RELATENESS_SPLIT_CSV: os.path.join(
-                out_dir, "HighRelatedness.split.csv"
-            ),
-            SEQ_ID_CSV: os.path.join(out_dir, "seqID.csv"),
-            SAMPLE_STATS_RAW_CSV: os.path.join(out_dir, "SampleStatsRaw.csv"),
-            SAMPLE_STATS_RAW_COMBINED_CSV: os.path.join(
-                out_dir, "SampleStatsRawCombined.csv"
-            ),
+            basename: os.path.join(out_dir, basename)
+            for basename in KGD_OUTPUT_DATA + KGD_OUTPUT_PLOTS
+        }
+        | {
             KGD_STDOUT: out_path,
             KGD_STDERR: err_path,
         },
@@ -99,24 +125,14 @@ class KgdOutput:
     """
 
     ok: bool
-    sample_stats_csv: Optional[File]
-    gusbase_rdata: Optional[File]
-    ghw05_csv: Optional[File]
-    ghw05_vcf: Optional[File]
-    ghw05_inbreeding_csv: Optional[File]
-    ghw05_long_csv: Optional[File]
-    ghw05_PC_csv: Optional[File]
-    ghw05_pca_metadata_tsv: Optional[File]
-    ghw05_pca_vectors_tsv: Optional[File]
-    heatmap_order_hwdgm05_csv: Optional[File]
-    high_relatedness_csv: Optional[File]
-    high_relateness_split_csv: Optional[File]
-    seq_ID_csv: Optional[File]
-    sample_stats_raw_csv: Optional[File]
-    sample_stats_raw_combined_csv: Optional[File]
+    data_files: dict[str, File]
+    plot_files: dict[str, File]
     kgd_stdout: Optional[File]
     kgd_stderr: File
 
+    @property
+    def sample_stats_csv(self) -> Optional[File]:
+        return self.data_files.get("SampleStats.csv")
 
 def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
     """Return all output except stderr as a list of files."""
@@ -143,44 +159,22 @@ def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
     if isinstance(result, ResultFiles):
         return KgdOutput(
             ok=True,
-            sample_stats_csv=result.expected_files[KGD_SAMPLE_STATS],
-            gusbase_rdata=result.expected_files[KGD_GUSBASE_RDATA],
-            ghw05_csv=result.expected_files[GHW05_CSV],
-            ghw05_vcf=result.expected_files[GHW05_VCF],
-            ghw05_inbreeding_csv=result.expected_files[GHW05_INBREEDING_CSV],
-            ghw05_long_csv=result.expected_files[GHW05_LONG_CSV],
-            ghw05_PC_csv=result.expected_files[GHW05_PC_CSV],
-            ghw05_pca_metadata_tsv=result.expected_files[GHW05_PCA_METADATA_TSV],
-            ghw05_pca_vectors_tsv=result.expected_files[GHW05_PCA_VECTORS_TSV],
-            heatmap_order_hwdgm05_csv=result.expected_files[HEATMAP_ORDER_HWDGM05_CSV],
-            high_relatedness_csv=result.expected_files[HIGH_RELATEDNESS_CSV],
-            high_relateness_split_csv=result.expected_files[HIGH_RELATENESS_SPLIT_CSV],
-            seq_ID_csv=result.expected_files[SEQ_ID_CSV],
-            sample_stats_raw_csv=result.expected_files[SAMPLE_STATS_RAW_CSV],
-            sample_stats_raw_combined_csv=result.expected_files[
-                SAMPLE_STATS_RAW_COMBINED_CSV
-            ],
+            data_files={
+                basename: result.expected_files[basename]
+                for basename in KGD_OUTPUT_DATA
+            },
+            plot_files={
+                basename: result.expected_files[basename]
+                for basename in KGD_OUTPUT_PLOTS
+            },
             kgd_stdout=result.expected_files[KGD_STDOUT],
             kgd_stderr=result.expected_files[KGD_STDERR],
         )
     else:
         return KgdOutput(
             ok=False,
-            sample_stats_csv=None,
-            gusbase_rdata=None,
-            ghw05_csv=None,
-            ghw05_vcf=None,
-            ghw05_inbreeding_csv=None,
-            ghw05_long_csv=None,
-            ghw05_PC_csv=None,
-            ghw05_pca_metadata_tsv=None,
-            ghw05_pca_vectors_tsv=None,
-            heatmap_order_hwdgm05_csv=None,
-            high_relatedness_csv=None,
-            high_relateness_split_csv=None,
-            seq_ID_csv=None,
-            sample_stats_raw_csv=None,
-            sample_stats_raw_combined_csv=None,
+            data_files={},
+            plot_files={},
             kgd_stdout=None,
             kgd_stderr=result.stderr,
         )
