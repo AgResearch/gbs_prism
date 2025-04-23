@@ -3,14 +3,18 @@ from redun import task, File
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
-from agr.gbs_prism.reports import create_report, render_report, BlindAndUnblindDir
+from agr.gbs_prism.reports import (
+    make_cohorts_report,
+    render_cohorts_report,
+    BlindAndUnblindDir,
+)
 from .stage2 import Stage2Output
 
 redun_namespace = "agr.gbs_prism"
 
 
 @task()
-def create_peacock(run: str, postprocessing_root: str, out_path) -> File:
+def create_peacock_report(run: str, postprocessing_root: str, out_path: str) -> File:
     make_cohort_pages(
         postprocessing_root=postprocessing_root, run=run, out_path=out_path
     )
@@ -19,16 +23,16 @@ def create_peacock(run: str, postprocessing_root: str, out_path) -> File:
 
 
 @task()
-def create_cohort_report(
+def create_cohorts_report(
     target_cohort_dir: BlindAndUnblindDir, cohort_name: str, out_path: str
 ) -> File:
-    # TODO should take redun file output from KGD
-    report = create_report(
+    # TODO should take redun file output from KGD, still again
+    report = make_cohorts_report(
         title=cohort_name,
         cohort_target_dirs={cohort_name: target_cohort_dir},
         make_targets_relative_to=os.path.dirname(out_path),
     )
-    render_report(report=report, out_path=out_path)
+    render_cohorts_report(report=report, out_path=out_path)
     return File(out_path)
 
 
@@ -46,7 +50,7 @@ def create_reports(
 
     peacock_html_path = os.path.join(out_dir, "peacock.html")
     all_reports.append(
-        create_peacock(
+        create_peacock_report(
             postprocessing_root=postprocessing_root, run=run, out_path=peacock_html_path
         )
     )
@@ -56,7 +60,7 @@ def create_reports(
         cohort_report_dir = os.path.join(out_dir, cohort_name)
         os.makedirs(cohort_report_dir, exist_ok=True)
         all_reports.append(
-            create_cohort_report(
+            create_cohorts_report(
                 # TODO use unblinded results, not blinded?
                 target_cohort_dir=BlindAndUnblindDir(
                     blind=gbs_paths.cohort_blind_dir(cohort_name),

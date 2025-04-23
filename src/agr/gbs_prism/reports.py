@@ -12,118 +12,148 @@ class BlindAndUnblindDir:
 
 @dataclass(kw_only=True)
 class Row:
+    """The target per column."""
+
     name: str
-    narration: Optional[str] = None
-    cohort_targets: dict[
+    description: Optional[str] = None
+    by_column: dict[
         str, Optional[str]
     ]  # for inline kind this is the file content not the path
 
 
-@dataclass
-class Group:
+@dataclass(kw_only=True)
+class Section:
+    """A section contains multiple rows all of the same kind."""
+
     name: str
     kind: Literal["image", "link", "inline"]
     rows: list[Row]
 
 
-@dataclass
+@dataclass(kw_only=True)
+class Chapter:
+    """A chapter is a list of sections for the same columns."""
+
+    name: str
+    columns: list[str]
+    sections: list[Section]
+
+
+@dataclass(kw_only=True)
 class Report:
-    title: str
-    cohorts: list[str]
-    groups: list[Group]
+    name: str
+    chapters: list[Chapter]
 
 
-def render_report(report: Report, out_path: str):
+def render_cohorts_report(report: Report, out_path: str):
     env = Environment(
         loader=PackageLoader("agr.gbs_prism"), autoescape=select_autoescape()
     )
     template = env.get_template("report.html.jinja")
     with open(out_path, "w") as out_f:
-        _ = out_f.write(
-            template.render(
-                title=report.title,
-                cohorts=report.cohorts,
-                groups=report.groups,
-            )
-        )
+        _ = out_f.write(template.render(report=report))
 
 
-def create_report(
+# def render_peacock_report(report: Report, out_path: str):
+#     env = Environment(
+#         loader=PackageLoader("agr.gbs_prism"), autoescape=select_autoescape()
+#     )
+#     template = env.get_template("peacock_report.html.jinja")
+#     with open(out_path, "w") as out_f:
+#         _ = out_f.write(
+#             template.render(
+#                 name=report.name,
+#                 cohorts=report.cohorts,
+#                 sections=report.sections,
+#             )
+#         )
+
+
+def make_cohorts_report(
     title: str,
     cohort_target_dirs: dict[str, BlindAndUnblindDir],
     make_targets_relative_to: Optional[str] = None,
 ) -> Report:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
     return Report(
-        title=title,
-        cohorts=sorted(cohort_target_dirs.keys()),
-        groups=[
-            Group(
-                name="KGD (plots)",
-                kind="image",
-                rows=[
-                    Row(
-                        name="KGD/%s" % name,
-                        cohort_targets={
-                            cohort: _blind_relpath_or_none(
-                                cohort_target_dir,
-                                os.path.join("KGD", name),
-                                make_targets_relative_to,
+        name=title,
+        chapters=[
+            Chapter(
+                name="Cohorts",
+                columns=sorted(cohort_target_dirs.keys()),
+                sections=[
+                    Section(
+                        name="KGD (plots)",
+                        kind="image",
+                        rows=[
+                            Row(
+                                name="KGD/%s" % name,
+                                by_column={
+                                    cohort: _blind_relpath_or_none(
+                                        cohort_target_dir,
+                                        os.path.join("KGD", name),
+                                        make_targets_relative_to,
+                                    )
+                                    for (
+                                        cohort,
+                                        cohort_target_dir,
+                                    ) in cohort_target_dirs.items()
+                                },
+                                description=narration,
                             )
-                            for (
-                                cohort,
-                                cohort_target_dir,
-                            ) in cohort_target_dirs.items()
-                        },
-                        narration=narration,
-                    )
-                    for (name, narration) in _KGD_PLOTS_WITH_NARRATION
-                ],
-            ),
-            Group(
-                name="KGD (text file links)",
-                kind="link",
-                rows=[
-                    Row(
-                        name="KGD/%s" % name,
-                        cohort_targets={
-                            cohort: _blind_or_unblind_relpath_or_none(
-                                cohort_target_dir,
-                                os.path.join("KGD", name),
-                                make_targets_relative_to,
+                            for (name, narration) in _KGD_PLOTS_WITH_NARRATION
+                        ],
+                    ),
+                    Section(
+                        name="KGD (output file links)",
+                        kind="link",
+                        rows=[
+                            Row(
+                                name="KGD/%s" % name,
+                                by_column={
+                                    cohort: _blind_or_unblind_relpath_or_none(
+                                        cohort_target_dir,
+                                        os.path.join("KGD", name),
+                                        make_targets_relative_to,
+                                    )
+                                    for (
+                                        cohort,
+                                        cohort_target_dir,
+                                    ) in cohort_target_dirs.items()
+                                },
                             )
-                            for (
-                                cohort,
-                                cohort_target_dir,
-                            ) in cohort_target_dirs.items()
-                        },
-                    )
-                    for name in _KGD_TEXT_FILES
-                ],
-            ),
-            Group(
-                name="Hapmap files",
-                kind="link",
-                rows=[
-                    Row(
-                        name="hapMap/%s" % name,
-                        cohort_targets={
-                            cohort: _unblind_relpath_or_none(
-                                cohort_target_dir,
-                                os.path.join("hapMap", name),
-                                make_targets_relative_to,
+                            for name in _KGD_TEXT_FILES
+                        ],
+                    ),
+                    Section(
+                        name="Hapmap files",
+                        kind="link",
+                        rows=[
+                            Row(
+                                name="hapMap/%s" % name,
+                                by_column={
+                                    cohort: _unblind_relpath_or_none(
+                                        cohort_target_dir,
+                                        os.path.join("hapMap", name),
+                                        make_targets_relative_to,
+                                    )
+                                    for (
+                                        cohort,
+                                        cohort_target_dir,
+                                    ) in cohort_target_dirs.items()
+                                },
                             )
-                            for (
-                                cohort,
-                                cohort_target_dir,
-                            ) in cohort_target_dirs.items()
-                        },
-                    )
-                    for name in _HAPMAP_FILES
+                            for name in _HAPMAP_FILES
+                        ],
+                    ),
                 ],
-            ),
+            )
         ],
     )
+
+
+# def make_peacock_report() -> Report:
+#     pass
 
 
 _KGD_PLOTS_WITH_NARRATION = [
@@ -317,11 +347,11 @@ _KGD_TEXT_FILES = [
     "GHW05-pca_metadata.tsv",
     "GHW05-pca_vectors.tsv",
     "GHW05-PC.csv",
-    "GHW05.RData",
+    "GHW05.RData.blinded",
     "GHW05.vcf",
     "HeatmapOrderHWdgm.05.csv",
     "HeatmapOrderHWdgm.05.csv.blinded",
-    "PCG5HWdgm.05.pdf",
+    "PCG5HWdgm.05.pdf.blinded",
     "SampleStats.csv",
     "SampleStats.csv.blinded",
     "seqID.csv",

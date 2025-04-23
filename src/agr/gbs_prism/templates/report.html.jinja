@@ -1,46 +1,53 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Results for {{ title }}</title>
+    <title>{{ report.name }}</title>
   </head>
   <body>
-    <h1>Results for {{ title }}</h1>
+    <h1>{{ report.name }}</h1>
+    {% for chapter in report.chapters -%}
+    <h2>{{ chapter.name }}</h2>
+
+    {% for section in chapter.sections -%}
+
+    <h3>{{ section.name }}</h3>
+
     <table width="90%" align="center">
-      {% for group in groups -%}
       <tr>
-        <td><h2>{{ group.name }}</h2></td>
-        {% for cohort in cohorts -%}
-        <td><h4>{{ cohort }}</h4></td>
+        <td></td>
+        {% for column in chapter.columns -%}
+        <td><h4>{{ column }}</h4></td>
         {% endfor -%}
       </tr>
-      {% for row in group.rows -%}
+      {% for row in section.rows -%}
       <tr>
         <td>{{ row.name }}</td>
-        {% for cohort in cohorts -%}
+        {% for column in chapter.columns -%}
         <td>
-          {% if row.cohort_targets[cohort] is none -%}
+          {% if row.by_column[column] is none -%}
           <span>(missing)</span>
-          {% elif group.kind == "image" -%}
+          {% elif section.kind == "image" -%}
           <img
-            src="{{ row.cohort_targets[cohort] }}"
-            title="{{ row.narration }}"
+            src="{{ row.by_column[column] }}"
+            title="{{ row.description }}"
             height="300"
             width="300"
           />
-          {% elif group.kind == "link" -%}
+          {% elif section.kind == "link" -%}
           <a
-            href="{{ row.cohort_targets[cohort] }}"
-            target="{{ row.cohort_targets[cohort] }}"
+            href="{{ row.by_column[column] }}"
+            target="{{ row.by_column[column] }}"
           >
             {{ row.name }}
           </a>
-          {% elif group.kind == "inline" -%}
-          <font size="-2"><pre>{{ row.cohort_targets[cohort] }}</pre></font>
+          {% elif section.kind == "inline" -%}
+          <font size="-2"><pre>{{ row.by_column[column] }}</pre></font>
           {% endif -%}
         </td>
         {% endfor -%}
       </tr>
-      {% endfor -%} {% endfor -%}
+      {% endfor -%}
     </table>
+    {% endfor -%} {% endfor -%}
   </body>
 </html>
