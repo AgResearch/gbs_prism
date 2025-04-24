@@ -693,7 +693,7 @@ def summarise_spectra(distributions, options):
         )
     ]
     zsample_measures = itertools.chain(sample_name_iter, zsample_measures)
-    interval_name_iter = itertools.chain([("kmer_pattern")], kmer_intervals)
+    interval_name_iter = itertools.chain(["kmer_pattern"], kmer_intervals)
 
     outfile = open(options["output_filename"], "w")
 
@@ -1012,8 +1012,6 @@ def validate_options(options):
             raise KmerPrismError(
                 "error output file %(output_filename)s already exists" % options
             )
-
-    return options
 
 
 def test(options):
