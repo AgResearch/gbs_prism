@@ -241,8 +241,8 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 
     gusbase_comet = gusbase(kgd_output.gusbase_rdata)
 
-    kgd_data_files_unblind = unblind_each(
-        kgd_output.data_files,
+    kgd_text_files_unblind = unblind_each(
+        kgd_output.text_files,
         unblind_script,
         kgd_dir(spec.paths.cohort_dir(spec.cohort.name)),
     )

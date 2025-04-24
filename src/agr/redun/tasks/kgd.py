@@ -56,16 +56,14 @@ KGD_OUTPUT_PLOTS = [
     "X2star-QQ.png",
 ]
 
-KGD_OUTPUT_DATA = [
+KGD_OUTPUT_TEXT_FILES = [
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
     "GHW05-long.csv",
     "GHW05-pca_metadata.tsv",
     "GHW05-pca_vectors.tsv",
     "GHW05-PC.csv",
-    "GHW05.RData",
     "GHW05.vcf",
-    "GUSbase.RData",
     "HeatmapOrderHWdgm.05.csv",
     "HighRelatedness.csv",
     "HighRelatedness.split.csv",
@@ -73,6 +71,11 @@ KGD_OUTPUT_DATA = [
     "SampleStatsRawCombined.csv",
     "SampleStatsRaw.csv",
     "seqID.csv",
+]
+
+KGD_OUTPUT_BINARY_FILES = [
+    "GHW05.RData",
+    "GUSbase.RData",
 ]
 
 KGD_TOOL_NAME = "KGD"
@@ -107,7 +110,9 @@ def _kgd_job_spec(
         cwd=out_dir,
         expected_paths={
             basename: os.path.join(out_dir, basename)
-            for basename in KGD_OUTPUT_DATA + KGD_OUTPUT_PLOTS
+            for basename in KGD_OUTPUT_TEXT_FILES
+            + KGD_OUTPUT_BINARY_FILES
+            + KGD_OUTPUT_PLOTS
         }
         | {
             KGD_STDOUT: out_path,
@@ -125,14 +130,15 @@ class KgdOutput:
     """
 
     ok: bool
-    data_files: dict[str, File]
     plot_files: dict[str, File]
+    text_files: dict[str, File]
+    binary_files: dict[str, File]
     kgd_stdout: Optional[File]
     kgd_stderr: File
 
     @property
     def sample_stats_csv(self) -> Optional[File]:
-        return self.data_files.get("SampleStats.csv")
+        return self.text_files.get("SampleStats.csv")
 
 def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
     """Return all output except stderr as a list of files."""
@@ -159,9 +165,13 @@ def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
     if isinstance(result, ResultFiles):
         return KgdOutput(
             ok=True,
-            data_files={
+            text_files={
                 basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_DATA
+                for basename in KGD_OUTPUT_TEXT_FILES
+            },
+            binary_files={
+                basename: result.expected_files[basename]
+                for basename in KGD_OUTPUT_BINARY_FILES
             },
             plot_files={
                 basename: result.expected_files[basename]
@@ -173,7 +183,8 @@ def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
     else:
         return KgdOutput(
             ok=False,
-            data_files={},
+            text_files={},
+            binary_files={},
             plot_files={},
             kgd_stdout=None,
             kgd_stderr=result.stderr,
