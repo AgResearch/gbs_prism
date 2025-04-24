@@ -57,12 +57,11 @@ def _bcl_convert_job_spec(
     sample_sheet_path: str,
     out_dir: str,
 ) -> JobNSpec:
-    out_path = os.path.join(
-        os.path.dirname(sample_sheet_path), "SampleSheet", "bclconvert.stdout"
-    )
-    err_path = os.path.join(
-        os.path.dirname(sample_sheet_path), "SampleSheet", "bclconvert.sterr"
-    )
+    # Create out and error files as *siblings* of out_dir,
+    # since the out_dir itself must be created by bcl-convert,
+    # and therefore doesn't exist early enough for these.
+    out_path = "%s.stdout" % out_dir
+    err_path = "%s.stderr" % out_dir
 
     return JobNSpec(
         tool=BCLCONVERT_TOOL_NAME,
