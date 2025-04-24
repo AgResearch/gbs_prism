@@ -140,6 +140,11 @@ class KgdOutput:
     def sample_stats_csv(self) -> Optional[File]:
         return self.text_files.get("SampleStats.csv")
 
+    @property
+    def gusbase_rdata(self) -> Optional[File]:
+        return self.text_files.get("GUSbase.RData")
+
+
 def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
     """Return all output except stderr as a list of files."""
     file_vars = vars(kgd_output).copy()
