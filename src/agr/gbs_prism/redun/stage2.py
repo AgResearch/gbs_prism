@@ -2,6 +2,7 @@ import os.path
 from dataclasses import dataclass
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats
 from redun import task, File
+from typing import Optional
 
 redun_namespace = "agr.gbs_prism"
 
@@ -130,15 +131,15 @@ class CohortOutput:
     map_info: File
     hap_map_files: list[File]
     kgd_output: KgdOutput
-    gbs_kgd_stats_import: File
-    collated_kgd_stats: File
-    gusbase_comet: File
+    gbs_kgd_stats_import: Optional[File]
+    collated_kgd_stats: Optional[File]
+    gusbase_comet: Optional[File]
     tag_count_unblind: File
     hap_map_files_unblind: list[File]
     kgd_output_unblind: list[File]
 
 
-def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> File:
+def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
     return cohort_output.gbs_kgd_stats_import
 
 

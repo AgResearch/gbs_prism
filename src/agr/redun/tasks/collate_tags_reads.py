@@ -314,21 +314,24 @@ def collate_tags_reads_kgdstats(
     run: str,
     cohort: str,
     tag_counts: File,
-    kgd_stats: File,
+    kgd_stats: Optional[File],
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
-):
-    with open(tag_counts.path, "r") as tag_counts_f:
-        with open(kgd_stats.path, "r") as kgd_stats_f:
-            _collate_tags_reads_kgdstats(
-                run=run,
-                cohort=cohort,
-                machine=machine,
-                tag_counts=tag_counts_f,
-                kgd_stats=kgd_stats_f,
-                out_path=out_path,
-            )
-    return File(out_path)
+) -> Optional[File]:
+    if kgd_stats is None:
+        return None
+    else:
+        with open(tag_counts.path, "r") as tag_counts_f:
+            with open(kgd_stats.path, "r") as kgd_stats_f:
+                _collate_tags_reads_kgdstats(
+                    run=run,
+                    cohort=cohort,
+                    machine=machine,
+                    tag_counts=tag_counts_f,
+                    kgd_stats=kgd_stats_f,
+                    out_path=out_path,
+                )
+        return File(out_path)
 
 
 def _main():

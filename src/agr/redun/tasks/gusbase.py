@@ -2,6 +2,7 @@ import logging
 import os.path
 import pdf2image
 from redun import task, File
+from typing import Optional
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.util.path import symlink
@@ -40,9 +41,12 @@ def _get_converted_GUSbase_output(gusbase_out_file: File) -> File:
 
 
 @task()
-def gusbase(gusbase_rdata: File) -> File:
-    return _get_converted_GUSbase_output(
-        run_job_1(
-            _gusbase_job_spec(gusbase_rdata.path),
+def gusbase(gusbase_rdata: Optional[File]) -> Optional[File]:
+    if gusbase_rdata is None:
+        return None
+    else:
+        return _get_converted_GUSbase_output(
+            run_job_1(
+                _gusbase_job_spec(gusbase_rdata.path),
+            )
         )
-    )
