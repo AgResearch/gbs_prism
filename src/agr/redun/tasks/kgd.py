@@ -119,8 +119,11 @@ class KgdOutput:
 
 
 def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
-    """Return all output as a list of files."""
-    return [file for file in vars(kgd_output).values() if file is not None]
+    """Return all output except stderr as a list of files."""
+    file_vars = vars(kgd_output)
+    del file_vars["ok"]
+    del file_vars["kgd_stderr"]
+    return [file for file in file_vars.values() if file is not None]
 
 
 @task()
