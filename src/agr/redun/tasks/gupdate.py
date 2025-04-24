@@ -28,23 +28,26 @@ def import_gbs_read_tag_counts(run: str, collated_tag_count: File) -> File:
 
 @task()
 def create_cohort_gbs_kgd_stats_import(
-    run: str, cohort_name: str, kgd_stats_csv: File
-) -> File:
+    run: str, cohort_name: str, kgd_stats_csv: Optional[File]
+) -> Optional[File]:
     """Create the import file in the correct format for a single cohort, but don't actually import."""
-    import_path = "%s.import-gbs.tsv" % kgd_stats_csv.path.removesuffix(".csv")
+    if kgd_stats_csv is None:
+        return None
+    else:
+        import_path = "%s.import-gbs.tsv" % kgd_stats_csv.path.removesuffix(".csv")
 
-    with open(kgd_stats_csv.path, "r") as kgd_stats_f:
-        kgd_stats = csv.reader(kgd_stats_f)
-        kgd_stats_header = next(kgd_stats)
-        with open(import_path, "w") as import_f:
-            # Map the columns into the required format as defined by
-            # gquery/sequencing/illumina.py where the name predicate is import_gbs_kgd_stats
-            for row in map_columns(
-                kgd_stats_header, ["seqID", "callrate", "sampdepth"], kgd_stats
-            ):
-                _ = import_f.write("%s\n" % "\t".join([run, cohort_name] + row))
+        with open(kgd_stats_csv.path, "r") as kgd_stats_f:
+            kgd_stats = csv.reader(kgd_stats_f)
+            kgd_stats_header = next(kgd_stats)
+            with open(import_path, "w") as import_f:
+                # Map the columns into the required format as defined by
+                # gquery/sequencing/illumina.py where the name predicate is import_gbs_kgd_stats
+                for row in map_columns(
+                    kgd_stats_header, ["seqID", "callrate", "sampdepth"], kgd_stats
+                ):
+                    _ = import_f.write("%s\n" % "\t".join([run, cohort_name] + row))
 
-    return File(import_path)
+        return File(import_path)
 
 
 @task()

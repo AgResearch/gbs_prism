@@ -6,6 +6,7 @@ import os.path
 import re
 from dataclasses import dataclass
 from datetime import timedelta
+from enum import Enum
 from pathlib import Path
 from redun import File
 from redun.task import task, scheduler_task
@@ -35,15 +36,28 @@ redun_namespace = "agr.redun"
 
 
 class ClusterExecutorError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class ClusterExecutorJobFailure:
+    """
+    This needs to contain the stderr as an actual file
+    so that deleting that file will trigger redun to rerun the failed task.
+    """
+
     def __init__(
         self,
-        message: str,
-        job_exit_code: Optional[int] = None,
-        job_stderr_text: Optional[str] = None,
+        exit_code: int,
+        stderr: File,
     ):
-        super().__init__(message)
-        self.job_exit_code = job_exit_code
-        self.job_stderr_text = job_stderr_text
+        self.exit_code = exit_code
+        self.stderr = stderr
+
+
+class _FailureHandler(Enum):
+    EXCEPTION = 1
+    RETURN = 2
 
 
 class ConfigError(Exception):
@@ -219,9 +233,13 @@ def job_description(
         return f"job {job.native_id} {command_text}{padded_annotation} cwd={cwd}"
 
 
-def _raise_exception_on_failure(
-    job: Job, status: JobStatus | None, spec: CommonJobSpec
-):
+def _handle_failure(
+    job: Job,
+    status: JobStatus | None,
+    spec: CommonJobSpec,
+    failure_handler: _FailureHandler,
+) -> Optional[ClusterExecutorJobFailure]:
+    """On failure raise an exception, unless handle_job_failure, in which case, return the failure."""
     if status is None:
         logger.debug(f"job {job.native_id} status is None")
         raise ClusterExecutorError(f"job {job.native_id} status is None")
@@ -232,10 +250,12 @@ def _raise_exception_on_failure(
         try:
             with open(spec.stderr_path, "r") as stderr_f:
                 stderr_text = stderr_f.read()
+                stderr_readable = True
         except:
             stderr_text = (
                 f"(stderr unavailable because failed to read {spec.stderr_path})"
             )
+            stderr_readable = False
         if status.exit_code is None:
             exit_text = ""
         elif status.exit_code > 128:
@@ -254,11 +274,22 @@ def _raise_exception_on_failure(
         logger.debug(
             f"{job_description(job, spec, annotation=failure_text)} {metadata_text}: {stderr_text}"
         )
+
+        if (
+            failure_handler == _FailureHandler.RETURN
+            and status.exit_code is not None
+            and stderr_readable
+        ):
+            # It is important that we only return failure when the stderr file actually exists,
+            # otherwise there's no way to trigger a rerun after fixing whatever was broken.
+            # Simply deleting the stderr file should be enough of a trigger.
+            return ClusterExecutorJobFailure(
+                exit_code=status.exit_code, stderr=File(spec.stderr_path)
+            )
         raise ClusterExecutorError(
-            f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}",
-            job_exit_code=status.exit_code,
-            job_stderr_text=stderr_text,
+            f"{job_description(job, spec, annotation=failure_text, multiline=True)}\nmetadata: {metadata_text}\n{stderr_text}"
         )
+    return None
 
 
 def _reject_on_failure(
@@ -282,12 +313,12 @@ def _reject_on_failure(
     return False
 
 
-@task()
-def run_job_1(
+def _run_job_1(
     spec: Job1Spec,
-) -> File:
+    failure_handler: _FailureHandler,
+) -> File | ClusterExecutorJobFailure:
     """
-    Run a job on the defined cluster, which is expected to produce the single file `result_path`
+    Run a job on the defined cluster, which is expected to produce the single file `expected_path`
     """
     job_spec, executor_name = _create_job_spec(
         spec=spec,
@@ -297,14 +328,38 @@ def run_job_1(
     _create_executor(executor_name).submit(job)
 
     status = job.wait()
-    _raise_exception_on_failure(job, status, spec)
+    failure = _handle_failure(job, status, spec, failure_handler=failure_handler)
+    if failure is not None:
+        return failure
+    else:
+        if not os.path.exists(spec.expected_path):
+            raise ClusterExecutorError(
+                f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
+            )
 
-    if not os.path.exists(spec.expected_path):
-        raise ClusterExecutorError(
-            f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
-        )
+        return File(spec.expected_path)
 
-    return File(spec.expected_path)
+
+@task()
+def run_job_1(
+    spec: Job1Spec,
+) -> File:
+    """
+    Run a job on the defined cluster, which is expected to produce the single file `expected_path`
+    """
+    result = _run_job_1(spec, failure_handler=_FailureHandler.EXCEPTION)
+    assert isinstance(result, File)
+    return result
+
+
+@task()
+def run_job_1_returning_failure(
+    spec: Job1Spec,
+) -> File | ClusterExecutorJobFailure:
+    """
+    Run a job on the defined cluster, which is expected to produce the single file `expected_path`
+    """
+    return _run_job_1(spec, failure_handler=_FailureHandler.RETURN)
 
 
 @scheduler_task()
@@ -387,10 +442,10 @@ def _result_files(
     )
 
 
-@task()
-def run_job_n(
+def _run_job_n(
     spec: JobNSpec,
-) -> ResultFiles:
+    failure_handler: _FailureHandler,
+) -> ResultFiles | ClusterExecutorJobFailure:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
@@ -403,9 +458,33 @@ def run_job_n(
     _create_executor(executor_name).submit(job)
 
     status = job.wait()
-    _raise_exception_on_failure(job, status, spec)
+    failure = _handle_failure(job, status, spec, failure_handler=failure_handler)
+    if failure is not None:
+        return failure
+    else:
+        return _result_files(job, spec, spec.expected_paths, spec.expected_globs)
 
-    return _result_files(job, spec, spec.expected_paths, spec.expected_globs)
+
+@task()
+def run_job_n_returning_failure(
+    spec: JobNSpec,
+) -> ResultFiles | ClusterExecutorJobFailure:
+    """
+    Run a job on the defined cluster, which is expected to produce files matching `result_glob`
+    """
+    return _run_job_n(spec, failure_handler=_FailureHandler.RETURN)
+
+
+@task()
+def run_job_n(
+    spec: JobNSpec,
+) -> ResultFiles:
+    """
+    Run a job on the defined cluster, which is expected to produce files matching `result_glob`
+    """
+    result_files = _run_job_n(spec, failure_handler=_FailureHandler.EXCEPTION)
+    assert isinstance(result_files, ResultFiles)
+    return result_files
 
 
 def _run_job_n_uncached(
