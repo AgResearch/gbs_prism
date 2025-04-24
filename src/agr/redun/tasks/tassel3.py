@@ -158,7 +158,7 @@ class Tassel3:
 
     @property
     def hap_map_dir(self) -> str:
-        return os.path.join(self._work_dir, "hapMap")
+        return hap_map_dir(self._work_dir)
 
     def symlink_key(self, in_path: str):
         os.makedirs(self.key_dir, exist_ok=True)
@@ -383,3 +383,7 @@ def map_info_to_hap_map(
         tassel3.map_info_to_hap_map_job_spec,
     )
     return result_files.globbed_files[HAP_MAP_FILES]
+
+
+def hap_map_dir(work_dir: str) -> str:
+    return os.path.join(work_dir, "hapMap")

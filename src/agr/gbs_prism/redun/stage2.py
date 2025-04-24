@@ -40,8 +40,8 @@ from agr.redun.tasks import (
 )
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-from agr.redun.tasks.tassel3 import fastq_name_for_tassel3
-from agr.redun.tasks.kgd import KgdOutput, kgd_output_files
+from agr.redun.tasks.tassel3 import fastq_name_for_tassel3, hap_map_dir
+from agr.redun.tasks.kgd import KgdOutput, kgd_output_files, kgd_dir
 from agr.redun.tasks.unblind import get_unblind_script, unblind_one, unblind_all
 
 
@@ -210,7 +210,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
     )
     hap_map_files_unblind = unblind_all(
-        hap_map_files, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
+        hap_map_files,
+        unblind_script,
+        hap_map_dir(spec.paths.cohort_dir(spec.cohort.name)),
     )
 
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
@@ -236,7 +238,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
 
     kgd_blinded = lazy_map(kgd_output, kgd_output_files)
     kgd_output_unblind = unblind_all(
-        kgd_blinded, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
+        kgd_blinded, unblind_script, kgd_dir(spec.paths.cohort_dir(spec.cohort.name))
     )
 
     output = CohortOutput(
