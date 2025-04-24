@@ -6,48 +6,65 @@
   <body>
     <h1>{{ report.name }}</h1>
     {% for chapter in report.chapters -%}
-    <h2>{{ chapter.name }}</h2>
+      {% if chapter.name is not None -%}
+        <h2>{{ chapter.name }}</h2>
+      {% endif -%}
+      {% for section in chapter.sections -%}
+        {% if section.name is not None -%}
+          <h3>{{ section.name }}</h3>
+        {% endif -%}
 
-    {% for section in chapter.sections -%}
-
-    <h3>{{ section.name }}</h3>
-
-    <table width="90%" align="center">
-      <tr>
-        <td></td>
-        {% for column in chapter.columns -%}
-        <td><h4>{{ column }}</h4></td>
-        {% endfor -%}
-      </tr>
-      {% for row in section.rows -%}
-      <tr>
-        <td>{{ row.name }}</td>
-        {% for column in chapter.columns -%}
-        <td>
-          {% if row.by_column[column] is none -%}
-          <span>(missing)</span>
-          {% elif section.kind == "image" -%}
-          <img
-            src="{{ row.by_column[column] }}"
-            title="{{ row.description }}"
-            height="300"
-            width="300"
-          />
-          {% elif section.kind == "link" -%}
-          <a
-            href="{{ row.by_column[column] }}"
-            target="{{ row.by_column[column] }}"
-          >
-            {{ row.name }}
-          </a>
-          {% elif section.kind == "inline" -%}
-          <font size="-2"><pre>{{ row.by_column[column] }}</pre></font>
-          {% endif -%}
-        </td>
-        {% endfor -%}
-      </tr>
+        <table width="90%" align="center">
+          <tr>
+            {% if section.named_rows -%}
+              <td></td>
+            {% endif -%}
+            {% for column in chapter.columns -%}
+              <td>
+                {% if column is not None -%}
+                  <h4>{{ column }}</h4>
+                {% endif -%}
+              </td>
+            {% endfor -%}
+          </tr>
+          {% for row in section.rows -%}
+            <tr>
+              {% if section.named_rows -%}
+                <td>
+                  {% if row.name is not None -%}
+                    {{ row.name }}
+                  {% endif -%}
+                </td>
+              {% endif -%}
+              {% for column in chapter.columns -%}
+                <td>
+                  {% if row.by_column[column] is None -%}
+                    <span>(missing)</span>
+                  {% elif section.kind == "image" -%}
+                    <img
+                      src="{{ row.by_column[column] }}"
+                      title="{{ row.description }}"
+                      height="300"
+                      width="300"
+                    />
+                  {% elif section.kind == "link" -%}
+                    <a
+                      href="{{ row.by_column[column] }}"
+                      target="{{ row.by_column[column] }}"
+                    >
+                      {{ row.name }}
+                    </a>
+                  {% elif section.kind == "inline" -%}
+                    <font size="-2">
+                      <pre>{{ row.by_column[column] }}</pre>
+                    </font>
+                  {% endif -%}
+                </td>
+              {% endfor -%}
+            </tr>
+          {% endfor -%}
+        </table>
       {% endfor -%}
-    </table>
-    {% endfor -%} {% endfor -%}
+    {% endfor -%}
   </body>
 </html>

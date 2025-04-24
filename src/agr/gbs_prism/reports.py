@@ -14,7 +14,7 @@ class BlindAndUnblindDir:
 class Row:
     """The target per column."""
 
-    name: str
+    name: Optional[str] = None
     description: Optional[str] = None
     by_column: dict[
         str, Optional[str]
@@ -25,7 +25,8 @@ class Row:
 class Section:
     """A section contains multiple rows all of the same kind."""
 
-    name: str
+    name: Optional[str] = None
+    named_rows: bool = False
     kind: Literal["image", "link", "inline"]
     rows: list[Row]
 
@@ -34,7 +35,7 @@ class Section:
 class Chapter:
     """A chapter is a list of sections for the same columns."""
 
-    name: str
+    name: Optional[str] = None
     columns: list[str]
     sections: list[Section]
 
@@ -79,11 +80,11 @@ def make_cohorts_report(
         name=title,
         chapters=[
             Chapter(
-                name="Cohorts",
                 columns=sorted(cohort_target_dirs.keys()),
                 sections=[
                     Section(
                         name="KGD (plots)",
+                        named_rows=True,
                         kind="image",
                         rows=[
                             Row(
@@ -109,7 +110,6 @@ def make_cohorts_report(
                         kind="link",
                         rows=[
                             Row(
-                                name="KGD/%s" % name,
                                 by_column={
                                     cohort: _blind_or_unblind_relpath_or_none(
                                         cohort_target_dir,
@@ -130,7 +130,6 @@ def make_cohorts_report(
                         kind="link",
                         rows=[
                             Row(
-                                name="hapMap/%s" % name,
                                 by_column={
                                     cohort: _unblind_relpath_or_none(
                                         cohort_target_dir,
