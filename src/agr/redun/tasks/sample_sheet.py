@@ -1,4 +1,6 @@
 import logging
+import os.path
+
 from dataclasses import dataclass
 from redun import task, File
 
@@ -23,6 +25,10 @@ def cook_sample_sheet(
     impute_lanes=[1, 2],
 ) -> CookSampleSheetOutput:
     """Process a raw sample sheet into a form compatiable with bclconvert et al."""
+
+    # create base SampleSheet/ directory beside SampleSheet.csv
+    os.makedirs(os.path.join(os.path.dirname(out_path), "SampleSheet"), exist_ok=True)
+
     sample_sheet = SampleSheet(in_path, impute_lanes=impute_lanes)
     sample_sheet.write(out_path)
 

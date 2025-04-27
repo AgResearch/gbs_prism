@@ -31,10 +31,6 @@ class BclConvertPaths:
         self._out_dir = out_dir
         self._log_dir = os.path.join(self._out_dir, "Logs")
 
-    def create_directories(self):
-        os.makedirs(self._out_dir, exist_ok=True)
-        os.makedirs(self._log_dir, exist_ok=True)
-
     @property
     def top_unknown_path(self) -> str:
         return os.path.join(self._out_dir, "Reports", "Top_Unknown_Barcodes.csv")
@@ -61,14 +57,17 @@ def _bcl_convert_job_spec(
     sample_sheet_path: str,
     out_dir: str,
 ) -> JobNSpec:
-    out_path = os.path.join(out_dir, "bclconvert.stdout")
-    err_path = os.path.join(out_dir, "bclconvert.sterr")
+
+    # Create out and error files as *siblings* of out_dir,
+    # since the out_dir itself must be created by bcl-convert,
+    # and therefore doesn't exist early enough for these.
+    out_path = "%s.stdout" % out_dir
+    err_path = "%s.stderr" % out_dir
 
     return JobNSpec(
         tool=BCLCONVERT_TOOL_NAME,
         args=[
             "bcl-convert",
-            "--force",
             "--bcl-input-directory",
             in_dir,
             "--sample-sheet",
@@ -108,7 +107,6 @@ def bcl_convert(
     expected_fastq: set[str],
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
-    paths.create_directories()
 
     fastq_files = run_job_n(
         _bcl_convert_job_spec(
