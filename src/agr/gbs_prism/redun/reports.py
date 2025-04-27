@@ -1,11 +1,11 @@
 import os.path
 from redun import task, File
 
+from agr.util.report import render_report
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 from agr.gbs_prism.reports import (
     make_cohorts_report,
-    render_cohorts_report,
     BlindAndUnblindDir,
 )
 from .stage2 import Stage2Output
@@ -32,7 +32,7 @@ def create_cohorts_report(
         cohort_target_dirs={cohort_name: target_cohort_dir},
         make_targets_relative_to=os.path.dirname(out_path),
     )
-    render_cohorts_report(report=report, out_path=out_path)
+    render_report(report=report, out_path=out_path)
     return File(out_path)
 
 
