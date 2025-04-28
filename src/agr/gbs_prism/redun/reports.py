@@ -28,6 +28,7 @@ class CohortTargets:
     hap_map_files_unblind: list[File]
 
     def kgd_output_file(self, name: str) -> Optional[File]:
+        """Look in all locations: plots, text files, binary files."""
         BLINDED_SUFFIX = ".blinded"
         blind = name.endswith(BLINDED_SUFFIX)
         basename = name.removesuffix(BLINDED_SUFFIX)
@@ -35,7 +36,10 @@ class CohortTargets:
             self.kgd_output.text_files.get(basename)
             if blind
             else self.kgd_text_files_unblind.get(
-                basename, self.kgd_output.binary_files.get(basename)
+                basename,
+                self.kgd_output.binary_files.get(
+                    basename, self.kgd_output.plot_files.get(basename)
+                ),
             )
         )
 
@@ -75,7 +79,7 @@ def _create_kgd_plots_section(
     )
 
 
-def _create_kgd_output_files_section(
+def _create_kgd_links_section(
     cohorts_targets: dict[str, CohortTargets], relbase: str
 ) -> Section:
     return Section(
@@ -88,7 +92,7 @@ def _create_kgd_output_files_section(
                     for (cohort_name, cohort) in cohorts_targets.items()
                 },
             )
-            for name in _KGD_TEXT_FILES
+            for name in _KGD_LINKS
         ],
     )
 
@@ -135,7 +139,7 @@ def _create_cohorts_report(
                         cohorts_targets,
                         relbase=relbase,
                     ),
-                    _create_kgd_output_files_section(
+                    _create_kgd_links_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
@@ -396,18 +400,18 @@ The same as PlateInb.png but with a different colour gradient for each subplate 
     ),
 ]
 
-_KGD_TEXT_FILES = [
+_KGD_LINKS = [
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
     "GHW05-long.csv",
     "GHW05-pca_metadata.tsv",
     "GHW05-pca_vectors.tsv",
     "GHW05-PC.csv",
-    "GHW05.RData.blinded",
+    "GHW05.RData",
     "GHW05.vcf",
     "HeatmapOrderHWdgm.05.csv",
     "HeatmapOrderHWdgm.05.csv.blinded",
-    "PCG5HWdgm.05.pdf.blinded",
+    "PCG5HWdgm.05.pdf",
     "SampleStats.csv",
     "SampleStats.csv.blinded",
     "seqID.csv",

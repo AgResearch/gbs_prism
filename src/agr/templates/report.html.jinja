@@ -39,7 +39,7 @@
               {% for column in chapter.columns -%}
                 <td>
                   {% if row.by_column[column] is none -%}
-                    <span>(missing)</span>
+                    <span>(missing {{ row.name }})</span>
                   {% elif isinstance(row.by_column[column], Image) -%}
                     <img
                       src="{{ row.by_column[column].url }}"
