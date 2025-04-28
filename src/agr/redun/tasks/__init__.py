@@ -24,7 +24,9 @@ from .tassel3 import (
     get_fastq_to_tag_count,
     get_tag_count,
     get_tags_reads_summary,
+    get_tags_reads_list,
     get_tags_reads_cv,
+    get_tags_reads_plots,
     merge_taxa_tag_count,
     tag_count_to_tag_pair,
     tag_pair_to_tbt,
@@ -69,7 +71,9 @@ __all__ = [
     "get_fastq_to_tag_count",
     "get_tag_count",
     "get_tags_reads_summary",
+    "get_tags_reads_list",
     "get_tags_reads_cv",
+    "get_tags_reads_plots",
     "merge_taxa_tag_count",
     "tag_count_to_tag_pair",
     "tag_pair_to_tbt",
@@ -78,5 +82,5 @@ __all__ = [
     # Unblind:
     "unblind_one",
     "unblind_all",
-    "get_unblind_script"
+    "get_unblind_script",
 ]
