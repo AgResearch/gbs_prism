@@ -179,6 +179,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         spec.cohort.enzyme,
         spec.cohort.gbs_cohort,
         spec.cohort.libname,
+        keyfile_for_tassel,
     )
 
     fastq_to_tag_count = get_fastq_to_tag_count(

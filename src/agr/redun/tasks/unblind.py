@@ -12,11 +12,19 @@ logger = logging.getLogger(__name__)
 
 @task
 def get_unblind_script(
-    out_dir: str, flowcell_id: str, enzyme: str, gbs_cohort: str, library: str
+    out_dir: str,
+    flowcell_id: str,
+    enzyme: str,
+    gbs_cohort: str,
+    library: str,
+    keyfile: File,
 ) -> File:
     """
     Get the unblind script for cohort using GQuery.
     """
+
+    # The keyfile is just a trigger, so this task reruns if the keyfile changes
+    _ = keyfile
 
     out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
 
