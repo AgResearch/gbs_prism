@@ -19,7 +19,7 @@ def one_forall(task: Task, items: list[Any], **kw_task_args) -> list[Any]:
 @task()
 def one_foreach(task: Task, items: dict[Any, Any], **kw_task_args) -> dict[Any, Any]:
     """Run a task which returns a single item on a dict of items, returning results in a dict with same keys."""
-    return {key: task(item, **kw_task_args) for (key, item) in items.values()}
+    return {key: task(item, **kw_task_args) for (key, item) in items.items()}
 
 
 @task()
