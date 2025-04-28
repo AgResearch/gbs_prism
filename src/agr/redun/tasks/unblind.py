@@ -3,25 +3,28 @@
 import logging
 import os.path
 from redun import task, File
-from agr.redun import one_forall
+from agr.redun import one_forall, one_foreach
 from agr.util.subprocess import run_catching_stderr
 from agr.gquery import GQuery, Predicates
 
 logger = logging.getLogger(__name__)
 
 
-
 @task
 def get_unblind_script(
-        out_dir: str,
-        flowcell_id: str,
-        enzyme: str,
-        gbs_cohort: str,
-        library: str
-        ) -> File:
+    out_dir: str,
+    flowcell_id: str,
+    enzyme: str,
+    gbs_cohort: str,
+    library: str,
+    keyfile: File,
+) -> File:
     """
     Get the unblind script for cohort using GQuery.
     """
+
+    # The keyfile is just a trigger, so this task reruns if the keyfile changes
+    _ = keyfile
 
     out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
 
@@ -44,46 +47,56 @@ def get_unblind_script(
 
 
 @task()
-def unblind_one(  
-     blinded_file: File,
-     unblind_script: File,
-     out_dir: str,
-     ) -> File:
+def unblind_one(
+    blinded_file: File,
+    unblind_script: File,
+    out_dir: str,
+) -> File:
     """
     Unblind a single result file.
     """
 
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(blinded_file.path))
-    
+
     with open(out_path, "w") as out_f:
         run_catching_stderr(
-            [
-                "sed", 
-                "-f", 
-                unblind_script.path, 
-                blinded_file.path
-            ],
-            stdout=out_f, 
-            check=True       
+            ["sed", "-f", unblind_script.path, blinded_file.path],
+            stdout=out_f,
+            check=True,
         )
     return File(out_path)
 
 
 @task()
-def unblind_all(  
-     blinded_files: list[File],
-     unblind_script: File,
-     out_dir: str,
-     ) -> list[File]:
+def unblind_all(
+    blinded_files: list[File],
+    unblind_script: File,
+    out_dir: str,
+) -> list[File]:
     """
     Unblind a list of result files.
     """
     return one_forall(
-        task=unblind_one, 
-        items=blinded_files, 
-        unblind_script=unblind_script, 
-        out_dir=out_dir
-        )
+        task=unblind_one,
+        items=blinded_files,
+        unblind_script=unblind_script,
+        out_dir=out_dir,
+    )
 
 
+@task()
+def unblind_each(
+    blinded_files: dict[str, File],
+    unblind_script: File,
+    out_dir: str,
+) -> dict[str, File]:
+    """
+    Unblind a list of result files.
+    """
+    return one_foreach(
+        task=unblind_one,
+        items=blinded_files,
+        unblind_script=unblind_script,
+        out_dir=out_dir,
+    )
