@@ -124,6 +124,7 @@ class CohortOutput:
     keyfile_for_tassel: File
     keyfile_for_gbsx: File
     tag_count: File
+    fastq_to_tag_count_stdout: File
     collated_tag_count: File
     imported_gbs_read_tag_counts_marker: File
     merged_all_count: File
@@ -249,6 +250,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         keyfile_for_tassel=keyfile_for_tassel,
         keyfile_for_gbsx=keyfile_for_gbsx,
         tag_count=tag_count,
+        fastq_to_tag_count_stdout=fastq_to_tag_count.stdout,
         collated_tag_count=collated_tag_count,
         imported_gbs_read_tag_counts_marker=imported_gbs_read_tag_counts_marker,
         merged_all_count=merged_all_count,

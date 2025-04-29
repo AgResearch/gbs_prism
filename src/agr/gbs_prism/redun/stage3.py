@@ -10,6 +10,7 @@ from agr.redun.tasks import (
     get_tags_reads_plots,
     get_tags_reads_cv,
     collate_mapping_stats,
+    collate_barcode_yields,
 )
 
 from .stage2 import Stage2Output
@@ -22,6 +23,7 @@ class Stage3Output:
     tags_reads_cv: File
     tags_reads_plots: dict[str, File]
     bam_stats_summary: File
+    barcode_yield_summary: File
 
 
 @task()
@@ -49,6 +51,16 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
         bam_stats_files, out_path=os.path.join(run_root, "stats_summary.txt")
     )
 
+    fastq_to_tag_count_stdouts = {
+        cohort_name: cohort.fastq_to_tag_count_stdout
+        for cohort_name, cohort in stage2.cohorts.items()
+    }
+
+    barcode_yield_summary = collate_barcode_yields(
+        fastq_to_tag_count_stdouts,
+        out_path=os.path.join(run_root, "barcode_yield_summary.txt"),
+    )
+
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage3Output(
         tags_reads_summary=tags_reads_summary,
@@ -56,4 +68,5 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
         tags_reads_cv=tags_reads_cv,
         tags_reads_plots=tags_read_plots,
         bam_stats_summary=bam_stats_summary,
+        barcode_yield_summary=barcode_yield_summary,
     )

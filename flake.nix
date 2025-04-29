@@ -214,9 +214,15 @@
             buildInputs = [ R-with-GUSbase ];
           };
 
-          run_tag_count_plots = wrap-script {
+          tag_count_plots = wrap-script {
             name = "gbs_prism_tag_count_plots ";
             src = ./src/tag_count_plots.R;
+            buildInputs = [ pkgs.R ];
+          };
+
+          barcode_yield_plots = wrap-script {
+            name = "gbs_prism_barcode_yield_plots";
+            src = ./src/barcode_yields_plots.R;
             buildInputs = [ pkgs.R ];
           };
 
@@ -250,7 +256,8 @@
               paths = [
                 run_kgd
                 run_GUSbase
-                run_tag_count_plots
+                tag_count_plots
+                barcode_yield_plots
                 multiqc
               ] ++ (with flakePkgs; [
                 bbmap
