@@ -15,6 +15,7 @@ from agr.util.report import (
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 from agr.redun.tasks.kgd import KgdOutput
 
+from .stage1 import Stage1Output
 from .stage2 import Stage2Output
 
 redun_namespace = "agr.gbs_prism"
@@ -41,15 +42,6 @@ class CohortTargets:
                 ),
             )
         )
-
-
-@task()
-def _create_peacock_report(run: str, postprocessing_root: str, out_path: str) -> File:
-    make_cohort_pages(
-        postprocessing_root=postprocessing_root, run=run, out_path=out_path
-    )
-
-    return File(out_path)
 
 
 def _create_kgd_plots_section(
@@ -155,9 +147,36 @@ def _create_cohorts_report(
 
 
 @task()
+def _create_peacock_report(title: str, stage1: Stage1Output, out_path: str) -> File:
+    """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
+    relbase = os.path.dirname(out_path)
+
+    # column name for overview chapters
+    OVERVIEW = "overview"
+
+    report = Report(
+        name=title,
+        chapters=[
+            Chapter(
+                sections=[
+                    Section(
+                        name="Overview Summaries",
+                        named_rows=True,
+                        rows=[Row(name="KGD/%s" % name, target="")],
+                    )
+                ],
+            )
+        ],
+    )
+    render_report(report=report, out_path=out_path)
+
+    return File(out_path)
+
+
+@task()
 def create_reports(
     run: str,
-    postprocessing_root: str,
+    stage1: Stage1Output,
     stage2: Stage2Output,
     out_dir: str,
 ) -> list[File]:
@@ -167,9 +186,7 @@ def create_reports(
 
     peacock_html_path = os.path.join(out_dir, "peacock.html")
     all_reports.append(
-        _create_peacock_report(
-            postprocessing_root=postprocessing_root, run=run, out_path=peacock_html_path
-        )
+        _create_peacock_report(run=run, stage1=stage1, out_path=peacock_html_path)
     )
 
     # TODO actually use cohort output here, for files we are accessing

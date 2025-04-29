@@ -19,13 +19,13 @@
             {% if section.named_rows -%}
               <td></td>
             {% endif -%}
-            {% for column in chapter.columns -%}
-              <td>
-                {% if column is not none -%}
+            {% if chapter.columns is not none -%}
+              {% for column in chapter.columns -%}
+                <td>
                   <h4>{{ column }}</h4>
-                {% endif -%}
-              </td>
-            {% endfor -%}
+                </td>
+              {% endfor -%}
+            {% endif -%}
           </tr>
           {% for row in section.rows -%}
             <tr>
@@ -36,27 +36,29 @@
                   {% endif -%}
                 </td>
               {% endif -%}
-              {% for column in chapter.columns -%}
+              {% for column in chapter.columns or [none] -%}
+                {% if column is none -%}
+                  {% set target = row.target -%}
+                {% else -%}
+                  {% set target = row.by_column[column] -%}
+                {% endif -%}
                 <td>
-                  {% if row.by_column[column] is none -%}
-                    <span>(missing {{ row.name }})</span>
-                  {% elif isinstance(row.by_column[column], Image) -%}
+                  {% if target is none -%}
+                    <span>(missing {{ row.name or "unnamed" }})</span>
+                  {% elif isinstance(target, Image) -%}
                     <img
-                      src="{{ row.by_column[column].url }}"
+                      src="{{ target.url }}"
                       title="{{ row.description }}"
                       height="300"
                       width="300"
                     />
-                  {% elif isinstance(row.by_column[column], Link) -%}
-                    <a
-                      href="{{ row.by_column[column].url }}"
-                      target="{{ row.by_column[column].url }}"
-                    >
-                      {{ row.name }}
+                  {% elif isinstance(target, Link) -%}
+                    <a href="{{ target.url }}" target="{{ target.url }}">
+                      {{ row.name or "unnamed" }}
                     </a>
-                  {% elif isinstance(row.by_column[column], Inline) -%}
+                  {% elif isinstance(target, Inline) -%}
                     <font size="-2">
-                      <pre>{{ row.by_column[column].content }}</pre>
+                      <pre>{{ target.content }}</pre>
                     </font>
                   {% endif -%}
                 </td>
