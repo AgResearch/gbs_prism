@@ -1,5 +1,6 @@
 import os.path
 from dataclasses import dataclass
+from agr.redun.tasks.barcode_yields import plot_barcode_yields
 from redun import task, File
 
 redun_namespace = "agr.gbs_prism"
@@ -24,6 +25,7 @@ class Stage3Output:
     tags_reads_plots: dict[str, File]
     bam_stats_summary: File
     barcode_yield_summary: File
+    barcode_yields_plot: File
 
 
 @task()
@@ -61,6 +63,8 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
         out_path=os.path.join(run_root, "barcode_yield_summary.txt"),
     )
 
+    barcode_yields_plot = plot_barcode_yields(barcode_yield_summary)
+
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage3Output(
         tags_reads_summary=tags_reads_summary,
@@ -69,4 +73,5 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
         tags_reads_plots=tags_read_plots,
         bam_stats_summary=bam_stats_summary,
         barcode_yield_summary=barcode_yield_summary,
+        barcode_yields_plot=barcode_yields_plot,
     )

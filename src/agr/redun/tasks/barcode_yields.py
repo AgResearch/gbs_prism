@@ -1,5 +1,9 @@
+import os.path
 import re
 from redun import task, File
+
+from agr.redun import existing_file
+from agr.util.subprocess import run_catching_stderr
 
 
 @task()
@@ -51,3 +55,18 @@ def collate_barcode_yields(uneak_stdout_files: dict[str, File], out_path: str) -
             print("\t".join(out_rec), file=out_f)
 
     return File(out_path)
+
+
+@task()
+def plot_barcode_yields(barcode_yield_summary: File) -> File:
+    data_dir = os.path.dirname(barcode_yield_summary.path)
+    _ = run_catching_stderr(
+        [
+            "barcode_yields_plots.R",
+            f"datafolder={data_dir}",
+        ]
+    )
+
+    out_path = os.path.join(data_dir, "barcode_yields.jpg")
+
+    return existing_file(out_path)
