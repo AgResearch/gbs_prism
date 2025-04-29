@@ -9,10 +9,7 @@ from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from redun import File
-from redun.task import task, scheduler_task
-from redun.scheduler import Job as SchedulerJob, Scheduler
-from redun.expression import SchedulerExpression
-from redun.promise import Promise
+from redun.task import task
 from psij import (
     Job,
     JobAttributes,
@@ -22,7 +19,7 @@ from psij import (
     JobStatus,
 )
 from psij.executors.batch.batch_scheduler_executor import BatchSchedulerExecutorConfig
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional
 
 from agr.util import singleton
 
@@ -292,27 +289,6 @@ def _handle_failure(
     return None
 
 
-def _reject_on_failure(
-    promise: Promise, job: Job, status: JobStatus, stderr_path: str
-) -> bool:
-    if status.state == JobState.CANCELED:
-        logger.debug(f"job {job.native_id} canceled")
-        _ = promise.do_reject(ClusterExecutorError(f"job {job.native_id} canceled"))
-        return True
-    elif status.state == JobState.FAILED:
-        try:
-            with open(stderr_path, "r") as stderr_f:
-                stderr_text = stderr_f.read()
-        except:
-            stderr_text = f"(stderr unavailable because failed to read {stderr_path})"
-        logger.debug(f"job {job.native_id} failed: {stderr_text}")
-        _ = promise.do_reject(
-            ClusterExecutorError(f"job {job.native_id} failed\n{stderr_text}")
-        )
-        return True
-    return False
-
-
 def _run_job_1(
     spec: Job1Spec,
     failure_handler: _FailureHandler,
@@ -360,53 +336,6 @@ def run_job_1_returning_failure(
     Run a job on the defined cluster, which is expected to produce the single file `expected_path`
     """
     return _run_job_1(spec, failure_handler=_FailureHandler.RETURN)
-
-
-@scheduler_task()
-def _run_job_1_uncached(
-    scheduler: Scheduler,
-    parent_job: SchedulerJob,
-    scheduler_expr: SchedulerExpression,
-    spec: Job1Spec,
-) -> Promise[File]:
-    """
-    Run a job on the defined cluster, which is expected to produce the single file `result_path`
-
-    This function was written before understanding that scheduler tasks are not cached.
-    Even so, it is here for now until we work out how to use Promises in tasks, to avoid the
-    thread-spawning job.wait() in PSI/J.
-    """
-    if TYPE_CHECKING:
-        # suppress unused parameters
-        _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
-
-    job_spec, executor_name = _create_job_spec(
-        spec=spec,
-    )
-
-    job = Job(job_spec)
-    _create_executor(executor_name).submit(job)
-
-    promise = Promise()
-
-    def job_status_callback(job: Job, status: JobStatus):
-        if not _reject_on_failure(promise, job, status, spec.stderr_path):
-            logger.debug(f"job {job.native_id} completed")
-            if os.path.exists(spec.expected_path):
-                promise.do_resolve(File(spec.expected_path))
-            else:
-                _ = promise.do_reject(
-                    ClusterExecutorError(
-                        f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
-                    )
-                )
-
-    job.set_job_status_callback(job_status_callback)
-    return promise
-
-
-# it's here as a basis for future work
-_ = _run_job_1_uncached
 
 
 @dataclass
@@ -485,44 +414,6 @@ def run_job_n(
     result_files = _run_job_n(spec, failure_handler=_FailureHandler.EXCEPTION)
     assert isinstance(result_files, ResultFiles)
     return result_files
-
-
-def _run_job_n_uncached(
-    scheduler: Scheduler,
-    parent_job: SchedulerJob,
-    scheduler_expr: SchedulerExpression,
-    spec: JobNSpec,
-) -> Promise[ResultFiles]:
-    """
-    Run a job on the defined cluster, which is expected to produce files matching `result_glob`
-
-    This function was written before understanding that scheduler tasks are not cached.
-    Even so, it is here for now until we work out how to use Promises in tasks, to avoid the
-    thread-spawning job.wait() in PSI/J.
-    """
-    if TYPE_CHECKING:
-        # suppress unused parameters
-        _ = [x.__class__ for x in [scheduler, parent_job, scheduler_expr]]
-
-    job_spec, executor_name = _create_job_spec(spec=spec)
-
-    job = Job(job_spec)
-    _create_executor(executor_name).submit(job)
-
-    promise = Promise()
-
-    def job_status_callback(job: Job, status: JobStatus):
-        if not _reject_on_failure(promise, job, status, spec.stderr_path):
-            logger.debug(f"job {job.native_id} completed")
-            files = _result_files(job, spec, spec.expected_paths, spec.expected_globs)
-            promise.do_resolve(files)
-
-    job.set_job_status_callback(job_status_callback)
-    return promise
-
-
-# it's here as a basis for future work
-_ = _run_job_n_uncached
 
 
 def deep_get(values: Any, path: str, default: Any = None) -> Any:
