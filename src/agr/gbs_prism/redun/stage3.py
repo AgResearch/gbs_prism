@@ -23,7 +23,10 @@ class Stage3Output:
 
 @task()
 def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
-    tag_counts = [cohort.tag_count_unblind for cohort in stage2.cohorts.values()]
+    tag_counts = sorted(
+        [cohort.tag_count_unblind for cohort in stage2.cohorts.values()],
+        key=lambda file: file.path,
+    )
 
     tags_reads_summary = get_tags_reads_summary(run_root, tag_counts)
     tags_reads_list = get_tags_reads_list(run_root, tag_counts)
