@@ -29,14 +29,14 @@ class Stage3Output:
 
 
 @task()
-def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
+def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
     tag_counts = sorted(
         [cohort.tag_count_unblind for cohort in stage2.cohorts.values()],
         key=lambda file: file.path,
     )
 
-    tags_reads_summary = get_tags_reads_summary(run_root, tag_counts)
-    tags_reads_list = get_tags_reads_list(run_root, tag_counts)
+    tags_reads_summary = get_tags_reads_summary(out_dir, tag_counts)
+    tags_reads_list = get_tags_reads_list(out_dir, tag_counts)
     tags_reads_cv = get_tags_reads_cv(tags_reads_summary)
     tags_read_plots = get_tags_reads_plots(tags_reads_list)
 
@@ -50,7 +50,7 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
     )
 
     bam_stats_summary = collate_mapping_stats(
-        bam_stats_files, out_path=os.path.join(run_root, "stats_summary.txt")
+        bam_stats_files, out_path=os.path.join(out_dir, "stats_summary.txt")
     )
 
     fastq_to_tag_count_stdouts = {
@@ -60,7 +60,7 @@ def run_stage3(run_root: str, stage2: Stage2Output) -> Stage3Output:
 
     barcode_yield_summary = collate_barcode_yields(
         fastq_to_tag_count_stdouts,
-        out_path=os.path.join(run_root, "barcode_yield_summary.txt"),
+        out_path=os.path.join(out_dir, "barcode_yield_summary.txt"),
     )
 
     barcode_yields_plot = plot_barcode_yields(barcode_yield_summary)

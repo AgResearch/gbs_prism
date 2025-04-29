@@ -59,13 +59,13 @@ def main(
 
     stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
 
-    stage3 = run_stage3(run_root=stage1.gbs_paths.run_root, stage2=stage2)
+    stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
 
     reports = create_reports(
         run=run,
         postprocessing_root=path["postprocessing_root"],
-        gbs_paths=stage1.gbs_paths,
         stage2=stage2,
+        out_dir=stage1.gbs_paths.report_dir,
     )
 
     warehoused = warehouse(

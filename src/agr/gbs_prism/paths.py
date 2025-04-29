@@ -84,6 +84,10 @@ class GbsPaths:
         return self._run_root
 
     @property
+    def report_dir(self) -> str:
+        return os.path.join(self._run_root, "html")
+
+    @property
     def target_spec_path(self) -> str:
         return os.path.join(self._run_root, "target-spec.json")
 
