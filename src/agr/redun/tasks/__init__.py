@@ -12,7 +12,7 @@ from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
-from .samtools import bam_stats_one, bam_stats_all
+from .samtools import bam_stats_one, bam_stats_all, collate_mapping_stats
 from .kgd import kgd
 from .gupdate import (
     import_gbs_read_tag_counts,
@@ -40,6 +40,7 @@ from .unblind import unblind_one, unblind_all, get_unblind_script
 __all__ = [
     "bam_stats_one",
     "bam_stats_all",
+    "collate_mapping_stats",
     "bcl_convert",
     "bwa_aln_one",
     "bwa_aln_all",
