@@ -159,6 +159,7 @@
               flakePkgs.gquery-api
               flakePkgs.geno-import
               psij-python
+              wand
             ];
 
           gbs-prism-api = with pkgs;
@@ -175,12 +176,7 @@
               propagatedBuildInputs = pipeline-packages;
             };
 
-          run_kgd = pkgs.stdenv.mkDerivation {
-            name = "gbs_prism_kgd";
-
-            src = ./src/run_kgd.R;
-
-            buildInputs = [ flakePkgs.kgd-src ];
+          wrap-script = attrs: pkgs.stdenv.mkDerivation ({
             nativeBuildInputs = [ pkgs.makeWrapper ];
 
             dontUnpack = true;
@@ -189,10 +185,19 @@
             installPhase = ''
               mkdir -p $out/bin
               runHook preInstall
-              cp $src $out/bin/run_kgd.R
-              chmod 755 $out/bin/run_kgd.R
+              # strip the path and digest, see https://nix.dev/manual/nix/2.25/store/store-path
+              basename=$(basename $src | sed -e "s/^[a-z0-9]*-//")
+              cp $src $out/bin/$basename
+              chmod 755 $out/bin/$basename
+              ls -l $out/bin
               runHook postInstall
             '';
+          } // attrs);
+
+          run_kgd = wrap-script {
+            name = "gbs_prism_kgd";
+            src = ./src/run_kgd.R;
+            buildInputs = [ flakePkgs.kgd-src ];
 
             postFixup = ''
               wrapProgram $out/bin/run_kgd.R --set KGD_SRC "${flakePkgs.kgd-src}"
@@ -203,25 +208,23 @@
             packages = [ flakePkgs.GUSbase ];
           };
 
-          run_GUSbase =
-            pkgs.stdenv.mkDerivation {
-              name = "gbs_prism_GUSbase";
+          run_GUSbase = wrap-script {
+            name = "gbs_prism_GUSbase";
+            src = ./src/run_GUSbase.R;
+            buildInputs = [ R-with-GUSbase ];
+          };
 
-              src = ./src/run_GUSbase.R;
+          tag_count_plots = wrap-script {
+            name = "gbs_prism_tag_count_plots ";
+            src = ./src/tag_count_plots.R;
+            buildInputs = [ pkgs.R ];
+          };
 
-              buildInputs = [ R-with-GUSbase ];
-
-              dontUnpack = true;
-              dontBuild = true;
-
-              installPhase = ''
-                mkdir -p $out/bin
-                runHook preInstall
-                cp $src $out/bin/run_GUSbase.R
-                chmod 755 $out/bin/run_GUSbase.R
-                runHook postInstall
-              '';
-            };
+          barcode_yield_plots = wrap-script {
+            name = "gbs_prism_barcode_yield_plots";
+            src = ./src/barcode_yields_plots.R;
+            buildInputs = [ pkgs.R ];
+          };
 
           redun-with-gbs-prism = inputs.redun.lib.${system}.default {
             propagatedBuildInputs = [ gbs-prism-api ];
@@ -253,6 +256,8 @@
               paths = [
                 run_kgd
                 run_GUSbase
+                tag_count_plots
+                barcode_yield_plots
                 multiqc
               ] ++ (with flakePkgs; [
                 bbmap
@@ -343,3 +348,4 @@
         }
       );
 }
+

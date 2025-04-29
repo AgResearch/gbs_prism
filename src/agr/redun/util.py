@@ -1,8 +1,14 @@
 # helpers for redun
-from redun import task, Task
+import os.path
+from redun import task, Task, File
 from typing import Any, Callable
 
 redun_namespace = "agr.util"
+
+
+class PathError(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 @task()
@@ -35,3 +41,11 @@ def all_forall(task: Task, items: list[Any], **kw_task_args) -> list[Any]:
 def lazy_map(x: Any, f: Callable[[Any], Any]) -> Any:
     """Map f over the expression `x`."""
     return f(x)
+
+
+def existing_file(path: str) -> File:
+    """Return path as file, failing if it doesn't exist."""
+    if os.path.exists(path):
+        return File(path)
+    else:
+        raise PathError(f"no such file: {path}")

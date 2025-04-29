@@ -1,5 +1,6 @@
 # re-exports for agr.redun.tasks
 
+from .barcode_yields import collate_barcode_yields
 from .bcl_convert import bcl_convert
 from .bwa import bwa_aln_one, bwa_aln_all, bwa_samse_one, bwa_samse_all
 from .collate_tags_reads import collate_tags_reads, collate_tags_reads_kgdstats
@@ -12,7 +13,7 @@ from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
-from .samtools import bam_stats_one, bam_stats_all
+from .samtools import bam_stats_one, bam_stats_all, collate_mapping_stats
 from .kgd import kgd
 from .gupdate import (
     import_gbs_read_tag_counts,
@@ -20,11 +21,15 @@ from .gupdate import (
     import_gbs_kgd_stats,
 )
 from .gusbase import gusbase
+from .tags import (
+    get_tags_reads_summary,
+    get_tags_reads_list,
+    get_tags_reads_cv,
+    get_tags_reads_plots,
+)
 from .tassel3 import (
     get_fastq_to_tag_count,
     get_tag_count,
-    get_tags_reads_summary,
-    get_tags_reads_cv,
     merge_taxa_tag_count,
     tag_count_to_tag_pair,
     tag_pair_to_tbt,
@@ -36,6 +41,8 @@ from .unblind import unblind_one, unblind_all, get_unblind_script
 __all__ = [
     "bam_stats_one",
     "bam_stats_all",
+    "collate_mapping_stats",
+    "collate_barcode_yields",
     "bcl_convert",
     "bwa_aln_one",
     "bwa_aln_all",
@@ -69,7 +76,9 @@ __all__ = [
     "get_fastq_to_tag_count",
     "get_tag_count",
     "get_tags_reads_summary",
+    "get_tags_reads_list",
     "get_tags_reads_cv",
+    "get_tags_reads_plots",
     "merge_taxa_tag_count",
     "tag_count_to_tag_pair",
     "tag_pair_to_tbt",
@@ -78,5 +87,5 @@ __all__ = [
     # Unblind:
     "unblind_one",
     "unblind_all",
-    "get_unblind_script"
+    "get_unblind_script",
 ]

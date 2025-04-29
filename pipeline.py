@@ -9,8 +9,10 @@ from agr.redun.cluster_executor import create_cluster_executor_config
 from agr.gbs_prism.redun import (
     run_stage1,
     run_stage2,
+    run_stage3,
     Stage1Output,
     Stage2Output,
+    Stage3Output,
     create_reports,
     warehouse,
 )
@@ -27,7 +29,7 @@ logging.basicConfig(
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
 
-MainResults = tuple[Stage1Output, Stage2Output, list[File], str]
+MainResults = tuple[Stage1Output, Stage2Output, Stage3Output, list[File], str]
 
 
 @task()
@@ -57,11 +59,13 @@ def main(
 
     stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
 
+    stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
+
     reports = create_reports(
         run=run,
         postprocessing_root=path["postprocessing_root"],
-        gbs_paths=stage1.gbs_paths,
         stage2=stage2,
+        out_dir=stage1.gbs_paths.report_dir,
     )
 
     warehoused = warehouse(
@@ -69,7 +73,7 @@ def main(
     )
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
-    return catch_all((stage1, stage2, reports, warehoused), Exception, recover)
+    return catch_all((stage1, stage2, stage3, reports, warehoused), Exception, recover)
 
 
 def init():

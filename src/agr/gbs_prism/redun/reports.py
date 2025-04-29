@@ -12,7 +12,6 @@ from agr.util.report import (
     Link,
     render_report,
 )
-from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 from agr.redun.tasks.kgd import KgdOutput
 
@@ -159,11 +158,10 @@ def _create_cohorts_report(
 def create_reports(
     run: str,
     postprocessing_root: str,
-    gbs_paths: GbsPaths,
     stage2: Stage2Output,
+    out_dir: str,
 ) -> list[File]:
     _ = stage2  # depending on existence rather than value
-    out_dir = os.path.join(gbs_paths.run_root, "html")
     os.makedirs(out_dir, exist_ok=True)
     all_reports = []
 

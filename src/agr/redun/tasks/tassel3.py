@@ -279,27 +279,6 @@ def get_tag_count(fastqToTagCountStdout: File) -> File:
 
 
 @task()
-def get_tags_reads_summary(out_dir: str, tagCountCsv: File) -> File:
-    out_path = os.path.join(out_dir, "tags_reads_summary.txt")
-    _ = run_catching_stderr(
-        ["summarise_read_and_tag_counts", "-o", out_path, tagCountCsv.path], check=True
-    )
-    return File(out_path)
-
-
-@task()
-def get_tags_reads_cv(tags_reads_summary: File) -> File:
-    out_path = os.path.join(
-        os.path.dirname(tags_reads_summary.path), "tags_reads_cv.txt"
-    )
-    with open(out_path, "w") as out_f:
-        _ = run_catching_stderr(
-            ["cut", "-f", "1,4,9", tags_reads_summary.path], stdout=out_f, check=True
-        )
-    return File(out_path)
-
-
-@task()
 def merge_taxa_tag_count(
     work_dir: str,
     tag_counts: list[File],
