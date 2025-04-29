@@ -20,13 +20,15 @@ from .gupdate import (
     import_gbs_kgd_stats,
 )
 from .gusbase import gusbase
-from .tassel3 import (
-    get_fastq_to_tag_count,
-    get_tag_count,
+from .tags import (
     get_tags_reads_summary,
     get_tags_reads_list,
     get_tags_reads_cv,
     get_tags_reads_plots,
+)
+from .tassel3 import (
+    get_fastq_to_tag_count,
+    get_tag_count,
     merge_taxa_tag_count,
     tag_count_to_tag_pair,
     tag_pair_to_tbt,

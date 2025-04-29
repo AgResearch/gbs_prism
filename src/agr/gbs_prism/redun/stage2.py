@@ -30,10 +30,6 @@ from agr.redun.tasks import (
     # Tassel:
     get_fastq_to_tag_count,
     get_tag_count,
-    get_tags_reads_summary,
-    get_tags_reads_list,
-    get_tags_reads_plots,
-    get_tags_reads_cv,
     merge_taxa_tag_count,
     tag_count_to_tag_pair,
     tag_pair_to_tbt,
@@ -130,10 +126,6 @@ class CohortOutput:
     tag_count: File
     collated_tag_count: File
     imported_gbs_read_tag_counts_marker: File
-    tags_reads_summary: File
-    tags_reads_list: File
-    tags_reads_cv: File
-    tags_reads_plots: dict[str, File]
     merged_all_count: File
     tag_pair: File
     tags_by_taxa: File
@@ -203,15 +195,6 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         run=spec.run, collated_tag_count=collated_tag_count
     )
 
-    tags_reads_summary = get_tags_reads_summary(
-        spec.paths.cohort_dir(spec.cohort.name), tag_count
-    )
-    tags_reads_list = get_tags_reads_list(
-        spec.paths.cohort_dir(spec.cohort.name), tag_count
-    )
-    tags_reads_cv = get_tags_reads_cv(tags_reads_summary)
-    tags_read_plots = get_tags_reads_plots(tags_reads_list)
-
     merged_all_count = merge_taxa_tag_count(
         cohort_blind_dir, fastq_to_tag_count.tag_counts
     )
@@ -268,10 +251,6 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         tag_count=tag_count,
         collated_tag_count=collated_tag_count,
         imported_gbs_read_tag_counts_marker=imported_gbs_read_tag_counts_marker,
-        tags_reads_summary=tags_reads_summary,
-        tags_reads_list=tags_reads_list,
-        tags_reads_cv=tags_reads_cv,
-        tags_reads_plots=tags_read_plots,
         merged_all_count=merged_all_count,
         tag_pair=tag_pair,
         tags_by_taxa=tags_by_taxa,
