@@ -17,12 +17,8 @@ class FastqcOutput:
     zip: File
 
 
-def fastqc_html_file(fastqc_output: FastqcOutput) -> File:
-    return fastqc_output.html
-
-
-def fastqc_zip_file(fastqc_output: FastqcOutput) -> File:
-    return fastqc_output.zip
+def fastqc_zip_files(fastqc_outputs: list[FastqcOutput]) -> list[File]:
+    return [fastqc_output.zip for fastqc_output in fastqc_outputs]
 
 
 # keys for job spec

@@ -34,7 +34,7 @@ from agr.redun.tasks import (
     multiqc,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_file
+from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
 from agr.redun import lazy_map
 
 
@@ -110,12 +110,8 @@ def run_stage1(
         bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir
     )
 
-    fastqc_zip_files = [
-        lazy_map(fastqc_output, fastqc_zip_file) for fastqc_output in fastqc_outputs
-    ]
-
     multiqc_report = multiqc(
-        fastqc_files=fastqc_zip_files,
+        fastqc_files=lazy_map(fastqc_outputs, fastqc_zip_files),
         bclconvert_top_unknowns=bclconvert_output.top_unknown,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
