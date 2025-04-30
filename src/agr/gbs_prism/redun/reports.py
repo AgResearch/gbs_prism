@@ -250,10 +250,13 @@ def _create_peacock_report(
                     ),
                     Section(
                         name="FASTQC",
-                        rows=[
-                            _row_for_link(fastqc_output.html, relbase)
-                            for fastqc_output in stage1.fastqc
-                        ],
+                        rows=sorted(
+                            [
+                                _row_for_link(fastqc_output.html, relbase)
+                                for fastqc_output in stage1.fastqc
+                            ],
+                            key=lambda row: row.name if row.name is not None else "",
+                        ),
                     ),
                 ],
             ),
