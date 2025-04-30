@@ -141,6 +141,7 @@ class CohortOutput:
     tag_count_unblind: File
     hap_map_files_unblind: list[File]
     kgd_text_files_unblind: dict[str, File]
+    kgd_stdout_unblind: Optional[File]
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
@@ -239,6 +240,9 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         unblind_script,
         kgd_dir(cohort_dir),
     )
+    kgd_stdout_unblind = unblind_optional(
+        kgd_output.kgd_stdout, unblind_script, cohort_dir
+    )
 
     output = CohortOutput(
         fastq_links=fastq_links,
@@ -266,6 +270,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         tag_count_unblind=tag_count_unblind,
         hap_map_files_unblind=hap_map_files_unblind,
         kgd_text_files_unblind=kgd_text_files_unblind,
+        kgd_stdout_unblind=kgd_stdout_unblind,
     )
     return output
 
