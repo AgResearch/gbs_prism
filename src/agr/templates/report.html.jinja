@@ -49,8 +49,12 @@
                     <img
                       src="{{ target.url }}"
                       title="{{ row.description }}"
-                      height="300"
-                      width="300"
+                      {% if target.height is not none -%}
+                        height="{{ target.height }}"
+                      {% endif -%}
+                      {% if target.width is not none -%}
+                        width="{{ target.width }}"
+                      {% endif -%}
                     />
                   {% elif isinstance(target, Link) -%}
                     <a href="{{ target.url }}" target="{{ target.url }}">

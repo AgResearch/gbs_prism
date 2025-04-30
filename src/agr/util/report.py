@@ -10,6 +10,8 @@ from typing import Optional
 @dataclass
 class Image:
     url: str
+    width: Optional[int] = None
+    height: Optional[int] = None
 
 
 @dataclass

@@ -50,6 +50,8 @@ class CohortTargets:
 def _kgd_plots_section(
     cohorts_targets: dict[str, CohortTargets], relbase: str
 ) -> Section:
+    KGD_PLOT_WIDTH = 300
+    KGD_PLOT_HEIGHT = 300
     return Section(
         name="KGD (plots)",
         named_rows=True,
@@ -60,6 +62,8 @@ def _kgd_plots_section(
                     cohort_name: _image_or_none(
                         cohort.kgd_output.plot_files.get(name),
                         relbase,
+                        KGD_PLOT_WIDTH,
+                        KGD_PLOT_HEIGHT,
                     )
                     for (
                         cohort_name,
@@ -166,6 +170,7 @@ def _create_peacock_report(
     out_path: str,
 ) -> File:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
+    # cachebuster
     relbase = os.path.dirname(out_path)
     cohorts_targets = {
         cohort_name: _cohort_targets(cohort_output)
@@ -509,9 +514,14 @@ _KGD_LINKS = [
 _HAPMAP_FILES = ["HapMap.hmc.txt", "HapMap.fas.txt"]
 
 
-def _image_or_none(file: Optional[File], relbase: str) -> Optional[Image]:
+def _image_or_none(
+    file: Optional[File],
+    relbase: str,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> Optional[Image]:
     return (
-        Image(os.path.relpath(file.path, relbase))
+        Image(os.path.relpath(file.path, relbase), width=width, height=height)
         if file is not None and os.path.exists(file.path)
         else None
     )
