@@ -122,8 +122,8 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    expected_paths: dict[str, str]
-    expected_globs: dict[str, FilteredGlob]
+    expected_paths: dict[str, str] = {}
+    expected_globs: dict[str, FilteredGlob] = {}
 
 
 def _create_job_attributes(

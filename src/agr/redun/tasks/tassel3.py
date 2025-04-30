@@ -73,7 +73,7 @@ class Tassel3:
             else []
         )
 
-    def tassel_plugin_job_1_spec(
+    def _tassel_plugin_job_1_spec(
         self,
         plugin: str,
         plugin_args: list[str],
@@ -90,12 +90,12 @@ class Tassel3:
             expected_path=result_path,
         )
 
-    def tassel_plugin_job_n_spec(
+    def _tassel_plugin_job_n_spec(
         self,
         plugin: str,
         plugin_args: list[str],
-        expected_paths: dict[str, str],
-        expected_globs: dict[str, FilteredGlob],
+        expected_paths: dict[str, str] = {},
+        expected_globs: dict[str, FilteredGlob] = {},
     ) -> JobNSpec:
         return JobNSpec(
             tool=tassel3_tool_name(plugin),
@@ -167,7 +167,7 @@ class Tassel3:
         symlink(in_path, key_path, force=True)
 
     def fastq_to_tag_count_job_spec(self, cohort: Cohort) -> JobNSpec:
-        return self.tassel_plugin_job_n_spec(
+        return self._tassel_plugin_job_n_spec(
             plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-c",
@@ -189,7 +189,7 @@ class Tassel3:
 
     @property
     def merge_taxa_tag_count_job_spec(self) -> Job1Spec:
-        return self.tassel_plugin_job_1_spec(
+        return self._tassel_plugin_job_1_spec(
             plugin=MERGE_TAXA_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-t",
@@ -206,7 +206,7 @@ class Tassel3:
 
     @property
     def tag_count_to_tag_pair_job_spec(self) -> Job1Spec:
-        return self.tassel_plugin_job_1_spec(
+        return self._tassel_plugin_job_1_spec(
             plugin=TAG_COUNT_TO_TAG_PAIR_PLUGIN,
             plugin_args=["-e", "0.03"],
             result_path=os.path.join(self.tag_pair_dir, "tagPair.tps"),
@@ -214,7 +214,7 @@ class Tassel3:
 
     @property
     def tag_pair_to_tbt_job_spec(self) -> Job1Spec:
-        return self.tassel_plugin_job_1_spec(
+        return self._tassel_plugin_job_1_spec(
             plugin=TAG_PAIR_TO_TBT_PLUGIN,
             plugin_args=[],
             result_path=os.path.join(self.tags_by_taxa_dir, "tbt.bin"),
@@ -222,7 +222,7 @@ class Tassel3:
 
     @property
     def tbt_to_map_info_job_spec(self) -> Job1Spec:
-        return self.tassel_plugin_job_1_spec(
+        return self._tassel_plugin_job_1_spec(
             plugin=TBT_TO_MAP_INFO_PLUGIN,
             plugin_args=[],
             result_path=os.path.join(self.map_info_dir, "mapInfo.bin"),
@@ -230,10 +230,9 @@ class Tassel3:
 
     @property
     def map_info_to_hap_map_job_spec(self) -> JobNSpec:
-        return self.tassel_plugin_job_n_spec(
+        return self._tassel_plugin_job_n_spec(
             plugin=MAP_INFO_TO_HAP_MAP_PLUGIN,
             plugin_args=["-mnMAF", "0.03", "-mxMAF", "0.5", "-mnC", "0.1"],
-            expected_paths={},
             expected_globs={
                 HAP_MAP_FILES: FilteredGlob("%s/*" % self.hap_map_dir),
             },
