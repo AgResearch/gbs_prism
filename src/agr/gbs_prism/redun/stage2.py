@@ -43,6 +43,7 @@ from agr.redun.tasks.kgd import KgdOutput, kgd_dir
 from agr.redun.tasks.unblind import (
     get_unblind_script,
     unblind_one,
+    unblind_optional,
     unblind_all,
     unblind_each,
 )
@@ -135,10 +136,12 @@ class CohortOutput:
     kgd_output: KgdOutput
     gbs_kgd_stats_import: Optional[File]
     collated_kgd_stats: Optional[File]
+    collated_kgd_stats_unblind: Optional[File]
     gusbase_comet: Optional[File]
     tag_count_unblind: File
     hap_map_files_unblind: list[File]
     kgd_text_files_unblind: dict[str, File]
+    kgd_stdout_unblind: Optional[File]
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
@@ -169,9 +172,11 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     )
     keyfile_for_gbsx = get_keyfile_for_gbsx(spec.paths.run_root, spec.run, spec.cohort)
 
+    cohort_dir = spec.paths.cohort_dir(spec.cohort.name)
     cohort_blind_dir = spec.paths.cohort_blind_dir(spec.cohort.name)
+
     unblind_script = get_unblind_script(
-        spec.paths.cohort_blind_dir(spec.cohort.name),
+        cohort_blind_dir,
         flowcell_id(spec.run),
         spec.cohort.enzyme,
         spec.cohort.gbs_cohort,
@@ -188,9 +193,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         run=spec.run,
         cohort=spec.cohort.name,
         tag_counts=tag_count,
-        out_path=os.path.join(
-            spec.paths.cohort_blind_dir(spec.cohort.name), "CollatedTagCount.tsv"
-        ),
+        out_path=os.path.join(cohort_blind_dir, "CollatedTagCount.tsv"),
     )
     imported_gbs_read_tag_counts_marker = import_gbs_read_tag_counts(
         run=spec.run, collated_tag_count=collated_tag_count
@@ -204,13 +207,11 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
 
-    tag_count_unblind = unblind_one(
-        tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
-    )
+    tag_count_unblind = unblind_one(tag_count, unblind_script, cohort_dir)
     hap_map_files_unblind = unblind_all(
         hap_map_files,
         unblind_script,
-        hap_map_dir(spec.paths.cohort_dir(spec.cohort.name)),
+        hap_map_dir(cohort_dir),
     )
 
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
@@ -220,10 +221,10 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         cohort=spec.cohort.name,
         tag_counts=tag_count,
         kgd_stats=kgd_output.sample_stats_csv,
-        out_path=os.path.join(
-            spec.paths.cohort_blind_dir(spec.cohort.name),
-            "TagCountsAndSampleStats.csv",
-        ),
+        out_path=os.path.join(cohort_blind_dir, "TagCountsAndSampleStats.csv"),
+    )
+    collated_kgd_stats_unblind = unblind_optional(
+        collated_kgd_stats, unblind_script=unblind_script, out_dir=cohort_dir
     )
 
     gbs_kgd_stats_import = create_cohort_gbs_kgd_stats_import(
@@ -237,7 +238,10 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     kgd_text_files_unblind = unblind_each(
         kgd_output.text_files,
         unblind_script,
-        kgd_dir(spec.paths.cohort_dir(spec.cohort.name)),
+        kgd_dir(cohort_dir),
+    )
+    kgd_stdout_unblind = unblind_optional(
+        kgd_output.kgd_stdout, unblind_script, cohort_dir
     )
 
     output = CohortOutput(
@@ -261,10 +265,12 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         kgd_output=kgd_output,
         gbs_kgd_stats_import=gbs_kgd_stats_import,
         collated_kgd_stats=collated_kgd_stats,
+        collated_kgd_stats_unblind=collated_kgd_stats_unblind,
         gusbase_comet=gusbase_comet,
         tag_count_unblind=tag_count_unblind,
         hap_map_files_unblind=hap_map_files_unblind,
         kgd_text_files_unblind=kgd_text_files_unblind,
+        kgd_stdout_unblind=kgd_stdout_unblind,
     )
     return output
 

@@ -3,6 +3,8 @@
 import logging
 import os.path
 from redun import task, File
+from typing import Optional
+
 from agr.redun import one_forall, one_foreach
 from agr.util.subprocess import run_catching_stderr
 from agr.gquery import GQuery, Predicates
@@ -66,6 +68,19 @@ def unblind_one(
             check=True,
         )
     return File(out_path)
+
+
+@task()
+def unblind_optional(
+    blinded_file: Optional[File],
+    unblind_script: File,
+    out_dir: str,
+) -> Optional[File]:
+    return (
+        unblind_one(blinded_file, unblind_script, out_dir)
+        if blinded_file is not None
+        else None
+    )
 
 
 @task()
