@@ -45,11 +45,15 @@ class GbsTargetsOutput:
     paths: GbsPaths
     spec: GbsTargetSpec
     spec_file: File
+    gbs_keyfiles: dict[str, File]
 
 
 @task()
 def get_gbs_targets(
-    run: str, postprocessing_root: str, fastq_link_farm: str, gbs_keyfiles: list[File]
+    run: str,
+    postprocessing_root: str,
+    fastq_link_farm: str,
+    gbs_keyfiles: dict[str, File],
 ) -> GbsTargetsOutput:
     """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
     _ = gbs_keyfiles  # depending on existence rather than value
@@ -59,7 +63,10 @@ def get_gbs_targets(
     gbs_target_spec = gquery_gbs_target_spec(run, fastq_link_farm)
     write_gbs_target_spec(paths.target_spec_path, gbs_target_spec)
     return GbsTargetsOutput(
-        paths=paths, spec=gbs_target_spec, spec_file=File(paths.target_spec_path)
+        paths=paths,
+        spec=gbs_target_spec,
+        spec_file=File(paths.target_spec_path),
+        gbs_keyfiles=gbs_keyfiles,
     )
 
 
@@ -74,6 +81,13 @@ class Stage1Output:
     spec: GbsTargetSpec
     spec_file: File
     gbs_paths: GbsPaths
+    gbs_keyfiles: dict[str, File]
+
+
+@task()
+def get_sample_sheet(sample_sheet_path: str) -> File:
+    """Get the sample sheet path."""
+    return File(sample_sheet_path)
 
 
 @task()
@@ -95,7 +109,7 @@ def run_stage1(
     seq_paths = SeqPaths(illumina_platform_run_root)
 
     seq = cook_sample_sheet(
-        in_path=sequencer_run.sample_sheet_path,
+        in_file=get_sample_sheet(sequencer_run.sample_sheet_path),
         out_path=seq_paths.sample_sheet_path,
     )
 
@@ -162,4 +176,5 @@ def run_stage1(
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,
+        gbs_keyfiles=gbs_targets.gbs_keyfiles,
     )

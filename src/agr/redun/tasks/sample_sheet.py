@@ -20,7 +20,7 @@ class CookSampleSheetOutput:
 
 @task()
 def cook_sample_sheet(
-    in_path: str,
+    in_file: File,
     out_path: str,
     impute_lanes=[1, 2],
 ) -> CookSampleSheetOutput:
@@ -29,7 +29,7 @@ def cook_sample_sheet(
     # create base SampleSheet/ directory beside SampleSheet.csv
     os.makedirs(os.path.join(os.path.dirname(out_path), "SampleSheet"), exist_ok=True)
 
-    sample_sheet = SampleSheet(in_path, impute_lanes=impute_lanes)
+    sample_sheet = SampleSheet(in_file.path, impute_lanes=impute_lanes)
     sample_sheet.write(out_path)
 
     return CookSampleSheetOutput(

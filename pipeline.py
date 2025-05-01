@@ -57,7 +57,12 @@ def main(
         run=run,
     )
 
-    stage2 = run_stage2(run=run, spec=stage1.spec, gbs_paths=stage1.gbs_paths)
+    stage2 = run_stage2(
+        run=run,
+        spec=stage1.spec,
+        gbs_paths=stage1.gbs_paths,
+        gbs_keyfiles=stage1.gbs_keyfiles,
+    )
 
     stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
 
