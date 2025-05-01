@@ -68,8 +68,9 @@ def main(
 
     reports = create_reports(
         run=run,
-        postprocessing_root=path["postprocessing_root"],
+        stage1=stage1,
         stage2=stage2,
+        stage3=stage3,
         out_dir=stage1.gbs_paths.report_dir,
     )
 

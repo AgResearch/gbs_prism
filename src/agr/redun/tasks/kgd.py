@@ -118,7 +118,6 @@ def _kgd_job_spec(
             KGD_STDOUT: out_path,
             KGD_STDERR: err_path,
         },
-        expected_globs={},
     )
 
 

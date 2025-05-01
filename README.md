@@ -80,6 +80,19 @@ When working like this, `gbs_prism` itself is made available to Python by virtue
 
 When you change directory to anywhere other than the main repo or its children, the direnv environment is unloaded.
 
+### GQuery environments for development
+
+By default when working in the Nix devshell the GQuery dev environment is active.  In general, this is all that is needed and all that is appropriate.
+
+However, in case of needing access to other GQuery environments, they may be loaded up and confirmed as follows.
+
+```
+source $GQUERY_TEST_ENV
+gquery -t info
+```
+
+The other environments are available via `GQUERY_DEV_ENV` and `GQUERY_PROD_ENV`.
+
 ## Notes
 
 1. historical_unblind has been omitted, seems not to be required

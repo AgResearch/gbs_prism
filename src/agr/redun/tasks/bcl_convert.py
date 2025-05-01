@@ -77,7 +77,6 @@ def _bcl_convert_job_spec(
         ],
         stdout_path=out_path,
         stderr_path=err_path,
-        expected_paths={},
         expected_globs={
             BCLCONVERT_JOB_FASTQ: FilteredGlob(
                 glob=f"{out_dir}/*.fastq.gz",

@@ -305,8 +305,6 @@
                           (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py))
                         (pkgs.writeScriptBin "summarise_read_and_tag_counts"
                           (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py))
-                        (pkgs.writeScriptBin "make_cohort_pages"
-                          (builtins.readFile ./src/agr/gbs_prism/make_cohort_pages.py))
                       ];
                     };
                 in
@@ -320,15 +318,27 @@
                   flakePkgs.seffs
                 ];
 
-              shellHook = ''
-                export REDUN_CONFIG=$(pwd)/.redun
-                # enable use of gbs_prism from current directory during development
-                export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-                ${gquery-export-env "dev"}
-                export GQUERY_ROOT=$HOME/gquery-logs
-                export GENO_ROOT=$HOME/geno-logs
-                export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
-              '';
+              shellHook =
+                let
+                  gquery-env = env: pkgs.writeTextFile {
+                    name = "gquery-${env}-env";
+                    text = gquery-export-env env;
+                  };
+                in
+                ''
+                  export REDUN_CONFIG=$(pwd)/.redun
+                  # enable use of gbs_prism from current directory during development
+                  export PYTHONPATH=$(pwd)/src:$PYTHONPATH
+                  ${gquery-export-env "dev"}
+                  export GQUERY_ROOT=$HOME/gquery-logs
+                  export GENO_ROOT=$HOME/geno-logs
+                  export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
+
+                  # for switching GQuery environments
+                  export GQUERY_DEV_ENV=${gquery-env "dev"}
+                  export GQUERY_TEST_ENV=${gquery-env "test"}
+                  export GQUERY_PROD_ENV=${gquery-env "prod"}
+                '';
             };
           };
 

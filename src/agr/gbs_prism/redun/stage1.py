@@ -34,6 +34,8 @@ from agr.redun.tasks import (
     multiqc,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
+from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
+from agr.redun import lazy_map
 
 
 @dataclass
@@ -72,7 +74,8 @@ def get_gbs_targets(
 class Stage1Output:
     """Dataclass to collect the outputs of stage 1."""
 
-    fastqc: list[File]
+    sample_sheet: File
+    fastqc: list[FastqcOutput]
     multiqc: File
     kmer_analysis: list[File]
     spec: GbsTargetSpec
@@ -117,12 +120,12 @@ def run_stage1(
         out_dir=seq_paths.bclconvert_dir,
     )
 
-    fastqc_files = fastqc_all(
+    fastqc_outputs = fastqc_all(
         bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir
     )
 
     multiqc_report = multiqc(
-        fastqc_files=fastqc_files,
+        fastqc_files=lazy_map(fastqc_outputs, fastqc_zip_files),
         bclconvert_top_unknowns=bclconvert_output.top_unknown,
         bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
         bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
@@ -166,7 +169,8 @@ def run_stage1(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
-        fastqc=fastqc_files,
+        sample_sheet=seq.sample_sheet,
+        fastqc=fastqc_outputs,
         multiqc=multiqc_report,
         kmer_analysis=kmer_analysis_reports,
         spec=gbs_targets.spec,
