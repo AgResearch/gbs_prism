@@ -324,6 +324,7 @@ def run_job_1(
     """
     Run a job on the defined cluster, which is expected to produce the single file `expected_path`
     """
+    _ = trigger_hash  # just for triggering
     result = _run_job_1(spec, failure_handler=_FailureHandler.EXCEPTION)
     assert isinstance(result, File)
     return result
@@ -337,6 +338,7 @@ def run_job_1_returning_failure(
     """
     Run a job on the defined cluster, which is expected to produce the single file `expected_path`
     """
+    _ = trigger_hash  # just for triggering
     return _run_job_1(spec, failure_handler=_FailureHandler.RETURN)
 
 
@@ -404,6 +406,7 @@ def run_job_n_returning_failure(
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
+    _ = trigger_hash  # just for triggering
     return _run_job_n(spec, failure_handler=_FailureHandler.RETURN)
 
 
@@ -415,6 +418,7 @@ def run_job_n(
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
+    _ = trigger_hash  # just for triggering
     result_files = _run_job_n(spec, failure_handler=_FailureHandler.EXCEPTION)
     assert isinstance(result_files, ResultFiles)
     return result_files
