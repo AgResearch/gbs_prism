@@ -9,9 +9,6 @@ from agr.util.report import (
     Inline,
     render_report,
 )
-from agr.gbs_prism.make_cohort_pages import (
-    make_cohort_pages,
-)  # TODO remove and its source
 from agr.redun.tasks.tags import TAG_READ_STATS
 
 from ..stage1 import Stage1Output
