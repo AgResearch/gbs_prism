@@ -8,24 +8,17 @@ from agr.util.report import (
     Chapter,
     Section,
     Row,
-    Image,
-    Link,
-    Inline,
     render_report,
 )
-from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 from agr.redun.tasks.kgd import KgdOutput
-from agr.redun.tasks.tags import TAG_READ_STATS
 
-from .stage1 import Stage1Output
-from .stage2 import Stage2Output, CohortOutput
-from .stage3 import Stage3Output
+from .util import image_or_none, link_or_none
 
-redun_namespace = "agr.gbs_prism"
+redun_namespace = "agr.gbs_prism.reports"
 
 
 @dataclass
-class CohortTargets:
+class KgdTargets:
     kgd_output: KgdOutput
     kgd_text_files_unblind: dict[str, File]
     hap_map_files_unblind: list[File]
@@ -47,9 +40,7 @@ class CohortTargets:
         )
 
 
-def _kgd_plots_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
-) -> Section:
+def kgd_plots_section(cohorts_targets: dict[str, KgdTargets], relbase: str) -> Section:
     KGD_PLOT_WIDTH = 300
     KGD_PLOT_HEIGHT = 300
     return Section(
@@ -59,7 +50,7 @@ def _kgd_plots_section(
             Row(
                 name="KGD/%s" % name,
                 by_column={
-                    cohort_name: _image_or_none(
+                    cohort_name: image_or_none(
                         cohort.kgd_output.plot_files.get(name),
                         relbase,
                         KGD_PLOT_WIDTH,
@@ -77,16 +68,14 @@ def _kgd_plots_section(
     )
 
 
-def _kgd_links_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
-) -> Section:
+def kgd_links_section(cohorts_targets: dict[str, KgdTargets], relbase: str) -> Section:
     return Section(
         name="KGD (output file links)",
         rows=[
             Row(
                 name=f"KGD/{name}",
                 by_column={
-                    cohort_name: _link_or_none(cohort.kgd_output_file(name), relbase)
+                    cohort_name: link_or_none(cohort.kgd_output_file(name), relbase)
                     for (cohort_name, cohort) in cohorts_targets.items()
                 },
             )
@@ -95,8 +84,8 @@ def _kgd_links_section(
     )
 
 
-def _hap_map_files_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
+def hap_map_files_section(
+    cohorts_targets: dict[str, KgdTargets], relbase: str
 ) -> Section:
     cohorts_hap_map_files = {
         cohort_name: {
@@ -111,7 +100,7 @@ def _hap_map_files_section(
             Row(
                 name=f"hapMap/{name}",
                 by_column={
-                    cohort_name: _link_or_none(cohort.get(name), relbase)
+                    cohort_name: link_or_none(cohort.get(name), relbase)
                     for (cohort_name, cohort) in cohorts_hap_map_files.items()
                 },
             )
@@ -120,9 +109,10 @@ def _hap_map_files_section(
     )
 
 
-def _create_cohorts_report(
+@task()
+def create_kgd_report(
     title: str,
-    cohorts_targets: dict[str, CohortTargets],
+    cohorts_targets: dict[str, KgdTargets],
     out_path: str,
 ) -> File:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
@@ -133,15 +123,15 @@ def _create_cohorts_report(
             Chapter(
                 columns=sorted(cohorts_targets.keys()),
                 sections=[
-                    _kgd_plots_section(
+                    kgd_plots_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
-                    _kgd_links_section(
+                    kgd_links_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
-                    _hap_map_files_section(
+                    hap_map_files_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
@@ -151,165 +141,6 @@ def _create_cohorts_report(
     )
     render_report(report=report, out_path=out_path)
     return File(out_path)
-
-
-def _cohort_targets(cohort: CohortOutput) -> CohortTargets:
-    return CohortTargets(
-        kgd_output=cohort.kgd_output,
-        kgd_text_files_unblind=cohort.kgd_text_files_unblind,
-        hap_map_files_unblind=cohort.hap_map_files_unblind,
-    )
-
-
-@task()
-def _create_peacock_report(
-    title: str,
-    stage1: Stage1Output,
-    stage2: Stage2Output,
-    stage3: Stage3Output,
-    out_path: str,
-) -> File:
-    """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
-    # cachebuster
-    relbase = os.path.dirname(out_path)
-    cohorts_targets = {
-        cohort_name: _cohort_targets(cohort_output)
-        for (cohort_name, cohort_output) in stage2.cohorts.items()
-    }
-
-    report = Report(
-        name=title,
-        chapters=[
-            Chapter(
-                sections=[
-                    Section(
-                        name="Overview Summaries",
-                        named_rows=True,
-                        rows=[
-                            Row(
-                                name="Sample Sheet",
-                                target=_link_or_none(stage1.sample_sheet, relbase),
-                            ),
-                            Row(
-                                name="bclconvert reports",
-                                target=Inline("TODO"),
-                            ),
-                            Row(
-                                name="Cumulative self-relatedness",
-                                target=Inline("TODO"),
-                            ),
-                            Row(
-                                name="Tag and Read Counts",
-                                target=_image_or_none(
-                                    stage3.tags_reads_plots.get(TAG_READ_STATS), relbase
-                                ),
-                            ),
-                            Row(
-                                name="Tag and Read Counts CV",
-                                target=_link_or_none(stage3.tags_reads_cv, relbase),
-                            ),
-                            Row(
-                                name="Tag and Read Counts Summary",
-                                target=_link_or_none(
-                                    stage3.tags_reads_summary, relbase
-                                ),
-                            ),
-                            Row(
-                                name="Barcode yield plot",
-                                target=_image_or_none(
-                                    stage3.barcode_yields_plot, relbase
-                                ),
-                            ),
-                            Row(
-                                name="Barcode yield summary",
-                                target=_link_or_none(
-                                    stage3.barcode_yield_summary, relbase
-                                ),
-                            ),
-                            Row(
-                                name="BWA alignment plot",
-                                target=Inline("mapping_stats.jpg TODO"),
-                            ),
-                            Row(
-                                name="BWA alignment summary",
-                                target=_link_or_none(stage3.bam_stats_summary, relbase),
-                            ),
-                            Row(
-                                name="MULTIQC",
-                                target=_link_or_none(stage1.multiqc, relbase),
-                            ),
-                            Row(
-                                name="6-mer distributions (raw data)",
-                                target=Inline("TODO"),
-                            ),
-                            Row(
-                                name="6-mer distributions (GBS-adapter-trimmed data)",
-                                target=Inline("TODO"),
-                            ),
-                        ],
-                    ),
-                    Section(
-                        name="FASTQC",
-                        rows=sorted(
-                            [
-                                _row_for_link(fastqc_output.html, relbase)
-                                for fastqc_output in stage1.fastqc
-                            ],
-                            key=lambda row: row.name if row.name is not None else "",
-                        ),
-                    ),
-                ],
-            ),
-            Chapter(
-                columns=sorted(stage2.cohorts.keys()),
-                sections=[
-                    _kgd_plots_section(cohorts_targets, relbase),
-                    _kgd_links_section(cohorts_targets, relbase),
-                ],
-            ),
-        ],
-    )
-    render_report(report=report, out_path=out_path)
-
-    return File(out_path)
-
-
-@task()
-def create_reports(
-    run: str,
-    stage1: Stage1Output,
-    stage2: Stage2Output,
-    stage3: Stage3Output,
-    out_dir: str,
-) -> list[File]:
-    _ = stage2  # depending on existence rather than value
-    os.makedirs(out_dir, exist_ok=True)
-    all_reports = []
-
-    peacock_html_path = os.path.join(out_dir, "peacock.html")
-    all_reports.append(
-        _create_peacock_report(
-            title=run,
-            stage1=stage1,
-            stage2=stage2,
-            stage3=stage3,
-            out_path=peacock_html_path,
-        )
-    )
-
-    for cohort_name in stage2.cohorts:
-        cohort = stage2.cohorts[cohort_name]
-        cohort_report_dir = os.path.join(out_dir, cohort_name)
-        os.makedirs(cohort_report_dir, exist_ok=True)
-        all_reports.append(
-            _create_cohorts_report(
-                title=cohort_name,
-                cohorts_targets={cohort_name: _cohort_targets(cohort)},
-                out_path=os.path.join(cohort_report_dir, "report.html"),
-            )
-        )
-
-    return all_reports
 
 
 _KGD_PLOTS_WITH_NARRATION = [
@@ -515,28 +346,3 @@ _KGD_LINKS = [
 ]
 
 _HAPMAP_FILES = ["HapMap.hmc.txt", "HapMap.fas.txt"]
-
-
-def _image_or_none(
-    file: Optional[File],
-    relbase: str,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
-) -> Optional[Image]:
-    return (
-        Image(os.path.relpath(file.path, relbase), width=width, height=height)
-        if file is not None and os.path.exists(file.path)
-        else None
-    )
-
-
-def _link_or_none(file: Optional[File], relbase: str) -> Optional[Link]:
-    return (
-        Link(os.path.relpath(file.path, relbase))
-        if file is not None and os.path.exists(file.path)
-        else None
-    )
-
-
-def _row_for_link(file: File, relbase: str) -> Row:
-    return Row(name=os.path.basename(file.path), target=_link_or_none(file, relbase))
