@@ -320,15 +320,27 @@
                   flakePkgs.seffs
                 ];
 
-              shellHook = ''
-                export REDUN_CONFIG=$(pwd)/.redun
-                # enable use of gbs_prism from current directory during development
-                export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-                ${gquery-export-env "dev"}
-                export GQUERY_ROOT=$HOME/gquery-logs
-                export GENO_ROOT=$HOME/geno-logs
-                export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
-              '';
+              shellHook =
+                let
+                  gquery-env = env: pkgs.writeTextFile {
+                    name = "gquery-${env}-env";
+                    text = gquery-export-env env;
+                  };
+                in
+                ''
+                  export REDUN_CONFIG=$(pwd)/.redun
+                  # enable use of gbs_prism from current directory during development
+                  export PYTHONPATH=$(pwd)/src:$PYTHONPATH
+                  ${gquery-export-env "dev"}
+                  export GQUERY_ROOT=$HOME/gquery-logs
+                  export GENO_ROOT=$HOME/geno-logs
+                  export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
+
+                  # for switching GQuery environments
+                  export GQUERY_DEV_ENV=${gquery-env "dev"}
+                  export GQUERY_TEST_ENV=${gquery-env "test"}
+                  export GQUERY_PROD_ENV=${gquery-env "prod"}
+                '';
             };
           };
 
