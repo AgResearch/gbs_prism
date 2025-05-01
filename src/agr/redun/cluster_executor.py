@@ -319,6 +319,7 @@ def _run_job_1(
 @task()
 def run_job_1(
     spec: Job1Spec,
+    trigger_hash: Optional[str] = None,
 ) -> File:
     """
     Run a job on the defined cluster, which is expected to produce the single file `expected_path`
@@ -331,6 +332,7 @@ def run_job_1(
 @task()
 def run_job_1_returning_failure(
     spec: Job1Spec,
+    trigger_hash: Optional[str] = None,
 ) -> File | ClusterExecutorJobFailure:
     """
     Run a job on the defined cluster, which is expected to produce the single file `expected_path`
@@ -397,6 +399,7 @@ def _run_job_n(
 @task()
 def run_job_n_returning_failure(
     spec: JobNSpec,
+    trigger_hash: Optional[str] = None,
 ) -> ResultFiles | ClusterExecutorJobFailure:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
@@ -407,6 +410,7 @@ def run_job_n_returning_failure(
 @task()
 def run_job_n(
     spec: JobNSpec,
+    trigger_hash: Optional[str] = None,
 ) -> ResultFiles:
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`

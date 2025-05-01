@@ -145,7 +145,7 @@ def get_gbs_keyfiles(
     out_dir: str,
     fastq_link_farm: str,
     backup_dir: str,
-) -> list[File]:
+) -> dict[str, File]:
     """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
     _ = deduped_fastq_files  # depending on existence rather than value
     gbs_keyfiles = GbsKeyfiles(
@@ -158,14 +158,17 @@ def get_gbs_keyfiles(
     )
     gbs_keyfiles.create()
 
-    return [
-        File(os.path.join(out_dir, "%s.generated.txt" % library))
+    return {
+        library: File(os.path.join(out_dir, "%s.generated.txt" % library))
         for library in gbs_libraries
-    ]
+    }
 
 
 @task()
-def get_keyfile_for_tassel(run_root_dir: str, run: str, cohort: Cohort) -> File:
+def get_keyfile_for_tassel(
+    run_root_dir: str, run: str, cohort: Cohort, gbs_keyfile: File
+) -> File:
+    _ = gbs_keyfile  # using the keyfile as a trigger for rerun
     out_path = os.path.join(run_root_dir, "%s.%s.key" % (run, cohort.name))
     fcid = flowcell_id(run)
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
@@ -190,7 +193,10 @@ def get_keyfile_for_tassel(run_root_dir: str, run: str, cohort: Cohort) -> File:
 
 
 @task()
-def get_keyfile_for_gbsx(run_root_dir: str, run: str, cohort: Cohort) -> File:
+def get_keyfile_for_gbsx(
+    run_root_dir: str, run: str, cohort: Cohort, gbs_keyfile: File
+) -> File:
+    _ = gbs_keyfile  # using the keyfile as a trigger for rerun
     out_path = os.path.join(run_root_dir, "%s.%s.gbsx.key" % (run, cohort.name))
     fcid = flowcell_id(run)
     with open(out_path, "w") as out_f:

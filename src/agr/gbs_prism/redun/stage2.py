@@ -146,7 +146,7 @@ def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
 
 
 @task()
-def run_cohort(spec: CohortSpec) -> CohortOutput:
+def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
     """Run the entire pipeline for a single cohort."""
 
     fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
@@ -165,19 +165,13 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     bam_stats_files = bam_stats_all(bam_files)
 
     keyfile_for_tassel = get_keyfile_for_tassel(
-        spec.paths.run_root, spec.run, spec.cohort
+        spec.paths.run_root, spec.run, spec.cohort, gbs_keyfile
     )
-    keyfile_for_gbsx = get_keyfile_for_gbsx(spec.paths.run_root, spec.run, spec.cohort)
+    keyfile_for_gbsx = get_keyfile_for_gbsx(
+        spec.paths.run_root, spec.run, spec.cohort, gbs_keyfile
+    )
 
     cohort_blind_dir = spec.paths.cohort_blind_dir(spec.cohort.name)
-    unblind_script = get_unblind_script(
-        spec.paths.cohort_blind_dir(spec.cohort.name),
-        flowcell_id(spec.run),
-        spec.cohort.enzyme,
-        spec.cohort.gbs_cohort,
-        spec.cohort.libname,
-        keyfile_for_tassel,
-    )
 
     fastq_to_tag_count = get_fastq_to_tag_count(
         cohort_blind_dir, spec.cohort, keyfile_for_tassel
@@ -203,6 +197,15 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
     tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair)
     map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
     hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
+
+    unblind_script = get_unblind_script(
+        spec.paths.cohort_blind_dir(spec.cohort.name),
+        flowcell_id(spec.run),
+        spec.cohort.enzyme,
+        spec.cohort.gbs_cohort,
+        spec.cohort.libname,
+        keyfile_for_tassel,
+    )
 
     tag_count_unblind = unblind_one(
         tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
@@ -276,7 +279,9 @@ class Stage2Output:
 
 
 @task()
-def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Output:
+def run_stage2(
+    run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths, gbs_keyfiles: dict[str, File]
+) -> Stage2Output:
     cohort_outputs = {}
 
     bwa_sample = FastqSampleSpec(
@@ -297,7 +302,7 @@ def run_stage2(run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths) -> Stage2Outp
             bwa=bwa,
         )
 
-        cohort_outputs[name] = run_cohort(target)
+        cohort_outputs[name] = run_cohort(target, gbs_keyfiles[cohort.libname])
 
     imported_gbs_kgd_stats = import_gbs_kgd_stats(
         run,
