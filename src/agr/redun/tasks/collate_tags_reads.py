@@ -121,6 +121,7 @@ def _get_reads_tags(
 def _get_reads_tags_kgdstats(
     kgd_stats: TextIO,
     reads_tags: Iterator[tuple[str, str, str, str, str, str, str, str]],
+    well_position_by_sample: dict[str, tuple[str, str]],
 ):
     """
     this basically does an outer join between the tags and reads summary, and the kgd stats summary, on the qc_sampleid key
@@ -153,7 +154,9 @@ def _get_reads_tags_kgdstats(
             record[5],
             record[6],
             record[7],
-        ] + kgd_stats_dict.get(record[2], ["", "", ""])
+        ] + kgd_stats_dict.get(record[2], ["", "", ""]) + list(
+            well_position_by_sample.get(record[2], ("", ""))
+        )
 
 
 def _get_options() -> dict[str, Any]:
@@ -282,6 +285,7 @@ def _collate_tags_reads_kgdstats(
     machine: MACHINES_LITERAL,
     tag_counts: TextIO,
     kgd_stats: TextIO,
+    well_position_by_sample: dict[str, tuple[str, str]],
     out_path: Optional[str] = None,
 ):
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
@@ -298,13 +302,19 @@ def _collate_tags_reads_kgdstats(
                 "kgd_moniker",
                 "callrate",
                 "sampdepth",
+                "row",
+                "column",
             ]
         )
         for record in _get_reads_tags_kgdstats(
             kgd_stats=kgd_stats,
             reads_tags=_get_reads_tags(
-                run=run, cohort=cohort, machine=machine, tag_counts=tag_counts
+                run=run,
+                cohort=cohort,
+                machine=machine,
+                tag_counts=tag_counts,
             ),
+            well_position_by_sample=well_position_by_sample,
         ):
             csv_writer.writerow(record)
 
@@ -315,6 +325,7 @@ def collate_tags_reads_kgdstats(
     cohort: str,
     tag_counts: File,
     kgd_stats: Optional[File],
+    well_position_by_sample: dict[str, tuple[str, str]],
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
 ) -> Optional[File]:
@@ -329,6 +340,7 @@ def collate_tags_reads_kgdstats(
                     machine=machine,
                     tag_counts=tag_counts_f,
                     kgd_stats=kgd_stats_f,
+                    well_position_by_sample=well_position_by_sample,
                     out_path=out_path,
                 )
         return File(out_path)
@@ -352,6 +364,7 @@ def _main():
             machine=args["machine"],
             tag_counts=args["filename"],
             kgd_stats=args["kgd_stats_file"],
+            well_position_by_sample={},
         )
 
     return 0

@@ -9,7 +9,12 @@ from .dedupe import dedupe_one, dedupe_all
 from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
 from .fastq_sample import fastq_sample_one, fastq_sample_all
 from .fastqc import fastqc_one, fastqc_all
-from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
+from .keyfiles import (
+    get_gbs_keyfiles,
+    get_keyfile_for_tassel,
+    get_keyfile_for_gbsx,
+    get_well_position_by_sample,
+)
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
 from .multiqc import multiqc
 from .sample_sheet import cook_sample_sheet
@@ -69,6 +74,7 @@ __all__ = [
     "get_gbs_keyfiles",
     "get_keyfile_for_tassel",
     "get_keyfile_for_gbsx",
+    "get_well_position_by_sample",
     "gusbase",
     "import_gbs_read_tag_counts",
     "create_cohort_gbs_kgd_stats_import",

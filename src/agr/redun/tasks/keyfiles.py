@@ -1,3 +1,4 @@
+import csv
 import logging
 import os.path
 import tempfile
@@ -213,3 +214,18 @@ def get_keyfile_for_gbsx(
             outfile=out_f,
         ).run()
     return File(out_path)
+
+
+@task()
+def get_well_position_by_sample(keyfile_for_tassel: File) -> dict[str, tuple[str, str]]:
+    well_positions = {}
+    with open(keyfile_for_tassel.path, "r") as csvfile:
+        csvreader = csv.reader(csvfile)
+        columns = next(csvreader)
+        sample_idx = columns.index("sample")
+        row_idx = columns.index("row")
+        column_idx = columns.index("column")
+        for csvs in csvreader:
+            sample, row, column = csvs[sample_idx], csvs[row_idx], csvs[column_idx]
+            well_positions[sample] = (row, column)
+    return well_positions
