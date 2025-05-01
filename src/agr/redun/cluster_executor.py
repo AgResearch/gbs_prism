@@ -4,7 +4,7 @@ import json
 import os
 import os.path
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
 from pathlib import Path
@@ -122,8 +122,8 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    expected_paths: dict[str, str]
-    expected_globs: dict[str, FilteredGlob]
+    expected_paths: dict[str, str] = field(default_factory=dict)
+    expected_globs: dict[str, FilteredGlob] = field(default_factory=dict)
 
 
 def _create_job_attributes(

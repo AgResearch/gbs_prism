@@ -47,6 +47,7 @@ from agr.redun.tasks.unblind import (
     unblind_all,
     unblind_each,
 )
+from agr.gbs_prism.redun.reports.kgd import create_kgd_report, KgdTargets
 
 
 @dataclass
@@ -142,6 +143,7 @@ class CohortOutput:
     hap_map_files_unblind: list[File]
     kgd_text_files_unblind: dict[str, File]
     kgd_stdout_unblind: Optional[File]
+    kgd_report: Optional[File]
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
@@ -244,6 +246,18 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         kgd_output.kgd_stdout, unblind_script, cohort_dir
     )
 
+    kgd_report = create_kgd_report(
+        title=spec.cohort.name,
+        cohorts_targets={
+            spec.cohort.name: KgdTargets(
+                kgd_output=kgd_output,
+                kgd_text_files_unblind=kgd_text_files_unblind,
+                hap_map_files_unblind=hap_map_files_unblind,
+            )
+        },
+        out_path=os.path.join(cohort_dir, "KGD.html"),
+    )
+
     output = CohortOutput(
         fastq_links=fastq_links,
         munged_fastq_links_for_tassel=munged_fastq_links_for_tassel,
@@ -271,6 +285,7 @@ def run_cohort(spec: CohortSpec) -> CohortOutput:
         hap_map_files_unblind=hap_map_files_unblind,
         kgd_text_files_unblind=kgd_text_files_unblind,
         kgd_stdout_unblind=kgd_stdout_unblind,
+        kgd_report=kgd_report,
     )
     return output
 

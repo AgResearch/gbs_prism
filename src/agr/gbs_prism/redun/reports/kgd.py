@@ -8,20 +8,17 @@ from agr.util.report import (
     Chapter,
     Section,
     Row,
-    Image,
-    Link,
     render_report,
 )
-from agr.gbs_prism.make_cohort_pages import make_cohort_pages
 from agr.redun.tasks.kgd import KgdOutput
 
-from .stage2 import Stage2Output
+from .util import image_or_none, link_or_none
 
-redun_namespace = "agr.gbs_prism"
+redun_namespace = "agr.gbs_prism.reports"
 
 
 @dataclass
-class CohortTargets:
+class KgdTargets:
     kgd_output: KgdOutput
     kgd_text_files_unblind: dict[str, File]
     hap_map_files_unblind: list[File]
@@ -43,18 +40,9 @@ class CohortTargets:
         )
 
 
-@task()
-def _create_peacock_report(run: str, postprocessing_root: str, out_path: str) -> File:
-    make_cohort_pages(
-        postprocessing_root=postprocessing_root, run=run, out_path=out_path
-    )
-
-    return File(out_path)
-
-
-def _create_kgd_plots_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
-) -> Section:
+def kgd_plots_section(cohorts_targets: dict[str, KgdTargets], relbase: str) -> Section:
+    KGD_PLOT_WIDTH = 300
+    KGD_PLOT_HEIGHT = 300
     return Section(
         name="KGD (plots)",
         named_rows=True,
@@ -62,9 +50,11 @@ def _create_kgd_plots_section(
             Row(
                 name="KGD/%s" % name,
                 by_column={
-                    cohort_name: _image_or_none(
+                    cohort_name: image_or_none(
                         cohort.kgd_output.plot_files.get(name),
                         relbase,
+                        KGD_PLOT_WIDTH,
+                        KGD_PLOT_HEIGHT,
                     )
                     for (
                         cohort_name,
@@ -78,16 +68,14 @@ def _create_kgd_plots_section(
     )
 
 
-def _create_kgd_links_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
-) -> Section:
+def kgd_links_section(cohorts_targets: dict[str, KgdTargets], relbase: str) -> Section:
     return Section(
         name="KGD (output file links)",
         rows=[
             Row(
                 name=f"KGD/{name}",
                 by_column={
-                    cohort_name: _link_or_none(cohort.kgd_output_file(name), relbase)
+                    cohort_name: link_or_none(cohort.kgd_output_file(name), relbase)
                     for (cohort_name, cohort) in cohorts_targets.items()
                 },
             )
@@ -96,8 +84,8 @@ def _create_kgd_links_section(
     )
 
 
-def _create_hap_map_files_section(
-    cohorts_targets: dict[str, CohortTargets], relbase: str
+def hap_map_files_section(
+    cohorts_targets: dict[str, KgdTargets], relbase: str
 ) -> Section:
     cohorts_hap_map_files = {
         cohort_name: {
@@ -112,7 +100,7 @@ def _create_hap_map_files_section(
             Row(
                 name=f"hapMap/{name}",
                 by_column={
-                    cohort_name: _link_or_none(cohort.get(name), relbase)
+                    cohort_name: link_or_none(cohort.get(name), relbase)
                     for (cohort_name, cohort) in cohorts_hap_map_files.items()
                 },
             )
@@ -121,9 +109,10 @@ def _create_hap_map_files_section(
     )
 
 
-def _create_cohorts_report(
+@task()
+def create_kgd_report(
     title: str,
-    cohorts_targets: dict[str, CohortTargets],
+    cohorts_targets: dict[str, KgdTargets],
     out_path: str,
 ) -> File:
     """Create report, target dir for a cohort is the one containing KGD as a subdirectory."""
@@ -134,15 +123,15 @@ def _create_cohorts_report(
             Chapter(
                 columns=sorted(cohorts_targets.keys()),
                 sections=[
-                    _create_kgd_plots_section(
+                    kgd_plots_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
-                    _create_kgd_links_section(
+                    kgd_links_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
-                    _create_hap_map_files_section(
+                    hap_map_files_section(
                         cohorts_targets,
                         relbase=relbase,
                     ),
@@ -152,66 +141,6 @@ def _create_cohorts_report(
     )
     render_report(report=report, out_path=out_path)
     return File(out_path)
-
-
-@task()
-def create_reports(
-    run: str,
-    postprocessing_root: str,
-    stage2: Stage2Output,
-    out_dir: str,
-) -> list[File]:
-    _ = stage2  # depending on existence rather than value
-    os.makedirs(out_dir, exist_ok=True)
-    all_reports = []
-
-    peacock_html_path = os.path.join(out_dir, "peacock.html")
-    all_reports.append(
-        _create_peacock_report(
-            postprocessing_root=postprocessing_root, run=run, out_path=peacock_html_path
-        )
-    )
-
-    # TODO actually use cohort output here, for files we are accessing
-    for cohort_name in stage2.cohorts:
-        cohort = stage2.cohorts[cohort_name]
-        cohort_report_dir = os.path.join(out_dir, cohort_name)
-        os.makedirs(cohort_report_dir, exist_ok=True)
-        all_reports.append(
-            _create_cohorts_report(
-                title=cohort_name,
-                # TODO use unblinded results, not blinded?
-                cohorts_targets={
-                    cohort_name: CohortTargets(
-                        kgd_output=cohort.kgd_output,
-                        kgd_text_files_unblind=cohort.kgd_text_files_unblind,
-                        hap_map_files_unblind=cohort.hap_map_files_unblind,
-                    )
-                },
-                out_path=os.path.join(cohort_report_dir, "report.html"),
-            )
-        )
-
-    return all_reports
-
-
-# def render_peacock_report(report: Report, out_path: str):
-#     env = Environment(
-#         loader=PackageLoader("agr.gbs_prism"), autoescape=select_autoescape()
-#     )
-#     template = env.get_template("peacock_report.html.jinja")
-#     with open(out_path, "w") as out_f:
-#         _ = out_f.write(
-#             template.render(
-#                 name=report.name,
-#                 cohorts=report.cohorts,
-#                 sections=report.sections,
-#             )
-#         )
-
-
-# def make_peacock_report() -> Report:
-#     pass
 
 
 _KGD_PLOTS_WITH_NARRATION = [
@@ -417,19 +346,3 @@ _KGD_LINKS = [
 ]
 
 _HAPMAP_FILES = ["HapMap.hmc.txt", "HapMap.fas.txt"]
-
-
-def _image_or_none(file: Optional[File], relbase: str) -> Optional[Image]:
-    return (
-        Image(os.path.relpath(file.path, relbase))
-        if file is not None and os.path.exists(file.path)
-        else None
-    )
-
-
-def _link_or_none(file: Optional[File], relbase: str) -> Optional[Link]:
-    return (
-        Link(os.path.relpath(file.path, relbase))
-        if file is not None and os.path.exists(file.path)
-        else None
-    )

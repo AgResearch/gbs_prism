@@ -8,6 +8,10 @@ from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
 
+READ_STATS = "read_stats.jpg"
+TAG_STATS = "tag_stats.jpg"
+TAG_READ_STATS = "tag_read_stats.jpg"
+
 
 @task()
 def get_tags_reads_summary(out_dir: str, tagCountCsvs: list[File]) -> File:
@@ -61,9 +65,6 @@ def get_tags_reads_plots(tags_reads_list: File) -> dict[str, File]:
     )
 
     # append the individual plots as was done in legacy
-    READ_STATS = "read_stats.jpg"
-    TAG_STATS = "tag_stats.jpg"
-    TAG_READ_STATS = "tag_read_stats.jpg"
 
     def out_file(basename: str) -> File:
         return existing_file(os.path.join(out_dir, basename))

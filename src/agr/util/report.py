@@ -10,6 +10,8 @@ from typing import Optional
 @dataclass
 class Image:
     url: str
+    width: Optional[int] = None
+    height: Optional[int] = None
 
 
 @dataclass
@@ -27,11 +29,17 @@ Target = Image | Link | Inline
 
 @dataclass(kw_only=True)
 class Row:
-    """The target per column."""
+    """
+    The target, or target per column.
 
-    name: str
+    In chapters with columns, the values for each row are taken from `by_column`,
+    otherwise the single value for the row is taken from `target`.
+    """
+
+    name: Optional[str] = None
     description: Optional[str] = None
-    by_column: dict[str, Optional[Target]]
+    target: Optional[Target] = None
+    by_column: Optional[dict[str, Optional[Target]]] = None
 
 
 @dataclass(kw_only=True)
@@ -45,10 +53,10 @@ class Section:
 
 @dataclass(kw_only=True)
 class Chapter:
-    """A chapter is a list of sections for the same columns."""
+    """A chapter is a list of sections for the same columns (or single column by default)."""
 
     name: Optional[str] = None
-    columns: list[str]
+    columns: Optional[list[str]] = None
     sections: list[Section]
 
 
