@@ -1,6 +1,5 @@
 import logging
 import os.path
-import shutil
 from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
@@ -108,12 +107,6 @@ def bcl_convert(
     expected_fastq: set[str],
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
-
-    # if redun thinks we need to run bcl-convert, we'd better run it,
-    # which means removing any previous run, since bcl-convert cannot
-    # cope with existing directory
-    if os.path.isdir(out_dir):
-        shutil.rmtree(out_dir)
 
     fastq_files = run_job_n(
         _bcl_convert_job_spec(
