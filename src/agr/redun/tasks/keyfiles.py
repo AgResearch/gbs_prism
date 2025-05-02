@@ -220,11 +220,16 @@ def get_keyfile_for_gbsx(
 def get_well_position_by_sample(keyfile_for_tassel: File) -> dict[str, tuple[str, str]]:
     well_positions = {}
     with open(keyfile_for_tassel.path, "r") as csvfile:
-        csvreader = csv.reader(csvfile)
+        csvreader = csv.reader(csvfile, delimiter="\t")
         columns = next(csvreader)
-        sample_idx = columns.index("sample")
-        row_idx = columns.index("row")
-        column_idx = columns.index("column")
+        try:
+            sample_idx = columns.index("sample")
+            row_idx = columns.index("row")
+            column_idx = columns.index("column")
+        except ValueError as e:
+            raise ValueError(
+                f":column lookup for well_position failed on {' '.join(columns)}: {str(e)}"
+            )
         for csvs in csvreader:
             sample, row, column = csvs[sample_idx], csvs[row_idx], csvs[column_idx]
             well_positions[sample] = (row, column)
