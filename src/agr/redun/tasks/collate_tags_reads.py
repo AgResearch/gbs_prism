@@ -218,7 +218,8 @@ def _collate_tags_reads_kgdstats(
     kgd_stats_split = split_column(
         column="seqID",
         new_columns=["qc_sampleid", "kgd_moniker"],
-        splitter=lambda s: s.split("_", 1),
+        # qc_sampleid is everything before the first underscore; kgd_moniker is the original, including the qc_sampleid prefix
+        splitter=lambda s: [s.split("_", 1)[0], s],
         header=kgd_stats_header,
         rows=kgd_stats,
     )
@@ -249,7 +250,7 @@ def _collate_tags_reads_kgdstats(
     )
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
         csv_writer = csv.writer(out_f)
-        for row in join(spec, reads_tags, kgd_stats):
+        for row in join(spec, reads_tags, kgd_stats_split):
             csv_writer.writerow(row)
 
 

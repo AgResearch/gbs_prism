@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable
 
 
 class TableError(Exception):
@@ -9,8 +9,8 @@ class TableError(Exception):
 
 
 def select(
-    columns: list[str], header: list[str], rows: Iterator[list[str]]
-) -> Iterator[list[str]]:
+    columns: list[str], header: list[str], rows: Iterator[list[Any]]
+) -> Iterator[list[Any]]:
     """
     Select just the desired columns from each row, including a header row in the output.
     """
@@ -80,9 +80,9 @@ def join_spec(
 
 def join(
     spec: JoinSpec,
-    rows0: Iterator[list[str]],
-    rows1: Iterator[list[str]],
-) -> Iterator[list[str]]:
+    rows0: Iterator[list[Any]],
+    rows1: Iterator[list[Any]],
+) -> Iterator[list[Any]]:
     yield spec.header
     rows1_by_key = {row[spec.key1_index]: row for row in rows1}
     for row0 in rows0:
@@ -99,11 +99,11 @@ def join(
 def split_column(
     column: str,
     new_columns: list[str],
-    splitter: Callable[[str], list[str]],
+    splitter: Callable[[Any], list[Any]],
     header: list[str],
-    rows: Iterator[list[str]],
+    rows: Iterator[list[Any]],
     default: str = "",
-) -> Iterator[list[str]]:
+) -> Iterator[list[Any]]:
     """
     Split a column by splitter;  values beyond the number of new_columns are discarded.
     Any shortfall is filled on the right by default.
