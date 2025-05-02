@@ -54,13 +54,15 @@ def test_join_1():
         ["a1", "d1", "e1", "f1"],
     ]
     spec = join_spec(
-        "A0",
-        t0[0],
-        {"A0": "A", "B0": "B"},
-        "A1",
-        t1[0],
-        {"D1": "D", "E1": "E"},
-        ["", ""],
+        key0_name="A0",
+        header0=t0[0],
+        columns0=["A0", "B0"],
+        key1_name="A1",
+        header1=t1[0],
+        columns1=["D1", "E1"],
+        default1=["", ""],
+        renames0={"A0": "A", "B0": "B"},
+        renames1={"D1": "D"},
     )
     actual = list(join(spec, iter(t0[1:]), iter(t1[1:])))
     assert actual == [
@@ -68,7 +70,7 @@ def test_join_1():
             "A",
             "B",
             "D",
-            "E",
+            "E1",
         ],
         ["a1", "b1", "d1", "e1"],
         ["a2", "b2", "d2", "e2"],

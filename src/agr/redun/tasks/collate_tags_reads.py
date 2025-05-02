@@ -226,33 +226,25 @@ def _collate_tags_reads_kgdstats(
     spec = join_spec(
         key0_name="sample",
         header0=next(reads_tags),
-        columns0={
-            # most columns keep their names
-            col: col
-            for col in [
-                "run",
-                "cohort",
-                "flowcell",
-                "sq",
-                "tags",
-                "reads",
-            ]
-        }
-        | {
-            # except this one
+        columns0=[
+            "run",
+            "cohort",
+            "sample",
+            "flowcell",
+            "sq",
+            "tags",
+            "reads",
+        ],
+        renames0={
             "sample": "qc_sampleid",
         },
         key1_name="qc_sampleid",
         header1=next(kgd_stats_split),
-        columns1={
-            # all columns keep their original names
-            col: col
-            for col in [
-                "kgd_moniker",
-                "callrate",
-                "sampdepth",
-            ]
-        },
+        columns1=[
+            "kgd_moniker",
+            "callrate",
+            "sampdepth",
+        ],
         default1=["", "", ""],
     )
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:

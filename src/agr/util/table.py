@@ -41,11 +41,13 @@ class JoinSpec:
 def join_spec(
     key0_name: str,
     header0: list[str],
-    columns0: dict[str, str],  # supports renaming
+    columns0: list[str],
     key1_name: str,
     header1: list[str],
-    columns1: dict[str, str],  # supports renaming
+    columns1: list[str],
     default1: list[str],
+    renames0: dict[str, str] = {},
+    renames1: dict[str, str] = {},
 ):
     if len(columns1) != len(default1):
         raise TableError("columns/default length mismatch")
@@ -60,8 +62,14 @@ def join_spec(
     except ValueError as e:
         raise TableError("unknown column: %s" % str(e))
     return JoinSpec(
-        header=[columns0[header0[i]] for i in indexes0]
-        + [columns1[header1[i]] for i in indexes1],
+        header=[
+            column if column not in renames0 else renames0[column]
+            for column in columns0
+        ]
+        + [
+            column if column not in renames1 else renames1[column]
+            for column in columns1
+        ],
         key0_index=key0_index,
         indexes0=indexes0,
         key1_index=key1_index,
