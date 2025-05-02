@@ -65,8 +65,8 @@ KGD_OUTPUT_TEXT_FILES = [
     "GHW05-PC.csv",
     "GHW05.vcf",
     "HeatmapOrderHWdgm.05.csv",
-    "HighRelatedness.csv",
-    "HighRelatedness.split.csv",
+    # "HighRelatedness.csv",
+    # "HighRelatedness.split.csv",
     "SampleStats.csv",
     "SampleStatsRawCombined.csv",
     "SampleStatsRaw.csv",
@@ -196,13 +196,13 @@ def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
 
 
 @task()
-def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput:
+def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput: # cache buster
     out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(hapmap_dir, exist_ok=True)
 
-    kgd_job_spec = _kgd_job_spec(
+    kgd_job_spec = _kgd_job_spec( 
         out_dir=out_dir,
         hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
         genotyping_method=genotyping_method,
