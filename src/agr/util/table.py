@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Callable
 
 
 class TableError(Exception):
@@ -85,3 +86,44 @@ def join(
             else spec.default1
         )
         yield joined0 + joined1
+
+
+def split_column(
+    column: str,
+    new_columns: list[str],
+    splitter: Callable[[str], list[str]],
+    header: list[str],
+    rows: Iterator[list[str]],
+    default: str = "",
+) -> Iterator[list[str]]:
+    """
+    Split a column by splitter;  values beyond the number of new_columns are discarded.
+    Any shortfall is filled on the right by default.
+    """
+    try:
+        column_index = header.index(column)
+    except ValueError as e:
+        raise TableError("unknown column: %s" % str(e))
+
+    n_expected = len(new_columns)
+
+    def splice(row: list[str], i: int, new_values: list[str]) -> list[str]:
+        if i == 0:
+            return new_values + row[1:]
+        elif i == len(row) - 1:
+            return row[:-1] + new_values
+        else:
+            return row[:i] + new_values + row[i + 1 :]
+
+    yield splice(header, column_index, new_columns)
+    for row in rows:
+        if column_index >= len(row):
+            yield row
+        else:
+            new_values = splitter(row[column_index])
+            if len(new_values) < n_expected:
+                # shortfall, so pad with repeated default
+                new_values += [default] * (n_expected - len(new_values))
+            elif len(new_values) > n_expected:
+                new_values = new_values[:n_expected]
+            yield splice(row, column_index, new_values)
