@@ -121,48 +121,6 @@ def _get_reads_tags(
             ]  # type: ignore[reportReturnType]
 
 
-# TODO remove:
-def _get_reads_tags_kgdstats(
-    kgd_stats: TextIO,
-    reads_tags: Iterator[list[str]],
-    well_position_by_sample: dict[str, tuple[str, str]],
-):
-    """
-    this basically does an outer join between the tags and reads summary, and the kgd stats summary, on the qc_sampleid key
-    """
-
-    # read in the sample stats - e.g.
-    # "seqID","callrate","sampdepth"
-    # "qc959027-1_merged_2_0_X4",0.063122740701323,0.0914178762133695
-    # "qc959028-1_merged_2_0_X4",0.797970530487917,2.49389874672
-    # "qc959029-1_merged_2_0_X4",0.770391030698938,2.28579554837881
-    # "qc959030-1_merged_2_0_X4",0.724149953208433,1.89357212323614
-    # "qc959031-1_merged_2_0_X4",0.79488779198855,2.51852395544709
-    kgd_tuples = [row for row in csv.reader(kgd_stats)]
-
-    # key the tuples by the qc sampleid - i.e. by etc
-    kgd_stats_dict = dict(
-        zip((re.split("_", kgd_tuple[0])[0] for kgd_tuple in kgd_tuples), kgd_tuples)
-    )
-    # entries look like
-    # 'qc823667-1': ['qc823668-1_merged_2_0_X4', '0.328730703259005', '1.7377358490566']
-    # print(kgd_stats_dict)
-    for record in reads_tags:
-        # e.g. 211217_A01439_0043_BH2TTCDMXY   SQ1744.all.PstI-MspI.PstI-MspI  qc823603-1      H2TTCDMXY       1       1744    196401  2251079
-        # (don't include the lane column)
-        yield [
-            record[0],
-            record[1],
-            record[2],
-            record[3],
-            record[5],
-            record[6],
-            record[7],
-        ] + kgd_stats_dict.get(record[2], ["", "", ""]) + list(
-            well_position_by_sample.get(record[2], ("", ""))
-        )
-
-
 def _collate_tags_reads(
     run: str,
     cohort: str,
@@ -260,10 +218,13 @@ def collate_tags_reads_kgdstats(
     cohort: str,
     tag_counts: File,
     kgd_stats: Optional[File],
-    well_position_by_sample: dict[str, tuple[str, str]],
+    well_position_by_sample: dict[
+        str, tuple[str, str]
+    ],  # TODO use a join, not manual dict merge
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
 ) -> Optional[File]:
+    # cachebuster 12
     if kgd_stats is None:
         return None
     else:
