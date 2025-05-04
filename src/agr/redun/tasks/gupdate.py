@@ -4,6 +4,7 @@ from redun import task, File
 from typing import Optional
 
 from agr.gquery import GUpdate, Predicates
+from agr.seq.types import Cohort
 from agr.util import map_columns
 from agr.util.file_hash import write_file_legible_hash
 
@@ -75,3 +76,30 @@ def import_gbs_kgd_stats(
     ).run()
 
     return File(out_path)
+
+
+@task()
+def import_gbs_kgd_cohort_stats(
+    run: str, cohort: Cohort, kgd_stdout: Optional[File]
+) -> Optional[File]:
+    if kgd_stdout is None:
+        return None
+    else:
+        GUpdate(
+            explain=True,
+            task="lab_report",
+            predicates=Predicates(
+                name="import_gbs_kgd_cohort_stats",
+                file=kgd_stdout.path,
+                libraryname=cohort.libname,
+                qc_cohort=cohort.qc_cohort,
+                gbs_cohort=cohort.gbs_cohort,
+                enzyme=cohort.enzyme,
+            ),
+            items=[run],
+        ).run()
+
+        out_path = "%s.imported" % kgd_stdout.path
+        with open(out_path, "w") as out_f:
+            _ = out_f.write("imported hash %s\n" % kgd_stdout.hash)
+        return File(out_path)
