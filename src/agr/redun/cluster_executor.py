@@ -9,7 +9,6 @@ from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from redun import File
-from redun.task import task
 from psij import (
     Job,
     JobAttributes,
@@ -316,7 +315,6 @@ def _run_job_1(
         return File(spec.expected_path)
 
 
-@task()
 def run_job_1(
     spec: Job1Spec,
     trigger_hash: Optional[str] = None,
@@ -330,7 +328,6 @@ def run_job_1(
     return result
 
 
-@task()
 def run_job_1_returning_failure(
     spec: Job1Spec,
     trigger_hash: Optional[str] = None,
@@ -398,7 +395,6 @@ def _run_job_n(
         return _result_files(job, spec, spec.expected_paths, spec.expected_globs)
 
 
-@task()
 def run_job_n_returning_failure(
     spec: JobNSpec,
     trigger_hash: Optional[str] = None,
@@ -410,7 +406,6 @@ def run_job_n_returning_failure(
     return _run_job_n(spec, failure_handler=_FailureHandler.RETURN)
 
 
-@task()
 def run_job_n(
     spec: JobNSpec,
     trigger_hash: Optional[str] = None,
