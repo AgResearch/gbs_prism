@@ -1,6 +1,13 @@
 import pytest
 
-from agr.util.table import select, join_spec, join, split_column, TableError
+from agr.util.table import (
+    select,
+    join_spec,
+    left_join,
+    Joinee,
+    split_column,
+    TableError,
+)
 
 
 def test_select_1():
@@ -38,7 +45,7 @@ def test_select_short_row_raises():
     assert str(excinfo.value) == "short row 2: list index out of range"
 
 
-def test_join_1():
+def test_left_join_1():
     t0 = [
         ["A0", "B0", "C0"],
         ["a1", "b1", "c1"],
@@ -54,17 +61,22 @@ def test_join_1():
         ["a1", "d1", "e1", "f1"],
     ]
     spec = join_spec(
-        key0_name="A0",
-        header0=t0[0],
-        columns0=["A0", "B0"],
-        key1_name="A1",
-        header1=t1[0],
-        columns1=["D1", "E1"],
-        default1=["", ""],
-        renames0={"A0": "A", "B0": "B"},
-        renames1={"D1": "D"},
+        [
+            Joinee(
+                key_name="A0",
+                header=t0[0],
+                columns=["A0", "B0"],
+                renames={"A0": "A", "B0": "B"},
+            ),
+            Joinee(
+                key_name="A1",
+                header=t1[0],
+                columns=["D1", "E1"],
+                renames={"D1": "D"},
+            ),
+        ]
     )
-    actual = list(join(spec, iter(t0[1:]), iter(t1[1:])))
+    actual = list(left_join(spec, [iter(t0[1:]), iter(t1[1:])]))
     assert actual == [
         [
             "A",
@@ -76,6 +88,59 @@ def test_join_1():
         ["a2", "b2", "d2", "e2"],
         ["a3", "b3", "d3", "e3"],
         ["a4", "b4", "", ""],
+    ]
+
+
+def test_left_join_2():
+    t0 = [
+        ["A0", "B0", "C0"],
+        ["a1", "b1", "c1"],
+        ["a2", "b2", "c2"],
+        ["a3", "b3", "c3"],
+        ["a4", "b4", "c4"],
+    ]
+    t1 = [
+        ["A1", "D1", "E1", "F1"],
+        ["a3", "d3", "e3", "f3"],
+        ["a2", "d2", "e2", "f2"],
+        ["a5", "d5", "e5", "f5"],
+        ["a1", "d1", "e1", "f1"],
+    ]
+    t2 = [
+        ["A2", "G2"],
+        ["a4", "g4"],
+        ["a1", "g1"],
+    ]
+    spec = join_spec(
+        [
+            Joinee(
+                key_name="A0",
+                header=t0[0],
+                columns=["A0", "B0"],
+                renames={"A0": "A", "B0": "B"},
+            ),
+            Joinee(
+                key_name="A1",
+                header=t1[0],
+                columns=["D1", "E1"],
+                renames={"D1": "D"},
+            ),
+            Joinee(
+                key_name="A2",
+                header=t2[0],
+                columns=["G2"],
+                renames={"G2": "G"},
+                default=["*"],
+            ),
+        ]
+    )
+    actual = list(left_join(spec, [iter(t0[1:]), iter(t1[1:]), iter(t2[1:])]))
+    assert actual == [
+        ["A", "B", "D", "E1", "G"],
+        ["a1", "b1", "d1", "e1", "g1"],
+        ["a2", "b2", "d2", "e2", "*"],
+        ["a3", "b3", "d3", "e3", "*"],
+        ["a4", "b4", "", "", "g4"],
     ]
 
 

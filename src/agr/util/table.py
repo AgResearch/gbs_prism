@@ -1,6 +1,6 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
-from typing import Any, Callable
+from dataclasses import dataclass, field
+from typing import Any, Optional, Callable
 
 
 class TableError(Exception):
@@ -29,71 +29,87 @@ def select(
 
 
 @dataclass
+class JoineeSpec:
+    key_index: int
+    indexes: list[int]
+    default: list[str]
+
+
+@dataclass
 class JoinSpec:
     header: list[str]
-    key0_index: int
-    indexes0: list[int]
-    key1_index: int
-    indexes1: list[int]
-    default1: list[str]
+    joinee_specs: list[JoineeSpec]
+
+
+@dataclass
+class Joinee:
+    key_name: str
+    header: list[str]
+    columns: list[str]
+    default: Optional[list[str]] = None
+    renames: dict[str, str] = field(default_factory=dict)
 
 
 def join_spec(
-    key0_name: str,
-    header0: list[str],
-    columns0: list[str],
-    key1_name: str,
-    header1: list[str],
-    columns1: list[str],
-    default1: list[str],
-    renames0: dict[str, str] = {},
-    renames1: dict[str, str] = {},
-):
-    if len(columns1) != len(default1):
-        raise TableError("columns/default length mismatch")
-    try:
-        indexes0 = [header0.index(column) for column in columns0]
-        indexes1 = [header1.index(column) for column in columns1]
-    except ValueError as e:
-        raise TableError("unknown column: %s" % str(e))
-    try:
-        key0_index = header0.index(key0_name)
-        key1_index = header1.index(key1_name)
-    except ValueError as e:
-        raise TableError("unknown column: %s" % str(e))
-    return JoinSpec(
-        header=[
-            column if column not in renames0 else renames0[column]
-            for column in columns0
-        ]
-        + [
-            column if column not in renames1 else renames1[column]
-            for column in columns1
-        ],
-        key0_index=key0_index,
-        indexes0=indexes0,
-        key1_index=key1_index,
-        indexes1=indexes1,
-        default1=default1,
-    )
+    joinees: list[Joinee],
+) -> JoinSpec:
+    header = []
+    joinee_specs = []
+    for joinee in joinees:
+        try:
+            indexes = [joinee.header.index(column) for column in joinee.columns]
+            key_index = joinee.header.index(joinee.key_name)
+        except ValueError as e:
+            raise TableError("unknown column: %s" % str(e))
+        header += [joinee.renames.get(column, column) for column in joinee.columns]
 
-
-def join(
-    spec: JoinSpec,
-    rows0: Iterator[list[Any]],
-    rows1: Iterator[list[Any]],
-) -> Iterator[list[Any]]:
-    yield spec.header
-    rows1_by_key = {row[spec.key1_index]: row for row in rows1}
-    for row0 in rows0:
-        row1 = rows1_by_key.get(row0[spec.key0_index])
-        joined0 = [row0[index] for index in spec.indexes0]
-        joined1 = (
-            [row1[index] for index in spec.indexes1]
-            if row1 is not None
-            else spec.default1
+        if joinee.default is not None and len(joinee.default) != len(joinee.columns):
+            raise TableError("columns/default length mismatch")
+        joinee_default = (
+            joinee.default if joinee.default is not None else [""] * len(joinee.columns)
         )
-        yield joined0 + joined1
+
+        joinee_specs.append(
+            JoineeSpec(key_index=key_index, indexes=indexes, default=joinee_default)
+        )
+
+    if len(sorted(header)) != len(header):
+        raise TableError("duplicate column in %s" % " ".join(header))
+
+    return JoinSpec(header=header, joinee_specs=joinee_specs)
+
+
+def left_join(
+    spec: JoinSpec,
+    joinee_rows: list[Iterator[list[Any]]],
+) -> Iterator[list[Any]]:
+    if len(spec.joinee_specs) != len(joinee_rows):
+        raise TableError(
+            "spec len %d != joinee_rows len %d"
+            % (len(spec.joinee_specs), len(joinee_rows))
+        )
+
+    yield spec.header
+
+    rows_by_keys = []  # not primary
+    for i in range(1, len(spec.joinee_specs)):
+        rows_by_keys.append(
+            {row[spec.joinee_specs[i].key_index]: row for row in joinee_rows[i]}
+        )
+
+    spec_0 = spec.joinee_specs[0]
+    for row_0 in joinee_rows[0]:
+        joined = [row_0[index] for index in spec_0.indexes]
+        for i in range(1, len(spec.joinee_specs)):
+            rows_by_key_i = rows_by_keys[i - 1]  # because didn't index zeroth joinee
+            spec_i = spec.joinee_specs[i]
+            row_i = rows_by_key_i.get(row_0[spec_0.key_index])
+            joined += (
+                [row_i[index] for index in spec_i.indexes]
+                if row_i is not None
+                else spec_i.default
+            )
+        yield joined
 
 
 def split_column(

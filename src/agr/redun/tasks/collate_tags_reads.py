@@ -7,7 +7,7 @@ import csv
 from redun import task, File
 from typing import Literal, TextIO, get_args, Optional, Iterator
 
-from agr.util.table import join_spec, join, split_column
+from agr.util.table import join_spec, left_join, Joinee, split_column
 
 MACHINES_LITERAL = Literal["novaseq", "hiseq", "miseq", "iseq"]
 MACHINES = list(get_args(MACHINES_LITERAL))
@@ -183,32 +183,37 @@ def _collate_tags_reads_kgdstats(
     )
 
     spec = join_spec(
-        key0_name="sample",
-        header0=next(reads_tags),
-        columns0=[
-            "run",
-            "cohort",
-            "sample",
-            "flowcell",
-            "sq",
-            "tags",
-            "reads",
-        ],
-        renames0={
-            "sample": "qc_sampleid",
-        },
-        key1_name="qc_sampleid",
-        header1=next(kgd_stats_split),
-        columns1=[
-            "kgd_moniker",
-            "callrate",
-            "sampdepth",
-        ],
-        default1=["", "", ""],
+        [
+            Joinee(
+                key_name="sample",
+                header=next(reads_tags),
+                columns=[
+                    "run",
+                    "cohort",
+                    "sample",
+                    "flowcell",
+                    "sq",
+                    "tags",
+                    "reads",
+                ],
+                renames={
+                    "sample": "qc_sampleid",
+                },
+            ),
+            Joinee(
+                key_name="qc_sampleid",
+                header=next(kgd_stats_split),
+                columns=[
+                    "kgd_moniker",
+                    "callrate",
+                    "sampdepth",
+                ],
+            ),
+        ]
     )
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
         csv_writer = csv.writer(out_f)
-        for row in join(spec, reads_tags, kgd_stats_split):
+        for row in left_join(spec, [reads_tags, kgd_stats_split]):
             csv_writer.writerow(row)
 
 
