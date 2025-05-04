@@ -1,6 +1,6 @@
 import os.path
 from dataclasses import dataclass
-from agr.redun.tasks.gupdate import import_gbs_kgd_stats
+from agr.redun.tasks.gupdate import import_gbs_kgd_stats, import_gbs_kgd_cohort_stats
 from redun import task, File
 from typing import Optional
 
@@ -144,6 +144,15 @@ class CohortOutput:
     kgd_text_files_unblind: dict[str, File]
     kgd_stdout_unblind: Optional[File]
     kgd_report: Optional[File]
+
+
+@dataclass
+class CohortImport:
+    imported_gbs_kgd_cohort_stats: Optional[File]
+
+
+def kgd_stdout(cohort_output: CohortOutput) -> Optional[File]:
+    return cohort_output.kgd_output.kgd_stdout
 
 
 def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
@@ -307,6 +316,7 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
 class Stage2Output:
     cohorts: dict[str, CohortOutput]
     imported_gbs_kgd_stats: File
+    cohort_imports: dict[str, CohortImport]
 
 
 @task()
@@ -314,6 +324,7 @@ def run_stage2(
     run: str, spec: GbsTargetSpec, gbs_paths: GbsPaths, gbs_keyfiles: dict[str, File]
 ) -> Stage2Output:
     cohort_outputs = {}
+    cohorts = {cohort_name: Cohort.parse(cohort_name) for cohort_name in spec.cohorts}
 
     bwa_sample = FastqSampleSpec(
         rate=0.00005,
@@ -323,7 +334,7 @@ def run_stage2(
     bwa = Bwa(barcode_len=10)
 
     for name, target in spec.cohorts.items():
-        cohort = Cohort.parse(name)
+        cohort = cohorts[name]
         target = CohortSpec(
             run=run,
             cohort=cohort,
@@ -335,6 +346,7 @@ def run_stage2(
 
         cohort_outputs[name] = run_cohort(target, gbs_keyfiles[cohort.libname])
 
+    # this import step need to be once for all cohorts
     imported_gbs_kgd_stats = import_gbs_kgd_stats(
         run,
         [
@@ -344,7 +356,19 @@ def run_stage2(
         out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
     )
 
+    # and this import step is done for each cohort separately
+    cohort_imports = {}
+    for name, target in spec.cohorts.items():
+        imported_gbs_kgd_cohort_stats = import_gbs_kgd_cohort_stats(
+            run, cohorts[name], lazy_map(cohort_outputs[name], kgd_stdout)
+        )
+        cohort_imports[name] = CohortImport(
+            imported_gbs_kgd_cohort_stats=imported_gbs_kgd_cohort_stats
+        )
+
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage2Output(
-        cohorts=cohort_outputs, imported_gbs_kgd_stats=imported_gbs_kgd_stats
+        cohorts=cohort_outputs,
+        imported_gbs_kgd_stats=imported_gbs_kgd_stats,
+        cohort_imports=cohort_imports,
     )
