@@ -42,7 +42,11 @@ def recover(results: MainResults) -> MainResults:
 
 
 @task()
-def _stage3_complete(stage3: Stage3Output) -> bool:
+def _all_stages_complete(
+    stage1: Stage1Output, stage2: Stage2Output, stage3: Stage3Output
+) -> bool:
+    _ = stage1
+    _ = stage2
     _ = stage3
     return True
 
@@ -80,9 +84,9 @@ def main(
         out_dir=stage1.gbs_paths.report_dir,
     )
 
-    # must warehouse after everything else is done
+    # must warehouse after everything else is done (except reports)
     warehoused = warehouse(
-        ready_to_warehouse=_stage3_complete(stage3),
+        ready_to_warehouse=_all_stages_complete(stage1, stage2, stage3),
         geno_import_dir=path["geno_import_dir"],
         log_dir=stage1.gbs_paths.run_root,
     )
