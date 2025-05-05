@@ -6,25 +6,26 @@ from typing import Optional
 from agr.gquery import GUpdate, Predicates
 from agr.seq.types import Cohort
 from agr.util import map_columns
-from agr.util.file_hash import write_file_legible_hash
 
 
 @task()
-def import_gbs_read_tag_counts(run: str, collated_tag_count: File) -> File:
-    imported_marker_path = "%s.imported.md5" % collated_tag_count.path
+def import_gbs_read_tag_counts(
+    run: str, collated_tag_counts: list[File], out_path: str
+) -> File:
+    # concatenate all import files
+    with open(out_path, "w") as out_f:
+        for collated_tag_count in collated_tag_counts:
+            with open(collated_tag_count.path, "r") as cohort_import_f:
+                shutil.copyfileobj(cohort_import_f, out_f)
 
     GUpdate(
         explain=True,
         task="lab_report",
-        predicates=Predicates(
-            name="import_gbs_read_tag_counts", file=collated_tag_count.path
-        ),
+        predicates=Predicates(name="import_gbs_read_tag_counts", file=out_path),
         items=[run],
     ).run()
 
-    # write a file containing a hash of what we imported for redun caching
-    write_file_legible_hash(collated_tag_count.path, imported_marker_path)
-    return File(imported_marker_path)
+    return File(out_path)
 
 
 @task()

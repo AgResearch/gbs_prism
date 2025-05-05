@@ -128,7 +128,6 @@ class CohortOutput:
     tag_count: File
     fastq_to_tag_count_stdout: File
     collated_tag_count: File
-    imported_gbs_read_tag_counts_marker: File
     merged_all_count: File
     tag_pair: File
     tags_by_taxa: File
@@ -151,11 +150,15 @@ class CohortImport:
     imported_gbs_kgd_cohort_stats: Optional[File]
 
 
-def kgd_stdout(cohort_output: CohortOutput) -> Optional[File]:
+def _collated_tag_count(cohort_output: CohortOutput) -> Optional[File]:
+    return cohort_output.collated_tag_count
+
+
+def _kgd_stdout(cohort_output: CohortOutput) -> Optional[File]:
     return cohort_output.kgd_output.kgd_stdout
 
 
-def cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
+def _cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
     return cohort_output.gbs_kgd_stats_import
 
 
@@ -207,9 +210,6 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         cohort=spec.cohort.name,
         tag_counts=tag_count,
         out_path=os.path.join(cohort_blind_dir, "CollatedTagCount.tsv"),
-    )
-    imported_gbs_read_tag_counts_marker = import_gbs_read_tag_counts(
-        run=spec.run, collated_tag_count=collated_tag_count
     )
 
     merged_all_count = merge_taxa_tag_count(
@@ -292,7 +292,6 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         tag_count=tag_count,
         fastq_to_tag_count_stdout=fastq_to_tag_count.stdout,
         collated_tag_count=collated_tag_count,
-        imported_gbs_read_tag_counts_marker=imported_gbs_read_tag_counts_marker,
         merged_all_count=merged_all_count,
         tag_pair=tag_pair,
         tags_by_taxa=tags_by_taxa,
@@ -316,6 +315,7 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
 class Stage2Output:
     cohorts: dict[str, CohortOutput]
     imported_gbs_kgd_stats: File
+    imported_collated_tag_counts: File
     cohort_imports: dict[str, CohortImport]
 
 
@@ -350,17 +350,27 @@ def run_stage2(
     imported_gbs_kgd_stats = import_gbs_kgd_stats(
         run,
         [
-            lazy_map(cohort_output, cohort_gbs_kgd_stats_import)
+            lazy_map(cohort_output, _cohort_gbs_kgd_stats_import)
             for cohort_output in cohort_outputs.values()
         ],
         out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
+    )
+
+    # as does this
+    imported_collated_tag_counts = import_gbs_read_tag_counts(
+        run=run,
+        collated_tag_counts=[
+            lazy_map(cohort_output, _collated_tag_count)
+            for cohort_output in cohort_outputs.values()
+        ],
+        out_path=os.path.join(gbs_paths.run_root, "ImportedCollatedTagCounts.tsv"),
     )
 
     # and this import step is done for each cohort separately
     cohort_imports = {}
     for name, target in spec.cohorts.items():
         imported_gbs_kgd_cohort_stats = import_gbs_kgd_cohort_stats(
-            run, cohorts[name], lazy_map(cohort_outputs[name], kgd_stdout)
+            run, cohorts[name], lazy_map(cohort_outputs[name], _kgd_stdout)
         )
         cohort_imports[name] = CohortImport(
             imported_gbs_kgd_cohort_stats=imported_gbs_kgd_cohort_stats
@@ -370,5 +380,6 @@ def run_stage2(
     return Stage2Output(
         cohorts=cohort_outputs,
         imported_gbs_kgd_stats=imported_gbs_kgd_stats,
+        imported_collated_tag_counts=imported_collated_tag_counts,
         cohort_imports=cohort_imports,
     )
