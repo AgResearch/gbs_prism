@@ -152,7 +152,6 @@ def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
     return [file for file in file_vars.values() if file is not None]
 
 
-@task()
 def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
     return File(
         _primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
@@ -164,8 +163,22 @@ def kgd_dir(work_dir: str) -> str:
 
 
 @task()
-def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
-    """Unwrap the lazy result expression and repackage the result files."""
+def kgd(
+    work_dir: str, genotyping_method: str, hap_map_files: list[File]
+) -> KgdOutput:  # cache buster
+    out_dir = kgd_dir(work_dir)
+    hapmap_dir = os.path.join(work_dir, "hapMap")
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(hapmap_dir, exist_ok=True)
+
+    kgd_job_spec = _kgd_job_spec(
+        out_dir=out_dir,
+        hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
+        genotyping_method=genotyping_method,
+    )
+
+    result = run_job_n_returning_failure(kgd_job_spec)
+
     if isinstance(result, ResultFiles):
         return KgdOutput(
             ok=True,
@@ -193,19 +206,3 @@ def kgd_output(result: ResultFiles | ClusterExecutorJobFailure) -> KgdOutput:
             kgd_stdout=None,
             kgd_stderr=result.stderr,
         )
-
-
-@task()
-def kgd(work_dir: str, genotyping_method: str, hap_map_files: list[File]) -> KgdOutput: # cache buster
-    out_dir = kgd_dir(work_dir)
-    hapmap_dir = os.path.join(work_dir, "hapMap")
-    os.makedirs(out_dir, exist_ok=True)
-    os.makedirs(hapmap_dir, exist_ok=True)
-
-    kgd_job_spec = _kgd_job_spec( 
-        out_dir=out_dir,
-        hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
-        genotyping_method=genotyping_method,
-    )
-
-    return kgd_output(run_job_n_returning_failure(kgd_job_spec))
