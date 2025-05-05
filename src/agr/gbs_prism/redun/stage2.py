@@ -357,7 +357,9 @@ def run_stage2(
         out_path=os.path.join(gbs_paths.run_root, "ImportedCollatedTagCounts.tsv"),
     )
 
-    # as does this, which we think we must run after the other 😬
+    # as does this, which we must run after the other, according to this comment buried deep inside gquery 😬
+    #
+    # These two partial updates should always be run together, in the order import_gbs_read_tag_counts, then import_gbs_kgd_stats
     imported_gbs_kgd_stats = import_gbs_kgd_stats(
         ready=await_results(imported_collated_tag_counts),
         run=run,
