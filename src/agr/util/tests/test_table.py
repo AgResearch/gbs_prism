@@ -144,7 +144,7 @@ def test_left_join_2():
     ]
 
 
-def test_splice_1():
+def test_split_column_1():
     t = [
         ["A", "B", "C"],
         ["a-1", "bX1", "c*1"],
@@ -186,7 +186,7 @@ def test_splice_1():
     ]
 
 
-def test_splice_2():
+def test_split_column_2():
     v = [
         ["A", "B", "C"],
         ["a-1", "bX1", "c1-2-3-4"],
