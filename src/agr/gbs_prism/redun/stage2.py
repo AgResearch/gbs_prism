@@ -1,6 +1,7 @@
 import os.path
 from dataclasses import dataclass
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats, import_gbs_kgd_cohort_stats
+from agr.redun.util import await_results
 from redun import task, File
 from typing import Optional
 
@@ -356,8 +357,9 @@ def run_stage2(
         out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
     )
 
-    # as does this
+    # as does this, which we run after the other
     imported_collated_tag_counts = import_gbs_read_tag_counts(
+        ready=await_results(imported_gbs_kgd_stats),
         run=run,
         collated_tag_counts=[
             lazy_map(cohort_output, _collated_tag_count)

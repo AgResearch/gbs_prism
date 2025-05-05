@@ -10,8 +10,10 @@ from agr.util import map_columns
 
 @task()
 def import_gbs_read_tag_counts(
-    run: str, collated_tag_counts: list[File], out_path: str
+    ready: bool, run: str, collated_tag_counts: list[File], out_path: str
 ) -> File:
+    _ = ready
+
     # concatenate all import files
     with open(out_path, "w") as out_f:
         for collated_tag_count in collated_tag_counts:
