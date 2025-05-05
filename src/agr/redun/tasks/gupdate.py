@@ -10,10 +10,8 @@ from agr.util import map_columns
 
 @task()
 def import_gbs_read_tag_counts(
-    ready: bool, run: str, collated_tag_counts: list[File], out_path: str
+    run: str, collated_tag_counts: list[File], out_path: str
 ) -> File:
-    _ = ready
-
     # concatenate all import files
     with open(out_path, "w") as out_f:
         for collated_tag_count in collated_tag_counts:
@@ -56,13 +54,14 @@ def create_cohort_gbs_kgd_stats_import(
 
 @task()
 def import_gbs_kgd_stats(
-    run: str, cohort_imports: list[Optional[File]], out_path: str
+    ready: bool, run: str, cohort_imports: list[Optional[File]], out_path: str
 ) -> File:
     """Import all KGD stats import files in one go, since importing individual files
     seems to result in database deadlock.
 
     Any cohorts for which KGD failed result in None in place of the import file, and we simply omit these.
     """
+    _ = ready
 
     # concatenate all import files
     with open(out_path, "w") as out_f:

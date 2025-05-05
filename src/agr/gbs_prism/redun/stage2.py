@@ -348,24 +348,24 @@ def run_stage2(
         cohort_outputs[name] = run_cohort(target, gbs_keyfiles[cohort.libname])
 
     # this import step need to be once for all cohorts
-    imported_gbs_kgd_stats = import_gbs_kgd_stats(
-        run,
-        [
-            lazy_map(cohort_output, _cohort_gbs_kgd_stats_import)
-            for cohort_output in cohort_outputs.values()
-        ],
-        out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
-    )
-
-    # as does this, which we run after the other
     imported_collated_tag_counts = import_gbs_read_tag_counts(
-        ready=await_results(imported_gbs_kgd_stats),
         run=run,
         collated_tag_counts=[
             lazy_map(cohort_output, _collated_tag_count)
             for cohort_output in cohort_outputs.values()
         ],
         out_path=os.path.join(gbs_paths.run_root, "ImportedCollatedTagCounts.tsv"),
+    )
+
+    # as does this, which we think we must run after the other 😬
+    imported_gbs_kgd_stats = import_gbs_kgd_stats(
+        ready=await_results(imported_collated_tag_counts),
+        run=run,
+        cohort_imports=[
+            lazy_map(cohort_output, _cohort_gbs_kgd_stats_import)
+            for cohort_output in cohort_outputs.values()
+        ],
+        out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
     )
 
     # and this import step is done for each cohort separately
