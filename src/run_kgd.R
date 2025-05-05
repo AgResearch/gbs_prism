@@ -65,7 +65,7 @@ if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos))) { # only do it if keyf
   if(length(table(seqinfo$platename[keypos]))==1) {
    seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
    negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
-   plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos)
+   plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos, vflip=TRUE)
    } else {
    cat("Multiple plates - plate plots not produced\n")
    }
@@ -167,7 +167,7 @@ if ( geno_method == "default" ) {
   keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos)))  {
      if(length(table(seqinfo$platename[keypos]))==1) {
-        plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
+        plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(GHWdgm.05$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80], vflip=TRUE)
      } else {
         cat("Multiple plates - plate plots not produced\n")
      }
@@ -179,7 +179,7 @@ if ( geno_method == "default" ) {
   keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos)))  {
      if(length(table(seqinfo$platename[keypos]))==1) {
-        plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80])
+        plateplot(plateinfo=seqinfo[keypos,],plotvar=diag(Gfull$G5)-1,vardesc="Inbreeding", sfx="Inb",neginfo=negpos, colpal =rev(heat.colors(80))[25:80], vflip=TRUE)
      } else {
         cat("Multiple plates - plate plots not produced\n")
      }
