@@ -39,7 +39,9 @@ def import_genophyle_gbs_import_file(
 
 
 @task()
-def warehouse(geno_import_dir: str, log_dir: str) -> str:
+def warehouse(ready_to_warehouse: bool, geno_import_dir: str, log_dir: str) -> str:
+    _ = ready_to_warehouse
+
     os.makedirs(geno_import_dir, exist_ok=True)
 
     genophyle_gbs_import_file = get_genophyle_export(

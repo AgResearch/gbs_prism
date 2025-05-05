@@ -42,6 +42,16 @@ def recover(results: MainResults) -> MainResults:
 
 
 @task()
+def _all_stages_complete(
+    stage1: Stage1Output, stage2: Stage2Output, stage3: Stage3Output
+) -> bool:
+    _ = stage1
+    _ = stage2
+    _ = stage3
+    return True
+
+
+@task()
 def main(
     run: str,
     path_context=get_context("path"),
@@ -74,8 +84,11 @@ def main(
         out_dir=stage1.gbs_paths.report_dir,
     )
 
+    # must warehouse after everything else is done (except reports)
     warehoused = warehouse(
-        geno_import_dir=path["geno_import_dir"], log_dir=stage1.gbs_paths.run_root
+        ready_to_warehouse=_all_stages_complete(stage1, stage2, stage3),
+        geno_import_dir=path["geno_import_dir"],
+        log_dir=stage1.gbs_paths.run_root,
     )
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
