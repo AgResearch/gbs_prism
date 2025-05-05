@@ -29,24 +29,18 @@ def _gusbase_job_spec(gusbase_rdata_path: str) -> Job1Spec:
 
 
 @task()
-def _get_converted_GUSbase_output(gusbase_out_file: File) -> File:
-    work_dir = os.path.dirname(gusbase_out_file.path)
-    comet_pdf_path = os.path.join(work_dir, "GUSbase_comet.pdf")
-    comet_jpg_path = os.path.join(work_dir, "GUSbase_comet.jpg")
-    symlink("Rplots.pdf", comet_pdf_path, force=True)
-    pages = pdf2image.convert_from_path(comet_pdf_path, 150)
-    # we only expect 1 page
-    pages[0].save(comet_jpg_path)
-    return File(comet_jpg_path)
-
-
-@task()
 def gusbase(gusbase_rdata: Optional[File]) -> Optional[File]:
     if gusbase_rdata is None:
         return None
     else:
-        return _get_converted_GUSbase_output(
-            run_job_1(
-                _gusbase_job_spec(gusbase_rdata.path),
-            )
-        )
+        gusbase_out_file = run_job_1(_gusbase_job_spec(gusbase_rdata.path))
+
+        # convert image file format
+        work_dir = os.path.dirname(gusbase_out_file.path)
+        comet_pdf_path = os.path.join(work_dir, "GUSbase_comet.pdf")
+        comet_jpg_path = os.path.join(work_dir, "GUSbase_comet.jpg")
+        symlink("Rplots.pdf", comet_pdf_path, force=True)
+        pages = pdf2image.convert_from_path(comet_pdf_path, 150)
+        # we only expect 1 page
+        pages[0].save(comet_jpg_path)
+        return File(comet_jpg_path)

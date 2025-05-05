@@ -123,7 +123,6 @@ def bcl_convert(
     )
 
 
-@task()
 def _check_bcl_convert(fastq_files: list[File], expected: set[str]) -> list[File]:
     """Check what we got is what we expected."""
     actual = {fastq_file.basename() for fastq_file in fastq_files}
