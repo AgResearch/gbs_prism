@@ -167,7 +167,7 @@ def collate_tags_reads(
 def _collate_tags_reads_kgdstats(
     reads_tags: Iterator[list[str]],
     kgd_stats: Iterator[list[str]],
-    # well_position_by_sample: dict[str, tuple[str, str]],
+    keyfile: Iterator[list[str]],
     out_path: Optional[str] = None,
 ):
     # kgd_stats seqID column needs to be split into qc_sampleid and kgd_moniker
@@ -209,11 +209,19 @@ def _collate_tags_reads_kgdstats(
                     "sampdepth",
                 ],
             ),
+            Joinee(
+                key_name="sample",
+                header=next(keyfile),
+                columns=[
+                    "row",
+                    "column",
+                ],
+            ),
         ]
     )
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
         csv_writer = csv.writer(out_f)
-        for row in left_join(spec, [reads_tags, kgd_stats_split]):
+        for row in left_join(spec, [reads_tags, kgd_stats_split, keyfile]):
             csv_writer.writerow(row)
 
 
@@ -223,9 +231,7 @@ def collate_tags_reads_kgdstats(
     cohort: str,
     tag_counts: File,
     kgd_stats: Optional[File],
-    well_position_by_sample: dict[
-        str, tuple[str, str]
-    ],  # TODO use a join, not manual dict merge
+    keyfile_for_tassel: File,
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
 ) -> Optional[File]:
@@ -235,17 +241,19 @@ def collate_tags_reads_kgdstats(
     else:
         with open(tag_counts.path, "r") as tag_counts_f:
             with open(kgd_stats.path, "r") as kgd_stats_f:
-                reads_tags = _get_reads_tags(
-                    run=run,
-                    cohort=cohort,
-                    machine=machine,
-                    tag_counts=tag_counts_f,
-                )
-                kgd_stats_rows = csv.reader(kgd_stats_f)
-                _collate_tags_reads_kgdstats(
-                    reads_tags=reads_tags,
-                    kgd_stats=kgd_stats_rows,
-                    # well_position_by_sample=well_position_by_sample,
-                    out_path=out_path,
-                )
+                with open(keyfile_for_tassel.path, "r") as keyfile_f:
+                    reads_tags = _get_reads_tags(
+                        run=run,
+                        cohort=cohort,
+                        machine=machine,
+                        tag_counts=tag_counts_f,
+                    )
+                    kgd_stats_rows = csv.reader(kgd_stats_f)
+                    keyfile_rows = csv.reader(keyfile_f, delimiter="\t")
+                    _collate_tags_reads_kgdstats(
+                        reads_tags=reads_tags,
+                        kgd_stats=kgd_stats_rows,
+                        keyfile=keyfile_rows,
+                        out_path=out_path,
+                    )
         return File(out_path)

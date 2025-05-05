@@ -23,7 +23,6 @@ from agr.redun.tasks import (
     fastq_sample_all,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
-    get_well_position_by_sample,
     gusbase,
     kgd,
     import_gbs_read_tag_counts,
@@ -241,13 +240,12 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
 
     kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
 
-    well_position_by_sample = get_well_position_by_sample(keyfile_for_tassel)
     collated_kgd_stats = collate_tags_reads_kgdstats(
         run=spec.run,
         cohort=spec.cohort.name,
         tag_counts=tag_count,
         kgd_stats=kgd_output.sample_stats_csv,
-        well_position_by_sample=well_position_by_sample,
+        keyfile_for_tassel=keyfile_for_tassel,
         out_path=os.path.join(cohort_blind_dir, "TagCountsAndSampleStats.csv"),
     )
     collated_kgd_stats_unblind = unblind_optional(
