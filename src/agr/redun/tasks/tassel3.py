@@ -256,9 +256,7 @@ def get_fastq_to_tag_count(
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
 
     tassel3.symlink_key(in_path=keyfile.path)
-    result_files = run_job_n(
-        tassel3.fastq_to_tag_count_job_spec(cohort), trigger_hash=keyfile.hash
-    )
+    result_files = run_job_n(tassel3.fastq_to_tag_count_job_spec(cohort))
 
     return FastqToTagCountOutput(
         stdout=result_files.expected_files[FASTQ_TO_TAG_COUNT_STDOUT],
