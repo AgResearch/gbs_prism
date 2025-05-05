@@ -235,7 +235,6 @@ def collate_tags_reads_kgdstats(
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
 ) -> Optional[File]:
-    # cachebuster 12
     if kgd_stats is None:
         return None
     else:
