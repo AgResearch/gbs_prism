@@ -127,7 +127,7 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    expected_paths: ExpectedPaths = ExpectedPaths()
+    expected_paths: ExpectedPaths = field(default_factory=ExpectedPaths)
     expected_globs: dict[str, FilteredGlob] = field(default_factory=dict)
 
 
