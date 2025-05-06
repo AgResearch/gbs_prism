@@ -1,13 +1,13 @@
-#!/usr/bin/env python
 #########################################################################
 # collate tag and read counts , taking into account the novaseq "split lanes" disposition
 #########################################################################
 import sys
 import re
-import argparse
 import csv
 from redun import task, File
-from typing import Literal, TextIO, get_args, Any, Optional, Iterator, Generator
+from typing import Literal, TextIO, get_args, Optional, Iterator
+
+from agr.util.table import join_spec, left_join, Joinee, split_column
 
 MACHINES_LITERAL = Literal["novaseq", "hiseq", "miseq", "iseq"]
 MACHINES = list(get_args(MACHINES_LITERAL))
@@ -19,8 +19,10 @@ def _get_reads_tags(
     cohort: str,
     machine: MACHINES_LITERAL,
     tag_counts: TextIO,
-) -> Generator[tuple[str, str, str, str, str, str, str, str], None, None]:
-    """ """
+) -> Iterator[list[str]]:
+    """
+    Now returns the reads tags as an iterator, including the header row.
+    """
     # e.g.
     # sample,flowcell,lane,sq,tags,reads
     # total,H2TTCDMXY,1,SQ1745,,361922664
@@ -48,6 +50,7 @@ def _get_reads_tags(
                     "collate_tags_reads.py : heading = %s, did not expect that"
                     % str(column_headings)
                 )
+            yield ["run", "cohort"] + column_headings
             continue
         fields: list[str] = [
             item.strip() for item in re.split(r"\s*,\s*", record.strip())
@@ -89,10 +92,10 @@ def _get_reads_tags(
                 )
             )
         else:
-            yield (
+            yield [
                 run,
                 cohort,
-            ) + tuple(
+            ] + [
                 field_dict[name]
                 for name in (
                     "sample",
@@ -102,11 +105,11 @@ def _get_reads_tags(
                     "tags",
                     "reads",
                 )
-            )  # type: ignore[reportReturnType]
+            ]
 
     if machine == "novaseq":
         for sample in novaseq_counts:
-            yield (
+            yield [
                 run,
                 cohort,
                 sample,
@@ -115,125 +118,7 @@ def _get_reads_tags(
                 sq,
                 str(novaseq_counts[sample][0]),
                 str(novaseq_counts[sample][1]),
-            )  # type: ignore[reportReturnType]
-
-
-def _get_reads_tags_kgdstats(
-    kgd_stats: TextIO,
-    reads_tags: Iterator[tuple[str, str, str, str, str, str, str, str]],
-):
-    """
-    this basically does an outer join between the tags and reads summary, and the kgd stats summary, on the qc_sampleid key
-    """
-
-    # read in the sample stats - e.g.
-    # "seqID","callrate","sampdepth"
-    # "qc959027-1_merged_2_0_X4",0.063122740701323,0.0914178762133695
-    # "qc959028-1_merged_2_0_X4",0.797970530487917,2.49389874672
-    # "qc959029-1_merged_2_0_X4",0.770391030698938,2.28579554837881
-    # "qc959030-1_merged_2_0_X4",0.724149953208433,1.89357212323614
-    # "qc959031-1_merged_2_0_X4",0.79488779198855,2.51852395544709
-    kgd_tuples = [row for row in csv.reader(kgd_stats)]
-
-    # key the tuples by the qc sampleid - i.e. by etc
-    kgd_stats_dict = dict(
-        zip((re.split("_", kgd_tuple[0])[0] for kgd_tuple in kgd_tuples), kgd_tuples)
-    )
-    # entries look like
-    # 'qc823667-1': ['qc823668-1_merged_2_0_X4', '0.328730703259005', '1.7377358490566']
-    # print(kgd_stats_dict)
-    for record in reads_tags:
-        # e.g. 211217_A01439_0043_BH2TTCDMXY   SQ1744.all.PstI-MspI.PstI-MspI  qc823603-1      H2TTCDMXY       1       1744    196401  2251079
-        # (don't include the lane column)
-        yield [
-            record[0],
-            record[1],
-            record[2],
-            record[3],
-            record[5],
-            record[6],
-            record[7],
-        ] + kgd_stats_dict.get(record[2], ["", "", ""])
-
-
-def _get_options() -> dict[str, Any]:
-    description = """
-    """
-    long_description = """
-
-examples :
-
-collate_tags_reads.py --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
-collate_tags_reads.py --report_name tags_reads_kgdstats  --kgd_stats_file /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/KGD/SampleStats.csv.blinded --run 211217_A01439_0043_BH2TTCDMXY --cohort SQ1744.all.PstI-MspI.PstI-MspI /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
-
-# for testing 
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1705.all.salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1705.all.salmon.PstI-MspI/TagCount.csv.blinded
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.chinook_salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.chinook_salmon.PstI-MspI/TagCount.csv.blinded
-./collate_tags_reads.py --run 211020_A01439_0028_AHHYWFDRXY --cohort SQ1706.all.salmon.PstI-MspI --machine hiseq /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
-
-
--rw-rw-r-- 1 mccullocha hiseq_users 32029 Oct 22 10:30 /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211020_A01439_0028_AHHYWFDRXY/SQ1706.all.salmon.PstI-MspI/TagCount.csv.blinded
-
-
-
-
-   #cat $file | awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=$run cohort=$cohort - >> $RUN_PATH/html/gbs_yield_import_temp.dat
-   # e.g.
-   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    sample  flowcell        lane    sq      tags    reads
-   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    total   CCVK0ANXX       1       SQ0788          298918641
-   #180914_D00390_0399_ACCVK0ANXX   SQ0788.all.DEER.PstI    good    CCVK0ANXX       1       SQ0788          268924508
-
-+ awk -F, '{printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",run,cohort,$1,$2,$3,$4,$5,$6);}' run=211217_A01439_0043_BH2TTCDMXY cohort=SQ1744.all.PstI-MspI.PstI-MspI -
-+ cat /dataset/2023_illumina_sequencing_a/scratch/postprocessing/gbs/211217_A01439_0043_BH2TTCDMXY/SQ1744.all.PstI-MspI.PstI-MspI/TagCount.csv.blinded
-   
-
-
-python collate_tags_reads.py /bifo/scratch/gseq_processing/gbs/210324_D00390_0613_BCD418ANXX/SQ1572.all.deer.PstI/KGD/GHW05.vcf /dataset/gseq_processing/scratch/gbs/210324_D00390_0613_BCD418ANXX/SQ2965.all.PstI-MspI.PstI-MspI/KGD/GHW05.vcf
-python collate_tags_reads.py 
-
-
-    """
-    parser = argparse.ArgumentParser(
-        description=description,
-        epilog=long_description,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    _ = parser.add_argument(
-        "filename",
-        type=argparse.FileType(mode="r", encoding="UTF-8"),
-        help="tag count file to summarise ",
-    )
-    _ = parser.add_argument(
-        "--run", dest="run", type=str, required=True, help="run name"
-    )
-    _ = parser.add_argument(
-        "--cohort", dest="cohort", type=str, required=True, help="cohort"
-    )
-    _ = parser.add_argument(
-        "--machine",
-        dest="machine",
-        choices=MACHINES,
-        default="novaseq",
-        type=str,
-        help="which machine",
-    )
-    _ = parser.add_argument(
-        "--report_name",
-        dest="report_name",
-        choices=["tags_reads", "tags_reads_kgdstats"],
-        default="tags_reads",
-        type=str,
-        help="which report to run",
-    )
-    _ = parser.add_argument(
-        "--kgd_stats_file",
-        dest="kgd_stats_file",
-        default=None,
-        type=argparse.FileType(mode="r", encoding="UTF-8"),
-        help="KGD stats file",
-    )
-
-    return vars(parser.parse_args())
+            ]  # type: ignore[reportReturnType]
 
 
 def _collate_tags_reads(
@@ -244,9 +129,12 @@ def _collate_tags_reads(
     out_path: Optional[str] = None,
 ):
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
-        for record in _get_reads_tags(
+        reads_tags = _get_reads_tags(
             run=run, cohort=cohort, machine=machine, tag_counts=tag_counts
-        ):
+        )
+        # skip header since we added one
+        _ = next(reads_tags)
+        for record in reads_tags:
             print("\t".join(record), file=out_f)
             # e.g.
             # run cohort sample flowcell, dummy_lane, sq, tags, reads
@@ -277,36 +165,64 @@ def collate_tags_reads(
 
 
 def _collate_tags_reads_kgdstats(
-    run: str,
-    cohort: str,
-    machine: MACHINES_LITERAL,
-    tag_counts: TextIO,
-    kgd_stats: TextIO,
+    reads_tags: Iterator[list[str]],
+    kgd_stats: Iterator[list[str]],
+    keyfile: Iterator[list[str]],
     out_path: Optional[str] = None,
 ):
+    # kgd_stats seqID column needs to be split into qc_sampleid and kgd_moniker
+    # "qc959031-1_merged_2_0_X4",0.79488779198855,2.51852395544709
+    kgd_stats_header = next(kgd_stats)
+    kgd_stats_split = split_column(
+        column="seqID",
+        new_columns=["qc_sampleid", "kgd_moniker"],
+        # qc_sampleid is everything before the first underscore; kgd_moniker is the original, including the qc_sampleid prefix
+        splitter=lambda s: [s.split("_", 1)[0], s],
+        header=kgd_stats_header,
+        rows=kgd_stats,
+    )
+
+    spec = join_spec(
+        [
+            Joinee(
+                key_name="sample",
+                header=next(reads_tags),
+                columns=[
+                    "run",
+                    "cohort",
+                    "sample",
+                    "flowcell",
+                    "sq",
+                    "tags",
+                    "reads",
+                ],
+                renames={
+                    "sample": "qc_sampleid",
+                },
+            ),
+            Joinee(
+                key_name="qc_sampleid",
+                header=next(kgd_stats_split),
+                columns=[
+                    "kgd_moniker",
+                    "callrate",
+                    "sampdepth",
+                ],
+            ),
+            Joinee(
+                key_name="sample",
+                header=next(keyfile),
+                columns=[
+                    "row",
+                    "column",
+                ],
+            ),
+        ]
+    )
     with open(out_path, "w") if out_path is not None else sys.stdout as out_f:
         csv_writer = csv.writer(out_f)
-        csv_writer.writerow(
-            [
-                "run",
-                "cohort",
-                "qc_sampleid",
-                "flowcell",
-                "sq",
-                "tags",
-                "reads",
-                "kgd_moniker",
-                "callrate",
-                "sampdepth",
-            ]
-        )
-        for record in _get_reads_tags_kgdstats(
-            kgd_stats=kgd_stats,
-            reads_tags=_get_reads_tags(
-                run=run, cohort=cohort, machine=machine, tag_counts=tag_counts
-            ),
-        ):
-            csv_writer.writerow(record)
+        for row in left_join(spec, [reads_tags, kgd_stats_split, keyfile]):
+            csv_writer.writerow(row)
 
 
 @task()
@@ -315,6 +231,7 @@ def collate_tags_reads_kgdstats(
     cohort: str,
     tag_counts: File,
     kgd_stats: Optional[File],
+    keyfile_for_tassel: File,
     out_path: str,
     machine: MACHINES_LITERAL = DEFAULT_MACHINE,
 ) -> Optional[File]:
@@ -323,39 +240,19 @@ def collate_tags_reads_kgdstats(
     else:
         with open(tag_counts.path, "r") as tag_counts_f:
             with open(kgd_stats.path, "r") as kgd_stats_f:
-                _collate_tags_reads_kgdstats(
-                    run=run,
-                    cohort=cohort,
-                    machine=machine,
-                    tag_counts=tag_counts_f,
-                    kgd_stats=kgd_stats_f,
-                    out_path=out_path,
-                )
+                with open(keyfile_for_tassel.path, "r") as keyfile_f:
+                    reads_tags = _get_reads_tags(
+                        run=run,
+                        cohort=cohort,
+                        machine=machine,
+                        tag_counts=tag_counts_f,
+                    )
+                    kgd_stats_rows = csv.reader(kgd_stats_f)
+                    keyfile_rows = csv.reader(keyfile_f, delimiter="\t")
+                    _collate_tags_reads_kgdstats(
+                        reads_tags=reads_tags,
+                        kgd_stats=kgd_stats_rows,
+                        keyfile=keyfile_rows,
+                        out_path=out_path,
+                    )
         return File(out_path)
-
-
-def _main():
-
-    args = _get_options()
-
-    if args["report_name"] == "tags_reads":
-        _collate_tags_reads(
-            run=args["run"],
-            cohort=args["cohort"],
-            machine=args["machine"],
-            tag_counts=args["filename"],
-        )
-    elif args["report_name"] == "tags_reads_kgdstats":
-        _collate_tags_reads_kgdstats(
-            run=args["run"],
-            cohort=args["cohort"],
-            machine=args["machine"],
-            tag_counts=args["filename"],
-            kgd_stats=args["kgd_stats_file"],
-        )
-
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(_main())

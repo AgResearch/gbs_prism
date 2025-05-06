@@ -246,6 +246,7 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         cohort=spec.cohort.name,
         tag_counts=tag_count,
         kgd_stats=kgd_output.sample_stats_csv,
+        keyfile_for_tassel=keyfile_for_tassel,
         out_path=os.path.join(cohort_blind_dir, "TagCountsAndSampleStats.csv"),
     )
     collated_kgd_stats_unblind = unblind_optional(
