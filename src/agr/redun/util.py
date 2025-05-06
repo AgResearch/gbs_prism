@@ -43,6 +43,19 @@ def lazy_map(x: Any, f: Callable[[Any], Any]) -> Any:
     return f(x)
 
 
+@task()
+def await_results(results: Any) -> bool:
+    """
+    Simply use the results to trigger readiness to run a subsequent task.
+    This avoids for example having to pass in a file to a task just to trigger it.
+    Instead pass in the result of `await_files` to a parameter `ready` of the task in question,
+    which should assign it to `_` to avoid unused parameter warning.
+    (The name is purely convention; consistency provides clarity on what is happening.)
+    """
+    _ = results
+    return True
+
+
 def existing_file(path: str) -> File:
     """Return path as file, failing if it doesn't exist."""
     if os.path.exists(path):

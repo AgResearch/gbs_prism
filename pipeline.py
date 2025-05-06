@@ -6,6 +6,7 @@ from redun.scheduler import catch_all
 
 from agr.util.path import expand
 from agr.redun.cluster_executor import create_cluster_executor_config
+from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
     run_stage1,
     run_stage2,
@@ -39,16 +40,6 @@ def recover(results: MainResults) -> MainResults:
     we loiter until all tasks are done or failed.
     """
     return results
-
-
-@task()
-def _all_stages_complete(
-    stage1: Stage1Output, stage2: Stage2Output, stage3: Stage3Output
-) -> bool:
-    _ = stage1
-    _ = stage2
-    _ = stage3
-    return True
 
 
 @task()
@@ -86,7 +77,7 @@ def main(
 
     # must warehouse after everything else is done (except reports)
     warehoused = warehouse(
-        ready_to_warehouse=_all_stages_complete(stage1, stage2, stage3),
+        ready=await_results([stage1, stage2, stage3]),
         geno_import_dir=path["geno_import_dir"],
         log_dir=stage1.gbs_paths.run_root,
     )

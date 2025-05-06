@@ -1,6 +1,7 @@
 import os.path
 from dataclasses import dataclass
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats, import_gbs_kgd_cohort_stats
+from agr.redun.util import await_results
 from redun import task, File
 from typing import Optional
 
@@ -347,16 +348,6 @@ def run_stage2(
         cohort_outputs[name] = run_cohort(target, gbs_keyfiles[cohort.libname])
 
     # this import step need to be once for all cohorts
-    imported_gbs_kgd_stats = import_gbs_kgd_stats(
-        run,
-        [
-            lazy_map(cohort_output, _cohort_gbs_kgd_stats_import)
-            for cohort_output in cohort_outputs.values()
-        ],
-        out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
-    )
-
-    # as does this
     imported_collated_tag_counts = import_gbs_read_tag_counts(
         run=run,
         collated_tag_counts=[
@@ -364,6 +355,19 @@ def run_stage2(
             for cohort_output in cohort_outputs.values()
         ],
         out_path=os.path.join(gbs_paths.run_root, "ImportedCollatedTagCounts.tsv"),
+    )
+
+    # as does this, which we must run after the other, according to this comment buried deep inside gquery 😬
+    #
+    # These two partial updates should always be run together, in the order import_gbs_read_tag_counts, then import_gbs_kgd_stats
+    imported_gbs_kgd_stats = import_gbs_kgd_stats(
+        ready=await_results(imported_collated_tag_counts),
+        run=run,
+        cohort_imports=[
+            lazy_map(cohort_output, _cohort_gbs_kgd_stats_import)
+            for cohort_output in cohort_outputs.values()
+        ],
+        out_path=os.path.join(gbs_paths.run_root, "gbs_kgd_stats_import.tsv"),
     )
 
     # and this import step is done for each cohort separately
