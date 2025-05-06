@@ -354,6 +354,14 @@
 
             # used in eri/install for the module file
             lmod-setenv = gquery-lmod-setenv;
+
+            tests = let test-environment = python3.withPackages (ps: [ ps.pytest ]); in {
+              type = "app";
+              program = "${writeShellScript "gbs_prism-tests" ''
+                export PATH=${pkgs.lib.makeBinPath [test-environment]}
+                pytest src
+              ''}";
+            };
           };
         }
       );
