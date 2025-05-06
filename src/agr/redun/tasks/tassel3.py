@@ -15,6 +15,7 @@ from agr.redun.cluster_executor import (
     run_job_n,
     Job1Spec,
     JobNSpec,
+    ExpectedPaths,
     FilteredGlob,
 )
 
@@ -94,7 +95,7 @@ class Tassel3:
         self,
         plugin: str,
         plugin_args: list[str],
-        expected_paths: dict[str, str] = {},
+        expected_paths: ExpectedPaths = ExpectedPaths(),
         expected_globs: dict[str, FilteredGlob] = {},
     ) -> JobNSpec:
         return JobNSpec(
@@ -177,11 +178,13 @@ class Tassel3:
                 "-s",
                 "900000000",
             ],
-            expected_paths={
-                FASTQ_TO_TAG_COUNT_STDOUT: os.path.join(
-                    self._work_dir, "%s.stdout" % FASTQ_TO_TAG_COUNT_PLUGIN
-                ),
-            },
+            expected_paths=ExpectedPaths(
+                required={
+                    FASTQ_TO_TAG_COUNT_STDOUT: os.path.join(
+                        self._work_dir, "%s.stdout" % FASTQ_TO_TAG_COUNT_PLUGIN
+                    ),
+                }
+            ),
             expected_globs={
                 FASTQ_TO_TAG_COUNT_COUNTS: FilteredGlob("%s/*" % self.tag_counts_dir),
             },
