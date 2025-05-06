@@ -54,25 +54,25 @@ class SequencerRun:
         overall_timeout: Optional[timedelta] = None,
     ):
         self.validate()
-        rta_complete_path = os.path.join(self._dir, "RTAComplete.txt")
+        copy_complete_path = os.path.join(self._dir, "CopyComplete.txt")
         deadline = (
             datetime.now() + overall_timeout if overall_timeout is not None else None
         )
-        while not os.path.exists(rta_complete_path) and (
+        while not os.path.exists(copy_complete_path) and (
             deadline is None or deadline < datetime.now()
         ):
             print(
                 "%s does not exist, sleeping for %s"
-                % (rta_complete_path, poll_interval)
+                % (copy_complete_path, poll_interval)
             )
             logger.info(
                 "%s does not exist, sleeping for %s"
-                % (rta_complete_path, poll_interval)
+                % (copy_complete_path, poll_interval)
             )
             time.sleep(poll_interval.total_seconds())
-        if not os.path.exists(rta_complete_path):
-            raise SequencerRunError("timeout waiting for %s" % rta_complete_path)
-        logger.info("%s found, run is complete" % rta_complete_path)
+        if not os.path.exists(copy_complete_path):
+            raise SequencerRunError("timeout waiting for %s" % copy_complete_path)
+        logger.info("%s found, run is complete" % copy_complete_path)
 
     # TODO move this to a more appropriate class, perhaps
     def exists_in_database(self):

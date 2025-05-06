@@ -85,9 +85,11 @@ class Stage1Output:
 
 
 @task()
-def get_sample_sheet(sample_sheet_path: str) -> File:
-    """Get the sample sheet path."""
-    return File(sample_sheet_path)
+def await_run_complete(sequencer_run: SequencerRun) -> File:
+    """Await run complete and return the sample sheet as a file, so we retrigger if it changes."""
+    sequencer_run.await_complete()
+
+    return File(sequencer_run.sample_sheet_path)
 
 
 @task()
@@ -108,8 +110,10 @@ def run_stage1(
     )
     seq_paths = SeqPaths(illumina_platform_run_root)
 
+    raw_sample_sheet = await_run_complete(sequencer_run)
+
     seq = cook_sample_sheet(
-        in_file=get_sample_sheet(sequencer_run.sample_sheet_path),
+        in_file=raw_sample_sheet,
         out_path=seq_paths.sample_sheet_path,
     )
 
