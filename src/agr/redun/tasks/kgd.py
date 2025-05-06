@@ -193,8 +193,11 @@ def kgd(
         return KgdOutput(
             ok=True,
             text_files={
-                basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_TEXT_FILES_REQUIRED
+                basename: path
+                for basename in (
+                    KGD_OUTPUT_TEXT_FILES_REQUIRED + KGD_OUTPUT_TEXT_FILES_OPTIONAL
+                )
+                if (path := result.expected_files.get(basename)) is not None
             },
             binary_files={
                 basename: result.expected_files[basename]
