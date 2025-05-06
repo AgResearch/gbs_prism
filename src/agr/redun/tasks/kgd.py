@@ -6,10 +6,11 @@ from typing import Optional
 
 from agr.redun.cluster_executor import (
     run_job_n_returning_failure,
-    ClusterExecutorJobFailure,
     JobNSpec,
+    ExpectedPaths,
     ResultFiles,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -108,16 +109,18 @@ def _kgd_job_spec(
         stdout_path=out_path,
         stderr_path=err_path,
         cwd=out_dir,
-        expected_paths={
-            basename: os.path.join(out_dir, basename)
-            for basename in KGD_OUTPUT_TEXT_FILES
-            + KGD_OUTPUT_BINARY_FILES
-            + KGD_OUTPUT_PLOTS
-        }
-        | {
-            KGD_STDOUT: out_path,
-            KGD_STDERR: err_path,
-        },
+        expected_paths=ExpectedPaths(
+            required={
+                basename: os.path.join(out_dir, basename)
+                for basename in KGD_OUTPUT_TEXT_FILES
+                + KGD_OUTPUT_BINARY_FILES
+                + KGD_OUTPUT_PLOTS
+            }
+            | {
+                KGD_STDOUT: out_path,
+                KGD_STDERR: err_path,
+            }
+        ),
     )
 
 
