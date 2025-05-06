@@ -1,5 +1,6 @@
 import logging
 import os.path
+import shutil
 from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
@@ -107,6 +108,12 @@ def bcl_convert(
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
 
+    # if redun thinks we need to run bcl-convert, we'd better run it,
+    # which means removing any previous run, since bcl-convert cannot
+    # cope with existing directory
+    if os.path.isdir(out_dir):
+        shutil.rmtree(out_dir)
+
     fastq_files = run_job_n(
         _bcl_convert_job_spec(
             in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
@@ -123,7 +130,6 @@ def bcl_convert(
     )
 
 
-@task()
 def _check_bcl_convert(fastq_files: list[File], expected: set[str]) -> list[File]:
     """Check what we got is what we expected."""
     actual = {fastq_file.basename() for fastq_file in fastq_files}

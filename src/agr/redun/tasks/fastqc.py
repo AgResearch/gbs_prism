@@ -53,22 +53,15 @@ def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> JobNSp
 
 
 @task()
-def _fastqc_output(result: ResultFiles) -> FastqcOutput:
-    """Unwrap the lazy result expression and repackage the result files."""
-    return FastqcOutput(
-        html=result.expected_files[_HTML],
-        zip=result.expected_files[_ZIP],
-    )
-
-
-@task()
 def fastqc_one(fastq_file: File, out_dir: str) -> FastqcOutput:
     """Run fastqc on a single file."""
     os.makedirs(out_dir, exist_ok=True)
-    return _fastqc_output(
-        run_job_n(
-            _fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir),
-        )
+
+    result = run_job_n(_fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir))
+
+    return FastqcOutput(
+        html=result.expected_files[_HTML],
+        zip=result.expected_files[_ZIP],
     )
 
 
