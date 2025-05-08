@@ -158,10 +158,19 @@ def get_gbs_keyfiles(
     )
     gbs_keyfiles.create()
 
-    return {
-        library: File(os.path.join(out_dir, "%s.generated.txt" % library))
-        for library in gbs_libraries
-    }
+    keyfile_paths = {}
+    for library in gbs_libraries:
+        if os.path.exists(os.path.join(out_dir, "%s.generated.txt" % library)):
+            keyfile_paths[library] = File(
+                os.path.join(out_dir, "%s.generated.txt" % library)
+            )
+        elif os.path.exists(os.path.join(out_dir, "%s.txt" % library)):
+            keyfile_paths[library] = File(os.path.join(out_dir, "%s.txt" % library))
+        else:
+            raise FileNotFoundError(
+                f"Keyfile for library {library} not found in {out_dir}."
+            )
+    return keyfile_paths
 
 
 @task()
