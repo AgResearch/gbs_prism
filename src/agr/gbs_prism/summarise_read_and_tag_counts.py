@@ -104,6 +104,23 @@ def get_summary(cohort_tags_reads):
     (cohort_tuple, tags_reads) = cohort_tags_reads
     # print "DEBUG : %s"%str(tags_reads)
 
+    if len(tags_reads) == 0:  
+        print(f"Warning: No data in tags_reads for {cohort_tuple}. Returning zero for stats.")
+        # If there are no records, return zero for all stats
+        return (
+            "%s_%s_%s(n=%d)" % cohort_tuple,
+            0.0,  # mean_tag_count
+            0.0,  # std_tag_count
+            0.0,  # cv_tag_count (safe_cv will handle mean=0)
+            0,    # min_tag_count
+            0,    # max_tag_count
+            0.0,  # mean_read_count
+            0.0,  # std_read_count
+            0.0,  # cv_read_count (safe_cv will handle mean=0)
+            0,    # min_read_count
+            0     # max_read_count
+        )
+    
     # calculate mean and standard deviation
     # print "DEBUG : %d"%sum((record[0] for record in tags_reads))
     mean_tag_count = sum((record[0] for record in tags_reads)) / float(len(tags_reads))
