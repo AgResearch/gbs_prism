@@ -4,6 +4,7 @@ from redun import task, File
 from agr.gquery import GQuery
 from agr.util.file_hash import file_legible_hash
 from agr.util.subprocess import run_catching_stderr
+from agr.seq.types import flowcell_id
 
 
 @task()
@@ -39,13 +40,13 @@ def import_genophyle_gbs_import_file(
 
 
 @task()
-def warehouse(ready: bool, geno_import_dir: str, log_dir: str) -> str:
+def warehouse(ready: bool, geno_import_dir: str, log_dir: str, run: str) -> str:
     _ = ready
 
     os.makedirs(geno_import_dir, exist_ok=True)
 
     genophyle_gbs_import_file = get_genophyle_export(
-        out_path=os.path.join(geno_import_dir, "genophyle_gbs_import.txt")
+        out_path=os.path.join(geno_import_dir, (flowcell_id(run) + ".genophyle_gbs_import.txt"))
     )
 
     import_marker = import_genophyle_gbs_import_file(
