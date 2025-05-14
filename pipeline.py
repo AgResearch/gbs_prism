@@ -80,6 +80,7 @@ def main(
         ready=await_results([stage1, stage2, stage3]),
         geno_import_dir=path["geno_import_dir"],
         log_dir=stage1.gbs_paths.run_root,
+        run=run,
     )
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
