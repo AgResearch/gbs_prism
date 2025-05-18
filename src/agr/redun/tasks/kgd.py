@@ -6,17 +6,18 @@ from typing import Optional
 
 from agr.redun.cluster_executor import (
     run_job_n_returning_failure,
-    ClusterExecutorJobFailure,
     JobNSpec,
+    ExpectedPaths,
     ResultFiles,
 )
+
 
 logger = logging.getLogger(__name__)
 
 KGD_STDOUT = "KGD.stdout"
 KGD_STDERR = "KGD.stderr"
 
-KGD_OUTPUT_PLOTS = [
+KGD_OUTPUT_PLOTS_REQUIRED = [
     "AlleleFreq.png",
     "CallRate.png",
     "Co-call-HWdgm.05.png",
@@ -56,7 +57,7 @@ KGD_OUTPUT_PLOTS = [
     "X2star-QQ.png",
 ]
 
-KGD_OUTPUT_TEXT_FILES = [
+KGD_OUTPUT_TEXT_FILES_REQUIRED = [
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
     "GHW05-long.csv",
@@ -65,15 +66,18 @@ KGD_OUTPUT_TEXT_FILES = [
     "GHW05-PC.csv",
     "GHW05.vcf",
     "HeatmapOrderHWdgm.05.csv",
-    # "HighRelatedness.csv",
-    # "HighRelatedness.split.csv",
     "SampleStats.csv",
     "SampleStatsRawCombined.csv",
     "SampleStatsRaw.csv",
     "seqID.csv",
 ]
 
-KGD_OUTPUT_BINARY_FILES = [
+KGD_OUTPUT_TEXT_FILES_OPTIONAL = [
+    "HighRelatedness.csv",
+    "HighRelatedness.split.csv",
+]
+
+KGD_OUTPUT_BINARY_FILES_REQUIRED = [
     "GHW05.RData",
     "GUSbase.RData",
 ]
@@ -108,16 +112,22 @@ def _kgd_job_spec(
         stdout_path=out_path,
         stderr_path=err_path,
         cwd=out_dir,
-        expected_paths={
-            basename: os.path.join(out_dir, basename)
-            for basename in KGD_OUTPUT_TEXT_FILES
-            + KGD_OUTPUT_BINARY_FILES
-            + KGD_OUTPUT_PLOTS
-        }
-        | {
-            KGD_STDOUT: out_path,
-            KGD_STDERR: err_path,
-        },
+        expected_paths=ExpectedPaths(
+            required={
+                basename: os.path.join(out_dir, basename)
+                for basename in KGD_OUTPUT_TEXT_FILES_REQUIRED
+                + KGD_OUTPUT_BINARY_FILES_REQUIRED
+                + KGD_OUTPUT_PLOTS_REQUIRED
+            }
+            | {
+                KGD_STDOUT: out_path,
+                KGD_STDERR: err_path,
+            },
+            optional={
+                basename: os.path.join(out_dir, basename)
+                for basename in KGD_OUTPUT_TEXT_FILES_OPTIONAL
+            },
+        ),
     )
 
 
@@ -183,16 +193,19 @@ def kgd(
         return KgdOutput(
             ok=True,
             text_files={
-                basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_TEXT_FILES
+                basename: path
+                for basename in (
+                    KGD_OUTPUT_TEXT_FILES_REQUIRED + KGD_OUTPUT_TEXT_FILES_OPTIONAL
+                )
+                if (path := result.expected_files.get(basename)) is not None
             },
             binary_files={
                 basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_BINARY_FILES
+                for basename in KGD_OUTPUT_BINARY_FILES_REQUIRED
             },
             plot_files={
                 basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_PLOTS
+                for basename in KGD_OUTPUT_PLOTS_REQUIRED
             },
             kgd_stdout=result.expected_files[KGD_STDOUT],
             kgd_stderr=result.expected_files[KGD_STDERR],

@@ -3,7 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-from agr.redun.cluster_executor import run_job_n, JobNSpec, ResultFiles
+from agr.redun.cluster_executor import run_job_n, JobNSpec, ExpectedPaths, ResultFiles
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,9 @@ def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> JobNSp
         stdout_path=log_path,
         stderr_path=log_path,
         cwd=out_dir,
-        expected_paths={_HTML: html_out_path, _ZIP: zip_out_path},
+        expected_paths=ExpectedPaths(
+            required={_HTML: html_out_path, _ZIP: zip_out_path}
+        ),
     )
 
 

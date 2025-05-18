@@ -112,6 +112,12 @@ class FilteredGlob:
 
 
 @dataclass(kw_only=True)
+class ExpectedPaths:
+    required: dict[str, str] = field(default_factory=dict)
+    optional: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(kw_only=True)
 class JobNSpec(CommonJobSpec):
     """
     For jobs which produce multiple files with paths matching the glob, exluding any matched by the regex.
@@ -121,7 +127,7 @@ class JobNSpec(CommonJobSpec):
     """
 
     # each value is either a result path or a filtered glob
-    expected_paths: dict[str, str] = field(default_factory=dict)
+    expected_paths: ExpectedPaths = field(default_factory=ExpectedPaths)
     expected_globs: dict[str, FilteredGlob] = field(default_factory=dict)
 
 
@@ -344,18 +350,24 @@ class ResultFiles:
 def _result_files(
     job: Job,
     spec: CommonJobSpec,
-    expected_paths: dict[str, str],
+    expected_paths: ExpectedPaths,
     expected_globs: dict[str, FilteredGlob],
 ) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
-    for k, path in expected_paths.items():
+    # required items must all exist
+    for k, path in expected_paths.required.items():
         if not os.path.exists(path):
             raise ClusterExecutorError(
                 f"{job_description(job, spec, annotation=f'failed to create {k}={path}', multiline=True)}"
             )
+    found_paths = expected_paths.required.copy()
+    # optional paths are returned if they are found to exist
+    for k, path in expected_paths.optional.items():
+        if os.path.exists(path):
+            found_paths[k] = path
 
     return ResultFiles(
-        expected_files={k: File(path) for (k, path) in expected_paths.items()},
+        expected_files={k: File(path) for (k, path) in found_paths.items()},
         globbed_files={
             k: [
                 File(path)
@@ -375,6 +387,14 @@ def _run_job_n(
     """
     Run a job on the defined cluster, which is expected to produce files matching `result_glob`
     """
+
+    # check no duplicates between required and optional expected paths
+    duplicate_expected_keys = (
+        spec.expected_paths.required.keys() & spec.expected_paths.optional.keys()
+    )
+    assert (
+        len(duplicate_expected_keys) == 0
+    ), f"duplicate expected keys: {', '.join(duplicate_expected_keys)}"
 
     job_spec, executor_name = _create_job_spec(
         spec=spec,
