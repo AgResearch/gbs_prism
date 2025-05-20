@@ -62,9 +62,7 @@
             tassel3 = inputs.tassel3.packages.${system}.default;
             kgd-src = inputs.kgd.packages.${system}.src;
             GUSbase = inputs.GUSbase.packages.${system}.default;
-            gquery-api = inputs.gquery.packages.${system}.api;
-            gquery-cli = inputs.gquery.packages.${system}.cli;
-            gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
+            gquery = inputs.gquery.packages.${system}.default;
             geno-import = inputs.geno-import.packages.${system}.default;
             seffs = inputs.seffs.packages.${system}.default;
           };
@@ -113,7 +111,6 @@
               jsonnet
               pdf2image
               pydantic
-              flakePkgs.gquery-api
               flakePkgs.geno-import
               psij-python
               wand
@@ -239,7 +236,6 @@
                 python-with-gbs-prism
                 gbs-prism-pipeline
                 gbs-prism-dependencies
-                flakePkgs.gquery-cli
               ];
             };
 
