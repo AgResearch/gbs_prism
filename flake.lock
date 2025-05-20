@@ -395,27 +395,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1735563628,
-        "narHash": "sha256-OnSAY7XDSx7CtDoqNh8jwVwh4xNL/2HaJxGjryLWzX8=",
+        "lastModified": 1747533086,
+        "narHash": "sha256-+8goyptSXa7qV0k5uPKyky58jpBjI/qkzsbwCZFvhRY=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "b134951a4c9f3c995fd7be05f3243f8ecd65d798",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-24.05",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs-unstable": {
-      "locked": {
-        "lastModified": 1740396192,
-        "narHash": "sha256-ATMHHrg3sG1KgpQA5x8I+zcYpp5Sf17FaFj/fN+8OoQ=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "d9b69c3ec2a2e2e971c534065bdd53374bd68b97",
+        "rev": "8406224e30c258025cb8b31704bdb977a8f1f009",
         "type": "github"
       },
       "original": {
@@ -475,16 +459,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1738202548,
-        "narHash": "sha256-wvLTbiBUhmkkHq+7Uz6/lLAlFseH+JZklKlgxasAm5A=",
+        "lastModified": 1747706162,
+        "narHash": "sha256-/wvq/NaFzw6/63mUNl9eOeKmM5efoCIHehvsDzP5myo=",
         "owner": "AgResearch",
         "repo": "redun.nix",
-        "rev": "08a7d2e2c0eadff84ab40d84d552164b8b91d85c",
+        "rev": "dee544c3afe96f1c53c34ffd5085523f5a0a82f2",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "redun-console-log",
+        "ref": "main",
         "repo": "redun.nix",
         "type": "github"
       }
@@ -500,7 +484,6 @@
         "gquery": "gquery",
         "kgd": "kgd",
         "nixpkgs": "nixpkgs",
-        "nixpkgs-unstable": "nixpkgs-unstable",
         "redun": "redun",
         "seffs": "seffs",
         "tassel3": "tassel3"
@@ -510,7 +493,7 @@
       "inputs": {
         "flake-utils": "flake-utils_10",
         "nixpkgs": [
-          "nixpkgs-unstable"
+          "nixpkgs"
         ]
       },
       "locked": {

@@ -1,8 +1,7 @@
 {
   description = "Flake for gbs_prism";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
@@ -39,16 +38,12 @@
       inputs.gquery.follows = "gquery";
     };
     redun = {
-      # TODO reinstate official release when this is fixed and released:
-      # https://github.com/insitro/redun/issues/109
-      url = "github:AgResearch/redun.nix/redun-console-log";
+      url = "github:AgResearch/redun.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     seffs = {
       url = "github:AgResearch/seffs/main";
-      # TODO revert this to main nixpkgs once we have something newer than 24.05.
-      # We do this for now because the Elvish in 24.05 is too old.
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -57,10 +52,6 @@
       (system:
         let
           pkgs = import inputs.nixpkgs {
-            inherit system;
-          };
-
-          nixpkgs-unstable = import inputs.nixpkgs-unstable {
             inherit system;
           };
 
@@ -81,40 +72,6 @@
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
-
-          # when using NixOS 24.05 we need this:
-          # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
-          hatch-fixed = (pkgs.hatch.overrideAttrs (prev: {
-            disabledTests = prev.disabledTests ++ [
-              "test_field_readme"
-              "test_field_string"
-              "test_field_complex"
-              "test_new_selected_python"
-              "test_plugin_dependencies_unmet"
-            ];
-          }));
-
-          # Wrapped multiqc which ignores PYTHONPATH from the environment.
-          # This is required because our Python package dependencies export PYTHONPATH for Python 3.11,
-          # which breaks multiqc from nixpkgs-unstable, because that uses Python 3.12.
-          # As soon as we switch to a later version of nixpkgs this won't be necessary.
-          # Alternatively, and probably anyway, the redun packaging should be improved to not
-          # pollute the PYTHONPATH.
-          multiqc = pkgs.stdenv.mkDerivation {
-            name = "multiqc";
-            src = null;
-            nativeBuildInputs = [ pkgs.makeWrapper ];
-            dontUnpack = true;
-            dontBuild = true;
-
-            installPhase = ''
-              mkdir -p $out/bin
-            '';
-
-            postFixup = ''
-              makeWrapper "${nixpkgs-unstable.multiqc}/bin/multiqc" $out/bin/multiqc --unset PYTHONPATH
-            '';
-          };
 
           psij-python = with pkgs;
             python3Packages.buildPythonPackage {
@@ -169,7 +126,7 @@
               pyproject = true;
 
               nativeBuildInputs = [
-                hatch-fixed
+                hatch
                 python3Packages.hatchling
               ];
 
@@ -258,7 +215,6 @@
                 run_GUSbase
                 tag_count_plots
                 barcode_yield_plots
-                multiqc
               ] ++ (with flakePkgs; [
                 bbmap
                 bcl-convert
@@ -268,6 +224,7 @@
                 bwa
                 samtools
                 fastqc
+                multiqc
                 seqtk
                 gzip
                 poppler_utils
