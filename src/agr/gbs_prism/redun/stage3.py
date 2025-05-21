@@ -33,7 +33,7 @@ def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
     os.makedirs(out_dir, exist_ok=True)
 
     tag_counts = sorted(
-        [cohort.tag_count_unblind for cohort in stage2.cohorts.values()],
+        [cohort.cohort_tag_counts for cohort in stage2.cohorts.values()],
         key=lambda file: file.path,
     )
 

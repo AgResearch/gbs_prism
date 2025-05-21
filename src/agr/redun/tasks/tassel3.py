@@ -1,5 +1,5 @@
 import logging
-import os.path
+import os
 import re
 from dataclasses import dataclass
 from redun import task, File
@@ -275,6 +275,14 @@ def get_tag_count(fastqToTagCountStdout: File) -> File:
             _ = run_catching_stderr(
                 ["get_reads_tags_per_sample"], stdin=in_f, stdout=out_f, check=True
             )
+    return File(out_path)
+
+
+@task()
+def cohort_name_tag_counts(tag_count: File, cohort: str) -> File:
+    """Rename the tag count file to include the cohort name."""
+    out_path = os.path.join(os.path.dirname(tag_count.path), f"{cohort}.TagCount.csv")
+    os.rename(tag_count.path, out_path)
     return File(out_path)
 
 
