@@ -14,6 +14,18 @@ classifiers = [
   "License :: Other/Proprietary License",
   "Operating System :: OS Independent",
 ]
+dependencies = [
+    "biopython>=1.85",
+    "geno-import",
+    "gquery",
+    "jinja2>=3.1.6",
+    "jsonnet>=0.21.0",
+    "pdf2image>=1.17.0",
+    "psij-python>=0.9.10",
+    "pydantic>=2.11.4",
+    "redun>=0.26.0",
+    "wand>=0.6.13",
+]
 
 [project.scripts]
 kmer_prism = "agr.gbs_prism.kmer_prism:main"
@@ -31,3 +43,7 @@ packages = ["src/agr"]
 
 [tool.pyright]
 reportUnusedCallResult = "warning"
+
+[tool.uv.sources]
+gquery = { git = "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery" }
+geno-import = { git = "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import" }

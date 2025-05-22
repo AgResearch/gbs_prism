@@ -29,11 +29,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # TODO: merge and use main
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/main";
+      # TODO: merge and use main
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gquery.follows = "gquery";
     };
@@ -70,51 +72,6 @@
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
-
-          psij-python = with pkgs;
-            python3Packages.buildPythonPackage {
-              name = "psij";
-              src = pkgs.fetchFromGitHub {
-                owner = "ExaWorks";
-                repo = "psij-python";
-                rev = "0.9.9";
-                hash = "sha256-eyrkj3hcQCDwtyfzkBfe0j+rHJY4K7QWNF8GRuPlAsM=";
-              };
-
-              format = "setuptools";
-
-              # Tests seem to require a network-mounted home directory
-              doCheck = false;
-
-              nativeBuildInputs = with python3Packages;
-                [
-                  setuptools
-                ];
-
-              buildInputs = with python3Packages;
-                [
-                  packaging
-                ];
-
-              propagatedBuildInputs = with python3Packages;
-                [
-                  psutil
-                  pystache
-                  typeguard
-                ];
-            };
-
-          pipeline-packages = with pkgs.python3Packages;
-            [
-              biopython
-              jinja2
-              jsonnet
-              pdf2image
-              pydantic
-              flakePkgs.geno-import
-              psij-python
-              wand
-            ];
 
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
@@ -185,11 +142,6 @@
           };
 
           python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
-
-          # for development, we use a redun with only gquery, and pick up the gbs-prism locally
-          redun-with-gquery = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = pipeline-packages;
-          };
 
           gbs-prism-pipeline = pkgs.symlinkJoin
             {
@@ -263,7 +215,10 @@
                 in
                 [
                   bashInteractive
-                  redun-with-gquery
+
+                  uv
+                  postgresql.pg_config # needed for uv to install gquery
+
                   gbs-prism-dependencies
                   gbs-prism-scripts
                   python3Packages.pytest
@@ -291,6 +246,23 @@
                   export GQUERY_DEV_ENV=${gquery-env "dev"}
                   export GQUERY_TEST_ENV=${gquery-env "test"}
                   export GQUERY_PROD_ENV=${gquery-env "prod"}
+
+                  # use Python from Nix rather than uv
+                  export UV_NO_MANAGED_PYTHON=1
+
+                  # TODO grotty hack to get uv run gquery to find libodbc.so.2 and libstdc++.so.6
+                  # should be using propagatedBuildInputs
+                  # these are available to Python via uv, but we need their propagatedBuildInputs too
+                  # gquery
+                  # geno-import
+                  # except that propagatedBuildInputs don't include the required packages
+                  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${with pkgs; with flakePkgs; lib.makeLibraryPath (
+                    gquery.propagatedBuildInputs ++ geno-import.propagatedBuildInputs ++
+                    [
+                      # TODO: this shouldn't be necessary, as it's in the propagatedBuildInputs for gquery,
+                      # but for some reason that comes in as the main gcc package not the -lib package.
+                      gcc.cc
+                    ])}
                 '';
             };
           };

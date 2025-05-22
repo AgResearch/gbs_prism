@@ -335,16 +335,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1747794980,
-        "narHash": "sha256-grauXKB/xgfdhAu9sol3CjRETWGmKD5DdTSGGy4i434=",
-        "ref": "refs/heads/main",
-        "rev": "37919ab72baa6d1d3848f7bb5a0f605240753632",
-        "revCount": 76,
+        "lastModified": 1747890360,
+        "narHash": "sha256-BhBoT5ClYMICQ5RqmqGASEhAqmPfgC9BwSC7RvUwFSU=",
+        "ref": "refs/heads/repackaging",
+        "rev": "fb18e3d62d232417f78334be0066e959d366b7dd",
+        "revCount": 77,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/repackaging",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import"
       }
@@ -357,16 +357,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1747794835,
-        "narHash": "sha256-vvO1FHnQWjZuFURBugGaud2qXXdWFKepZNDOhKdz32U=",
-        "ref": "refs/heads/main",
-        "rev": "f04bd2489edcefc27e738d4c2f2d598408a335ba",
-        "revCount": 425,
+        "lastModified": 1747890309,
+        "narHash": "sha256-m1x2alzz8C0WNGm+Q8/m2XELB/lSvTTk6byIjkbi6SE=",
+        "ref": "refs/heads/repackaging",
+        "rev": "8d2639032965e7f6ac56d02ced874cc76780a51c",
+        "revCount": 426,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/repackaging",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       }
