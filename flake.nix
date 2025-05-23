@@ -4,6 +4,29 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     flake-utils.url = "github:numtide/flake-utils";
+
+    # uv2nix and friends:
+    uv2nix = {
+      url = "github:pyproject-nix/uv2nix";
+      inputs = {
+        pyproject-nix.follows = "pyproject-nix";
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    pyproject-build-systems = {
+      url = "github:pyproject-nix/build-system-pkgs";
+      inputs = {
+        pyproject-nix.follows = "pyproject-nix";
+        uv2nix.follows = "uv2nix";
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
+
+    # applications:
     bbmap = {
       url = "github:AgResearch/bbmap.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -29,11 +52,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # TODO: merge and use main
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/main";
+      # TODO: merge and use main
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gquery.follows = "gquery";
     };
@@ -71,39 +96,30 @@
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
 
-          psij-python = with pkgs;
-            python3Packages.buildPythonPackage {
-              name = "psij";
-              src = pkgs.fetchFromGitHub {
-                owner = "ExaWorks";
-                repo = "psij-python";
-                rev = "0.9.9";
-                hash = "sha256-eyrkj3hcQCDwtyfzkBfe0j+rHJY4K7QWNF8GRuPlAsM=";
+          # uv2nix
+          # https://pyproject-nix.github.io/uv2nix/usage/hello-world.html
+          uv-workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./.; };
+          uv-pythonSet =
+            let
+              overlay = uv-workspace.mkPyprojectOverlay {
+                sourcePreference = "wheel";
               };
+              pyprojectOverrides = _final: _prev: { };
+            in
+            (pkgs.callPackage inputs.pyproject-nix.build.packages {
+              python = pkgs.python3;
+            }).overrideScope
+              (
+                pkgs.lib.composeManyExtensions [
+                  inputs.pyproject-build-systems.overlays.default
+                  overlay
+                  pyprojectOverrides
+                ]
+              );
 
-              format = "setuptools";
-
-              # Tests seem to require a network-mounted home directory
-              doCheck = false;
-
-              nativeBuildInputs = with python3Packages;
-                [
-                  setuptools
-                ];
-
-              buildInputs = with python3Packages;
-                [
-                  packaging
-                ];
-
-              propagatedBuildInputs = with python3Packages;
-                [
-                  psutil
-                  pystache
-                  typeguard
-                ];
-            };
-
+          # We prefer to use Python packages from nixpkgs rather than using uv to install from PyPI,
+          # because uv doesn't manage binary dependencies, whereas Python packages in Nix come with
+          # all batteries included.
           pipeline-packages = with pkgs.python3Packages;
             [
               biopython
@@ -112,9 +128,18 @@
               pdf2image
               pydantic
               flakePkgs.geno-import
-              psij-python
               wand
             ];
+
+          uv-gbs-prism =
+            let
+              inherit (pkgs.callPackages inputs.pyproject-nix.build.util { }) mkApplication;
+            in
+            mkApplication
+              {
+                venv = uv-pythonSet.mkVirtualEnv "gbs-prism-api" uv-workspace.deps.default;
+                package = uv-pythonSet.gbs-prism; # name may be adaped from pyproject.toml
+              };
 
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
@@ -264,6 +289,8 @@
                 [
                   bashInteractive
                   redun-with-gquery
+
+                  uv
                   gbs-prism-dependencies
                   gbs-prism-scripts
                   python3Packages.pytest
@@ -291,12 +318,18 @@
                   export GQUERY_DEV_ENV=${gquery-env "dev"}
                   export GQUERY_TEST_ENV=${gquery-env "test"}
                   export GQUERY_PROD_ENV=${gquery-env "prod"}
+
+                  # Prevent uv from managing Python downloads
+                  export UV_PYTHON_DOWNLOADS="never";
+                  # Force uv to use nixpkgs Python interpreter
+                  export UV_PYTHON=${python3.interpreter};
                 '';
             };
           };
 
           packages = {
             default = gbs-prism;
+            uv-gbs-prism = uv-gbs-prism;
           };
 
           apps = {

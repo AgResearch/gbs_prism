@@ -14,6 +14,10 @@ classifiers = [
   "License :: Other/Proprietary License",
   "Operating System :: OS Independent",
 ]
+# Python dependencies which are available in nixpkgs should be installed from there,
+# because Nix brings in their binary dependencies whereas uv does not.
+# Pure Python dependencies are straightforward to add here.
+dependencies = ["psij-python>=0.9.10", "redun>=0.26.0"]
 
 [project.scripts]
 kmer_prism = "agr.gbs_prism.kmer_prism:main"
