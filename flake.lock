@@ -335,16 +335,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1747794980,
-        "narHash": "sha256-grauXKB/xgfdhAu9sol3CjRETWGmKD5DdTSGGy4i434=",
-        "ref": "refs/heads/main",
-        "rev": "37919ab72baa6d1d3848f7bb5a0f605240753632",
-        "revCount": 76,
+        "lastModified": 1747955964,
+        "narHash": "sha256-Q4UEmuEvTz4jVQs15vxdaDxvY0WuHuHZ3jnvuQVxxBg=",
+        "ref": "refs/heads/repackaging",
+        "rev": "fcdd7afcbe3605c34d3eaf01850e7635d089613e",
+        "revCount": 77,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/repackaging",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import"
       }
@@ -357,16 +357,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1747794835,
-        "narHash": "sha256-vvO1FHnQWjZuFURBugGaud2qXXdWFKepZNDOhKdz32U=",
-        "ref": "refs/heads/main",
-        "rev": "f04bd2489edcefc27e738d4c2f2d598408a335ba",
-        "revCount": 425,
+        "lastModified": 1747955919,
+        "narHash": "sha256-cZ5boKkEBnrdJE05JjQOleEb8wLz1BG8iVlinE1CwvM=",
+        "ref": "refs/heads/repackaging",
+        "rev": "2cb838b44b7a815935315f0085b0f62d8dd17bba",
+        "revCount": 426,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/repackaging",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       }
@@ -459,11 +459,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1747706162,
-        "narHash": "sha256-/wvq/NaFzw6/63mUNl9eOeKmM5efoCIHehvsDzP5myo=",
+        "lastModified": 1747972861,
+        "narHash": "sha256-HVq3I16689ekDUqFGePAiba7BgbBSobUIdGbT2GloAg=",
         "owner": "AgResearch",
         "repo": "redun.nix",
-        "rev": "dee544c3afe96f1c53c34ffd5085523f5a0a82f2",
+        "rev": "fb9f6ac8a3fcc8bee63416904928e95f41dcf63a",
         "type": "github"
       },
       "original": {

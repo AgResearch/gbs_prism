@@ -29,11 +29,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # TODO merge to main and use that
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/main";
+      # TODO merge to main and use that
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/geno_import?ref=refs/heads/repackaging";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.gquery.follows = "gquery";
     };
@@ -56,6 +58,7 @@
           };
 
           flakePkgs = {
+            redun = inputs.redun.packages.${system}.default;
             bbmap = inputs.bbmap.packages.${system}.default;
             bcl-convert = inputs.bcl-convert.packages.${system}.default;
             cutadapt = inputs.cutadapt.packages.${system}.default;
@@ -111,7 +114,9 @@
               jsonnet
               pdf2image
               pydantic
+              flakePkgs.gquery
               flakePkgs.geno-import
+              flakePkgs.redun
               psij-python
               wand
             ];
@@ -180,16 +185,15 @@
             buildInputs = [ pkgs.R ];
           };
 
-          redun-with-gbs-prism = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = [ gbs-prism-api ];
+          python-with-packages = ps: pkgs.python3.buildEnv.override {
+            extraLibs = ps;
+            ignoreCollisions = true; # to avoid problems with typing-extensions
           };
 
-          python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
-
-          # for development, we use a redun with only gquery, and pick up the gbs-prism locally
-          redun-with-gquery = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = pipeline-packages;
-          };
+          # for running locally in development we need the pipeline packages but not gbs-prism-api itself,
+          # since we'll pick that up from the working directory using PYTHONPATH
+          python-with-pipeline-packages = python-with-packages pipeline-packages;
+          python-with-gbs-prism = python-with-packages [ gbs-prism-api ];
 
           gbs-prism-pipeline = pkgs.symlinkJoin
             {
@@ -232,7 +236,6 @@
             {
               name = "gbs-prism";
               paths = [
-                redun-with-gbs-prism
                 python-with-gbs-prism
                 gbs-prism-pipeline
                 gbs-prism-dependencies
@@ -263,7 +266,7 @@
                 in
                 [
                   bashInteractive
-                  redun-with-gquery
+                  python-with-pipeline-packages
                   gbs-prism-dependencies
                   gbs-prism-scripts
                   python3Packages.pytest
