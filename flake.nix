@@ -260,6 +260,12 @@
                   export GQUERY_DEV_ENV=${gquery-env "dev"}
                   export GQUERY_TEST_ENV=${gquery-env "test"}
                   export GQUERY_PROD_ENV=${gquery-env "prod"}
+
+                  # for postgres database backend, will use the default config in .redun
+                  # unless this is defined:
+                  # export REDUN_CONFIG="$(pwd)/config/redun.dev"
+                  export REDUN_DB_USERNAME="gbs_prism_redun"
+                  export REDUN_DB_PASSWORD="unused because Kerberos"
                 '';
             };
           };
