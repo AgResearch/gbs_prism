@@ -55,6 +55,16 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> run.gbs_keyfiles.create()
 ```
 
+## Postgres Backend
+
+All production runs now store their redun state in the `gbs_prism_redun` database on `molten`.  This means that users will see a common history of runs when using `redun console`.
+
+Authorisation for database access is by Kerberos ticket as for the other databases.  The host is `n-db-molten-[dtp]1`, database `gbs_prism_redun` and role `gbs_prism_redun`.
+
+In dev and test, the default is to continue with a local SQLite database, for ease of purging redun database state.  If desired, the Postgres backend may be selected by setting the environmemt variable `REDUN_CONFIG` to `$(pwd)/config/redun.dev` or `$(pwd)/config/redun.test`.
+
+When switching GQuery environments for development as described below, when switching to the `prod` environment, the `prod` Postgres backend will be activated (by automatically setting `REDUN_CONFIG`), and when switching to the other environments the local SQLite backend will be selected (by unsetting `REDUN_CONFIG`.)  See the content of e.g. `$GBS_PRISM_PROD_ENV` to understand how this works.
+
 ## Development
 
 All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv`.  When doing this, ensure you don't have any `gbs_prism` environment module loaded.
@@ -84,14 +94,14 @@ When you change directory to anywhere other than the main repo or its children, 
 
 By default when working in the Nix devshell the GQuery dev environment is active.  In general, this is all that is needed and all that is appropriate.
 
-However, in case of needing access to other GQuery environments, they may be loaded up and confirmed as follows.
+However, in case of needing access to other GQuery environments, they may be loaded up and confirmed as follows.  Note that since adding the Postgres database backends there is additional `gbs_prism` specific configuration to switch, so the environment variables have been changed from `GQUERY` prefixed ones to `GBS_PRISM` prefixed.
 
 ```
-source $GQUERY_TEST_ENV
+source $GBS_PRISM_TEST_ENV
 gquery -t info
 ```
 
-The other environments are available via `GQUERY_DEV_ENV` and `GQUERY_PROD_ENV`.
+The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD_ENV`.
 
 ## Notes
 
