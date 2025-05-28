@@ -148,7 +148,7 @@
               propagatedBuildInputs = python-dependencies;
             };
 
-          R-scripts =
+          gbs-prism-R-scripts =
             let
               R-with-packages = pkgs.rWrapper.override {
                 packages = [ flakePkgs.GUSbase ];
@@ -204,7 +204,7 @@
               paths = [
                 python-with-gbs-prism
                 gbs-prism-pipeline
-                R-scripts
+                gbs-prism-R-scripts
               ] ++ other-dependencies;
             };
 
@@ -233,6 +233,7 @@
                 [
                   bashInteractive
                   python-with-dependencies-only
+                  gbs-prism-R-scripts
                   gbs-prism-scripts
                   python3Packages.pytest
                   jsonnet
