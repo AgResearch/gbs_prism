@@ -168,10 +168,8 @@
                 runHook preInstall
 
                 mkdir -p $out/bin
-                ls -l $src
                 cp $src/* $out/bin
                 chmod 755 $out/bin/*
-                ls -l $out/bin
 
                 runHook postInstall
               '';
@@ -181,32 +179,77 @@
               '';
             };
 
-          # for running locally in development we need the gbs_prism depencencies but not gbs-prism-api itself, since we'll pick that up from the working directory using PYTHONPATH
-          python-with-dependencies-only = pkgs.python3.withPackages (ps: python-dependencies);
-          python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
+          # the main pipeline.py and all the config and context files
+          gbs-prism-pipeline = pkgs.stdenv.mkDerivation {
+            name = "gbs_prism-pipeline";
+            src = ./.;
 
-          gbs-prism-pipeline = pkgs.symlinkJoin
-            {
-              name = "gbs-prism-pipeline";
-              # the main pipeline.py and all the context files
-              paths = [
-                (pkgs.writeTextDir "pipeline/pipeline.py" (builtins.readFile ./pipeline.py))
-              ] ++ pkgs.lib.attrsets.mapAttrsToList
-                (filename: filetype:
-                  pkgs.writeTextDir "pipeline/${filename}" (builtins.readFile (./context + "/${filename}"))
-                )
-                (builtins.readDir ./context);
-            };
+            dontUnpack = true;
+            dontBuild = true;
 
-          gbs-prism = pkgs.symlinkJoin
-            {
-              name = "gbs-prism";
-              paths = [
-                python-with-gbs-prism
-                gbs-prism-pipeline
-                gbs-prism-R-scripts
-              ] ++ other-dependencies;
-            };
+            installPhase = ''
+              runHook preInstall
+
+              mkdir $out
+              cp $src/pipeline.py $out
+              cp -a $src/context $out/context
+              cp -a $src/config $out/config
+
+              # set the appropriate context in each config so we don't need to pass it on the command line
+              for env in dev test prod; do
+                cat >>$out/config/redun.$env <<EOF
+
+                  [scheduler]
+                  context_file = $out/context/eri-$env.json
+                EOF
+              done
+
+              runHook postInstall
+            '';
+          };
+
+          gbs-prism = pkgs.python3.withPackages (ps: [
+            gbs-prism-api
+            gbs-prism-R-scripts
+          ] ++ other-dependencies);
+
+          lmod-setenv-script = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
+            env="$1"
+            cat <<EOF
+              setenv("GBS_PRISM_PIPELINE", "${gbs-prism-pipeline}/pipeline.py")
+              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-pipeline}/config/eri-executor.jsonnet")
+              setenv("REDUN_CONFIG ", "${gbs-prism-pipeline}/config/redun.$env")
+              setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
+              setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
+            EOF
+
+            case "$env" in
+              dev)
+                cat <<EOF
+            ${gquery-lmod-setenv "dev"}
+            EOF
+                ;;
+              test)
+                cat <<EOF
+            ${gquery-lmod-setenv "test"}
+            EOF
+                ;;
+              prod)
+                cat <<EOF
+            ${gquery-lmod-setenv "prod"}
+            EOF
+                ;;
+              *)
+                echo >&2 "usage: gquery-lmod-setenv dev|test|prod"
+                exit 1
+            esac
+
+            cat <<EOF
+              # ensure log output from gquery and geno_import goes somewhere:
+              setenv("GQUERY_ROOT", pathJoin(os.getenv("HOME"), "gquery-logs"))
+              setenv("GENO_ROOT", pathJoin(os.getenv("HOME"), "geno-logs"))
+            EOF
+          '';
 
           eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
 
@@ -232,7 +275,10 @@
                 in
                 [
                   bashInteractive
-                  python-with-dependencies-only
+
+                  # for running locally in development we need the gbs_prism depencencies but not gbs-prism-api itself, since we'll pick that up from the working directory using PYTHONPATH
+                  (pkgs.python3.withPackages (ps: python-dependencies))
+
                   gbs-prism-R-scripts
                   gbs-prism-scripts
                   python3Packages.pytest
@@ -287,7 +333,10 @@
             };
 
             # used in eri/install for the module file
-            lmod-setenv = gquery-lmod-setenv;
+            lmod-setenv = {
+              type = "app";
+              program = "${lmod-setenv-script}/bin/gbs_prism-lmod-setenv";
+            };
 
             # For now we can't clone gquery and geno_import repos in GitHub actions, as they're on Azure DevOps.
             # This may be enough to run useful tests though:
