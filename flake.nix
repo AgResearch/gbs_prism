@@ -242,9 +242,15 @@
 
               shellHook =
                 let
-                  gquery-env = env: pkgs.writeTextFile {
-                    name = "gquery-${env}-env";
-                    text = gquery-export-env env;
+                  gbs-prism-env = env: pkgs.writeTextFile {
+                    name = "gbs-prism-${env}-env";
+                    text = (if env == "prod" then ''
+                      export REDUN_CONFIG="$(pwd)/config/redun.${env}"
+                    ''
+                    else ''
+                      unset REDUN_CONFIG
+                    '')
+                    + gquery-export-env env;
                   };
                 in
                 ''
@@ -256,10 +262,16 @@
                   export GENO_ROOT=$HOME/geno-logs
                   export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
 
-                  # for switching GQuery environments
-                  export GQUERY_DEV_ENV=${gquery-env "dev"}
-                  export GQUERY_TEST_ENV=${gquery-env "test"}
-                  export GQUERY_PROD_ENV=${gquery-env "prod"}
+                  # for switching GQuery and gbs_prism environments
+                  export GBS_PRISM_DEV_ENV=${gbs-prism-env "dev"}
+                  export GBS_PRISM_TEST_ENV=${gbs-prism-env "test"}
+                  export GBS_PRISM_PROD_ENV=${gbs-prism-env "prod"}
+
+                  # for postgres database backend, will use the default config in .redun
+                  # unless this is defined:
+                  # export REDUN_CONFIG="$(pwd)/config/redun.dev"
+                  export REDUN_DB_USERNAME="gbs_prism_redun"
+                  export REDUN_DB_PASSWORD="unused because Kerberos"
                 '';
             };
           };
