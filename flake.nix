@@ -1,8 +1,7 @@
 {
   description = "Flake for gbs_prism";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
     flake-utils.url = "github:numtide/flake-utils";
     bbmap = {
@@ -39,16 +38,12 @@
       inputs.gquery.follows = "gquery";
     };
     redun = {
-      # TODO reinstate official release when this is fixed and released:
-      # https://github.com/insitro/redun/issues/109
-      url = "github:AgResearch/redun.nix/redun-console-log";
+      url = "github:AgResearch/redun.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     seffs = {
       url = "github:AgResearch/seffs/main";
-      # TODO revert this to main nixpkgs once we have something newer than 24.05.
-      # We do this for now because the Elvish in 24.05 is too old.
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -60,20 +55,15 @@
             inherit system;
           };
 
-          nixpkgs-unstable = import inputs.nixpkgs-unstable {
-            inherit system;
-          };
-
           flakePkgs = {
+            redun = inputs.redun.packages.${system}.default;
             bbmap = inputs.bbmap.packages.${system}.default;
             bcl-convert = inputs.bcl-convert.packages.${system}.default;
             cutadapt = inputs.cutadapt.packages.${system}.default;
             tassel3 = inputs.tassel3.packages.${system}.default;
             kgd-src = inputs.kgd.packages.${system}.src;
             GUSbase = inputs.GUSbase.packages.${system}.default;
-            gquery-api = inputs.gquery.packages.${system}.api;
-            gquery-cli = inputs.gquery.packages.${system}.cli;
-            gquery-eri-cli = inputs.gquery.packages.${system}.eri-cli;
+            gquery = inputs.gquery.packages.${system}.default;
             geno-import = inputs.geno-import.packages.${system}.default;
             seffs = inputs.seffs.packages.${system}.default;
           };
@@ -81,40 +71,6 @@
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
-
-          # when using NixOS 24.05 we need this:
-          # https://github.com/NixOS/nixpkgs/issues/308121#issuecomment-2289017641
-          hatch-fixed = (pkgs.hatch.overrideAttrs (prev: {
-            disabledTests = prev.disabledTests ++ [
-              "test_field_readme"
-              "test_field_string"
-              "test_field_complex"
-              "test_new_selected_python"
-              "test_plugin_dependencies_unmet"
-            ];
-          }));
-
-          # Wrapped multiqc which ignores PYTHONPATH from the environment.
-          # This is required because our Python package dependencies export PYTHONPATH for Python 3.11,
-          # which breaks multiqc from nixpkgs-unstable, because that uses Python 3.12.
-          # As soon as we switch to a later version of nixpkgs this won't be necessary.
-          # Alternatively, and probably anyway, the redun packaging should be improved to not
-          # pollute the PYTHONPATH.
-          multiqc = pkgs.stdenv.mkDerivation {
-            name = "multiqc";
-            src = null;
-            nativeBuildInputs = [ pkgs.makeWrapper ];
-            dontUnpack = true;
-            dontBuild = true;
-
-            installPhase = ''
-              mkdir -p $out/bin
-            '';
-
-            postFixup = ''
-              makeWrapper "${nixpkgs-unstable.multiqc}/bin/multiqc" $out/bin/multiqc --unset PYTHONPATH
-            '';
-          };
 
           psij-python = with pkgs;
             python3Packages.buildPythonPackage {
@@ -149,18 +105,34 @@
                 ];
             };
 
-          pipeline-packages = with pkgs.python3Packages;
+          python-dependencies = with pkgs.python3Packages;
             [
               biopython
               jinja2
               jsonnet
               pdf2image
               pydantic
-              flakePkgs.gquery-api
+              flakePkgs.gquery
               flakePkgs.geno-import
+              flakePkgs.redun
               psij-python
               wand
             ];
+
+          other-dependencies = (with flakePkgs; [
+            bbmap
+            bcl-convert
+            cutadapt
+            tassel3
+          ]) ++ (with pkgs; [
+            bwa
+            samtools
+            fastqc
+            multiqc
+            seqtk
+            gzip
+            poppler_utils
+          ]);
 
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
@@ -169,73 +141,49 @@
               pyproject = true;
 
               nativeBuildInputs = [
-                hatch-fixed
+                hatch
                 python3Packages.hatchling
               ];
 
-              propagatedBuildInputs = pipeline-packages;
+              propagatedBuildInputs = python-dependencies;
             };
 
-          wrap-script = attrs: pkgs.stdenv.mkDerivation ({
-            nativeBuildInputs = [ pkgs.makeWrapper ];
+          gbs-prism-R-scripts =
+            let
+              R-with-packages = pkgs.rWrapper.override {
+                packages = [ flakePkgs.GUSbase ];
+              };
+            in
+            pkgs.stdenv.mkDerivation {
+              name = "gbs_prism-R-scripts";
+              src = ./R-scripts;
 
-            dontUnpack = true;
-            dontBuild = true;
+              nativeBuildInputs = [ pkgs.makeWrapper ];
+              buildInputs = [ R-with-packages flakePkgs.kgd-src ];
 
-            installPhase = ''
-              mkdir -p $out/bin
-              runHook preInstall
-              # strip the path and digest, see https://nix.dev/manual/nix/2.25/store/store-path
-              basename=$(basename $src | sed -e "s/^[a-z0-9]*-//")
-              cp $src $out/bin/$basename
-              chmod 755 $out/bin/$basename
-              ls -l $out/bin
-              runHook postInstall
-            '';
-          } // attrs);
+              dontUnpack = true;
+              dontBuild = true;
 
-          run_kgd = wrap-script {
-            name = "gbs_prism_kgd";
-            src = ./src/run_kgd.R;
-            buildInputs = [ flakePkgs.kgd-src ];
+              installPhase = ''
+                runHook preInstall
 
-            postFixup = ''
-              wrapProgram $out/bin/run_kgd.R --set KGD_SRC "${flakePkgs.kgd-src}"
-            '';
-          };
+                mkdir -p $out/bin
+                ls -l $src
+                cp $src/* $out/bin
+                chmod 755 $out/bin/*
+                ls -l $out/bin
 
-          R-with-GUSbase = pkgs.rWrapper.override {
-            packages = [ flakePkgs.GUSbase ];
-          };
+                runHook postInstall
+              '';
 
-          run_GUSbase = wrap-script {
-            name = "gbs_prism_GUSbase";
-            src = ./src/run_GUSbase.R;
-            buildInputs = [ R-with-GUSbase ];
-          };
+              postFixup = ''
+                wrapProgram $out/bin/run_kgd.R --set KGD_SRC "${flakePkgs.kgd-src}"
+              '';
+            };
 
-          tag_count_plots = wrap-script {
-            name = "gbs_prism_tag_count_plots ";
-            src = ./src/tag_count_plots.R;
-            buildInputs = [ pkgs.R ];
-          };
-
-          barcode_yield_plots = wrap-script {
-            name = "gbs_prism_barcode_yield_plots";
-            src = ./src/barcode_yields_plots.R;
-            buildInputs = [ pkgs.R ];
-          };
-
-          redun-with-gbs-prism = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = [ gbs-prism-api ];
-          };
-
+          # for running locally in development we need the gbs_prism depencencies but not gbs-prism-api itself, since we'll pick that up from the working directory using PYTHONPATH
+          python-with-dependencies-only = pkgs.python3.withPackages (ps: python-dependencies);
           python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
-
-          # for development, we use a redun with only gquery, and pick up the gbs-prism locally
-          redun-with-gquery = inputs.redun.lib.${system}.default {
-            propagatedBuildInputs = pipeline-packages;
-          };
 
           gbs-prism-pipeline = pkgs.symlinkJoin
             {
@@ -250,40 +198,14 @@
                 (builtins.readDir ./context);
             };
 
-          gbs-prism-dependencies = pkgs.symlinkJoin
-            {
-              name = "gbs-prism-dependencies";
-              paths = [
-                run_kgd
-                run_GUSbase
-                tag_count_plots
-                barcode_yield_plots
-                multiqc
-              ] ++ (with flakePkgs; [
-                bbmap
-                bcl-convert
-                cutadapt
-                tassel3
-              ]) ++ (with pkgs; [
-                bwa
-                samtools
-                fastqc
-                seqtk
-                gzip
-                poppler_utils
-              ]);
-            };
-
           gbs-prism = pkgs.symlinkJoin
             {
               name = "gbs-prism";
               paths = [
-                redun-with-gbs-prism
                 python-with-gbs-prism
                 gbs-prism-pipeline
-                gbs-prism-dependencies
-                flakePkgs.gquery-cli
-              ];
+                gbs-prism-R-scripts
+              ] ++ other-dependencies;
             };
 
           eri-install = pkgs.writeShellScriptBin "eri-install.gbs_prism" (builtins.readFile ./eri/install);
@@ -297,7 +219,7 @@
                 let
                   gbs-prism-scripts = pkgs.symlinkJoin
                     {
-                      name = "gbs-prism-dependencies";
+                      name = "gbs-prism-scripts";
                       paths = [
                         (pkgs.writeScriptBin "kmer_prism"
                           (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py))
@@ -310,13 +232,13 @@
                 in
                 [
                   bashInteractive
-                  redun-with-gquery
-                  gbs-prism-dependencies
+                  python-with-dependencies-only
+                  gbs-prism-R-scripts
                   gbs-prism-scripts
                   python3Packages.pytest
                   jsonnet
                   flakePkgs.seffs
-                ];
+                ] ++ other-dependencies;
 
               shellHook =
                 let
