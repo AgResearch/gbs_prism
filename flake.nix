@@ -260,27 +260,39 @@
             default = mkShell {
               buildInputs =
                 let
-                  gbs-prism-scripts = pkgs.symlinkJoin
-                    {
-                      name = "gbs-prism-scripts";
-                      paths = [
-                        (pkgs.writeScriptBin "kmer_prism"
-                          (builtins.readFile ./src/agr/gbs_prism/kmer_prism.py))
-                        (pkgs.writeScriptBin "get_reads_tags_per_sample"
-                          (builtins.readFile ./src/agr/gbs_prism/get_reads_tags_per_sample.py))
-                        (pkgs.writeScriptBin "summarise_read_and_tag_counts"
-                          (builtins.readFile ./src/agr/gbs_prism/summarise_read_and_tag_counts.py))
-                      ];
-                    };
+                  # for running locally in development we need the gbs_prism depencencies but not gbs-prism-api itself, since we'll pick that up from the working directory using PYTHONPATH
+                  python-with-dependencies = (pkgs.python3.withPackages (ps: python-dependencies));
+
+                  # only for development, as in production the scripts are available via the gbs-prism-api package
+                  gbs-prism-python-scripts = pkgs.stdenv.mkDerivation {
+                    name = "gbs_prism-python-scripts";
+                    src = ./src/agr/gbs_prism;
+
+                    nativeBuildInputs = [ pkgs.makeWrapper ];
+                    buildInputs = [ python-with-dependencies ];
+
+                    dontUnpack = true;
+                    dontBuild = true;
+
+                    installPhase = ''
+                      runHook preInstall
+
+                      mkdir -p $out/bin
+                      for script in kmer_prism get_reads_tags_per_sample summarise_read_and_tag_counts; do
+                        cp $src/$script.py $out/bin/$script
+                        chmod 755 $out/bin/$script
+                      done
+
+                      runHook postInstall
+                    '';
+                  };
+
                 in
                 [
                   bashInteractive
-
-                  # for running locally in development we need the gbs_prism depencencies but not gbs-prism-api itself, since we'll pick that up from the working directory using PYTHONPATH
-                  (pkgs.python3.withPackages (ps: python-dependencies))
-
+                  python-with-dependencies
                   gbs-prism-R-scripts
-                  gbs-prism-scripts
+                  gbs-prism-python-scripts
                   python3Packages.pytest
                   jsonnet
                   flakePkgs.seffs
