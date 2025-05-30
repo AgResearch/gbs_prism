@@ -179,10 +179,20 @@
               '';
             };
 
-          # the main pipeline.py and all the config and context files
-          gbs-prism-pipeline = pkgs.stdenv.mkDerivation {
-            name = "gbs_prism-pipeline";
+          gbs-prism-python = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
+
+          # create a minimal derivation with only redun on the path,
+          # the main pipeline.py and all the config and context files,
+          # with all dependencies picked up via the path set in the redun wrapper
+          gbs-prism = pkgs.stdenv.mkDerivation rec {
+            name = "gbs_prism";
             src = ./.;
+
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            buildInputs = [
+              gbs-prism-python
+              gbs-prism-R-scripts
+            ] ++ other-dependencies;
 
             dontUnpack = true;
             dontBuild = true;
@@ -205,12 +215,11 @@
 
               runHook postInstall
             '';
-          };
 
-          gbs-prism = pkgs.python3.withPackages (ps: [
-            gbs-prism-api
-            gbs-prism-R-scripts
-          ] ++ other-dependencies);
+            postFixup = ''
+              makeWrapper ${gbs-prism-python}/bin/redun $out/bin/redun --prefix PATH : "${pkgs.lib.makeBinPath buildInputs}"
+            '';
+          };
 
           lmod-setenv-script = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
             env="$1"
@@ -231,9 +240,9 @@
             esac
 
             cat <<EOF
-              setenv("GBS_PRISM", "${gbs-prism-pipeline}")
-              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-pipeline}/config/eri-executor.jsonnet")
-              setenv("REDUN_CONFIG ", "${gbs-prism-pipeline}/config/redun.$env")
+              setenv("GBS_PRISM", "${gbs-prism}")
+              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism}/config/eri-executor.jsonnet")
+              setenv("REDUN_CONFIG ", "${gbs-prism}/config/redun.$env")
               setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
               setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
 
