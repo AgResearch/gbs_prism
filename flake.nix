@@ -231,7 +231,7 @@
             esac
 
             cat <<EOF
-              setenv("GBS_PRISM_PIPELINE", "${gbs-prism-pipeline}/pipeline.py")
+              setenv("GBS_PRISM", "${gbs-prism-pipeline}")
               setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-pipeline}/config/eri-executor.jsonnet")
               setenv("REDUN_CONFIG ", "${gbs-prism-pipeline}/config/redun.$env")
               setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
@@ -328,9 +328,6 @@
 
           packages = {
             default = gbs-prism;
-
-            # TODO remove:
-            inherit lmod-setenv-script gbs-prism-pipeline;
           };
 
           apps = {
