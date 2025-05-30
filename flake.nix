@@ -237,7 +237,6 @@
               setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
               setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
 
-              # ensure log output from gquery and geno_import goes somewhere:
               setenv("GQUERY_ROOT", pathJoin(os.getenv("HOME"), "gquery-logs"))
               setenv("GENO_ROOT", pathJoin(os.getenv("HOME"), "geno-logs"))
             EOF
