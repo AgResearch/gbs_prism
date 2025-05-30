@@ -103,6 +103,26 @@ gquery -t info
 
 The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD_ENV`.
 
+## Installation
+
+The eRI module installer is available as a Nix Flake app, so the install process for the end-user facing environment module and script is as follows, and should be done on `login-1` for faster Nix build.
+
+```
+login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.1.0'
+
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --test $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- $FLAKE_URI
+```
+
+To install in your home directory (for testing prior to general release):
+
+```
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
+```
+
 ## Notes
 
 1. historical_unblind has been omitted, seems not to be required
