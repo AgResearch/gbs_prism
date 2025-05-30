@@ -87,11 +87,13 @@ help([==[
 
 Description
 ===========
-This module provides access to the gbs-prism pipeline.
+This module provides access to the gbs-prism pipeline, and sets up various environment variables
+for dev/test/prod as appropriate.  When using this module, the appropriate context file is automatically
+picked up from \$REDUN_CONFIG.
 
 Example
 =======
-\$ redun run \$GBS_PRISM/pipeline.py main --context-file \$GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
+\$ redun run \$GBS_PRISM/pipeline.py main --run 240323_A01439_0249_BH33MYDRX5
 
 More information
 ================
@@ -101,8 +103,8 @@ More information
 depends_on("krb5cc.home")
 
 conflict("${package_base}", "${package_base}-dev", "${package_base}-test")
+conflict("gquery", "gquery-dev", "gquery-test")
 
 prepend_path("PATH", "${bin_dir}")
-setenv("GBS_PRISM", "${package_version_link}/pipeline")
 $(nix run "${nix_flake_url}#lmod-setenv" -- "${env}")
 EOF

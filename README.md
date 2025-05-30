@@ -16,8 +16,8 @@ To see the post-processed configuration, view the output of `jsonnet $GBS_PRISM_
 
 ```
 login-1$ kinit
-login-1$ module load gbs_prism-test
-login-1$ redun run $GBS_PRISM/pipeline.py main --context-file $GBS_PRISM/eri-test.json --run 240323_A01439_0249_BH33MYDRX5
+login-1$ module load gbs_prism   # or gbs_prism-dev or gbs_prism-test
+login-1$ redun run $GBS_PRISM/pipeline.py main --run 240323_A01439_0249_BH33MYDRX5
 ```
 
 There is no need to have a local copy of the repo if simply running the pipeline from the environment module like this (but see note on development, below).
