@@ -70,7 +70,7 @@
 
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
 
-          gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv;
+          gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv.program;
 
           psij-python = with pkgs;
             python3Packages.buildPythonPackage {
@@ -193,15 +193,14 @@
               mkdir $out
               cp $src/pipeline.py $out
               cp -a $src/context $out/context
-              cp -a $src/config $out/config
 
-              # set the appropriate context in each config so we don't need to pass it on the command line
+              mkdir $out/config
+              cp $src/config/eri-executor.jsonnet $out/config
+
+              # append the context_file in each config so we don't need to pass it on the command line
               for env in dev test prod; do
-                cat >>$out/config/redun.$env <<EOF
-
-                  [scheduler]
-                  context_file = $out/context/eri-$env.json
-                EOF
+                mkdir $out/config/redun.$env
+                echo -e "\n[scheduler]\ncontext_file = $out/context/eri-$env.json" | cat $src/config/redun.$env/redun.ini - >$out/config/redun.$env/redun.ini
               done
 
               runHook postInstall
@@ -215,29 +214,16 @@
 
           lmod-setenv-script = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
             env="$1"
-            cat <<EOF
-              setenv("GBS_PRISM_PIPELINE", "${gbs-prism-pipeline}/pipeline.py")
-              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-pipeline}/config/eri-executor.jsonnet")
-              setenv("REDUN_CONFIG ", "${gbs-prism-pipeline}/config/redun.$env")
-              setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
-              setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
-            EOF
 
             case "$env" in
               dev)
-                cat <<EOF
-            ${gquery-lmod-setenv "dev"}
-            EOF
+                ${gquery-lmod-setenv} dev
                 ;;
               test)
-                cat <<EOF
-            ${gquery-lmod-setenv "test"}
-            EOF
+                ${gquery-lmod-setenv} test
                 ;;
               prod)
-                cat <<EOF
-            ${gquery-lmod-setenv "prod"}
-            EOF
+                ${gquery-lmod-setenv} prod
                 ;;
               *)
                 echo >&2 "usage: gquery-lmod-setenv dev|test|prod"
@@ -245,6 +231,12 @@
             esac
 
             cat <<EOF
+              setenv("GBS_PRISM_PIPELINE", "${gbs-prism-pipeline}/pipeline.py")
+              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-pipeline}/config/eri-executor.jsonnet")
+              setenv("REDUN_CONFIG ", "${gbs-prism-pipeline}/config/redun.$env")
+              setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
+              setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
+
               # ensure log output from gquery and geno_import goes somewhere:
               setenv("GQUERY_ROOT", pathJoin(os.getenv("HOME"), "gquery-logs"))
               setenv("GENO_ROOT", pathJoin(os.getenv("HOME"), "geno-logs"))
@@ -336,6 +328,9 @@
 
           packages = {
             default = gbs-prism;
+
+            # TODO remove:
+            inherit lmod-setenv-script gbs-prism-pipeline;
           };
 
           apps = {
@@ -364,4 +359,3 @@
         }
       );
 }
-
