@@ -213,11 +213,15 @@
                 echo -e "\n[scheduler]\ncontext_file = $out/context/eri-$env.json" | cat $src/config/redun.$env/redun.ini - >$out/config/redun.$env/redun.ini
               done
 
-              runHook postInstall
-            '';
-
-            postFixup = ''
+              # Install just the executables we want to be on the end-user's path.
+              mkdir $out/bin
+              for prog in gquery gupdate; do
+                ln -s ${gbs-prism-python}/bin/$prog $out/bin/$prog
+              done
+              # Need to wrap redun so it can find its non-Python dependencies.
               makeWrapper ${gbs-prism-python}/bin/redun $out/bin/redun --prefix PATH : "${pkgs.lib.makeBinPath buildInputs}"
+
+              runHook postInstall
             '';
           };
 
