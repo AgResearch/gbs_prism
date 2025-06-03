@@ -223,8 +223,10 @@
               for prog in gquery gupdate; do
                 ln -s ${gbs-prism-python}/bin/$prog $out/bin/$prog
               done
-              # Need to wrap redun so it can find its non-Python dependencies.
-              makeWrapper ${gbs-prism-python}/bin/redun $out/bin/redun --prefix PATH : "${pkgs.lib.makeBinPath buildInputs}"
+              # Need to wrap redun so it can find its non-Python dependencies, and also
+              # so it won't break if someone plays games with PYTHONPATH and LD_LIBRARY_PATH.
+              # Note that we need the original $PATH as a suffix, to find e.g. sbatch.
+              makeWrapper ${gbs-prism-python}/bin/redun $out/bin/redun --prefix PATH : "${pkgs.lib.makeBinPath buildInputs}" --unset PYTHONPATH --unset LD_LIBRARY_PATH
 
               runHook postInstall
             '';
