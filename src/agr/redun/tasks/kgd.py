@@ -43,7 +43,6 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "PC1vDepthHWdgm.05.png",
     "PC1vInbHWdgm.05.png",
     "PCG5HWdgm.05.pdf",
-    "PlateInb.png",
     "SampDepthCR.png",
     "SampDepthHist.png",
     "SampDepth.png",
@@ -51,13 +50,14 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "SNPCallRate.png",
     "SNPDepthHist.png",
     "SNPDepth.png",
-    "SubplateDepth.png",
-    "SubplateInb.png",
     "X2star-QQ.png",
 ]
 
 KGD_OUTPUT_PLOTS_OPTIONAL = [
     "PlateDepth.png",
+    "PlateInb.png",
+    "SubplateDepth.png",
+    "SubplateInb.png",
 ]
 
 KGD_OUTPUT_TEXT_FILES_REQUIRED = [
