@@ -103,7 +103,20 @@ gquery -t info
 
 The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD_ENV`.
 
-## Installation
+## Release Process
+
+`gbs_prism` is installed as an environment module on eRI in `/agr/persist/apps/eri_rocky8`.  There is an [install script](eri/install) which is usually run from the Nix flake app `eri-install`.
+
+The release process is as follows:
+
+1. Test changes using alpha version e.g. `2.1.0a1` in [pyproject.toml](pyproject.toml) and tag
+2. Install the module under your home directory (below)
+3. Verify all is well by loading the module from there
+4. Merge PR to main
+5. Update version to release e.g. `2.1.0`, push new commit to main, and tag
+6. Install the module publicly
+
+[Python packaging version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers) look like `2.1.0a1`, `2.1.0a2` for alpha releases and `2.1.0` for actual releases.
 
 The eRI module installer is available as a Nix Flake app, so the install process for the end-user facing environment module and script is as follows, and should be done on `login-1` for faster Nix build.
 
@@ -122,6 +135,8 @@ login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
 ```
+
+To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
 
 ## Notes
 
