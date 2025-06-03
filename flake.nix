@@ -134,9 +134,12 @@
             poppler_utils
           ]);
 
+          pyproject = builtins.fromTOML (builtins.readFile ./pyproject.toml);
+
           gbs-prism-api = with pkgs;
             python3Packages.buildPythonPackage {
-              name = "gbs-prism-api";
+              pname = "gbs-prism-api";
+              version = pyproject.project.version;
               src = ./.;
               pyproject = true;
 
@@ -155,7 +158,8 @@
               };
             in
             pkgs.stdenv.mkDerivation {
-              name = "gbs_prism-R-scripts";
+              pname = "gbs_prism-R-scripts";
+              version = pyproject.project.version;
               src = ./R-scripts;
 
               nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -185,7 +189,8 @@
           # the main pipeline.py and all the config and context files,
           # with all dependencies picked up via the path set in the redun wrapper
           gbs-prism = pkgs.stdenv.mkDerivation rec {
-            name = "gbs_prism";
+            pname = "gbs_prism";
+            version = pyproject.project.version;
             src = ./.;
 
             nativeBuildInputs = [ pkgs.makeWrapper ];
@@ -269,7 +274,8 @@
 
                   # only for development, as in production the scripts are available via the gbs-prism-api package
                   gbs-prism-python-scripts = pkgs.stdenv.mkDerivation {
-                    name = "gbs_prism-python-scripts";
+                    pname = "gbs_prism-python-scripts";
+                    version = pyproject.project.version;
                     src = ./src/agr/gbs_prism;
 
                     nativeBuildInputs = [ pkgs.makeWrapper ];
