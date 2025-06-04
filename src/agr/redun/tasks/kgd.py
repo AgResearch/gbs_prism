@@ -43,8 +43,6 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "PC1vDepthHWdgm.05.png",
     "PC1vInbHWdgm.05.png",
     "PCG5HWdgm.05.pdf",
-    "PlateDepth.png",
-    "PlateInb.png",
     "SampDepthCR.png",
     "SampDepthHist.png",
     "SampDepth.png",
@@ -52,9 +50,14 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "SNPCallRate.png",
     "SNPDepthHist.png",
     "SNPDepth.png",
+    "X2star-QQ.png",
+]
+
+KGD_OUTPUT_PLOTS_OPTIONAL = [
+    "PlateDepth.png",
+    "PlateInb.png",
     "SubplateDepth.png",
     "SubplateInb.png",
-    "X2star-QQ.png",
 ]
 
 KGD_OUTPUT_TEXT_FILES_REQUIRED = [
@@ -126,6 +129,7 @@ def _kgd_job_spec(
             optional={
                 basename: os.path.join(out_dir, basename)
                 for basename in KGD_OUTPUT_TEXT_FILES_OPTIONAL
+                + KGD_OUTPUT_PLOTS_OPTIONAL
             },
         ),
     )
@@ -204,8 +208,9 @@ def kgd(
                 for basename in KGD_OUTPUT_BINARY_FILES_REQUIRED
             },
             plot_files={
-                basename: result.expected_files[basename]
-                for basename in KGD_OUTPUT_PLOTS_REQUIRED
+                basename: path
+                for basename in (KGD_OUTPUT_PLOTS_REQUIRED + KGD_OUTPUT_PLOTS_OPTIONAL)
+                if (path := result.expected_files.get(basename)) is not None
             },
             kgd_stdout=result.expected_files[KGD_STDOUT],
             kgd_stderr=result.expected_files[KGD_STDERR],

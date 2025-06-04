@@ -315,7 +315,12 @@ def _run_job_1(
     else:
         if not os.path.exists(spec.expected_path):
             raise ClusterExecutorError(
-                f"{job_description(job, spec, annotation=f'failed to create {spec.expected_path}', multiline=True)}"
+                job_description(
+                    job,
+                    spec,
+                    annotation=f"failed to create {spec.expected_path}",
+                    multiline=True,
+                )
             )
 
         return File(spec.expected_path)
@@ -355,11 +360,22 @@ def _result_files(
 ) -> ResultFiles:
     """Return result files for expected paths, or those matching filtered glob."""
     # required items must all exist
+    missing_required_paths = {}
     for k, path in expected_paths.required.items():
         if not os.path.exists(path):
-            raise ClusterExecutorError(
-                f"{job_description(job, spec, annotation=f'failed to create {k}={path}', multiline=True)}"
+            missing_required_paths[k] = path
+    if missing_required_paths:
+        raise ClusterExecutorError(
+            job_description(
+                job,
+                spec,
+                annotation="failed to create %s"
+                % ", ".join(
+                    [f"{k}={path}" for (k, path) in missing_required_paths.items()]
+                ),
+                multiline=True,
             )
+        )
     found_paths = expected_paths.required.copy()
     # optional paths are returned if they are found to exist
     for k, path in expected_paths.optional.items():
