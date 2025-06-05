@@ -1,6 +1,6 @@
 {
   "path": {
-    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_e/active",
+    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_g/run_data",
     "postprocessing_root": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.dev/postprocessing",
     "gbs_backup_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.dev/backups",
     "keyfiles_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.dev/key-files",
