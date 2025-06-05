@@ -1,6 +1,6 @@
 {
   "path": {
-    "seq_root": "/agr/persist/projects/2025_illumina_sequencing_f/active",
+    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_g/run_data",
     "postprocessing_root": "/agr/persist/projects/2024_illumina_sequencing_g/postprocessing",
     "keyfiles_dir": "/agr/persist/projects/2024_illumina_sequencing_g/key-files",
     "fastq_link_farm": "/agr/persist/projects/2024_illumina_sequencing_g/fastq-link-farm",
