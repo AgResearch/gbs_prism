@@ -23,6 +23,7 @@ from agr.gbs_prism.gbs_target_spec import (
     GbsTargetSpec,
 )
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
+from agr.gbs_prism.job_attributes import job_attributes_for_run
 from agr.redun.tasks import (
     cook_sample_sheet,
     real_or_fake_bcl_convert,
@@ -102,6 +103,7 @@ def run_stage1(
     run: str,
 ) -> Stage1Output:
     """Stage 1: bclconvert, fastqc, multiqc, kmer analysis, deduplication, GBS keyfile creation."""
+    job_attributes = job_attributes_for_run(run)
     sequencer_run = SequencerRun(seq_root, run)
     platform: Literal["iseq", "miseq", "novaseq"] = "novaseq"
     illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
@@ -122,10 +124,13 @@ def run_stage1(
         sample_sheet_path=seq.sample_sheet.path,
         expected_fastq=seq.expected_fastq,
         out_dir=seq_paths.bclconvert_dir,
+        job_attributes=job_attributes,
     )
 
     fastqc_outputs = fastqc_all(
-        bclconvert_output.fastq_files, out_dir=seq_paths.fastqc_dir
+        bclconvert_output.fastq_files,
+        out_dir=seq_paths.fastqc_dir,
+        job_attributes=job_attributes,
     )
 
     multiqc_report = multiqc(
@@ -137,20 +142,24 @@ def run_stage1(
         bclconvert_run_info_xml=bclconvert_output.run_info_xml,
         out_dir=seq_paths.multiqc_dir,
         run=sequencer_run.name,
+        job_attributes=job_attributes,
     )
 
     kmer_samples = fastq_sample_all(
         bclconvert_output.fastq_files,
         spec=FastqSampleSpec(rate=0.0002, minimum_sample_size=10000),
         out_dir=seq_paths.kmer_fastq_sample_dir,
+        job_attributes=job_attributes,
     )
 
     kmer_analysis_reports = kmer_analysis_all(
-        kmer_samples, out_dir=seq_paths.kmer_analysis_dir
+        kmer_samples, out_dir=seq_paths.kmer_analysis_dir, job_attributes=job_attributes
     )
 
     deduped_fastq = dedupe_all(
-        bclconvert_output.fastq_files, out_dir=seq_paths.dedupe_dir
+        bclconvert_output.fastq_files,
+        out_dir=seq_paths.dedupe_dir,
+        job_attributes=job_attributes,
     )
 
     gbs_keyfiles = get_gbs_keyfiles(

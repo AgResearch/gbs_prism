@@ -20,6 +20,7 @@ def _multiqc_job_spec(
     bclconvert_run_info_xml: str,
     out_dir: str,
     out_path: str,
+    job_attributes: dict[str, str],
 ) -> Job1Spec:
     """
     Generate a MultiQC report from FastQC and BCLConvert reports.
@@ -59,6 +60,7 @@ def _multiqc_job_spec(
         + fastqc_in_paths,
         stdout_path=log_path,
         stderr_path=log_path,
+        custom_attributes=job_attributes,
         expected_path=out_report,
     )
 
@@ -73,6 +75,7 @@ def multiqc(
     bclconvert_run_info_xml: File,
     out_dir: str,
     run: str,
+    job_attributes: dict[str, str],
 ) -> File:
     """Run MultiQC aggregating FastQC and BCLConvert reports."""
     os.makedirs(out_dir, exist_ok=True)
@@ -87,5 +90,6 @@ def multiqc(
             bclconvert_run_info_xml=bclconvert_run_info_xml.path,
             out_dir=out_dir,
             out_path=out_path,
+            job_attributes=job_attributes,
         ),
     )

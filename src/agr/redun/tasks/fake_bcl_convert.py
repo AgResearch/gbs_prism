@@ -83,6 +83,7 @@ def real_or_fake_bcl_convert(
     expected_fastq: set[str],
     out_dir: str,
     tool_context=get_context("tools.bcl_convert"),
+    job_attributes: dict[str, str] = {},
 ) -> BclConvertOutput:
     if tool_context is not None and (fake := tool_context.get("fake")) is not None:
         return fake_bcl_convert(
@@ -97,4 +98,5 @@ def real_or_fake_bcl_convert(
             sample_sheet_path=sample_sheet_path,
             expected_fastq=expected_fastq,
             out_dir=out_dir,
+            job_attributes=job_attributes,
         )
