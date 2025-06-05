@@ -13,6 +13,7 @@ from agr.redun import concat, lazy_map
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
+from agr.gbs_prism.job_attributes import job_attributes_for_cohort
 from agr.seq.types import flowcell_id, Cohort
 from agr.redun.tasks import (
     bam_stats_all,
@@ -98,7 +99,9 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]
 
 
 @task()
-def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list[File]:
+def bwa_all_reference_genomes(
+    fastq_files: list[File], spec: CohortSpec, job_attributes: dict[str, str]
+) -> list[File]:
     """bwa_aln and bwa_samse for each file for each of the reference genomes."""
     out_dir = spec.paths.bwa_mapping_dir(spec.cohort.name)
     os.makedirs(out_dir, exist_ok=True)
@@ -110,10 +113,10 @@ def bwa_all_reference_genomes(fastq_files: list[File], spec: CohortSpec) -> list
             ref_path=ref_path,
             bwa=spec.bwa,
             out_dir=out_dir,
+            job_attributes=job_attributes,
         )
         bam_files = bwa_samse_all(
-            alns,
-            ref_path=ref_path,
+            alns, ref_path=ref_path, job_attributes=job_attributes
         )
         out_paths = concat(out_paths, bam_files)
     return out_paths
@@ -168,8 +171,9 @@ def _cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
 
 
 @task()
-def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
+def run_cohort(run: str, spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
     """Run the entire pipeline for a single cohort."""
+    job_attributes = job_attributes_for_cohort(run, spec.cohort.name)
 
     fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
 
@@ -177,13 +181,16 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         fastq_links,
         spec=spec.bwa_sample,
         out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
+        job_attributes=job_attributes,
     )
 
     trimmed = cutadapt_all(
-        bwa_sampled, out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name)
+        bwa_sampled,
+        out_dir=spec.paths.bwa_mapping_dir(spec.cohort.name),
+        job_attributes=job_attributes,
     )
 
-    bam_files = bwa_all_reference_genomes(trimmed, spec)
+    bam_files = bwa_all_reference_genomes(trimmed, spec, job_attributes=job_attributes)
     bam_stats_files = bam_stats_all(bam_files)
 
     keyfile_for_tassel = get_keyfile_for_tassel(
@@ -206,7 +213,7 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
     )
 
     fastq_to_tag_count = get_fastq_to_tag_count(
-        cohort_blind_dir, spec.cohort, keyfile_for_tassel
+        cohort_blind_dir, spec.cohort, keyfile_for_tassel, job_attributes=job_attributes
     )
 
     tag_count = get_tag_count(fastq_to_tag_count.stdout)
@@ -218,12 +225,20 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
     )
 
     merged_all_count = merge_taxa_tag_count(
-        cohort_blind_dir, fastq_to_tag_count.tag_counts
+        cohort_blind_dir, fastq_to_tag_count.tag_counts, job_attributes=job_attributes
     )
-    tag_pair = tag_count_to_tag_pair(cohort_blind_dir, merged_all_count)
-    tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair)
-    map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa)
-    hap_map_files = map_info_to_hap_map(cohort_blind_dir, map_info)
+    tag_pair = tag_count_to_tag_pair(
+        cohort_blind_dir, merged_all_count, job_attributes=job_attributes
+    )
+    tags_by_taxa = tag_pair_to_tbt(
+        cohort_blind_dir, tag_pair, job_attributes=job_attributes
+    )
+    map_info = tbt_to_map_info(
+        cohort_blind_dir, tags_by_taxa, job_attributes=job_attributes
+    )
+    hap_map_files = map_info_to_hap_map(
+        cohort_blind_dir, map_info, job_attributes=job_attributes
+    )
 
     unblind_script = get_unblind_script(
         spec.paths.cohort_blind_dir(spec.cohort.name),
@@ -246,7 +261,12 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         hap_map_dir(cohort_dir),
     )
 
-    kgd_output = kgd(cohort_blind_dir, spec.target.genotyping_method, hap_map_files)
+    kgd_output = kgd(
+        cohort_blind_dir,
+        spec.target.genotyping_method,
+        hap_map_files,
+        job_attributes=job_attributes,
+    )
 
     collated_kgd_stats = collate_tags_reads_kgdstats(
         run=spec.run,
@@ -266,7 +286,7 @@ def run_cohort(spec: CohortSpec, gbs_keyfile: File) -> CohortOutput:
         kgd_stats_csv=kgd_output.sample_stats_csv,
     )
 
-    gusbase_comet = gusbase(kgd_output.gusbase_rdata)
+    gusbase_comet = gusbase(kgd_output.gusbase_rdata, job_attributes=job_attributes)
 
     kgd_text_files_unblind = unblind_each(
         kgd_output.text_files,
@@ -353,7 +373,7 @@ def run_stage2(
             bwa=bwa,
         )
 
-        cohort_outputs[name] = run_cohort(target, gbs_keyfiles[cohort.libname])
+        cohort_outputs[name] = run_cohort(run, target, gbs_keyfiles[cohort.libname])
 
     # this import step need to be once for all cohorts
     imported_collated_tag_counts = import_gbs_read_tag_counts(

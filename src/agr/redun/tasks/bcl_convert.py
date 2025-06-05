@@ -57,6 +57,7 @@ def _bcl_convert_job_spec(
     in_dir: str,
     sample_sheet_path: str,
     out_dir: str,
+    job_attributes: dict[str, str],
 ) -> JobNSpec:
 
     # Create out and error files as *siblings* of out_dir,
@@ -78,6 +79,7 @@ def _bcl_convert_job_spec(
         ],
         stdout_path=out_path,
         stderr_path=err_path,
+        custom_attributes=job_attributes,
         expected_globs={
             BCLCONVERT_JOB_FASTQ: FilteredGlob(
                 glob=f"{out_dir}/*.fastq.gz",
@@ -105,6 +107,7 @@ def bcl_convert(
     out_dir: str,
     sample_sheet_path: str,
     expected_fastq: set[str],
+    job_attributes: dict[str, str],
 ) -> BclConvertOutput:
     paths = BclConvertPaths(out_dir)
 
@@ -116,7 +119,10 @@ def bcl_convert(
 
     fastq_files = run_job_n(
         _bcl_convert_job_spec(
-            in_dir=in_dir, sample_sheet_path=sample_sheet_path, out_dir=out_dir
+            in_dir=in_dir,
+            sample_sheet_path=sample_sheet_path,
+            out_dir=out_dir,
+            job_attributes=job_attributes,
         )
     ).globbed_files[BCLCONVERT_JOB_FASTQ]
 
