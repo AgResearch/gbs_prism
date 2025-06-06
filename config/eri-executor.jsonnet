@@ -112,6 +112,10 @@ local Tassel3Default = ToolDefault {
     tassel3_MergeTaxaTagCount: Tassel3Default {
       java_max_heap: '32G',
       job_attributes+: {
+        duration: {
+          // because one of these exceeded 4 hours 🤷
+          hours: 8,
+        },
         custom_attributes+: customised({
           mem: '32G',
         }),
