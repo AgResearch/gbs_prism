@@ -94,6 +94,7 @@ class CommonJobSpec:
     stdout_path: str
     stderr_path: str
     cwd: Optional[str] = None
+    custom_attributes: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(kw_only=True)
@@ -133,15 +134,15 @@ class JobNSpec(CommonJobSpec):
 
 def _create_job_attributes(
     configured_attributes: dict[str, Any],
+    extra_custom_attributes: dict[str, str],
     executor_name: str,
     job_name: str,
 ) -> JobAttributes:
     augmented_custom_attributes = {
         "custom_attributes": (
             configured_attributes.get("custom_attributes", {})
-            | {
-                f"{executor_name}.job-name": job_name,
-            }
+            | {f"{executor_name}.job-name": job_name}
+            | {f"{executor_name}.{k}": v for (k, v) in extra_custom_attributes.items()}
         )
     }
 
@@ -175,6 +176,7 @@ def _create_job_spec(
 
         job_attributes = _create_job_attributes(
             configured_attributes=tool_config.get("job_attributes", {}),
+            extra_custom_attributes=spec.custom_attributes,
             executor_name=executor_name,
             job_name=f"{job_prefix}{spec.tool}",
         )

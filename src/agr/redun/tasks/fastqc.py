@@ -3,7 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-from agr.redun.cluster_executor import run_job_n, JobNSpec, ExpectedPaths, ResultFiles
+from agr.redun.cluster_executor import run_job_n, JobNSpec, ExpectedPaths
 from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,9 @@ _HTML = "html"
 _ZIP = "zip"
 
 
-def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> JobNSpec:
+def _fastqc_job_spec(
+    in_path: str, out_dir: str, job_attributes: dict[str, str], num_threads: int = 8
+) -> JobNSpec:
     basename = os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq")
     log_path = os.path.join(
         out_dir,
@@ -47,6 +49,7 @@ def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> JobNSp
         ],
         stdout_path=log_path,
         stderr_path=log_path,
+        custom_attributes=job_attributes,
         cwd=out_dir,
         expected_paths=ExpectedPaths(
             required={_HTML: html_out_path, _ZIP: zip_out_path}
@@ -55,11 +58,17 @@ def _fastqc_job_spec(in_path: str, out_dir: str, num_threads: int = 8) -> JobNSp
 
 
 @task()
-def fastqc_one(fastq_file: File, out_dir: str) -> FastqcOutput:
+def fastqc_one(
+    fastq_file: File, out_dir: str, job_attributes: dict[str, str]
+) -> FastqcOutput:
     """Run fastqc on a single file."""
     os.makedirs(out_dir, exist_ok=True)
 
-    result = run_job_n(_fastqc_job_spec(in_path=fastq_file.path, out_dir=out_dir))
+    result = run_job_n(
+        _fastqc_job_spec(
+            in_path=fastq_file.path, out_dir=out_dir, job_attributes=job_attributes
+        )
+    )
 
     return FastqcOutput(
         html=result.expected_files[_HTML],
@@ -68,6 +77,10 @@ def fastqc_one(fastq_file: File, out_dir: str) -> FastqcOutput:
 
 
 @task()
-def fastqc_all(fastq_files: list[File], out_dir: str) -> list[FastqcOutput]:
+def fastqc_all(
+    fastq_files: list[File], out_dir: str, job_attributes: dict[str, str]
+) -> list[FastqcOutput]:
     """Run fastqc on multiple files."""
-    return one_forall(fastqc_one, fastq_files, out_dir=out_dir)
+    return one_forall(
+        fastqc_one, fastq_files, out_dir=out_dir, job_attributes=job_attributes
+    )
