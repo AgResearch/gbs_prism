@@ -18,6 +18,7 @@ from agr.redun.cluster_executor import (
     ExpectedPaths,
     FilteredGlob,
 )
+from agr.redun import JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,12 @@ def fastq_name_for_tassel3(
 
 class Tassel3:
     def __init__(
-        self, work_dir: str, tool_config: dict[str, Any], job_attributes: dict[str, str]
+        self, work_dir: str, tool_config: dict[str, Any], job_context: JobContext
     ):
         self._work_dir = work_dir
         self._java_max_heap = tool_config.get("java_max_heap")
         self._java_initial_heap = tool_config.get("java_initial_heap")
-        self._job_attributes = job_attributes
+        self._job_context = job_context
 
     @property
     def work_dir(self) -> str:
@@ -91,7 +92,7 @@ class Tassel3:
             ),
             stdout_path=os.path.join(self._work_dir, "%s.stdout" % plugin),
             stderr_path=os.path.join(self._work_dir, "%s.stderr" % plugin),
-            custom_attributes=self._job_attributes,
+            custom_attributes=self._job_context.custom_attributes,
             expected_path=result_path,
         )
 
@@ -110,7 +111,7 @@ class Tassel3:
             ),
             stdout_path=os.path.join(self._work_dir, "%s.stdout" % plugin),
             stderr_path=os.path.join(self._work_dir, "%s.stderr" % plugin),
-            custom_attributes=self._job_attributes,
+            custom_attributes=self._job_context.custom_attributes,
             expected_paths=expected_paths,
             expected_globs=expected_globs,
         )
@@ -255,12 +256,12 @@ class FastqToTagCountOutput:
 
 @task()
 def get_fastq_to_tag_count(
-    work_dir: str, cohort: Cohort, keyfile: File, job_attributes: dict[str, str]
+    work_dir: str, cohort: Cohort, keyfile: File, job_context: JobContext
 ) -> FastqToTagCountOutput:
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
 
@@ -294,13 +295,13 @@ def cohort_name_tag_counts(tag_count: File, cohort: str) -> File:
 
 @task()
 def merge_taxa_tag_count(
-    work_dir: str, tag_counts: list[File], job_attributes: dict[str, str]
+    work_dir: str, tag_counts: list[File], job_context: JobContext
 ) -> File:
     _ = tag_counts  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(MERGE_TAXA_TAG_COUNT_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.merged_tag_counts_dir, exist_ok=True)
 
@@ -311,13 +312,13 @@ def merge_taxa_tag_count(
 
 @task()
 def tag_count_to_tag_pair(
-    work_dir: str, merged_all_count: File, job_attributes: dict[str, str]
+    work_dir: str, merged_all_count: File, job_context: JobContext
 ) -> File:
     _ = merged_all_count  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(TAG_COUNT_TO_TAG_PAIR_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.tag_pair_dir, exist_ok=True)
 
@@ -327,14 +328,12 @@ def tag_count_to_tag_pair(
 
 
 @task()
-def tag_pair_to_tbt(
-    work_dir: str, tag_pair: File, job_attributes: dict[str, str]
-) -> File:
+def tag_pair_to_tbt(work_dir: str, tag_pair: File, job_context: JobContext) -> File:
     _ = tag_pair  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(TAG_PAIR_TO_TBT_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.tags_by_taxa_dir, exist_ok=True)
 
@@ -344,14 +343,12 @@ def tag_pair_to_tbt(
 
 
 @task()
-def tbt_to_map_info(
-    work_dir: str, tags_by_taxa: File, job_attributes: dict[str, str]
-) -> File:
+def tbt_to_map_info(work_dir: str, tags_by_taxa: File, job_context: JobContext) -> File:
     _ = tags_by_taxa  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(TBT_TO_MAP_INFO_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.map_info_dir, exist_ok=True)
 
@@ -362,13 +359,13 @@ def tbt_to_map_info(
 
 @task()
 def map_info_to_hap_map(
-    work_dir: str, map_info: File, job_attributes: dict[str, str]
+    work_dir: str, map_info: File, job_context: JobContext
 ) -> list[File]:
     _ = map_info  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(MAP_INFO_TO_HAP_MAP_PLUGIN)),
-        job_attributes=job_attributes,
+        job_context=job_context,
     )
     os.makedirs(tassel3.hap_map_dir, exist_ok=True)
 

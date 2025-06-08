@@ -5,6 +5,7 @@ from redun import task, File
 from typing import Optional
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
+from agr.redun import JobContext
 from agr.util.path import symlink
 
 logger = logging.getLogger(__name__)
@@ -12,9 +13,7 @@ logger = logging.getLogger(__name__)
 GUSBASE_TOOL_NAME = "GUSbase"
 
 
-def _gusbase_job_spec(
-    gusbase_rdata_path: str, job_attributes: dict[str, str]
-) -> Job1Spec:
+def _gusbase_job_spec(gusbase_rdata_path: str, job_context: JobContext) -> Job1Spec:
     work_dir = os.path.dirname(gusbase_rdata_path)
     base_path = os.path.join(work_dir, "GUSbase")
     stdout_path = "%s.stdout" % base_path
@@ -25,21 +24,19 @@ def _gusbase_job_spec(
         args=["run_GUSbase.R", gusbase_rdata_path],
         stdout_path=stdout_path,
         stderr_path=stderr_path,
-        custom_attributes=job_attributes,
+        custom_attributes=job_context.custom_attributes,
         cwd=work_dir,
         expected_path=os.path.join(work_dir, "Rplots.pdf"),
     )
 
 
 @task()
-def gusbase(
-    gusbase_rdata: Optional[File], job_attributes: dict[str, str]
-) -> Optional[File]:
+def gusbase(gusbase_rdata: Optional[File], job_context: JobContext) -> Optional[File]:
     if gusbase_rdata is None:
         return None
     else:
         gusbase_out_file = run_job_1(
-            _gusbase_job_spec(gusbase_rdata.path, job_attributes=job_attributes)
+            _gusbase_job_spec(gusbase_rdata.path, job_context=job_context)
         )
 
         # convert image file format
