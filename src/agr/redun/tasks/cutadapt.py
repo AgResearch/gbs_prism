@@ -4,6 +4,7 @@ from redun import task, File
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall, JobContext
+from agr.util.path import fastq_basename
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,9 @@ def cutadapt_one(fastq_file: File, out_dir: str, job_context: JobContext) -> Fil
     )
     return run_job_1(
         _cutadapt_job_spec(
-            in_path=fastq_file.path, out_path=out_path, job_context=job_context
+            in_path=fastq_file.path,
+            out_path=out_path,
+            job_context=job_context.with_sub(fastq_basename(fastq_file.path)),
         ),
     )
 

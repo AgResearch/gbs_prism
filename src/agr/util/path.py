@@ -16,6 +16,10 @@ def trimmed(fastq_filename: str) -> str:
     )
 
 
+def fastq_basename(fastq_path: str) -> str:
+    return os.path.basename(fastq_path).removesuffix(".gz").removesuffix(".fastq")
+
+
 def remove_if_exists(path: str):
     try:
         os.remove(path)

@@ -107,15 +107,16 @@ def bwa_all_reference_genomes(
     os.makedirs(out_dir, exist_ok=True)
     out_paths = []
     for ref_name, ref_path in spec.target.alignment_references.items():
+        job_context_ref = job_context.with_sub(ref_name)
         alns = bwa_aln_all(
             fastq_files,
             ref_name=ref_name,
             ref_path=ref_path,
             bwa=spec.bwa,
             out_dir=out_dir,
-            job_context=job_context,
+            job_context=job_context_ref,
         )
-        bam_files = bwa_samse_all(alns, ref_path=ref_path, job_context=job_context)
+        bam_files = bwa_samse_all(alns, ref_path=ref_path, job_context=job_context_ref)
         out_paths = concat(out_paths, bam_files)
     return out_paths
 

@@ -5,6 +5,7 @@ from redun import task, File
 
 from agr.redun.cluster_executor import run_job_n, JobNSpec, ExpectedPaths
 from agr.redun import one_forall, JobContext
+from agr.util.path import fastq_basename
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,9 @@ def fastqc_one(fastq_file: File, out_dir: str, job_context: JobContext) -> Fastq
 
     result = run_job_n(
         _fastqc_job_spec(
-            in_path=fastq_file.path, out_dir=out_dir, job_context=job_context
+            in_path=fastq_file.path,
+            out_dir=out_dir,
+            job_context=job_context.with_sub(fastq_basename(fastq_file.path)),
         )
     )
 
