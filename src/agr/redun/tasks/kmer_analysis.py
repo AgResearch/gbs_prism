@@ -3,8 +3,8 @@ import os.path
 from redun import task, File
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import one_forall
-from agr.util.path import remove_if_exists
+from agr.redun import one_forall, JobContext
+from agr.util.path import remove_if_exists, baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ def _kmer_analysis_job_spec(
     input_filetype: str,
     kmer_size: int,
     cwd: str,
+    job_context: JobContext,
 ) -> Job1Spec:
     log_path = "%s.log" % out_path.removesuffix(".1")
 
@@ -36,13 +37,14 @@ def _kmer_analysis_job_spec(
         ],
         stdout_path=log_path,
         stderr_path=log_path,
+        custom_attributes=job_context.custom_attributes,
         cwd=cwd,
         expected_path=out_path,
     )
 
 
 @task()
-def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
+def kmer_analysis_one(fastq_file: File, out_dir: str, job_context: JobContext) -> File:
     """Run kmer analysis for a single fastq file."""
     kmer_prism_workdir = os.path.join(out_dir, "work")
     os.makedirs(kmer_prism_workdir, exist_ok=True)
@@ -59,6 +61,7 @@ def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
             out_path=out_path,
             input_filetype="fasta",
             kmer_size=kmer_size,
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
             # kmer_prism drops turds in the current directory and doesn't pickup after itself,
             # so we run with cwd as a subdirectory of the output file
             cwd=kmer_prism_workdir,
@@ -67,6 +70,10 @@ def kmer_analysis_one(fastq_file: File, out_dir: str) -> File:
 
 
 @task()
-def kmer_analysis_all(fastq_files: list[File], out_dir: str) -> list[File]:
+def kmer_analysis_all(
+    fastq_files: list[File], out_dir: str, job_context: JobContext
+) -> list[File]:
     """Run kmer analysis for multiple fastq files."""
-    return one_forall(kmer_analysis_one, fastq_files, out_dir=out_dir)
+    return one_forall(
+        kmer_analysis_one, fastq_files, out_dir=out_dir, job_context=job_context
+    )

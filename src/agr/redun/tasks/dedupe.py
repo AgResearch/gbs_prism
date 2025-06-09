@@ -5,7 +5,8 @@ import os.path
 from redun import task, File
 
 from agr.redun.cluster_executor import get_tool_config, run_job_1, Job1Spec
-from agr.redun import one_forall
+from agr.redun import one_forall, JobContext
+from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ def _dedupe_job_spec(
     in_path: str,
     out_path: str,
     tmp_dir: str,
+    job_context: JobContext,
     jvm_args: list[str] = [],
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ) -> Job1Spec:
@@ -40,6 +42,7 @@ def _dedupe_job_spec(
         ],
         stdout_path=log_path,
         stderr_path=log_path,
+        custom_attributes=job_context.custom_attributes,
         cwd=out_dir,
         expected_path=out_path,
     )
@@ -57,10 +60,7 @@ def _remove_dedupe_turds(out_path: str):
 
 
 @task()
-def dedupe_one(
-    fastq_file: File,
-    out_dir: str,
-) -> File:
+def dedupe_one(fastq_file: File, out_dir: str, job_context: JobContext) -> File:
     """Dedupe a single fastq file."""
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, os.path.basename(fastq_file.path))
@@ -72,6 +72,7 @@ def dedupe_one(
         _dedupe_job_spec(
             in_path=fastq_file.path,
             out_path=out_path,
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
             tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
             jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
         ),
@@ -81,6 +82,8 @@ def dedupe_one(
 
 
 @task()
-def dedupe_all(fastq_files: list[File], out_dir: str) -> list[File]:
+def dedupe_all(
+    fastq_files: list[File], out_dir: str, job_context: JobContext
+) -> list[File]:
     """Dedupe multiple fastq files."""
-    return one_forall(dedupe_one, fastq_files, out_dir=out_dir)
+    return one_forall(dedupe_one, fastq_files, out_dir=out_dir, job_context=job_context)
