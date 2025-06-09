@@ -4,7 +4,7 @@ from redun import task, File
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall, JobContext
-from agr.util.path import remove_if_exists, fastq_basename
+from agr.util.path import remove_if_exists, baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def kmer_analysis_one(fastq_file: File, out_dir: str, job_context: JobContext) -
             out_path=out_path,
             input_filetype="fasta",
             kmer_size=kmer_size,
-            job_context=job_context.with_sub(fastq_basename(fastq_file.path)),
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
             # kmer_prism drops turds in the current directory and doesn't pickup after itself,
             # so we run with cwd as a subdirectory of the output file
             cwd=kmer_prism_workdir,

@@ -6,7 +6,7 @@ from redun import task, File
 
 from agr.redun.cluster_executor import get_tool_config, run_job_1, Job1Spec
 from agr.redun import one_forall, JobContext
-from agr.util.path import fastq_basename
+from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def dedupe_one(fastq_file: File, out_dir: str, job_context: JobContext) -> File:
         _dedupe_job_spec(
             in_path=fastq_file.path,
             out_path=out_path,
-            job_context=job_context.with_sub(fastq_basename(fastq_file.path)),
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
             tmp_dir="/tmp",  # TODO maybe need tmp_dir on large scratch partition
             jvm_args=[f"-Xmx{java_max_heap}"] if java_max_heap is not None else [],
         ),

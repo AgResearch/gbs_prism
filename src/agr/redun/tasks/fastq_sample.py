@@ -4,7 +4,7 @@ import subprocess
 from redun import task, File
 
 from agr.util.subprocess import run_catching_stderr
-from agr.util.path import fastq_basename
+from agr.util.path import baseroot
 from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall, JobContext
 
@@ -138,7 +138,7 @@ def fastq_sample_one(
     job_context: JobContext,
 ) -> File:
     """Sample a single fastq file according to the spec."""
-    job_context = job_context.with_sub(fastq_basename(fastq_file.path))
+    job_context = job_context.with_sub(baseroot(fastq_file.path))
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
     basename = os.path.basename(fastq_file.path)

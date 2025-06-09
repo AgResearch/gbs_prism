@@ -5,7 +5,7 @@ from redun import task, File
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
 from agr.redun import one_forall, JobContext
-from agr.util.path import fastq_basename
+from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def bwa_aln_one(
             out_path=out_path,
             reference=ref_path,
             barcode_len=bwa.barcode_len,
-            job_context=job_context.with_sub(fastq_basename(fastq_file.path)),
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
         ),
     )
     return BwaAlnOutput(fastq=fastq_file, sai=sai_file)
@@ -137,7 +137,7 @@ def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, job_context: JobContext) -> 
             fastq_path=aln.fastq.path,
             out_path=out_path,
             reference=ref_path,
-            job_context=job_context.with_sub(fastq_basename(aln.fastq.path)),
+            job_context=job_context.with_sub(baseroot(aln.fastq.path)),
         ),
     )
 
