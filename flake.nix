@@ -41,10 +41,6 @@
       url = "github:AgResearch/redun.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    seffs = {
-      url = "github:AgResearch/seffs/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs:
@@ -65,7 +61,6 @@
             GUSbase = inputs.GUSbase.packages.${system}.default;
             gquery = inputs.gquery.packages.${system}.default;
             geno-import = inputs.geno-import.packages.${system}.default;
-            seffs = inputs.seffs.packages.${system}.default;
           };
 
           gquery-export-env = env: inputs.gquery.export-env.${system} env;
@@ -307,7 +302,6 @@
                   gbs-prism-python-scripts
                   python3Packages.pytest
                   jsonnet
-                  flakePkgs.seffs
                 ] ++ other-dependencies;
 
               shellHook =
