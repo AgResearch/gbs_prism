@@ -254,6 +254,8 @@
 
               setenv("GQUERY_ROOT", pathJoin(os.getenv("HOME"), "gquery-logs"))
               setenv("GENO_ROOT", pathJoin(os.getenv("HOME"), "geno-logs"))
+
+              execute { cmd="{ test -d $GQUERY_ROOT || mkdir -p $GQUERY_ROOT ; } ; { test -d $GENO_ROOT || mkdir -p $GENO_ROOT ; }", modeA={"load"} }
             EOF
           '';
 
