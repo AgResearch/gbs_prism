@@ -4,8 +4,9 @@ import subprocess
 from redun import task, File
 
 from agr.util.subprocess import run_catching_stderr
+from agr.util.path import baseroot
 from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import one_forall
+from agr.redun import one_forall, JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,9 @@ class FastqSampleSpec:
         return "m%d" % self._minimum_sample_size
 
 
-def _rate_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job1Spec:
+def _rate_job_spec(
+    in_path: str, spec: FastqSampleSpec, out_path: str, job_context: JobContext
+) -> Job1Spec:
     """Return the primary job spec, based on sample rate."""
     return Job1Spec(
         tool=FASTQ_SAMPLE_TOOL_NAME,
@@ -47,11 +50,14 @@ def _rate_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job1Sp
         ],
         stdout_path=out_path,
         stderr_path="%s.rate.err" % out_path,
+        custom_attributes=job_context.custom_attributes,
         expected_path=out_path,
     )
 
 
-def _minsize_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job1Spec:
+def _minsize_job_spec(
+    in_path: str, spec: FastqSampleSpec, out_path: str, job_context: JobContext
+) -> Job1Spec:
     """Return the secondary job spec, based on minimum sample size."""
     return Job1Spec(
         tool=FASTQ_SAMPLE_TOOL_NAME,
@@ -64,6 +70,7 @@ def _minsize_job_spec(in_path: str, spec: FastqSampleSpec, out_path: str) -> Job
         ],
         stdout_path=out_path,
         stderr_path="%s.minsize.err" % out_path,
+        custom_attributes=job_context.custom_attributes,
         expected_path=out_path,
     )
 
@@ -102,21 +109,36 @@ def _is_minsize_job_required(
 
 @task()
 def _sample_minsize_if_required(
-    fastq_file: File, spec: FastqSampleSpec, rate_sample: File, out_path: str
+    fastq_file: File,
+    spec: FastqSampleSpec,
+    rate_sample: File,
+    out_path: str,
+    job_context: JobContext,
 ) -> File:
     if _is_minsize_job_required(
         in_path=fastq_file.path, spec=spec, rate_sample_path=rate_sample.path
     ):
         return run_job_1(
-            _minsize_job_spec(in_path=fastq_file.path, spec=spec, out_path=out_path),
+            _minsize_job_spec(
+                in_path=fastq_file.path,
+                spec=spec,
+                out_path=out_path,
+                job_context=job_context,
+            ),
         )
     else:
         return rate_sample
 
 
 @task()
-def fastq_sample_one(fastq_file: File, spec: FastqSampleSpec, out_dir: str) -> File:
+def fastq_sample_one(
+    fastq_file: File,
+    spec: FastqSampleSpec,
+    out_dir: str,
+    job_context: JobContext,
+) -> File:
     """Sample a single fastq file according to the spec."""
+    job_context = job_context.with_sub(baseroot(fastq_file.path))
     os.makedirs(out_dir, exist_ok=True)
     # the ugly name is copied from legacy gbs_prism
     basename = os.path.basename(fastq_file.path)
@@ -130,19 +152,34 @@ def fastq_sample_one(fastq_file: File, spec: FastqSampleSpec, out_dir: str) -> F
     )
 
     rate_sample = run_job_1(
-        _rate_job_spec(in_path=fastq_file.path, spec=spec, out_path=rate_out_path),
+        _rate_job_spec(
+            in_path=fastq_file.path,
+            spec=spec,
+            out_path=rate_out_path,
+            job_context=job_context,
+        ),
     )
     return _sample_minsize_if_required(
         fastq_file=fastq_file,
         spec=spec,
         rate_sample=rate_sample,
         out_path=minsize_out_path,
+        job_context=job_context,
     )
 
 
 @task()
 def fastq_sample_all(
-    fastq_files: list[File], spec: FastqSampleSpec, out_dir: str
+    fastq_files: list[File],
+    spec: FastqSampleSpec,
+    out_dir: str,
+    job_context: JobContext,
 ) -> list[File]:
     """Sample all fastq files as required for fastq analysis."""
-    return one_forall(fastq_sample_one, fastq_files, spec=spec, out_dir=out_dir)
+    return one_forall(
+        fastq_sample_one,
+        fastq_files,
+        spec=spec,
+        out_dir=out_dir,
+        job_context=job_context,
+    )

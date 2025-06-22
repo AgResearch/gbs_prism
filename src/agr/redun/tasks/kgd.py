@@ -10,7 +10,7 @@ from agr.redun.cluster_executor import (
     ExpectedPaths,
     ResultFiles,
 )
-
+from agr.redun import JobContext
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,7 @@ def _kgd_job_spec(
     out_dir: str,
     hapmap_path: str,
     genotyping_method: str,
+    job_context: JobContext,
 ) -> JobNSpec:
     out_path = "%s.stdout" % out_dir
     err_path = "%s.stderr" % out_dir
@@ -114,6 +115,7 @@ def _kgd_job_spec(
         args=["run_kgd.R", hapmap_path, genotyping_method],
         stdout_path=out_path,
         stderr_path=err_path,
+        custom_attributes=job_context.custom_attributes,
         cwd=out_dir,
         expected_paths=ExpectedPaths(
             required={
@@ -178,8 +180,11 @@ def kgd_dir(work_dir: str) -> str:
 
 @task()
 def kgd(
-    work_dir: str, genotyping_method: str, hap_map_files: list[File]
-) -> KgdOutput:  # cache buster
+    work_dir: str,
+    genotyping_method: str,
+    hap_map_files: list[File],
+    job_context: JobContext,
+) -> KgdOutput:
     out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")
     os.makedirs(out_dir, exist_ok=True)
@@ -189,6 +194,7 @@ def kgd(
         out_dir=out_dir,
         hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
         genotyping_method=genotyping_method,
+        job_context=job_context,
     )
 
     result = run_job_n_returning_failure(kgd_job_spec)

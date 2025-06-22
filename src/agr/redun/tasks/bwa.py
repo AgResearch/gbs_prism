@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from redun import task, File
 
 from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import one_forall
+from agr.redun import one_forall, JobContext
+from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,11 @@ class Bwa:
 
 
 def _aln_job_spec(
-    in_path: str, out_path: str, reference: str, barcode_len: int
+    in_path: str,
+    out_path: str,
+    reference: str,
+    barcode_len: int,
+    job_context: JobContext,
 ) -> Job1Spec:
     return Job1Spec(
         tool=BWA_ALN_TOOL_NAME,
@@ -40,12 +45,17 @@ def _aln_job_spec(
         ],
         stdout_path=out_path,
         stderr_path=f"{out_path}.err",
+        custom_attributes=job_context.custom_attributes,
         expected_path=out_path,
     )
 
 
 def _samse_job_spec(
-    sai_path: str, fastq_path: str, out_path: str, reference: str
+    sai_path: str,
+    fastq_path: str,
+    out_path: str,
+    reference: str,
+    job_context: JobContext,
 ) -> Job1Spec:
     return Job1Spec(
         tool=BWA_SAMSE_TOOL_NAME,
@@ -58,6 +68,7 @@ def _samse_job_spec(
         ],
         stdout_path=out_path,
         stderr_path=f"{out_path}.err",
+        custom_attributes=job_context.custom_attributes,
         expected_path=out_path,
     )
 
@@ -70,7 +81,12 @@ class BwaAlnOutput:
 
 @task()
 def bwa_aln_one(
-    fastq_file: File, ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
+    fastq_file: File,
+    ref_name: str,
+    ref_path: str,
+    bwa: Bwa,
+    out_dir: str,
+    job_context: JobContext,
 ) -> BwaAlnOutput:
     """bwa aln for a single file with a single reference genome."""
     os.makedirs(out_dir, exist_ok=True)
@@ -84,6 +100,7 @@ def bwa_aln_one(
             out_path=out_path,
             reference=ref_path,
             barcode_len=bwa.barcode_len,
+            job_context=job_context.with_sub(baseroot(fastq_file.path)),
         ),
     )
     return BwaAlnOutput(fastq=fastq_file, sai=sai_file)
@@ -91,7 +108,12 @@ def bwa_aln_one(
 
 @task()
 def bwa_aln_all(
-    fastq_files: list[File], ref_name: str, ref_path: str, bwa: Bwa, out_dir: str
+    fastq_files: list[File],
+    ref_name: str,
+    ref_path: str,
+    bwa: Bwa,
+    out_dir: str,
+    job_context: JobContext,
 ) -> list[BwaAlnOutput]:
     """bwa aln for multiple files with a single reference genome."""
     return one_forall(
@@ -101,11 +123,12 @@ def bwa_aln_all(
         ref_path=ref_path,
         bwa=bwa,
         out_dir=out_dir,
+        job_context=job_context,
     )
 
 
 @task()
-def bwa_samse_one(aln: BwaAlnOutput, ref_path: str) -> File:
+def bwa_samse_one(aln: BwaAlnOutput, ref_path: str, job_context: JobContext) -> File:
     """bwa samse for a single file with a single reference genome."""
     out_path = "%s.bam" % aln.sai.path.removesuffix(".sai")
     return run_job_1(
@@ -114,15 +137,14 @@ def bwa_samse_one(aln: BwaAlnOutput, ref_path: str) -> File:
             fastq_path=aln.fastq.path,
             out_path=out_path,
             reference=ref_path,
+            job_context=job_context.with_sub(baseroot(aln.fastq.path)),
         ),
     )
 
 
 @task()
-def bwa_samse_all(alns: list[BwaAlnOutput], ref_path: str) -> list[File]:
+def bwa_samse_all(
+    alns: list[BwaAlnOutput], ref_path: str, job_context: JobContext
+) -> list[File]:
     """bwa samse for multiple files."""
-    return one_forall(
-        bwa_samse_one,
-        alns,
-        ref_path=ref_path,
-    )
+    return one_forall(bwa_samse_one, alns, ref_path=ref_path, job_context=job_context)

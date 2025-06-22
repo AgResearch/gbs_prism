@@ -6,6 +6,7 @@ from redun.scheduler import catch_all
 
 from agr.util.path import expand
 from agr.redun.cluster_executor import create_cluster_executor_config
+from agr.redun import JobContext
 from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
     run_stage1,
@@ -48,6 +49,7 @@ def main(
     path_context=get_context("path"),
 ) -> MainResults:
     path = {k: expand(v) for (k, v) in path_context.items()}
+    job_context = JobContext(run)
 
     stage1 = run_stage1(
         seq_root=path["seq_root"],
@@ -56,6 +58,7 @@ def main(
         keyfiles_dir=path["keyfiles_dir"],
         fastq_link_farm=path["fastq_link_farm"],
         run=run,
+        job_context=job_context,
     )
 
     stage2 = run_stage2(
@@ -63,6 +66,7 @@ def main(
         spec=stage1.spec,
         gbs_paths=stage1.gbs_paths,
         gbs_keyfiles=stage1.gbs_keyfiles,
+        job_context=job_context,
     )
 
     stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
