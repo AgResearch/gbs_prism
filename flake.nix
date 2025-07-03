@@ -129,23 +129,6 @@
             poppler_utils
           ]);
 
-          pyproject = builtins.fromTOML (builtins.readFile ./pyproject.toml);
-
-          gbs-prism-api = with pkgs;
-            python3Packages.buildPythonPackage {
-              pname = "gbs-prism-api";
-              version = pyproject.project.version;
-              src = ./.;
-              pyproject = true;
-
-              nativeBuildInputs = [
-                hatch
-                python3Packages.hatchling
-              ];
-
-              propagatedBuildInputs = python-dependencies;
-            };
-
           gbs-prism-R-scripts =
             let
               R-with-packages = pkgs.rWrapper.override {
@@ -178,54 +161,70 @@
               '';
             };
 
-          gbs-prism-python = pkgs.python3.withPackages (ps: [ gbs-prism-api ]);
+          pyproject = builtins.fromTOML (builtins.readFile ./pyproject.toml);
 
-          # create a minimal derivation with only redun on the path,
+          gbs-prism = with pkgs;
+            python3Packages.buildPythonPackage {
+              pname = "gbs-prism";
+              version = pyproject.project.version;
+              src = ./.;
+              pyproject = true;
+
+              nativeBuildInputs = [
+                hatch
+                python3Packages.hatchling
+              ];
+
+              propagatedBuildInputs = python-dependencies ++ other-dependencies ++ [ gbs-prism-R-scripts ];
+            };
+
+          # The bundle is a minimal derivation with only redun on the path,
           # the main pipeline.py and all the config and context files,
-          # with all dependencies picked up via the path set in the redun wrapper
-          gbs-prism = pkgs.stdenv.mkDerivation rec {
-            pname = "gbs_prism";
-            version = pyproject.project.version;
-            src = ./.;
+          # with all dependencies picked up via the path set in the redun wrapper.
+          gbs-prism-bundle =
+            let
+              python-with-gbs-prism = pkgs.python3.withPackages (ps: [ gbs-prism ]);
+              path-for-gbs-prism = pkgs.lib.makeBinPath ([ python-with-gbs-prism ] ++ gbs-prism.propagatedBuildInputs);
+            in
+            pkgs.stdenv.mkDerivation {
+              pname = "gbs-prism-bundle";
+              version = pyproject.project.version;
+              src = ./.;
 
-            nativeBuildInputs = [ pkgs.makeWrapper ];
-            buildInputs = [
-              gbs-prism-python
-              gbs-prism-R-scripts
-            ] ++ other-dependencies;
+              nativeBuildInputs = [ pkgs.makeWrapper ];
 
-            dontUnpack = true;
-            dontBuild = true;
+              dontUnpack = true;
+              dontBuild = true;
 
-            installPhase = ''
-              runHook preInstall
+              installPhase = ''
+                runHook preInstall
 
-              mkdir $out
-              cp $src/pipeline.py $out
-              cp -a $src/context $out/context
+                mkdir $out
+                cp $src/pipeline.py $out
+                cp -a $src/context $out/context
 
-              mkdir $out/config
-              cp $src/config/eri-executor.jsonnet $out/config
+                mkdir $out/config
+                cp $src/config/eri-executor.jsonnet $out/config
 
-              # append the context_file in each config so we don't need to pass it on the command line
-              for env in dev test prod; do
-                mkdir $out/config/redun.$env
-                echo -e "\n[scheduler]\ncontext_file = $out/context/eri-$env.json" | cat $src/config/redun.$env/redun.ini - >$out/config/redun.$env/redun.ini
-              done
+                # append the context_file in each config so we don't need to pass it on the command line
+                for env in dev test prod; do
+                  mkdir $out/config/redun.$env
+                  echo -e "\n[scheduler]\ncontext_file = $out/context/eri-$env.json" | cat $src/config/redun.$env/redun.ini - >$out/config/redun.$env/redun.ini
+                done
 
-              # Install just the executables we want to be on the end-user's path.
-              mkdir $out/bin
-              for prog in gquery gupdate; do
-                ln -s ${gbs-prism-python}/bin/$prog $out/bin/$prog
-              done
-              # Need to wrap redun so it can find its non-Python dependencies, and also
-              # so it won't break if someone plays games with PYTHONPATH and LD_LIBRARY_PATH.
-              # Note that we need the original $PATH as a suffix, to find e.g. sbatch.
-              makeWrapper ${gbs-prism-python}/bin/redun $out/bin/redun --prefix PATH : "${pkgs.lib.makeBinPath buildInputs}" --unset PYTHONPATH --unset LD_LIBRARY_PATH
+                # Install just the executables we want to be on the end-user's path.
+                mkdir $out/bin
+                for prog in gquery gupdate; do
+                  ln -s ${python-with-gbs-prism}/bin/$prog $out/bin/$prog
+                done
+                # Need to wrap redun so it can find its non-Python dependencies, and also
+                # so it won't break if someone plays games with PYTHONPATH and LD_LIBRARY_PATH.
+                # Note that we need the original $PATH as a suffix, to find e.g. sbatch.
+                makeWrapper ${python-with-gbs-prism}/bin/redun $out/bin/redun --prefix PATH : "${path-for-gbs-prism}" --unset PYTHONPATH --unset LD_LIBRARY_PATH
 
-              runHook postInstall
-            '';
-          };
+                runHook postInstall
+              '';
+            };
 
           lmod-setenv-script = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
             env="$1"
@@ -246,9 +245,9 @@
             esac
 
             cat <<EOF
-              setenv("GBS_PRISM", "${gbs-prism}")
-              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism}/config/eri-executor.jsonnet")
-              setenv("REDUN_CONFIG ", "${gbs-prism}/config/redun.$env")
+              setenv("GBS_PRISM", "${gbs-prism-bundle}")
+              setenv("GBS_PRISM_EXECUTOR_CONFIG ", "${gbs-prism-bundle}/config/eri-executor.jsonnet")
+              setenv("REDUN_CONFIG ", "${gbs-prism-bundle}/config/redun.$env")
               setenv("REDUN_DB_USERNAME", "gbs_prism_redun")
               setenv("REDUN_DB_PASSWORD", "unused because Kerberos")
 
@@ -343,7 +342,14 @@
           };
 
           packages = {
+            # The default package is the unbundled Python package for use in other flakes.
             default = gbs-prism;
+
+            # The package gbs-prism-bundle is referenced by name in the eri/install script, so
+            # if you change it here, ensure to change it there too.
+            inherit
+              gbs-prism
+              gbs-prism-bundle;
           };
 
           apps = {
