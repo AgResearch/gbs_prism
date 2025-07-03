@@ -280,11 +280,17 @@ def get_fastq_to_tag_count(
     )
 
 
+def prefix_tag_count_path(out_dir: str, prefix: str = "") -> str:
+    return os.path.join(
+        out_dir,
+        f"{prefix}{"." if prefix else ""}TagCount.csv",
+    )
+
+
 @task()
 def get_tag_count(fastqToTagCountStdout: File, prefix: str = "") -> File:
-    out_path = os.path.join(
-        os.path.dirname(fastqToTagCountStdout.path),
-        f"{prefix}{"." if prefix else ""}TagCount.csv",
+    out_path = prefix_tag_count_path(
+        os.path.dirname(fastqToTagCountStdout.path), prefix=prefix
     )
     with open(fastqToTagCountStdout.path, "r") as in_f:
         with open(out_path, "w") as out_f:

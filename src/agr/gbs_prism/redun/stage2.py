@@ -1,5 +1,6 @@
 import os.path
 from dataclasses import dataclass
+from agr.gbs_prism.redun.tag_count import create_consolidated_tag_count
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats, import_gbs_kgd_cohort_stats
 from agr.redun.util import await_results
 from redun import task, File
@@ -30,8 +31,6 @@ from agr.redun.tasks import (
     import_gbs_read_tag_counts,
     create_cohort_gbs_kgd_stats_import,
     # Tassel:
-    get_fastq_to_tag_count,
-    get_tag_count,
     merge_taxa_tag_count,
     tag_count_to_tag_pair,
     tag_pair_to_tbt,
@@ -132,7 +131,10 @@ class CohortOutput:
     keyfile_for_tassel: File
     keyfile_for_gbsx: File
     tag_count: File
-    fastq_to_tag_count_stdout: File
+    # this is usually a dict of length 1 whose key is the cohort name,
+    # except if there were multiple parts, in which case the keys are
+    # a composite of cohort name and part.
+    fastq_to_tag_count_stdout: dict[str, File]
     collated_tag_count: File
     merged_all_count: File
     tag_pair: File
@@ -212,11 +214,14 @@ def run_cohort(
         keyfile_for_tassel,
     )
 
-    fastq_to_tag_count = get_fastq_to_tag_count(
-        cohort_blind_dir, spec.cohort, keyfile_for_tassel, job_context=job_context
+    consolidated_tag_count = create_consolidated_tag_count(
+        work_dir=cohort_blind_dir,
+        cohort=spec.cohort,
+        keyfile=keyfile_for_tassel,
+        job_context=job_context,
+        prefix=f"{spec.cohort.name}.",
     )
-
-    tag_count = get_tag_count(fastq_to_tag_count.stdout, prefix=spec.cohort.name)
+    tag_count = consolidated_tag_count.tag_count
     collated_tag_count = collate_tags_reads(
         run=spec.run,
         cohort=spec.cohort.name,
@@ -225,7 +230,7 @@ def run_cohort(
     )
 
     merged_all_count = merge_taxa_tag_count(
-        cohort_blind_dir, fastq_to_tag_count.tag_counts, job_context=job_context
+        cohort_blind_dir, consolidated_tag_count.tag_counts, job_context=job_context
     )
     tag_pair = tag_count_to_tag_pair(
         cohort_blind_dir, merged_all_count, job_context=job_context
@@ -313,7 +318,7 @@ def run_cohort(
         keyfile_for_tassel=keyfile_for_tassel,
         keyfile_for_gbsx=keyfile_for_gbsx,
         tag_count=tag_count,
-        fastq_to_tag_count_stdout=fastq_to_tag_count.stdout,
+        fastq_to_tag_count_stdout=consolidated_tag_count.stdout,
         collated_tag_count=collated_tag_count,
         merged_all_count=merged_all_count,
         tag_pair=tag_pair,
