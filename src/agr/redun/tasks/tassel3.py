@@ -178,8 +178,6 @@ class Tassel3:
         return self._tassel_plugin_job_n_spec(
             plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
             plugin_args=[
-                "-c",
-                "1",
                 "-e",
                 enzyme_sub_for_uneak(cohort.enzyme),
                 "-s",
@@ -204,12 +202,6 @@ class Tassel3:
             plugin_args=[
                 "-t",
                 "n",
-                "-m",
-                "600000000",
-                "-x",
-                "100000000",
-                "-c",
-                "5",
             ],
             result_path=os.path.join(self.merged_tag_counts_dir, "mergedAll.cnt"),
         )
@@ -218,7 +210,7 @@ class Tassel3:
     def tag_count_to_tag_pair_job_spec(self) -> Job1Spec:
         return self._tassel_plugin_job_1_spec(
             plugin=TAG_COUNT_TO_TAG_PAIR_PLUGIN,
-            plugin_args=["-e", "0.03"],
+            plugin_args=[],
             result_path=os.path.join(self.tag_pair_dir, "tagPair.tps"),
         )
 
@@ -242,7 +234,7 @@ class Tassel3:
     def map_info_to_hap_map_job_spec(self) -> JobNSpec:
         return self._tassel_plugin_job_n_spec(
             plugin=MAP_INFO_TO_HAP_MAP_PLUGIN,
-            plugin_args=["-mnMAF", "0.03", "-mxMAF", "0.5", "-mnC", "0.1"],
+            plugin_args=["-mnMAF", "0.03", "-mnC", "0.1"],
             expected_globs={
                 HAP_MAP_FILES: FilteredGlob("%s/*" % self.hap_map_dir),
             },
