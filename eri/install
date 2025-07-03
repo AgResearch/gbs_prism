@@ -62,8 +62,10 @@ IFS='?' read -r repo query_string <<<"$nix_flake_url"
 package_base="${repo##?*/}"
 package="${package_base}${package_suffix}"
 version="${query_string##?*/}"
+package_attr=gbs-prism-bundle
+nix_flake_package="${nix_flake_url}#${package_attr}"
 
-echo "installing Nix flake $nix_flake_url as $package version $version into $app_dir with modulefile into $modulefiles_dir"
+echo "installing Nix flake $nix_flake_package as $package version $version into $app_dir with modulefile into $modulefiles_dir"
 
 package_dir="$app_dir/$package"
 test -d "$package_dir" || {
@@ -75,7 +77,7 @@ package_version_link="$package_dir/$version"
 # abort on error
 set -e
 
-nix build -o "$package_version_link" "$nix_flake_url"
+nix build -o "$package_version_link" "$nix_flake_package"
 bin_dir="$package_version_link/bin"
 
 # create modulefile
@@ -106,5 +108,5 @@ conflict("${package_base}", "${package_base}-dev", "${package_base}-test")
 conflict("gquery", "gquery-dev", "gquery-test")
 
 prepend_path("PATH", "${bin_dir}")
-$(nix run "${nix_flake_url}#lmod-setenv" -- "${env}")
+$(nix run "${nix_flake_url}#print-lmod-commands" -- "${env}")
 EOF

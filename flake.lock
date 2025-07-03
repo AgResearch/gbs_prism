@@ -300,16 +300,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1748389445,
-        "narHash": "sha256-t8bpkTeBiXobGGhQ+OAIAJj56PNI0AQdeRUYKgQkAms=",
-        "ref": "refs/heads/main",
-        "rev": "5b7e33740dd8173e322dd8d421ba554fde29dcd7",
-        "revCount": 426,
+        "lastModified": 1753070364,
+        "narHash": "sha256-gVZ0JWiquyuuIPu8sfkdlXvM8eJgveuUkucxFBYjSWY=",
+        "ref": "refs/heads/uber-keyfiles",
+        "rev": "4e3dba037df976788245394f26b1c3698c3d0068",
+        "revCount": 433,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
       "original": {
-        "ref": "refs/heads/main",
+        "ref": "refs/heads/uber-keyfiles",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       }
