@@ -194,13 +194,12 @@ class Tassel3:
             },
         )
 
-    @property
-    def merge_taxa_tag_count_job_spec(self) -> Job1Spec:
+    def merge_taxa_tag_count_job_spec(self, merge: bool) -> Job1Spec:
         return self._tassel_plugin_job_1_spec(
             plugin=MERGE_TAXA_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-t",
-                "n",
+                "y" if merge else "n",
             ],
             result_path=os.path.join(self.merged_tag_counts_dir, "mergedAll.cnt"),
         )
@@ -287,7 +286,7 @@ def cohort_name_tag_counts(tag_count: File, cohort: str) -> File:
 
 @task()
 def merge_taxa_tag_count(
-    work_dir: str, tag_counts: list[File], job_context: JobContext
+    work_dir: str, tag_counts: list[File], merge: bool, job_context: JobContext
 ) -> File:
     _ = tag_counts  # depending on existence rather than value
     tassel3 = Tassel3(
@@ -298,7 +297,7 @@ def merge_taxa_tag_count(
     os.makedirs(tassel3.merged_tag_counts_dir, exist_ok=True)
 
     return run_job_1(
-        tassel3.merge_taxa_tag_count_job_spec,
+        tassel3.merge_taxa_tag_count_job_spec(merge),
     )
 
 
