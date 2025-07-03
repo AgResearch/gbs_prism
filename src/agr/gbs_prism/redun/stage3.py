@@ -56,8 +56,9 @@ def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
     )
 
     fastq_to_tag_count_stdouts = {
-        cohort_name: cohort.fastq_to_tag_count_stdout
-        for cohort_name, cohort in stage2.cohorts.items()
+        cohort_part: stdout
+        for cohort in stage2.cohorts.values()
+        for cohort_part, stdout in cohort.fastq_to_tag_count_stdout.items()
     }
 
     barcode_yield_summary = collate_barcode_yields(

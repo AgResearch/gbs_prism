@@ -14,6 +14,8 @@ from agr.util.path import symlink
 
 BARCODE_LENGTH = 10
 
+DEFAULT_SUB_TASSEL_PREFIX = "part"
+
 
 def _get_options():
     description = """
@@ -84,7 +86,7 @@ examples:
         "--sub_tassel_prefix",
         dest="sub_tassel_prefix",
         type=str,
-        default="part",
+        default=DEFAULT_SUB_TASSEL_PREFIX,
         required=False,
         help="min pass filter",
     )
@@ -102,7 +104,9 @@ examples:
     return args
 
 
-def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
+def ramify(
+    keyfile: str, output_folder: str, sub_tassel_prefix: str = DEFAULT_SUB_TASSEL_PREFIX
+) -> list[str]:
     """
     typical keyfile looks like
 
@@ -113,12 +117,13 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
     HN7WGDRXY       1       GAGAATC 957002  JCM.4464        B       1       1793                    MspI-ApeKI      BEE     81                      /dataset/hiseq/active/fastq-link-farm/SQ1793_HN7WGDRXY_s_1_fastq.txt.gz
     HN7WGDRXY       2       GAGAATC 957002  JCM.4464        B       1       1793                    MspI-ApeKI      BEE     81                      /dataset/hiseq/active/fastq-link-farm/SQ1793_HN7WGDRXY_s_2_fastq.txt.gz
 
-    Returns number of parts, usually 1.
+    Returns paths to part folders, usually just one.
     """
 
     # read keyfile into array of tuples and get heading
     # bail out if do not see columns called flowcell, lane, libraryprepid and fastq_link
     print("ramifying keyfile %s" % keyfile)
+    part_folders = []
     with open(keyfile, "r") as instream:
         records = [re.split("\t", record.strip()) for record in instream]
         print("read %d keyfile records" % len(records))
@@ -159,6 +164,7 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
                 output_folder,
                 "%s%d" % (sub_tassel_prefix, part_number),
             )
+            part_folders.append(part_folder)
             key_folder = os.path.join(part_folder, "key")
             tag_folder = os.path.join(part_folder, "tagCounts")
             illumina_folder = os.path.join(part_folder, "Illumina")
@@ -199,12 +205,17 @@ def ramify(keyfile: str, output_folder: str, sub_tassel_prefix: str) -> int:
 
             part_number += 1
 
-        num_parts = part_number - 1
-        print("wrote out %d partial keyfiles and supporting folders " % num_parts)
-        return num_parts
+        print(
+            "wrote out %d partial keyfiles and supporting folders " % len(part_folders)
+        )
+        return part_folders
 
 
-def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str):
+def merge_results(
+    output_folder: str,
+    merge_folder: str,
+    sub_tassel_prefix: str = DEFAULT_SUB_TASSEL_PREFIX,
+) -> list[str]:
     """
     typical keyfile looks like
 
@@ -230,6 +241,7 @@ def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str)
     print("folders to merge from : %s" % str(part_folders))
 
     # create shortcuts to the count files in the main output and detect name collisions
+    targets = []
     unique_count_files = set()
     for part_folder in part_folders:
         count_files = [
@@ -248,14 +260,20 @@ def merge_results(output_folder: str, merge_folder: str, sub_tassel_prefix: str)
             target = os.path.join(merge_folder, base)
             source = os.path.join(part_folder, "tagCounts", base)
             symlink(source, target, force=True)
+            targets.append(target)
+    return targets
 
 
-def merge_counts(output_folder: str, sub_tassel_prefix: str):
+def merge_counts(
+    output_folder: str, file=None, sub_tassel_prefix: str = DEFAULT_SUB_TASSEL_PREFIX
+):
+    """Print merge counts to file, or stdout if file is None."""
+
     # based on /dataset/gseq_processing/active/bin/gbs_prism/get_reads_tags_per_sample.py
 
     outline = ""
 
-    print("sample,flowcell,lane,sq,tags,reads")
+    print("sample,flowcell,lane,sq,tags,reads", file=file)
 
     part_folders = os.listdir(output_folder)
     part_folders = [
@@ -292,11 +310,11 @@ def merge_counts(output_folder: str, sub_tassel_prefix: str):
                 elif "Total number of reads in lane" in line:
                     line = line.split("=")
                     total_line = "total,%s,,%s" % (cellline, line[-1])
-                    print(total_line)
+                    print(total_line, file=file)
                 elif "Total number of good barcoded reads" in line:
                     line = line.split("=")
                     good_line = "good,%s,,%s" % (cellline, line[-1])
-                    print(good_line)
+                    print(good_line, file=file)
                     cellline = ""
                     total_line = ""
                     good_line = ""
@@ -310,7 +328,7 @@ def merge_counts(output_folder: str, sub_tassel_prefix: str):
                 elif not outline == "":
                     line = line.split()
                     outline += ",%s,%s" % (line[1], line[6])
-                    print(outline)
+                    print(outline, file=file)
                     outline = ""
                 else:
                     pass
@@ -326,7 +344,7 @@ def _main():
             sub_tassel_prefix=options["sub_tassel_prefix"],
         )
     elif options["task"] == "merge_results":
-        merge_results(
+        _ = merge_results(
             output_folder=options["output_folder"],
             merge_folder=options["merge_folder"],
             sub_tassel_prefix=options["sub_tassel_prefix"],
