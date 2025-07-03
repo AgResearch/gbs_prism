@@ -230,7 +230,10 @@ def run_cohort(
     )
 
     merged_all_count = merge_taxa_tag_count(
-        cohort_blind_dir, consolidated_tag_count.tag_counts, job_context=job_context
+        cohort_blind_dir,
+        consolidated_tag_count.tag_counts,
+        merge=consolidated_tag_count.merged,
+        job_context=job_context,
     )
     tag_pair = tag_count_to_tag_pair(
         cohort_blind_dir, merged_all_count, job_context=job_context
