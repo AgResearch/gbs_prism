@@ -29,7 +29,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # TODO revert to main branch
+      # url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # url = "/home/guestsi/vc/agr-devops/gquery";
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/uber-keyfiles";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
@@ -63,7 +66,7 @@
             geno-import = inputs.geno-import.packages.${system}.default;
           };
 
-          gquery-export-env = env: inputs.gquery.export-env.${system} env;
+          gquery-export-env = inputs.gquery.export-env.${system};
 
           gquery-lmod-setenv = inputs.gquery.apps.${system}.lmod-setenv.program;
 
@@ -226,7 +229,7 @@
               '';
             };
 
-          lmod-setenv-script = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
+          lmod-setenv = pkgs.writeShellScriptBin "gbs_prism-lmod-setenv" ''
             env="$1"
 
             case "$env" in
@@ -315,22 +318,25 @@
                     else ''
                       unset REDUN_CONFIG
                     '')
-                    + gquery-export-env env;
+                    + ''
+                      source ${gquery-export-env env};
+                    '';
                   };
                 in
                 ''
-                  export REDUN_CONFIG=$(pwd)/.redun
-                  # enable use of gbs_prism from current directory during development
-                  export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-                  ${gquery-export-env "dev"}
-                  export GQUERY_ROOT=$HOME/gquery-logs
-                  export GENO_ROOT=$HOME/geno-logs
-                  export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
-
                   # for switching GQuery and gbs_prism environments
                   export GBS_PRISM_DEV_ENV=${gbs-prism-env "dev"}
                   export GBS_PRISM_TEST_ENV=${gbs-prism-env "test"}
                   export GBS_PRISM_PROD_ENV=${gbs-prism-env "prod"}
+
+                  # default to dev
+                  source $GBS_PRISM_DEV_ENV
+
+                  # enable use of gbs_prism from current directory during development
+                  export PYTHONPATH=$(pwd)/src:$PYTHONPATH
+                  export GQUERY_ROOT=$HOME/gquery-logs
+                  export GENO_ROOT=$HOME/geno-logs
+                  export GBS_PRISM_EXECUTOR_CONFIG=$(pwd)/config/eri-executor.jsonnet
 
                   # for postgres database backend, will use the default config in .redun
                   # unless this is defined:
@@ -361,7 +367,7 @@
             # used in eri/install for the module file
             lmod-setenv = {
               type = "app";
-              program = "${lmod-setenv-script}/bin/gbs_prism-lmod-setenv";
+              program = "${lmod-setenv}/bin/gbs_prism-lmod-setenv";
             };
 
             # For now we can't clone gquery and geno_import repos in GitHub actions, as they're on Azure DevOps.
@@ -375,6 +381,9 @@
               ''}";
             };
           };
+
+          # for other flakes to consume directly
+          export-env = gquery-export-env;
         }
       );
 }
