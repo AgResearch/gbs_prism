@@ -277,7 +277,8 @@ def get_fastq_to_tag_count(
 @task()
 def get_tag_count(fastqToTagCountStdout: File, prefix: str = "") -> File:
     out_path = os.path.join(
-        os.path.dirname(fastqToTagCountStdout.path), f"{prefix}TagCount.csv"
+        os.path.dirname(fastqToTagCountStdout.path),
+        f"{prefix}{"." if prefix else ""}TagCount.csv",
     )
     with open(fastqToTagCountStdout.path, "r") as in_f:
         with open(out_path, "w") as out_f:

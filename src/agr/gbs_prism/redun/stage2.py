@@ -216,7 +216,7 @@ def run_cohort(
         cohort_blind_dir, spec.cohort, keyfile_for_tassel, job_context=job_context
     )
 
-    tag_count = get_tag_count(fastq_to_tag_count.stdout, prefix=f"{spec.cohort.name}.")
+    tag_count = get_tag_count(fastq_to_tag_count.stdout, prefix=spec.cohort.name)
     collated_tag_count = collate_tags_reads(
         run=spec.run,
         cohort=spec.cohort.name,
