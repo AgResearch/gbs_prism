@@ -43,7 +43,6 @@ from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.tassel3 import (
     fastq_name_for_tassel3,
     hap_map_dir,
-    cohort_name_tag_counts,
 )
 from agr.redun.tasks.kgd import KgdOutput, kgd_dir
 from agr.redun.tasks.unblind import (
@@ -145,7 +144,7 @@ class CohortOutput:
     collated_kgd_stats: Optional[File]
     collated_kgd_stats_unblind: Optional[File]
     gusbase_comet: Optional[File]
-    cohort_tag_counts: File
+    tag_count_unblind: File
     hap_map_files_unblind: list[File]
     kgd_text_files_unblind: dict[str, File]
     kgd_stdout_unblind: Optional[File]
@@ -217,7 +216,7 @@ def run_cohort(
         cohort_blind_dir, spec.cohort, keyfile_for_tassel, job_context=job_context
     )
 
-    tag_count = get_tag_count(fastq_to_tag_count.stdout)
+    tag_count = get_tag_count(fastq_to_tag_count.stdout, prefix=f"{spec.cohort.name}.")
     collated_tag_count = collate_tags_reads(
         run=spec.run,
         cohort=spec.cohort.name,
@@ -249,8 +248,6 @@ def run_cohort(
     tag_count_unblind = unblind_one(
         tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
     )
-
-    cohort_tag_counts = cohort_name_tag_counts(tag_count_unblind, spec.cohort.name)
 
     hap_map_files_unblind = unblind_all(
         hap_map_files,
@@ -328,7 +325,7 @@ def run_cohort(
         collated_kgd_stats=collated_kgd_stats,
         collated_kgd_stats_unblind=collated_kgd_stats_unblind,
         gusbase_comet=gusbase_comet,
-        cohort_tag_counts=cohort_tag_counts,
+        tag_count_unblind=tag_count_unblind,
         hap_map_files_unblind=hap_map_files_unblind,
         kgd_text_files_unblind=kgd_text_files_unblind,
         kgd_stdout_unblind=kgd_stdout_unblind,
