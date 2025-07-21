@@ -181,9 +181,9 @@ def kgd_dir(work_dir: str) -> str:
 @task()
 def kgd(
     work_dir: str,
-    genotyping_method: str,
     hap_map_files: list[File],
     job_context: JobContext,
+    genotyping_method: str = "default",
 ) -> KgdOutput:
     out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")

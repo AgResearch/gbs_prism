@@ -1,5 +1,6 @@
 import errno
 import os
+from typing import Optional
 
 
 def gunzipped(path: str) -> str:
@@ -14,6 +15,11 @@ def trimmed(fastq_filename: str) -> str:
     return "%s.trimmed.fastq" % fastq_filename.removesuffix(".gz").removesuffix(
         ".fastq"
     )
+
+
+def prefixed(base: str, dir: Optional[str] = None, prefix: str = "") -> str:
+    prefixed_base = f"{prefix}{"." if prefix else ""}{base}"
+    return os.path.join(dir, prefixed_base) if dir is not None else prefixed_base
 
 
 def baseroot(path: str) -> str:

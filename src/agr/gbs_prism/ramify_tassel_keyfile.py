@@ -287,7 +287,7 @@ def merge_counts(
         fastq_stdout_files = [
             stdout_file
             for stdout_file in os.listdir(part_folder)
-            if re.search(r"\.FastqToTagCount\.stdout$", stdout_file) is not None
+            if re.search(r"\bFastqToTagCount\.stdout$", stdout_file) is not None
         ]
         if len(fastq_stdout_files) != 1:
             raise Exception(

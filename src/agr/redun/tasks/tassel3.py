@@ -6,10 +6,9 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Any
 
-from agr.util.path import symlink
+from agr.util.path import symlink, prefixed
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.enzyme_sub import enzyme_sub_for_uneak
-from agr.seq.types import Cohort
 from agr.redun.cluster_executor import (
     get_tool_config,
     run_job_1,
@@ -41,7 +40,7 @@ def tassel3_tool_name(plugin: str) -> str:
 
 # TODO review this!!!
 def fastq_name_for_tassel3(
-    cohort: Cohort, fcid: str, original_fastq_filename: str
+    libname: str, fcid: str, original_fastq_filename: str
 ) -> str:
     """Tassel3 is very fussy about what filenames it accepts for FASTQ files.
 
@@ -50,9 +49,9 @@ def fastq_name_for_tassel3(
     lane_re = re.compile("_L00([0-9])_")
     if m := lane_re.search(original_fastq_filename):
         lane = m.group(1)
-        return "%s_%s_s_%s_fastq.txt.gz" % (cohort.libname, fcid, lane)
+        return "%s_%s_s_%s_fastq.txt.gz" % (libname, fcid, lane)
     else:
-        # return "%s_%s_s_X_fastq.txt.gz" % (cohort.libname, fcid)
+        # return "%s_%s_s_X_fastq.txt.gz" % (libname, fcid)
         return original_fastq_filename
 
 
@@ -140,10 +139,6 @@ class Tassel3:
     def key_dir(self) -> str:
         return os.path.join(self._work_dir, "key")
 
-    #
-    # tag_counts_part1_dir = os.path.join(cohort_blind_dir, "tagCounts_parts", "part1")
-    # tag_counts_done = os.path.join(cohort_blind_dir, "tagCounts.done")
-
     @property
     def tag_counts_dir(self) -> str:
         return os.path.join(self._work_dir, "tagCounts")
@@ -174,12 +169,12 @@ class Tassel3:
         logger.info("symlink %s %s" % (in_path, key_path))
         symlink(in_path, key_path, force=True)
 
-    def fastq_to_tag_count_job_spec(self, cohort: Cohort) -> JobNSpec:
+    def fastq_to_tag_count_job_spec(self, enzyme: str) -> JobNSpec:
         return self._tassel_plugin_job_n_spec(
             plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
             plugin_args=[
                 "-e",
-                enzyme_sub_for_uneak(cohort.enzyme),
+                enzyme_sub_for_uneak(enzyme),
                 "-s",
                 "900000000",
             ],
@@ -248,7 +243,7 @@ class FastqToTagCountOutput:
 
 @task()
 def get_fastq_to_tag_count(
-    work_dir: str, cohort: Cohort, keyfile: File, job_context: JobContext
+    work_dir: str, enzyme: str, keyfile: File, job_context: JobContext
 ) -> FastqToTagCountOutput:
     tassel3 = Tassel3(
         work_dir,
@@ -263,7 +258,7 @@ def get_fastq_to_tag_count(
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
 
     tassel3.symlink_key(in_path=keyfile.path)
-    result_files = run_job_n(tassel3.fastq_to_tag_count_job_spec(cohort))
+    result_files = run_job_n(tassel3.fastq_to_tag_count_job_spec(enzyme))
 
     return FastqToTagCountOutput(
         stdout=result_files.expected_files[FASTQ_TO_TAG_COUNT_STDOUT],
@@ -272,10 +267,7 @@ def get_fastq_to_tag_count(
 
 
 def prefix_tag_count_path(out_dir: str, prefix: str = "") -> str:
-    return os.path.join(
-        out_dir,
-        f"{prefix}{"." if prefix else ""}TagCount.csv",
-    )
+    return prefixed("TagCount.csv", dir=out_dir, prefix=prefix)
 
 
 @task()
