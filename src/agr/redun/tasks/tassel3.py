@@ -275,21 +275,16 @@ def get_fastq_to_tag_count(
 
 
 @task()
-def get_tag_count(fastqToTagCountStdout: File) -> File:
-    out_path = os.path.join(os.path.dirname(fastqToTagCountStdout.path), "TagCount.csv")
+def get_tag_count(fastqToTagCountStdout: File, prefix: str = "") -> File:
+    out_path = os.path.join(
+        os.path.dirname(fastqToTagCountStdout.path),
+        f"{prefix}{"." if prefix else ""}TagCount.csv",
+    )
     with open(fastqToTagCountStdout.path, "r") as in_f:
         with open(out_path, "w") as out_f:
             _ = run_catching_stderr(
                 ["get_reads_tags_per_sample"], stdin=in_f, stdout=out_f, check=True
             )
-    return File(out_path)
-
-
-@task()
-def cohort_name_tag_counts(tag_count: File, cohort: str) -> File:
-    """Rename the tag count file to include the cohort name."""
-    out_path = os.path.join(os.path.dirname(tag_count.path), f"{cohort}.TagCount.csv")
-    os.rename(tag_count.path, out_path)
     return File(out_path)
 
 
