@@ -182,9 +182,9 @@
               propagatedBuildInputs = python-dependencies ++ other-dependencies ++ [ gbs-prism-R-scripts ];
 
               postInstall = ''
-                # install config file alongside Python package
+                # install config alongside Python package
                 mkdir $out/config
-                cp config/eri-executor.jsonnet $out/config/eri-executor.jsonnet
+                cp config/cluster-executor.{jsonnet,libsonnet} $out/config
               '';
             };
 
@@ -236,7 +236,7 @@
           # a function from environment name to an attrset containing
           # the environment variables required to run gquery in the given eRI environment
           gbs-prism-env-attrs = env: (gquery-env.attrs env) // {
-            GBS_PRISM_EXECUTOR_CONFIG = f: f.stringify "${gbs-prism}/config/eri-executor.jsonnet";
+            CLUSTER_EXECUTOR_CONFIG_PATH = f: f.stringify "${gbs-prism}/config";
             GQUERY_ROOT = f: f.joinpath [ (f.getenv "HOME") (f.stringify "gquery-logs") ];
             GENO_ROOT = f: f.joinpath [ (f.getenv "HOME") (f.stringify "geno-logs") ];
           };
@@ -313,7 +313,8 @@
                   let
                     gbs-prism-env = env: (gbs-prism-bundle-env-attrs env) //
                       {
-                        REDUN_CONFIG = if env == "prod" then f: (f.joinpath [ (f.getenv "pwd") (f.stringify "config/redun.${env}") ]) else null;
+                        CLUSTER_EXECUTOR_CONFIG_PATH = f: f.joinpath [ (f.getenv "PWD") (f.stringify "config") ];
+                        REDUN_CONFIG = if env == "prod" then f: (f.joinpath [ (f.getenv "PWD") (f.stringify "config/redun.${env}") ]) else null;
                       };
 
                     bash-export-env = gquery-env.bash-export-env-attrs "gbs_prism" gbs-prism-env;
