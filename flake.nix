@@ -236,16 +236,16 @@
           # a function from environment name to an attrset containing
           # the environment variables required to run gquery in the given eRI environment
           gbs-prism-env-attrs = env: (gquery-env.attrs env) // {
-            CLUSTER_EXECUTOR_CONFIG_PATH = f: f.stringify "${gbs-prism}/config";
-            GQUERY_ROOT = f: f.joinpath [ (f.getenv "HOME") (f.stringify "gquery-logs") ];
-            GENO_ROOT = f: f.joinpath [ (f.getenv "HOME") (f.stringify "geno-logs") ];
+            CLUSTER_EXECUTOR_CONFIG_PATH = "${gbs-prism}/config";
+            GQUERY_ROOT = "\${HOME}/gquery-logs";
+            GENO_ROOT = "\${HOME}/geno-logs";
           };
 
           gbs-prism-bundle-env-attrs = env: (gbs-prism-env-attrs env) // {
-            GBS_PRISM = f: f.stringify gbs-prism-bundle;
-            REDUN_CONFIG = f: f.stringify "${gbs-prism-bundle}/config/redun.${env}";
-            REDUN_DB_USERNAME = f: f.stringify "gbs_prism_redun";
-            REDUN_DB_PASSWORD = f: f.stringify "unused because Kerberos";
+            GBS_PRISM = "${gbs-prism-bundle}";
+            REDUN_CONFIG = "${gbs-prism-bundle}/config/redun.${env}";
+            REDUN_DB_USERNAME = "gbs_prism_redun";
+            REDUN_DB_PASSWORD = "unused because Kerberos";
           };
 
           print-lmod-commands = pkgs.writeShellScriptBin "gbs_prism-print-lmod-commands" ''
@@ -313,8 +313,8 @@
                   let
                     gbs-prism-env = env: (gbs-prism-bundle-env-attrs env) //
                       {
-                        CLUSTER_EXECUTOR_CONFIG_PATH = f: f.joinpath [ (f.getenv "PWD") (f.stringify "config") ];
-                        REDUN_CONFIG = if env == "prod" then f: (f.joinpath [ (f.getenv "PWD") (f.stringify "config/redun.${env}") ]) else null;
+                        CLUSTER_EXECUTOR_CONFIG_PATH = "$PWD/config";
+                        REDUN_CONFIG = if env == "prod" then "$PWD/config/redun.${env}" else null;
                       };
 
                     bash-export-env = gquery-env.bash-export-env-attrs "gbs_prism" gbs-prism-env;
