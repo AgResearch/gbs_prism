@@ -322,16 +322,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1738556506,
-        "narHash": "sha256-Y2TGvIttmQJYNAHO/yP4Jx+ywSx+6kNpnpXlXJusDqQ=",
+        "lastModified": 1753307172,
+        "narHash": "sha256-AD2OnnfMpwgu7NnF6Z94y7G/5cYicN5nlcwIzbgDYOc=",
         "owner": "AgResearch",
         "repo": "KGD",
-        "rev": "31aeb8a62d70706a4385404579b664270c495851",
+        "rev": "b8823573db041927877bbc1249ead3eceac4f06c",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "refs/tags/v1.3.1",
+        "ref": "refs/heads/packaging-for-gbs-prism",
         "repo": "KGD",
         "type": "github"
       }

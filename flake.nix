@@ -21,7 +21,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     kgd = {
-      url = "github:AgResearch/KGD?ref=refs/tags/v1.3.1";
+      # TODO use a tagged version
+      # url = "github:AgResearch/KGD?ref=refs/tags/v1.3.1";
+      url = "github:AgResearch/KGD?ref=refs/heads/packaging-for-gbs-prism";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     GUSbase = {
@@ -61,6 +63,7 @@
             cutadapt = inputs.cutadapt.packages.${system}.default;
             tassel3 = inputs.tassel3.packages.${system}.default;
             kgd-src = inputs.kgd.packages.${system}.src;
+            kgd-rPackages = inputs.kgd.packages.${system}.rPackages;
             GUSbase = inputs.GUSbase.packages.${system}.default;
             gquery = inputs.gquery.packages.${system}.default;
             geno-import = inputs.geno-import.packages.${system}.default;
@@ -133,7 +136,7 @@
           gbs-prism-R-scripts =
             let
               R-with-packages = pkgs.rWrapper.override {
-                packages = [ flakePkgs.GUSbase ];
+                packages = [ flakePkgs.GUSbase ] ++ flakePkgs.kgd-rPackages;
               };
             in
             pkgs.stdenv.mkDerivation {
