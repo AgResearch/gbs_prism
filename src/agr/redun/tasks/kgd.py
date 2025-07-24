@@ -157,7 +157,7 @@ class KgdOutput:
 
     @property
     def gusbase_rdata(self) -> Optional[File]:
-        return self.text_files.get("GUSbase.RData")
+        return self.binary_files.get("GUSbase.RData")
 
 
 def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
