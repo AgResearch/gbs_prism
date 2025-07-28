@@ -109,12 +109,15 @@ The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD
 
 The release process is as follows:
 
-1. Test changes using alpha version e.g. `2.1.0a1` in [pyproject.toml](pyproject.toml) and tag
-2. Install the module under your home directory (below)
-3. Verify all is well by loading the module from there
-4. Merge PR to main
-5. Update version to release e.g. `2.1.0`, push new commit to main, and tag
-6. Install the module publicly
+1. Create a release branch from latest commit on main, e.g. `release-2.1.0`
+2. On the release branch, in [pyproject.toml](pyproject.toml) set the version to some alpha version e.g. `2.1.0a1`, push this change to the branch, create a git tag `2.1.0a1` for that alpha version, and push the git tag
+3. Install the module under your home directory (below)
+4. Verify all is well by loading the module from there
+5. If not OK, go to step 2 with fixes and bump version to e.g. `2.1.0a2`
+6. On the release branch, update version in [pyproject.toml](pyproject.toml) to release e.g. `2.1.0`, push new commit to this branch
+7. Merge release branch to main with a PR
+8. Tag e.g. `2.1.0` on main branch after merging
+9. Install the module publicly (below)
 
 [Python packaging version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers) look like `2.1.0a1`, `2.1.0a2` for alpha releases and `2.1.0` for actual releases.
 
