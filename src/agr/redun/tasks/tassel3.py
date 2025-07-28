@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from redun import task, File
 from typing import Any
@@ -263,6 +264,11 @@ def get_fastq_to_tag_count(
         get_tool_config(tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)),
         job_context=job_context,
     )
+    # need to remove previous output in case we have a keyfile with different blindings,
+    # to avoid overlaying new counts with old
+    shutil.rmtree(tassel3.tag_counts_dir, ignore_errors=True)
+
+    # and now ensure the output directory is present
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
 
     tassel3.symlink_key(in_path=keyfile.path)
