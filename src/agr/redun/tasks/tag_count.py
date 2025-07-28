@@ -3,7 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-from agr.util.path import symlink, prefixed
+from agr.util.path import symlink, symlink_rel, prefixed
 from agr.redun import JobContext
 from agr.gbs_prism.ramify_tassel_keyfile import ramify, merge_results, merge_counts
 from agr.redun.tasks.tassel3 import (
@@ -45,7 +45,7 @@ def _create_merged_directory_tree(
     key_dir = os.path.join(work_dir, "key")
     os.makedirs(key_dir, exist_ok=True)
     local_keypath = os.path.join(key_dir, os.path.basename(keyfile.path))
-    symlink(keyfile.path, local_keypath, force=True)
+    symlink_rel(keyfile.path, local_keypath, force=True)
 
     # Illumina directory containing all the fastq files
     illumina_dir = os.path.join(work_dir, "Illumina")

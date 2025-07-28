@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 import shutil
@@ -6,7 +5,7 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Any
 
-from agr.util.path import symlink, prefixed
+from agr.util.path import symlink_rel, prefixed
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 from agr.redun.cluster_executor import (
@@ -19,8 +18,6 @@ from agr.redun.cluster_executor import (
     FilteredGlob,
 )
 from agr.redun import JobContext
-
-logger = logging.getLogger(__name__)
 
 FASTQ_TO_TAG_COUNT_PLUGIN = "FastqToTagCount"
 MERGE_TAXA_TAG_COUNT_PLUGIN = "MergeTaxaTagCount"
@@ -166,8 +163,7 @@ class Tassel3:
     def symlink_key(self, in_path: str):
         os.makedirs(self.key_dir, exist_ok=True)
         key_path = os.path.join(self.key_dir, os.path.basename(in_path))
-        logger.info("symlink %s %s" % (in_path, key_path))
-        symlink(in_path, key_path, force=True)
+        symlink_rel(in_path, key_path, force=True)
 
     def fastq_to_tag_count_job_spec(self, enzyme: str) -> JobNSpec:
         return self._tassel_plugin_job_n_spec(

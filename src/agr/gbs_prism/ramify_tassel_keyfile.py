@@ -10,7 +10,7 @@ import os
 import re
 import itertools
 
-from agr.util.path import symlink
+from agr.util.path import symlink, symlink_rel
 
 BARCODE_LENGTH = 10
 
@@ -259,7 +259,7 @@ def merge_results(
             unique_count_files.add(base)
             target = os.path.join(merge_folder, base)
             source = os.path.join(part_folder, "tagCounts", base)
-            symlink(source, target, force=True)
+            symlink_rel(source, target, force=True)
             targets.append(target)
     return targets
 
