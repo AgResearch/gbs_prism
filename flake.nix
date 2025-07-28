@@ -31,10 +31,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      # TODO revert to main branch
-      # url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
-      # url = "/home/guestsi/vc/agr-devops/gquery";
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/uber-keyfiles";
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
