@@ -21,9 +21,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     kgd = {
-      # TODO use a tagged version
-      # url = "github:AgResearch/KGD?ref=refs/tags/v1.3.1";
-      url = "github:AgResearch/KGD?ref=refs/heads/packaging-for-gbs-prism";
+      url = "github:AgResearch/KGD?ref=refs/tags/v1.3.2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     GUSbase = {

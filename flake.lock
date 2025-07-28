@@ -300,16 +300,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1753323112,
-        "narHash": "sha256-k1+HfDXjP3612cOgX8HUf0f0dTE7X0ih5cmjjpUAQCU=",
-        "ref": "refs/heads/uber-keyfiles",
-        "rev": "f591f86cbe7f9397f87dd08cff832c541ca20341",
+        "lastModified": 1753667043,
+        "narHash": "sha256-q1nwaA2Pt+M5nVz+ueMSquLCiYWNhs32T4ZwOemH7rg=",
+        "ref": "refs/heads/main",
+        "rev": "dbc0d882c7bc7a6f0dcd3aabfada0156e025557a",
         "revCount": 428,
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       },
       "original": {
-        "ref": "refs/heads/uber-keyfiles",
+        "ref": "refs/heads/main",
         "type": "git",
         "url": "ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery"
       }
@@ -322,16 +322,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1753307172,
-        "narHash": "sha256-AD2OnnfMpwgu7NnF6Z94y7G/5cYicN5nlcwIzbgDYOc=",
+        "lastModified": 1753671526,
+        "narHash": "sha256-p+xnONBCsZ6KjdOGLH2GQeXK1ekOjWjKB3qP261+GfE=",
         "owner": "AgResearch",
         "repo": "KGD",
-        "rev": "b8823573db041927877bbc1249ead3eceac4f06c",
+        "rev": "eb56c24aed3facf2c31a98c93ae85abfd077e47f",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "refs/heads/packaging-for-gbs-prism",
+        "ref": "refs/tags/v1.3.2",
         "repo": "KGD",
         "type": "github"
       }
