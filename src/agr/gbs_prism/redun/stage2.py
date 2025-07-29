@@ -22,6 +22,7 @@ from agr.redun.tasks import (
     collate_tags_reads,
     collate_tags_reads_kgdstats,
     cutadapt_all,
+    demultiplex,
     fastq_sample_all,
     get_keyfile_for_tassel,
     get_keyfile_for_gbsx,
@@ -29,14 +30,6 @@ from agr.redun.tasks import (
     kgd,
     import_gbs_read_tag_counts,
     create_cohort_gbs_kgd_stats_import,
-    # Tassel:
-    get_fastq_to_tag_count,
-    get_tag_count,
-    merge_taxa_tag_count,
-    tag_count_to_tag_pair,
-    tag_pair_to_tbt,
-    tbt_to_map_info,
-    map_info_to_hap_map,
 )
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
@@ -85,7 +78,7 @@ def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]
                     fastq_basename
                     if not blind
                     else fastq_name_for_tassel3(
-                        spec.cohort, flowcell_id(spec.run), fastq_basename
+                        spec.cohort.libname, flowcell_id(spec.run), fastq_basename
                     )
                 ),
             )
@@ -132,13 +125,11 @@ class CohortOutput:
     keyfile_for_tassel: File
     keyfile_for_gbsx: File
     tag_count: File
-    fastq_to_tag_count_stdout: File
+    # this is usually a dict of length 1 whose key is the cohort name,
+    # except if there were multiple parts, in which case the keys are
+    # a composite of cohort name and part.
+    fastq_to_tag_count_stdout: dict[str, File]
     collated_tag_count: File
-    merged_all_count: File
-    tag_pair: File
-    tags_by_taxa: File
-    map_info: File
-    hap_map_files: list[File]
     kgd_output: KgdOutput
     gbs_kgd_stats_import: Optional[File]
     collated_kgd_stats: Optional[File]
@@ -212,28 +203,19 @@ def run_cohort(
         keyfile_for_tassel,
     )
 
-    fastq_to_tag_count = get_fastq_to_tag_count(
-        cohort_blind_dir, spec.cohort, keyfile_for_tassel, job_context=job_context
+    demultiplexed = demultiplex(
+        work_dir=cohort_blind_dir,
+        enzyme=spec.cohort.enzyme,
+        keyfile=keyfile_for_tassel,
+        job_context=job_context,
+        prefix=spec.cohort.name,
     )
-
-    tag_count = get_tag_count(fastq_to_tag_count.stdout, prefix=spec.cohort.name)
+    tag_count = demultiplexed.tag_count
     collated_tag_count = collate_tags_reads(
         run=spec.run,
         cohort=spec.cohort.name,
         tag_counts=tag_count,
         out_path=os.path.join(cohort_blind_dir, "CollatedTagCount.tsv"),
-    )
-
-    merged_all_count = merge_taxa_tag_count(
-        cohort_blind_dir, fastq_to_tag_count.tag_counts, job_context=job_context
-    )
-    tag_pair = tag_count_to_tag_pair(
-        cohort_blind_dir, merged_all_count, job_context=job_context
-    )
-    tags_by_taxa = tag_pair_to_tbt(cohort_blind_dir, tag_pair, job_context=job_context)
-    map_info = tbt_to_map_info(cohort_blind_dir, tags_by_taxa, job_context=job_context)
-    hap_map_files = map_info_to_hap_map(
-        cohort_blind_dir, map_info, job_context=job_context
     )
 
     unblind_script = get_unblind_script(
@@ -250,16 +232,16 @@ def run_cohort(
     )
 
     hap_map_files_unblind = unblind_all(
-        hap_map_files,
+        demultiplexed.hap_map_files,
         unblind_script,
         hap_map_dir(cohort_dir),
     )
 
     kgd_output = kgd(
-        cohort_blind_dir,
-        spec.target.genotyping_method,
-        hap_map_files,
+        work_dir=cohort_blind_dir,
+        hap_map_files=demultiplexed.hap_map_files,
         job_context=job_context,
+        genotyping_method=spec.target.genotyping_method,
     )
 
     collated_kgd_stats = collate_tags_reads_kgdstats(
@@ -313,13 +295,8 @@ def run_cohort(
         keyfile_for_tassel=keyfile_for_tassel,
         keyfile_for_gbsx=keyfile_for_gbsx,
         tag_count=tag_count,
-        fastq_to_tag_count_stdout=fastq_to_tag_count.stdout,
+        fastq_to_tag_count_stdout=demultiplexed.fastq_to_tag_count_stdout,
         collated_tag_count=collated_tag_count,
-        merged_all_count=merged_all_count,
-        tag_pair=tag_pair,
-        tags_by_taxa=tags_by_taxa,
-        map_info=map_info,
-        hap_map_files=hap_map_files,
         kgd_output=kgd_output,
         gbs_kgd_stats_import=gbs_kgd_stats_import,
         collated_kgd_stats=collated_kgd_stats,

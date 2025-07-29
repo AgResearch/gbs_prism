@@ -3,6 +3,7 @@
 /redun.log
 /.psij/
 __pycache__*
+/dist/
 /result*
 /gbs_prism.log
 /*.json

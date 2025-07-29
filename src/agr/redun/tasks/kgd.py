@@ -22,7 +22,6 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "CallRate.png",
     "Co-call-HWdgm.05.png",
     "Co-call-.png",
-    "ColourKeydepth.png",
     "ColourKeyHWdgm.05heatmap.png",
     "finplot.png",
     "GcompareHWdgm.05.png",
@@ -31,10 +30,8 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
     "G-diag.png",
     "GHWdgm.05diagdepth.png",
     "GHWdgm.05-diag.png",
-    "G.splitdiagdepth.png",
     "Heatmap-G5HWdgm.05.png",
     "HWdisMAFsig.png",
-    "InbCompare.png",
     "LRT-hist.png",
     "LRT-QQ.png",
     "MAFHWdgm.05.png",
@@ -54,6 +51,9 @@ KGD_OUTPUT_PLOTS_REQUIRED = [
 ]
 
 KGD_OUTPUT_PLOTS_OPTIONAL = [
+    "ColourKeydepth.png",
+    "G.splitdiagdepth.png",
+    "InbCompare.png",
     "PlateDepth.png",
     "PlateInb.png",
     "SubplateDepth.png",
@@ -181,9 +181,9 @@ def kgd_dir(work_dir: str) -> str:
 @task()
 def kgd(
     work_dir: str,
-    genotyping_method: str,
     hap_map_files: list[File],
     job_context: JobContext,
+    genotyping_method: str = "default",
 ) -> KgdOutput:
     out_dir = kgd_dir(work_dir)
     hapmap_dir = os.path.join(work_dir, "hapMap")

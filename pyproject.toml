@@ -1,6 +1,6 @@
 [project]
 name = "gbs_prism"
-version = "2.2.0"
+version = "2.3.0a2"
 description = "GBS Prism pipeline"
 readme = "README.md"
 requires-python = ">=3.10"

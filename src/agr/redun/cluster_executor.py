@@ -457,11 +457,23 @@ def deep_get(values: Any, path: str, default: Any = None) -> Any:
     return values
 
 
-def get_config_path(config_path_env: str) -> str:
-    assert (
-        config_path_env in os.environ
-    ), f"Missing environment variable {config_path_env}"
-    return os.environ[config_path_env]
+CLUSTER_EXECUTOR_CONFIG_PATH = os.environ.get(
+    "CLUSTER_EXECUTOR_CONFIG_PATH", "."
+).split(":")
+
+
+def jsonnet_import_callback(base, rel):
+    logger.debug(f"jsonnet_import_callback({base}, {rel})")
+    for import_dir in CLUSTER_EXECUTOR_CONFIG_PATH:
+        import_path = os.path.join(import_dir, rel)
+        try:
+            with open(import_path, "rb") as f:
+                return import_path, f.read()
+        except FileNotFoundError:
+            pass
+    raise FileNotFoundError(
+        f"jsonnet import {rel} not found on path {CLUSTER_EXECUTOR_CONFIG_PATH}"
+    )
 
 
 @singleton
@@ -478,18 +490,35 @@ class ClusterExecutorConfig:
 
         return self._path
 
-    def read_config(self, path: str):
-        try:
-            with open(path, "r") as config_f:
-                raw_config = config_f.read()
-                json_config = _jsonnet.evaluate_snippet(path, raw_config)
+    def read_config(self):
+        CONFIG = "cluster-executor.jsonnet"
+        # attempt to read config file from somewhere on the path
+        for config_dir in CLUSTER_EXECUTOR_CONFIG_PATH:
+            path = os.path.join(config_dir, CONFIG)
+            try:
+                with open(path, "r") as config_f:
+                    logger.debug(f"ClusterExecutorConfig path = {path}")
+                    self._path = path
+                    raw_config = config_f.read()
+            except FileNotFoundError:
+                continue
+
+            try:
+                json_config = _jsonnet.evaluate_snippet(
+                    path, raw_config, import_callback=jsonnet_import_callback
+                )
                 self._config = json.loads(json_config)
-        except Exception as ex:
-            raise ConfigError(
-                message="invalid Jsonnet configuration", path=path, cause=ex
-            )
-        self._configured = True
-        self._path = path
+            except Exception as ex:
+                raise ConfigError(
+                    message="invalid Jsonnet configuration", path=path, cause=ex
+                )
+
+            self._configured = True
+            return
+
+        raise ConfigError(
+            message=f"can't find {CONFIG} in {':'.join(CLUSTER_EXECUTOR_CONFIG_PATH)}"
+        )
 
     def get(self, path: str, default: Any = None) -> Any:
         assert (
@@ -511,12 +540,10 @@ def get_tool_config(tool: str) -> dict[str, Any]:
     return get_tool_config_and_path(tool)[0]
 
 
-def create_cluster_executor_config(
-    config_path: str,
-):
+def create_cluster_executor_config():
     """
     Create the cluster executor configuration.
     Must be done before any configuration may be accessed.
     """
     cluster_config = ClusterExecutorConfig()
-    cluster_config.read_config(config_path)
+    cluster_config.read_config()

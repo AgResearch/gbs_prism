@@ -1,5 +1,4 @@
 import logging
-import os
 from redun import task, File
 from redun.context import get_context
 from redun.scheduler import catch_all
@@ -94,12 +93,7 @@ def main(
 def init():
     """Early initialization."""
     # initialise cluster executor configuration before anyone needs to use it
-    executor_config_env = "GBS_PRISM_EXECUTOR_CONFIG"
-    assert (
-        executor_config_env in os.environ
-    ), f"Missing environment variable {executor_config_env}"
-    config_path = os.environ[executor_config_env]
-    _ = create_cluster_executor_config(config_path)
+    _ = create_cluster_executor_config()
 
 
 init()

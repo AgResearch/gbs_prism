@@ -6,6 +6,7 @@ from .bwa import bwa_aln_one, bwa_aln_all, bwa_samse_one, bwa_samse_all
 from .collate_tags_reads import collate_tags_reads, collate_tags_reads_kgdstats
 from .cutadapt import cutadapt_one, cutadapt_all
 from .dedupe import dedupe_one, dedupe_all
+from .demultiplex import demultiplex
 from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
 from .fastq_sample import fastq_sample_one, fastq_sample_all
 from .fastqc import fastqc_one, fastqc_all
@@ -21,6 +22,7 @@ from .gupdate import (
     import_gbs_kgd_stats,
 )
 from .gusbase import gusbase
+from .tag_count import create_consolidated_tag_count
 from .tags import (
     get_tags_reads_summary,
     get_tags_reads_list,
@@ -61,6 +63,7 @@ __all__ = [
     "cutadapt_all",
     "dedupe_one",
     "dedupe_all",
+    "demultiplex",
     "fake_bcl_convert",
     "fastq_sample_one",
     "fastq_sample_all",
@@ -79,6 +82,7 @@ __all__ = [
     "multiqc",
     "real_or_fake_bcl_convert",
     # Tassel:
+    "create_consolidated_tag_count",
     "get_fastq_to_tag_count",
     "get_tag_count",
     "get_tags_reads_summary",
