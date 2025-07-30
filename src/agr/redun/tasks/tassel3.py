@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Any
 
-from agr.util.path import symlink, prefixed
+from agr.util.path import prefixed
 from agr.util.subprocess import run_catching_stderr
 from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 from agr.redun.cluster_executor import (
@@ -163,12 +163,6 @@ class Tassel3:
     def hap_map_dir(self) -> str:
         return hap_map_dir(self._work_dir)
 
-    def symlink_key(self, in_path: str):
-        os.makedirs(self.key_dir, exist_ok=True)
-        key_path = os.path.join(self.key_dir, os.path.basename(in_path))
-        logger.info("symlink %s %s" % (in_path, key_path))
-        symlink(in_path, key_path, force=True)
-
     def fastq_to_tag_count_job_spec(self, enzyme: str) -> JobNSpec:
         return self._tassel_plugin_job_n_spec(
             plugin=FASTQ_TO_TAG_COUNT_PLUGIN,
@@ -243,7 +237,7 @@ class FastqToTagCountOutput:
 
 @task()
 def get_fastq_to_tag_count(
-    work_dir: str, enzyme: str, keyfile: File, job_context: JobContext
+    work_dir: str, enzyme: str, job_context: JobContext
 ) -> FastqToTagCountOutput:
     tassel3 = Tassel3(
         work_dir,
@@ -257,7 +251,6 @@ def get_fastq_to_tag_count(
     # and now ensure the output directory is present
     os.makedirs(tassel3.tag_counts_dir, exist_ok=True)
 
-    tassel3.symlink_key(in_path=keyfile.path)
     result_files = run_job_n(tassel3.fastq_to_tag_count_job_spec(enzyme))
 
     return FastqToTagCountOutput(

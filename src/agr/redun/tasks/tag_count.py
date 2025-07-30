@@ -3,7 +3,7 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-from agr.util.path import symlink, prefixed
+from agr.util.path import symlink, symlink_rel, prefixed
 from agr.redun import JobContext
 from agr.gbs_prism.ramify_tassel_keyfile import ramify, merge_results, merge_counts
 from agr.redun.tasks.tassel3 import (
@@ -33,19 +33,12 @@ def _create_merged_directory_tree(
     work_dir: str,
     part_dirs: list[str],
     merge_folder: str,
-    keyfile: File,
 ):
     # create expected directory structure in the merge folder,
     # which is done by get_fastq_to_tag_count in the single part case
 
     os.makedirs(work_dir, exist_ok=True)
     os.makedirs(merge_folder, exist_ok=True)
-
-    # create and populate key directory
-    key_dir = os.path.join(work_dir, "key")
-    os.makedirs(key_dir, exist_ok=True)
-    local_keypath = os.path.join(key_dir, os.path.basename(keyfile.path))
-    symlink(keyfile.path, local_keypath, force=True)
 
     # Illumina directory containing all the fastq files
     illumina_dir = os.path.join(work_dir, "Illumina")
@@ -64,7 +57,6 @@ def _merge_results_and_counts(
     parts_dir: str,
     part_dirs: list[str],
     merge_folder: str,
-    keyfile: File,
     stdout: dict[str, File],
     tag_counts_list: list[list[File]],
     prefix: str,
@@ -81,7 +73,6 @@ def _merge_results_and_counts(
         work_dir=work_dir,
         part_dirs=part_dirs,
         merge_folder=merge_folder,
-        keyfile=keyfile,
     )
 
     # merge the outputs into the top level folder
@@ -111,6 +102,11 @@ def create_consolidated_tag_count(
     job_context: JobContext,
     prefix: str = "",
 ) -> ConsolidatedTagCount:
+    key_dir = os.path.join(work_dir, "key")
+    os.makedirs(key_dir, exist_ok=True)
+    key_path = os.path.join(key_dir, os.path.basename(keyfile.path))
+    symlink_rel(keyfile.path, key_path, force=True)
+
     tagCounts_parts_dir = os.path.join(work_dir, "tagCounts_parts")
     tagCounts_dir = os.path.join(work_dir, "tagCounts")
     os.makedirs(tagCounts_parts_dir, exist_ok=True)
@@ -125,7 +121,6 @@ def create_consolidated_tag_count(
             fastq_to_tag_count = get_fastq_to_tag_count(
                 work_dir=part_dir,
                 enzyme=enzyme,
-                keyfile=keyfile,
                 job_context=job_context,
             )
             stdout[prefixed(os.path.basename(part_dir), prefix=prefix)] = (
@@ -138,7 +133,6 @@ def create_consolidated_tag_count(
             parts_dir=tagCounts_parts_dir,
             part_dirs=part_dirs,
             merge_folder=tagCounts_dir,
-            keyfile=keyfile,
             stdout=stdout,
             tag_counts_list=tag_counts_list,
             prefix=prefix,
@@ -148,7 +142,6 @@ def create_consolidated_tag_count(
         fastq_to_tag_count = get_fastq_to_tag_count(
             work_dir=work_dir,
             enzyme=enzyme,
-            keyfile=keyfile,
             job_context=job_context,
         )
 

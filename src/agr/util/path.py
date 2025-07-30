@@ -56,6 +56,25 @@ def symlink(
     os.symlink(src, dst, target_is_directory=target_is_directory, dir_fd=dir_fd)
 
 
+def symlink_rel(
+    src: str,
+    dst: str,
+    *,
+    force=False,
+    target_is_directory: bool = False,
+    dir_fd: int | None = None,
+):
+    """Create a relative symlink, supporting our own force argument (above)."""
+    rel_src = os.path.relpath(src, os.path.dirname(dst))
+    symlink(
+        src=rel_src,
+        dst=dst,
+        force=force,
+        target_is_directory=target_is_directory,
+        dir_fd=dir_fd,
+    )
+
+
 def expand(path: str) -> str:
     """Expand both tildes and environment variables."""
     return os.path.expanduser(os.path.expandvars(path))
