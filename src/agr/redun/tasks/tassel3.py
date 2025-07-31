@@ -190,6 +190,10 @@ class Tassel3:
             plugin_args=[
                 "-t",
                 "y" if merge else "n",
+                "-m",
+                "600000000",
+                "-x",
+                "100000000",
             ],
             result_path=os.path.join(self.merged_tag_counts_dir, "mergedAll.cnt"),
         )
