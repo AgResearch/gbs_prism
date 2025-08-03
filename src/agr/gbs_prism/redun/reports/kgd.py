@@ -21,7 +21,7 @@ redun_namespace = "agr.gbs_prism.reports"
 class KgdTargets:
     kgd_output: KgdOutput
     kgd_text_files_unblind: dict[str, File]
-    hap_map_files_unblind: list[File]
+    hap_map_files_unblind: dict[str, File]
 
     def kgd_output_file(self, name: str) -> Optional[File]:
         """Look in all locations: plots, text files, binary files."""
@@ -87,21 +87,16 @@ def kgd_links_section(cohorts_targets: dict[str, KgdTargets], relbase: str) -> S
 def hap_map_files_section(
     cohorts_targets: dict[str, KgdTargets], relbase: str
 ) -> Section:
-    cohorts_hap_map_files = {
-        cohort_name: {
-            os.path.basename(hap_map_file.path): hap_map_file
-            for hap_map_file in cohort.hap_map_files_unblind
-        }
-        for (cohort_name, cohort) in cohorts_targets.items()
-    }
     return Section(
         name="Hapmap files",
         rows=[
             Row(
                 name=f"hapMap/{name}",
                 by_column={
-                    cohort_name: link_or_none(cohort.get(name), relbase)
-                    for (cohort_name, cohort) in cohorts_hap_map_files.items()
+                    cohort_name: link_or_none(
+                        cohort.hap_map_files_unblind[name], relbase
+                    )
+                    for (cohort_name, cohort) in cohorts_targets.items()
                 },
             )
             for name in _HAPMAP_FILES

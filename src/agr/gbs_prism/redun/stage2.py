@@ -42,7 +42,6 @@ from agr.redun.tasks.unblind import (
     get_unblind_script,
     unblind_one,
     unblind_optional,
-    unblind_all,
     unblind_each,
 )
 from agr.gbs_prism.redun.reports.kgd import create_kgd_report, KgdTargets
@@ -136,7 +135,7 @@ class CohortOutput:
     collated_kgd_stats_unblind: Optional[File]
     gusbase_comet: Optional[File]
     tag_count_unblind: File
-    hap_map_files_unblind: list[File]
+    hap_map_files_unblind: dict[str, File]
     kgd_text_files_unblind: dict[str, File]
     kgd_stdout_unblind: Optional[File]
     kgd_report: Optional[File]
@@ -231,7 +230,7 @@ def run_cohort(
         tag_count, unblind_script, spec.paths.cohort_dir(spec.cohort.name)
     )
 
-    hap_map_files_unblind = unblind_all(
+    hap_map_files_unblind = unblind_each(
         demultiplexed.hap_map_files,
         unblind_script,
         hap_map_dir(cohort_dir),
@@ -239,7 +238,7 @@ def run_cohort(
 
     kgd_output = kgd(
         work_dir=cohort_blind_dir,
-        hap_map_files=demultiplexed.hap_map_files,
+        hap_map_file=demultiplexed.hap_map_file,
         job_context=job_context,
         genotyping_method=spec.target.genotyping_method,
     )
