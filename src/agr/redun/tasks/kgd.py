@@ -88,19 +88,6 @@ KGD_OUTPUT_BINARY_FILES_REQUIRED = [
 KGD_TOOL_NAME = "KGD"
 
 
-def _primary_hap_map_path(all_hapmap_paths: list[str]) -> str:
-    hapmap_candidates = ["HapMap.hmc.txt.blinded", "HapMap.hmc.txt"]
-    for hapmap_candidate in hapmap_candidates:
-        for hapmap_path in all_hapmap_paths:
-            if os.path.basename(hapmap_path) == hapmap_candidate:
-                return hapmap_path
-
-    assert False, "failed to find any of %s in %s" % (
-        ", ".join(hapmap_candidates),
-        ", ".join(all_hapmap_paths),
-    )
-
-
 def _kgd_job_spec(
     out_dir: str,
     hapmap_path: str,
@@ -168,12 +155,6 @@ def kgd_output_files(kgd_output: KgdOutput) -> list[File]:
     return [file for file in file_vars.values() if file is not None]
 
 
-def _get_primary_hap_map_file(hap_map_files: list[File]) -> File:
-    return File(
-        _primary_hap_map_path([hap_map_file.path for hap_map_file in hap_map_files])
-    )
-
-
 def kgd_dir(work_dir: str) -> str:
     return os.path.join(work_dir, "KGD")
 
@@ -181,7 +162,7 @@ def kgd_dir(work_dir: str) -> str:
 @task()
 def kgd(
     work_dir: str,
-    hap_map_files: list[File],
+    hap_map_file: File,
     job_context: JobContext,
     genotyping_method: str = "default",
 ) -> KgdOutput:
@@ -192,7 +173,7 @@ def kgd(
 
     kgd_job_spec = _kgd_job_spec(
         out_dir=out_dir,
-        hapmap_path=_get_primary_hap_map_file(hap_map_files).path,
+        hapmap_path=hap_map_file.path,
         genotyping_method=genotyping_method,
         job_context=job_context,
     )

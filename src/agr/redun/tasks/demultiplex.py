@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 class DemultiplexOutput:
     tag_count: File
     fastq_to_tag_count_stdout: dict[str, File]
-    hap_map_files: list[File]
+    hap_map_files: dict[str, File]
+
+    @property
+    def hap_map_file(self) -> File:
+        return self.hap_map_files["HapMap.hmc.txt"]
 
 
 @task()

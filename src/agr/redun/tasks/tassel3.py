@@ -31,7 +31,12 @@ TBT_TO_MAP_INFO_PLUGIN = "TBTToMapInfo"
 
 FASTQ_TO_TAG_COUNT_STDOUT = "stdout"
 FASTQ_TO_TAG_COUNT_COUNTS = "counts"
-HAP_MAP_FILES = "hap_map_files"
+
+HAP_MAP_FILES = [
+    "HapMap.fas.txt",
+    "HapMap.hmc.txt",
+    "HapMap.hmp.txt",
+]
 
 
 def tassel3_tool_name(plugin: str) -> str:
@@ -227,9 +232,12 @@ class Tassel3:
         return self._tassel_plugin_job_n_spec(
             plugin=MAP_INFO_TO_HAP_MAP_PLUGIN,
             plugin_args=["-mnMAF", "0.03", "-mnC", "0.1"],
-            expected_globs={
-                HAP_MAP_FILES: FilteredGlob("%s/*" % self.hap_map_dir),
-            },
+            expected_paths=ExpectedPaths(
+                required={
+                    basename: os.path.join(self.hap_map_dir, basename)
+                    for basename in HAP_MAP_FILES
+                }
+            ),
         )
 
 
@@ -347,7 +355,7 @@ def tbt_to_map_info(work_dir: str, tags_by_taxa: File, job_context: JobContext) 
 @task()
 def map_info_to_hap_map(
     work_dir: str, map_info: File, job_context: JobContext
-) -> list[File]:
+) -> dict[str, File]:
     _ = map_info  # depending on existence rather than value
     tassel3 = Tassel3(
         work_dir,
@@ -359,7 +367,7 @@ def map_info_to_hap_map(
     result_files = run_job_n(
         tassel3.map_info_to_hap_map_job_spec,
     )
-    return result_files.globbed_files[HAP_MAP_FILES]
+    return result_files.expected_files
 
 
 def hap_map_dir(work_dir: str) -> str:
