@@ -35,6 +35,7 @@ def demultiplex(
     keyfile: File,
     job_context: JobContext,
     prefix: str = "",
+    merge_taxa: bool = False,
 ) -> DemultiplexOutput:
     consolidated_tag_count = create_consolidated_tag_count(
         work_dir=work_dir,
@@ -46,7 +47,7 @@ def demultiplex(
     merged_all_count = merge_taxa_tag_count(
         work_dir,
         consolidated_tag_count.tag_counts,
-        merge=consolidated_tag_count.merged,
+        merge=merge_taxa,
         job_context=job_context,
     )
     tag_pair = tag_count_to_tag_pair(

@@ -18,10 +18,6 @@ class ConsolidatedTagCount:
     tag_counts: list[File]
     tag_count: File
 
-    # whether we had multiple parts and therefore merged them
-    # which may affect downstream processing
-    merged: bool
-
     # In the multi-part case we need to keep each stdout separately
     # since these are reported on in `collate_barcode_yields`, in which case
     # the key is a composite of the cohort name the basename of the part directory.
@@ -89,7 +85,6 @@ def _merge_results_and_counts(
     return ConsolidatedTagCount(
         tag_counts=tag_counts,
         tag_count=File(tag_count_path),
-        merged=True,
         stdout=stdout,
     )
 
@@ -150,6 +145,5 @@ def create_consolidated_tag_count(
         return ConsolidatedTagCount(
             tag_counts=fastq_to_tag_count.tag_counts,
             tag_count=tag_count,
-            merged=False,
             stdout={prefix: fastq_to_tag_count.stdout},
         )
