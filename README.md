@@ -124,8 +124,6 @@ The release process is as follows:
 The eRI module installer is available as a Nix Flake app, so the install process for the end-user facing environment module and script is as follows, and should be done on `login-1` for faster Nix build.
 
 To install in your home directory (for testing prior to general release):
-To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
-
 ```
 login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0a4'
 
@@ -133,9 +131,9 @@ login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
 ```
+To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
 
-
-To install the verified pipeline as a verified module on the system:
+Then, to install the verified pipeline as a verified module on the system:
 
 ```
 login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0'
