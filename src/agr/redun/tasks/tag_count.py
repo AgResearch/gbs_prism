@@ -89,6 +89,7 @@ def _merge_results_and_counts(
     )
 
 
+# work out what input files Tassel will actually use so we can make redun aware of them
 def illumina_fastq_files(work_dir: str) -> list[File]:
     illumina_dir = os.path.join(work_dir, "Illumina")
     return [
