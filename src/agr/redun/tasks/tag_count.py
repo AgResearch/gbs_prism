@@ -89,6 +89,14 @@ def _merge_results_and_counts(
     )
 
 
+def illumina_fastq_files(work_dir: str) -> list[File]:
+    illumina_dir = os.path.join(work_dir, "Illumina")
+    return [
+        File(os.path.join(illumina_dir, basename))
+        for basename in os.listdir(illumina_dir)
+    ]
+
+
 @task()
 def create_consolidated_tag_count(
     work_dir: str,
@@ -116,6 +124,8 @@ def create_consolidated_tag_count(
             fastq_to_tag_count = get_fastq_to_tag_count(
                 work_dir=part_dir,
                 enzyme=enzyme,
+                keyfile=keyfile,
+                fastq_files=illumina_fastq_files(part_dir),
                 job_context=job_context,
             )
             stdout[prefixed(os.path.basename(part_dir), prefix=prefix)] = (
@@ -137,6 +147,8 @@ def create_consolidated_tag_count(
         fastq_to_tag_count = get_fastq_to_tag_count(
             work_dir=work_dir,
             enzyme=enzyme,
+            keyfile=keyfile,
+            fastq_files=illumina_fastq_files(work_dir),
             job_context=job_context,
         )
 
