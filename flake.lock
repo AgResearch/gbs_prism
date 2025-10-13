@@ -360,16 +360,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1748469442,
-        "narHash": "sha256-jgTo25bYomk2OBkDaT7VJc2l5ldrIvjiQpGPiiP8sJY=",
+        "lastModified": 1760396736,
+        "narHash": "sha256-AtfxqNIshJQmJovBDTQ/tFcCiq+KOlTGVeDWv6ohv+M=",
         "owner": "AgResearch",
         "repo": "redun.nix",
-        "rev": "f7c09677658d52fca1f25cbc2f70a016b3741019",
+        "rev": "f9d8940ececbe7d72f9570000532226ed82f7877",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "main",
+        "ref": "refs/tags/0.32.0-1",
         "repo": "redun.nix",
         "type": "github"
       }
