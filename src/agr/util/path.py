@@ -1,5 +1,6 @@
 import errno
 import os
+import shutil
 from typing import Optional
 
 
@@ -35,10 +36,15 @@ def baseroot(path: str) -> str:
 
 
 def remove_if_exists(path: str):
+    """Silently remove `path` regardless of whether it's a file or whole directory tree."""
     try:
         os.remove(path)
     except OSError as e:
-        if e.errno != errno.ENOENT:
+        if e.errno == errno.ENOENT:
+            pass
+        elif isinstance(e, IsADirectoryError):
+            shutil.rmtree(path)
+        else:
             raise
 
 
