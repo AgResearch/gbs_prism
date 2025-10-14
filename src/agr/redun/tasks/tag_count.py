@@ -145,6 +145,14 @@ def create_consolidated_tag_count(
         )
 
     else:
+        # use the Illumina directory from the single part above via a symlink
+        part1_dir = part_dirs[0]
+        symlink_rel(
+            os.path.join(part1_dir, "Illumina"),
+            os.path.join(work_dir, "Illumina"),
+            force=True,
+        )
+
         fastq_to_tag_count = get_fastq_to_tag_count(
             work_dir=work_dir,
             enzyme=enzyme,
