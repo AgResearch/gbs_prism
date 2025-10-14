@@ -249,8 +249,15 @@ class FastqToTagCountOutput:
 
 @task()
 def get_fastq_to_tag_count(
-    work_dir: str, enzyme: str, job_context: JobContext
+    work_dir: str,
+    enzyme: str,
+    keyfile: File,
+    fastq_files: list[File],
+    job_context: JobContext,
 ) -> FastqToTagCountOutput:
+    # claim to use the inputs, although in fact tassel just looks in the work_dir
+    _ = (keyfile, fastq_files)
+
     tassel3 = Tassel3(
         work_dir,
         get_tool_config(tassel3_tool_name(FASTQ_TO_TAG_COUNT_PLUGIN)),
