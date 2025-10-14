@@ -12,6 +12,7 @@ import os.path
 from dataclasses import dataclass
 
 from redun import task, File
+from redun_psij import JobContext
 from typing import Literal
 
 redun_namespace = "agr.gbs_prism"
@@ -23,7 +24,6 @@ from agr.gbs_prism.gbs_target_spec import (
     GbsTargetSpec,
 )
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
-from agr.redun import JobContext
 from agr.redun.tasks import (
     cook_sample_sheet,
     real_or_fake_bcl_convert,

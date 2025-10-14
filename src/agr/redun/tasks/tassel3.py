@@ -4,21 +4,21 @@ import re
 import shutil
 from dataclasses import dataclass
 from redun import task, File
-from typing import Any
-
-from agr.util.path import prefixed
-from agr.util.subprocess import run_catching_stderr
-from agr.seq.enzyme_sub import enzyme_sub_for_uneak
-from agr.redun.cluster_executor import (
+from redun_psij import (
     get_tool_config,
     run_job_1,
     run_job_n,
     Job1Spec,
     JobNSpec,
+    JobContext,
     ExpectedPaths,
     FilteredGlob,
 )
-from agr.redun import JobContext
+from typing import Any
+
+from agr.util.path import prefixed
+from agr.util.subprocess import run_catching_stderr
+from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 
 logger = logging.getLogger(__name__)
 

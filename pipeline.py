@@ -2,10 +2,9 @@ import logging
 from redun import task, File
 from redun.context import get_context
 from redun.scheduler import catch_all
+from redun_psij import JobContext
 
 from agr.util.path import expand
-from agr.redun.cluster_executor import create_cluster_executor_config
-from agr.redun import JobContext
 from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
     run_stage1,
@@ -88,12 +87,3 @@ def main(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return catch_all((stage1, stage2, stage3, reports, warehoused), Exception, recover)
-
-
-def init():
-    """Early initialization."""
-    # initialise cluster executor configuration before anyone needs to use it
-    _ = create_cluster_executor_config()
-
-
-init()

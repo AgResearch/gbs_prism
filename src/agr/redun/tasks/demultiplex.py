@@ -1,8 +1,8 @@
 import logging
 from dataclasses import dataclass
 from redun import task, File
+from redun_psij import JobContext
 
-from agr.redun import JobContext
 from agr.redun.tasks.tag_count import (
     create_consolidated_tag_count,
 )
