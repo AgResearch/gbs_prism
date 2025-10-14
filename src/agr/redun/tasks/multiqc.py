@@ -4,8 +4,7 @@ import logging
 import os.path
 from redun import task, File
 
-from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import JobContext
+from redun_psij import run_job_1, Job1Spec, JobContext
 
 logger = logging.getLogger(__name__)
 

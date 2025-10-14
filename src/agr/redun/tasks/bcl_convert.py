@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
 
-from agr.redun.cluster_executor import run_job_n, JobNSpec, FilteredGlob
-from agr.redun import JobContext
+from redun_psij import run_job_n, FilteredGlob, JobContext, JobNSpec
 
 logger = logging.getLogger(__name__)
 

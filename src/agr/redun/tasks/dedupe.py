@@ -4,8 +4,8 @@ import os
 import os.path
 from redun import task, File
 
-from agr.redun.cluster_executor import get_tool_config, run_job_1, Job1Spec
-from agr.redun import one_forall, JobContext
+from redun_psij import get_tool_config, run_job_1, Job1Spec, JobContext
+from agr.redun import one_forall
 from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)

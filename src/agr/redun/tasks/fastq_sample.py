@@ -5,8 +5,8 @@ from redun import task, File
 
 from agr.util.subprocess import run_catching_stderr
 from agr.util.path import baseroot
-from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import one_forall, JobContext
+from redun_psij import run_job_1, Job1Spec, JobContext
+from agr.redun import one_forall
 
 logger = logging.getLogger(__name__)
 
