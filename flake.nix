@@ -38,7 +38,7 @@
       inputs.gquery.follows = "gquery";
     };
     redun = {
-      url = "github:AgResearch/redun.nix/main";
+      url = "github:AgResearch/redun.nix?ref=refs/tags/0.32.0-1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
