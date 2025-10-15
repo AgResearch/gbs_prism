@@ -27,9 +27,13 @@ def _dedupe_job_spec(
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ) -> Job1Spec:
     # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
+    # but this means we have to deal with in_path being relative
     out_dir = os.path.dirname(out_path)
     base_path = _base_path(out_path)
     log_path = f"{base_path}.clumpfy.log"
+    if not os.path.isabs(in_path):
+        in_path = os.path.join(os.getcwd(), in_path)
+
     return Job1Spec(
         tool=DEDUPE_TOOL_NAME,
         args=["clumpify.sh"]
