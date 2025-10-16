@@ -109,37 +109,40 @@ The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD
 
 The release process is as follows:
 
-1. Create a release branch from latest commit on main, e.g. `release-2.1.0`
-2. On the release branch, in [pyproject.toml](pyproject.toml) set the version to some alpha version e.g. `2.1.0a1`, push this change to the branch, create a git tag `2.1.0a1` for that alpha version, and push the git tag
+1. Create a release branch from latest commit on main, e.g. `release-2.3.0`
+2. On the release branch, in [pyproject.toml](pyproject.toml) set the version to some alpha version e.g. `2.3.0a4`, push this change to the branch, create a git tag `2.3.0a4` for that alpha version, and push the git tag
 3. Install the module under your home directory (below)
-4. Verify all is well by loading the module from there
-5. If not OK, go to step 2 with fixes and bump version to e.g. `2.1.0a2`
-6. On the release branch, update version in [pyproject.toml](pyproject.toml) to release e.g. `2.1.0`, push new commit to this branch
+4. Verify all is well by loading the module from there and completing a test run of the pipeline
+5. If not OK, go to step 2 with fixes and bump version to e.g. `2.3.0a4`
+6. On the release branch, update version in [pyproject.toml](pyproject.toml) to release e.g. `2.3.0`, push new commit to this branch
 7. Merge release branch to main with a PR
-8. Tag e.g. `2.1.0` on main branch after merging
+8. Tag e.g. `2.3.0` on main branch after merging
 9. Install the module publicly (below)
 
-[Python packaging version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers) look like `2.1.0a1`, `2.1.0a2` for alpha releases and `2.1.0` for actual releases.
+[Python packaging version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers) look like `2.3.0a1`, `2.3.0a2` for alpha releases and `2.3.0` for actual releases.
 
 The eRI module installer is available as a Nix Flake app, so the install process for the end-user facing environment module and script is as follows, and should be done on `login-1` for faster Nix build.
 
+To install in your home directory (for testing prior to general release):
 ```
-login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.1.0'
+login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0a4'
+
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
+login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
+```
+To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
+
+Then, to install the verified pipeline as a verified module on the system:
+
+```
+login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0'
 
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --test $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- $FLAKE_URI
 ```
 
-To install in your home directory (for testing prior to general release):
-
-```
-login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
-login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
-login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
-```
-
-To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
 
 ## Notes
 
