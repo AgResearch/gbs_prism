@@ -61,7 +61,6 @@ KGD_OUTPUT_PLOTS_OPTIONAL = [
 ]
 
 KGD_OUTPUT_TEXT_FILES_REQUIRED = [
-    "HeatmapOrderHWdgm.05.csv",
     "SampleStats.csv",
     "SampleStatsRawCombined.csv",
     "SampleStatsRaw.csv",
@@ -71,6 +70,7 @@ KGD_OUTPUT_TEXT_FILES_REQUIRED = [
 KGD_OUTPUT_TEXT_FILES_OPTIONAL = [
     "HighRelatedness.csv",
     "HighRelatedness.split.csv",
+    "HeatmapOrderHWdgm.05.csv",
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
     "GHW05-long.csv",
