@@ -547,11 +547,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1740357093,
-        "narHash": "sha256-FzASQfI6larBZBXIj0ZdHroj86npXZF5ktXZ1u3F/ZM=",
+        "lastModified": 1760647915,
+        "narHash": "sha256-U2AeOW+KoMfEHe4mrtHIWXXETNaXI+tZtl+aMBnNtbw=",
         "owner": "AgResearch",
         "repo": "tassel3",
-        "rev": "6d2f5b88bc5c0fde7783f775d3e55051445a9d4c",
+        "rev": "5915186478418a3284b49b1226f4a241bef78ead",
         "type": "github"
       },
       "original": {
