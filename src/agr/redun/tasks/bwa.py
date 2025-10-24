@@ -3,8 +3,8 @@ import os.path
 from dataclasses import dataclass
 from redun import task, File
 
-from agr.redun.cluster_executor import run_job_1, Job1Spec
-from agr.redun import one_forall, JobContext
+from redun_psij import run_job_1, Job1Spec, JobContext
+from agr.redun import one_forall
 from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)

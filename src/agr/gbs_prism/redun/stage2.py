@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from agr.redun.tasks.gupdate import import_gbs_kgd_stats, import_gbs_kgd_cohort_stats
 from agr.redun.util import await_results
 from redun import task, File
+from redun_psij import JobContext
 from typing import Optional
 
 redun_namespace = "agr.gbs_prism"
@@ -14,7 +15,6 @@ from agr.redun import concat, lazy_map
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
 from agr.seq.types import flowcell_id, Cohort
-from agr.redun import JobContext
 from agr.redun.tasks import (
     bam_stats_all,
     bwa_aln_all,

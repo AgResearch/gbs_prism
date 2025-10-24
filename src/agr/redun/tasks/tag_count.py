@@ -2,9 +2,9 @@ import os
 import os.path
 from dataclasses import dataclass
 from redun import task, File
+from redun_psij import JobContext
 
 from agr.util.path import symlink, symlink_rel, prefixed
-from agr.redun import JobContext
 from agr.gbs_prism.ramify_tassel_keyfile import ramify, merge_results, merge_counts
 from agr.redun.tasks.tassel3 import (
     get_fastq_to_tag_count,

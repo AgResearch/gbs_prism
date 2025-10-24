@@ -4,13 +4,13 @@ from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
 
-from agr.redun.cluster_executor import (
+from redun_psij import (
     run_job_n_returning_failure,
+    JobContext,
     JobNSpec,
     ExpectedPaths,
     ResultFiles,
 )
-from agr.redun import JobContext
 
 logger = logging.getLogger(__name__)
 
