@@ -13,16 +13,12 @@ local tool_default(job_prefix) = {
   job_attributes: {
     queue_name: 'compute',
     duration: {
-      // fields are Python datetime.timedelta
-      // TODO reduce this down again
-      hours: 4,
+      hours: 6,
     },
     custom_attributes: customised({
-      // all string-valued
       ntasks: '1',
-      // TODO bumped up the defaults for tuning resource requirements, need to drop them down again
-      'cpus-per-task': '1',
-      mem: '1G',
+      'cpus-per-task': '4',
+      mem: '8G',
     }),
   },
 };
@@ -48,7 +44,7 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       bcl_convert: tool_default(job_prefix) {
         job_attributes+: {
           custom_attributes+: customised({
-            'cpus-per-task': '8',
+            'cpus-per-task': '16',
             mem: '50G',
           }),
         },
@@ -57,7 +53,8 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       fastqc: tool_default(job_prefix) {
         job_attributes+: {
           custom_attributes+: customised({
-            mem: '4G',
+            'cpus-per-task': '8',
+            mem: '8G',
           }),
         },
       },
@@ -69,15 +66,15 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       kmer_prism: tool_default(job_prefix),
 
       dedupe: tool_default(job_prefix) {
-        java_max_heap: '520G',
+        java_max_heap: '380G',
         job_attributes+: {
           queue_name: 'hugemem',
           duration: {
-            hours: 2,
+            hours: 6,
           },
           custom_attributes+: customised({
             'cpus-per-task': '6',
-            mem: '550G',
+            mem: '400G',
           }),
         },
       },
@@ -95,9 +92,6 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       bwa_samse: tool_default(job_prefix) {
         job_attributes+: {
           custom_attributes+: customised({
-            // very short running jobs require more frequent sampling to measure resource usage,
-            // but this comes with a cost, so should be only a temporary setting
-            // 'acctg-freq': '1',
             mem: '8G',
           }),
         },
@@ -107,7 +101,7 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
         java_max_heap: '4G',
         job_attributes+: {
           custom_attributes+: customised({
-            mem: '4G',
+            mem: '6G',
           }),
         },
       },
@@ -116,11 +110,10 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
         java_max_heap: '32G',
         job_attributes+: {
           duration: {
-            // because one of these exceeded 4 hours 🤷
-            hours: 8,
+            hours: 12,
           },
           custom_attributes+: customised({
-            mem: '32G',
+            mem: '34G',
           }),
         },
       },
@@ -131,7 +124,7 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
         java_max_heap: '8G',
         job_attributes+: {
           custom_attributes+: customised({
-            mem: '8G',
+            mem: '10G',
           }),
         },
       },
