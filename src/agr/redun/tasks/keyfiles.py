@@ -188,7 +188,7 @@ def get_keyfile_for_tassel(
                 flowcell=fcid,
                 enzyme=cohort.enzyme,
                 gbs_cohort=cohort.gbs_cohort,
-                columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,numberofbarcodes,bifo,control,fastq_link",
+                columns="flowcell,lane,barcode,qc_sampleid as sample,platename,platerow as row,platecolumn as column,libraryprepid,counter,comment,enzyme,species,taxid,numberofbarcodes,windowsize,control,fastq_link,qc_cohort,gbs_cohort,sequencing_platform,geno_method,fullsamplename,factid,createddate,calibration_hint,animalid,stud,uidtag,breed,species,sample_type,genophyle_species,sample as sampleid",
             ),
             items=[cohort.libname],
             outfile=tmp_f,
