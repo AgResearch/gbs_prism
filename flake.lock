@@ -322,16 +322,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1753671526,
-        "narHash": "sha256-p+xnONBCsZ6KjdOGLH2GQeXK1ekOjWjKB3qP261+GfE=",
+        "lastModified": 1761686101,
+        "narHash": "sha256-+sdO0Uts3H3jDh/0fC+Q7tLmBNLg6OlLG3cbB+RuMuQ=",
         "owner": "AgResearch",
         "repo": "KGD",
-        "rev": "eb56c24aed3facf2c31a98c93ae85abfd077e47f",
+        "rev": "fc7cf6b36580dd0a24d19afe2c1d595ab9499b15",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "refs/tags/v1.3.2",
+        "ref": "refs/tags/v1.4.1",
         "repo": "KGD",
         "type": "github"
       }
