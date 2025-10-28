@@ -63,7 +63,7 @@ if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos))) { # only do it if keyf
   #assume only one platename
   keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if(length(table(seqinfo$platename[keypos]))==1) {
-   seqinfo$subplate <- (2*((match(seqinfo$row,LETTERS)+1) %% 2) + 1 + (as.numeric(seqinfo$column)+1) %% 2 )
+   seqinfo$subplate <-  1 + (as.numeric(seqinfo$column)-1) %/% 6
    negpos <- seqinfo[which(seqinfo$control=="NEGATIVE"),c("row","column")]
    plateplot(plateinfo=seqinfo[keypos,],plotvar=sampdepth,vardesc="Mean Sample Depth", sfx="Depth",neginfo=negpos, vflip=TRUE)
    } else {
