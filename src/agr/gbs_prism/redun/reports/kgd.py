@@ -216,7 +216,7 @@ Check clumpify normalisation (deduplication) by comparing four estimates of inbr
         """
 Heatmap representation of the G5 GRM.
 Relatedness values are coloured from white to red (lowest to highest relatedness). Samples are ordered by a dendrogram from hierarchically clustering a distance matrix of the GRM.
-SNPs have been Hardy-Weinberg filterd and and lanes combined (if relevant)
+SNPs have been Hardy-Weinberg filtered and lanes combined (if relevant)
 """,
     ),
     (
@@ -241,7 +241,7 @@ MAF distribution. Diverse populations tend to have a peak at low values of MAF.
         "PC1v2G5HWdgm.05.png",
         """
 Principal components plot (1st 2 coordinates) of samples, based on the G5 GRM.
-SNPs have been Hardy-Weinberg filterd and and lanes combined (if relevant)
+SNPs have been Hardy-Weinberg filtered and lanes combined (if relevant)
 """,
     ),
     (
