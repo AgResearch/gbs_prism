@@ -378,11 +378,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1760590144,
-        "narHash": "sha256-Kn3NRs9AesShC2CGkZl/ibZgS8bZn5POMhADtDvZjGk=",
+        "lastModified": 1762720831,
+        "narHash": "sha256-4kIfMngG3enTCPAc6C4OQqR66tzp6QTGq+7F8l8jXfk=",
         "owner": "AgResearch",
         "repo": "redun.nix",
-        "rev": "c1786e0ca88c23da965b497d04626c7d21f05e59",
+        "rev": "98c49934de92f2d2f8a7340366328c50dc28a49a",
         "type": "github"
       },
       "original": {
