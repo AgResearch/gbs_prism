@@ -38,10 +38,7 @@
       inputs.gquery.follows = "gquery";
     };
     redun = {
-      # url = "github:AgResearch/redun.nix?ref=refs/tags/0.32.0-1";
-      # TODO: switch back to official redun once this is resolved (and not before):
-      # https://github.com/insitro/redun/issues/132
-      url = "github:AgResearch/redun.nix?ref=refs/heads/robustify-check-cache";
+      url = "github:AgResearch/redun.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     redun-psij = {

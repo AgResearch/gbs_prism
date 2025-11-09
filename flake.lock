@@ -387,7 +387,7 @@
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "refs/heads/robustify-check-cache",
+        "ref": "main",
         "repo": "redun.nix",
         "type": "github"
       }
