@@ -43,8 +43,6 @@
     };
     redun-psij = {
       url = "github:AgResearch/redun_psij/main";
-      # url = "/home/agresearch.co.nz/guestsi/vc/agr-github/redun_psij";
-      # url = "/home/guestsi/vc/agr-github/redun_psij";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         redun.follows = "redun";

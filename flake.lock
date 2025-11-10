@@ -403,11 +403,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1760569837,
-        "narHash": "sha256-X8zKad38bxhSjMkXeR1ejKLp3Ckoqmcv9BJt2ZDgGLI=",
+        "lastModified": 1762748072,
+        "narHash": "sha256-u+V9dh/9v3ViY/MwI/N2DNY3euHFnHISZyMlLM3Ie4c=",
         "owner": "AgResearch",
         "repo": "redun_psij",
-        "rev": "9d3cee1ec5a69c6f0b23c4cedfc12b0e73116023",
+        "rev": "3929b8ffa223c10a556525aafbdbdc6e5e779b0b",
         "type": "github"
       },
       "original": {
