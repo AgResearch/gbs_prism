@@ -38,8 +38,15 @@
       inputs.gquery.follows = "gquery";
     };
     redun = {
-      url = "github:AgResearch/redun.nix?ref=refs/tags/0.32.0-1";
+      url = "github:AgResearch/redun.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    redun-psij = {
+      url = "github:AgResearch/redun_psij/main";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        redun.follows = "redun";
+      };
     };
   };
 
@@ -53,6 +60,7 @@
 
           flakePkgs = {
             redun = inputs.redun.packages.${system}.default;
+            redun-psij = inputs.redun-psij.packages.${system}.default;
             bbmap = inputs.bbmap.packages.${system}.default;
             bcl-convert = inputs.bcl-convert.packages.${system}.default;
             cutadapt = inputs.cutadapt.packages.${system}.default;
@@ -66,39 +74,6 @@
 
           gquery-env = inputs.gquery.env.${system};
 
-          psij-python = with pkgs;
-            python3Packages.buildPythonPackage {
-              name = "psij";
-              src = pkgs.fetchFromGitHub {
-                owner = "ExaWorks";
-                repo = "psij-python";
-                rev = "0.9.9";
-                hash = "sha256-eyrkj3hcQCDwtyfzkBfe0j+rHJY4K7QWNF8GRuPlAsM=";
-              };
-
-              format = "setuptools";
-
-              # Tests seem to require a network-mounted home directory
-              doCheck = false;
-
-              nativeBuildInputs = with python3Packages;
-                [
-                  setuptools
-                ];
-
-              buildInputs = with python3Packages;
-                [
-                  packaging
-                ];
-
-              propagatedBuildInputs = with python3Packages;
-                [
-                  psutil
-                  pystache
-                  typeguard
-                ];
-            };
-
           python-dependencies = with pkgs.python3Packages;
             [
               biopython
@@ -109,7 +84,7 @@
               flakePkgs.gquery
               flakePkgs.geno-import
               flakePkgs.redun
-              psij-python
+              flakePkgs.redun-psij
               wand
             ];
 
@@ -179,7 +154,7 @@
               postInstall = ''
                 # install config alongside Python package
                 mkdir $out/config
-                cp config/cluster-executor.{jsonnet,libsonnet} $out/config
+                cp config/psij-executor.{jsonnet,libsonnet} $out/config
               '';
             };
 
@@ -231,7 +206,7 @@
           # a function from environment name to an attrset containing
           # the environment variables required to run gquery in the given eRI environment
           gbs-prism-env-attrs = env: (gquery-env.attrs env) // {
-            CLUSTER_EXECUTOR_CONFIG_PATH = "${gbs-prism}/config";
+            PSIJ_EXECUTOR_CONFIG_PATH = "${gbs-prism}/config";
             GQUERY_ROOT = "\${HOME}/gquery-logs";
             GENO_ROOT = "\${HOME}/geno-logs";
           };
@@ -246,7 +221,7 @@
           print-lmod-commands = pkgs.writeShellScriptBin "gbs_prism-print-lmod-commands" ''
             env="$1"
             set -e
-            
+
             ${gquery-env.print-lmod-commands "gbs_prism" gbs-prism-bundle-env-attrs}/bin/gbs_prism-print-lmod-commands "$env"
 
             cat <<EOF
@@ -308,7 +283,7 @@
                   let
                     gbs-prism-env = env: (gbs-prism-bundle-env-attrs env) //
                       {
-                        CLUSTER_EXECUTOR_CONFIG_PATH = "$PWD/config";
+                        PSIJ_EXECUTOR_CONFIG_PATH = "$PWD/config";
                         REDUN_CONFIG = if env == "prod" then "$PWD/config/redun.${env}" else null;
                       };
 

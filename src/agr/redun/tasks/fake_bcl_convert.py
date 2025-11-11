@@ -4,9 +4,9 @@ import os.path
 import shutil
 from redun import task, File
 from redun.context import get_context
+from redun_psij import JobContext
 
 from agr.seq.sample_sheet import SampleSheet
-from agr.redun import JobContext
 
 from .bcl_convert import (
     bcl_convert,
