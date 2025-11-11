@@ -199,6 +199,16 @@
                 # Note that we need the original $PATH as a suffix, to find e.g. sbatch.
                 makeWrapper ${python-with-gbs-prism}/bin/redun $out/bin/redun --prefix PATH : "${path-for-gbs-prism}" --unset PYTHONPATH --unset LD_LIBRARY_PATH
 
+                # create simplified wrapper script for lab staff
+                cat >$out/bin/run-gbs-prism <<EOF
+                #!{pkgs.bash}/bin/bash
+
+                test \$# -eq 1 || { echo >&2 "usage: run-gbs-prism <run>"; exit 1; }
+                test "\$1" == "--help" -o "\$1" == "-h" && { echo >&2 "usage: run-gbs-prism <run>"; exit; }
+                exec $out/bin/redun run "\$GBS_PRISM/pipeline.py" main --run "\$1"
+                EOF
+                chmod 555 $out/bin/run-gbs-prism
+
                 runHook postInstall
               '';
             };
