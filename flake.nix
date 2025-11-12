@@ -42,7 +42,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     redun-psij = {
-      url = "github:AgResearch/redun_psij/main";
+      # TODO revert to main branch once this is merged and referenced:
+      # https://github.com/ExaWorks/psij-python/pull/534
+      # url = "github:AgResearch/redun_psij/main";
+      url = "github:AgResearch/redun_psij?ref=refs/heads/slurm-oom-reason";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         redun.follows = "redun";

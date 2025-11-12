@@ -403,16 +403,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1762748072,
-        "narHash": "sha256-u+V9dh/9v3ViY/MwI/N2DNY3euHFnHISZyMlLM3Ie4c=",
+        "lastModified": 1762918166,
+        "narHash": "sha256-cNB8RmLIPmj2ytLYX+F2zxhH2RWfk+ojBGpESRZSkVk=",
         "owner": "AgResearch",
         "repo": "redun_psij",
-        "rev": "3929b8ffa223c10a556525aafbdbdc6e5e779b0b",
+        "rev": "0d503d4a76a28b35a7d5b849c942334258181246",
         "type": "github"
       },
       "original": {
         "owner": "AgResearch",
-        "ref": "main",
+        "ref": "refs/heads/slurm-oom-reason",
         "repo": "redun_psij",
         "type": "github"
       }
