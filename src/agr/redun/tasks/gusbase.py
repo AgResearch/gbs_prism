@@ -1,5 +1,6 @@
 import logging
 import os.path
+from os.path import abspath
 import pdf2image
 from redun import task, File
 from typing import Optional
@@ -20,7 +21,7 @@ def _gusbase_job_spec(gusbase_rdata_path: str, job_context: JobContext) -> Job1S
 
     return Job1Spec(
         tool=GUSBASE_TOOL_NAME,
-        args=["run_GUSbase.R", gusbase_rdata_path],
+        args=["run_GUSbase.R", abspath(gusbase_rdata_path)],
         stdout_path=stdout_path,
         stderr_path=stderr_path,
         custom_attributes=job_context.custom_attributes,

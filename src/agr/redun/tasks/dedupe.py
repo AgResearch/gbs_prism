@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 import os.path
+from os.path import abspath
 from redun import task, File
 
 from redun_psij import get_tool_config, run_job_1, Job1Spec, JobContext
@@ -27,12 +28,9 @@ def _dedupe_job_spec(
     clumpify_args: list[str] = ["dedupe", "optical", "dupedist=15000", "subs=0"],
 ) -> Job1Spec:
     # we run in the out_dir because clumpify is in the habit of dumping hs_err_pid1234.log files.
-    # but this means we have to deal with in_path being relative
     out_dir = os.path.dirname(out_path)
     base_path = _base_path(out_path)
     log_path = f"{base_path}.clumpfy.log"
-    if not os.path.isabs(in_path):
-        in_path = os.path.join(os.getcwd(), in_path)
 
     return Job1Spec(
         tool=DEDUPE_TOOL_NAME,
@@ -40,9 +38,9 @@ def _dedupe_job_spec(
         + jvm_args
         + clumpify_args
         + [
-            "tmpdir=%s" % tmp_dir,
-            "in=%s" % in_path,
-            "out=%s" % out_path,
+            "tmpdir=%s" % abspath(tmp_dir),
+            "in=%s" % abspath(in_path),
+            "out=%s" % abspath(out_path),
         ],
         stdout_path=log_path,
         stderr_path=log_path,

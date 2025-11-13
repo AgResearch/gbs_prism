@@ -1,5 +1,6 @@
 import logging
 import os.path
+from os.path import abspath
 from dataclasses import dataclass
 from redun import task, File
 from typing import Optional
@@ -99,7 +100,7 @@ def _kgd_job_spec(
 
     return JobNSpec(
         tool=KGD_TOOL_NAME,
-        args=["run_kgd.R", hapmap_path, genotyping_method],
+        args=["run_kgd.R", abspath(hapmap_path), genotyping_method],
         stdout_path=out_path,
         stderr_path=err_path,
         custom_attributes=job_context.custom_attributes,
