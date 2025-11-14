@@ -1,5 +1,6 @@
 import logging
 import os.path
+from os.path import abspath
 from redun import task, File
 
 from redun_psij import run_job_1, Job1Spec, JobContext
@@ -30,8 +31,8 @@ def _kmer_analysis_job_spec(
             "--kmer_size",
             str(kmer_size),
             "--output_filename",
-            out_path,
-            in_path,
+            abspath(out_path),
+            abspath(in_path),
             # this causes it to crash: 😩
             # assemble_low_entropy_kmers=True
         ],
@@ -57,8 +58,8 @@ def kmer_analysis_one(fastq_file: File, out_dir: str, job_context: JobContext) -
 
     return run_job_1(
         _kmer_analysis_job_spec(
-            in_path=fastq_file.path,
-            out_path=out_path,
+            in_path=abspath(fastq_file.path),
+            out_path=abspath(out_path),
             input_filetype="fasta",
             kmer_size=kmer_size,
             job_context=job_context.with_sub(baseroot(fastq_file.path)),

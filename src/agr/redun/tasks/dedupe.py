@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 import os.path
+from os.path import abspath
 from redun import task, File
 
 from redun_psij import get_tool_config, run_job_1, Job1Spec, JobContext
@@ -30,15 +31,16 @@ def _dedupe_job_spec(
     out_dir = os.path.dirname(out_path)
     base_path = _base_path(out_path)
     log_path = f"{base_path}.clumpfy.log"
+
     return Job1Spec(
         tool=DEDUPE_TOOL_NAME,
         args=["clumpify.sh"]
         + jvm_args
         + clumpify_args
         + [
-            "tmpdir=%s" % tmp_dir,
-            "in=%s" % in_path,
-            "out=%s" % out_path,
+            "tmpdir=%s" % abspath(tmp_dir),
+            "in=%s" % abspath(in_path),
+            "out=%s" % abspath(out_path),
         ],
         stdout_path=log_path,
         stderr_path=log_path,

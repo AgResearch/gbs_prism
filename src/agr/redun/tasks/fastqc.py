@@ -51,7 +51,6 @@ def _fastqc_job_spec(
         stdout_path=log_path,
         stderr_path=log_path,
         custom_attributes=job_context.custom_attributes,
-        cwd=out_dir,
         expected_paths=ExpectedPaths(
             required={_HTML: html_out_path, _ZIP: zip_out_path}
         ),
