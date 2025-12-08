@@ -81,6 +81,7 @@
               jsonnet
               pdf2image
               pydantic
+              pygraphviz # for redun viz
               flakePkgs.gquery
               flakePkgs.geno-import
               flakePkgs.redun
