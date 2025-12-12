@@ -1,5 +1,6 @@
 import os
 import os.path
+import shutil
 from dataclasses import dataclass
 from redun import task, File
 from redun_psij import JobContext
@@ -111,9 +112,14 @@ def create_consolidated_tag_count(
     key_path = os.path.join(key_dir, os.path.basename(keyfile.path))
     symlink_rel(keyfile.path, key_path, force=True)
 
+    # remove anything left over from previous run
     tagCounts_parts_dir = os.path.join(work_dir, "tagCounts_parts")
-    tagCounts_dir = os.path.join(work_dir, "tagCounts")
+    shutil.rmtree(tagCounts_parts_dir, ignore_errors=True)
     os.makedirs(tagCounts_parts_dir, exist_ok=True)
+
+    tagCounts_dir = os.path.join(work_dir, "tagCounts")
+    shutil.rmtree(tagCounts_dir, ignore_errors=True)
+    os.makedirs(tagCounts_dir, exist_ok=True)
 
     part_dirs = ramify(keyfile=keyfile.path, output_folder=tagCounts_parts_dir)
 
