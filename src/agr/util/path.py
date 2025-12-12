@@ -1,6 +1,8 @@
 import errno
+import hashlib
 import os
 import shutil
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -84,3 +86,26 @@ def symlink_rel(
 def expand(path: str) -> str:
     """Expand both tildes and environment variables."""
     return os.path.expanduser(os.path.expandvars(path))
+
+
+@dataclass
+class FileHashTimes:
+    hash: str
+    atime_ns: int
+    mtime_ns: int
+
+
+def get_file_hash_times(path: str):
+    """Return file hash and [am]times."""
+    try:
+        s = os.stat(path)
+        with open(path, "rb") as f:
+            h = hashlib.sha1()
+            content = f.read()
+            h.update(content)
+            hash = h.hexdigest()
+
+        return FileHashTimes(hash=hash, atime_ns=s.st_atime_ns, mtime_ns=s.st_mtime_ns)
+
+    except OSError:
+        return None

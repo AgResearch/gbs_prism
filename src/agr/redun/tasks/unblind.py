@@ -6,6 +6,7 @@ from redun import task, File
 from typing import Optional
 
 from agr.redun import one_forall, one_foreach
+from agr.util.path import get_file_hash_times
 from agr.util.subprocess import run_catching_stderr
 from agr.gquery import GQuery, Predicates
 
@@ -29,6 +30,7 @@ def get_unblind_script(
     _ = keyfile
 
     out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
+    previous = get_file_hash_times(out_path)
 
     with open(out_path, "w") as out_f:
         GQuery(
@@ -45,6 +47,14 @@ def get_unblind_script(
             items=[library],
             outfile=out_f,
         ).run()
+
+    if previous is not None:
+        latest = get_file_hash_times(out_path)
+        assert latest is not None
+        if latest.hash == previous.hash:
+            # file is the same, but redun won't think so unless we reset the mtime
+            os.utime(out_path, ns=(previous.atime_ns, previous.mtime_ns))
+
     return File(out_path)
 
 
