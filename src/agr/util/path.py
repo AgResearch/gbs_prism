@@ -90,9 +90,15 @@ def expand(path: str) -> str:
 
 @dataclass
 class FileHashTimes:
+    path: str
     hash: str
     atime_ns: int
     mtime_ns: int
+
+    def preserve_mtime_if_unchanged(self):
+        current = get_file_hash_times(self.path)
+        if current is not None and current.hash == self.hash:
+            os.utime(self.path, ns=(current.atime_ns, self.mtime_ns))
 
 
 def get_file_hash_times(path: str):
@@ -105,7 +111,9 @@ def get_file_hash_times(path: str):
             h.update(content)
             hash = h.hexdigest()
 
-        return FileHashTimes(hash=hash, atime_ns=s.st_atime_ns, mtime_ns=s.st_mtime_ns)
+        return FileHashTimes(
+            path=path, hash=hash, atime_ns=s.st_atime_ns, mtime_ns=s.st_mtime_ns
+        )
 
     except OSError:
         return None

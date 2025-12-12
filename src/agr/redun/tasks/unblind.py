@@ -48,12 +48,9 @@ def get_unblind_script(
             outfile=out_f,
         ).run()
 
+    # even if file is the same, redun won't think so unless we reset the mtime
     if previous is not None:
-        latest = get_file_hash_times(out_path)
-        assert latest is not None
-        if latest.hash == previous.hash:
-            # file is the same, but redun won't think so unless we reset the mtime
-            os.utime(out_path, ns=(previous.atime_ns, previous.mtime_ns))
+        previous.preserve_mtime_if_unchanged()
 
     return File(out_path)
 
