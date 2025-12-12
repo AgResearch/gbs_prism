@@ -6,13 +6,14 @@ from redun import task, File
 from typing import Optional
 
 from agr.redun import one_forall, one_foreach
+from agr.util.path import get_file_hash_times
 from agr.util.subprocess import run_catching_stderr
 from agr.gquery import GQuery, Predicates
 
 logger = logging.getLogger(__name__)
 
 
-@task
+@task(cache=False)
 def get_unblind_script(
     out_dir: str,
     flowcell_id: str,
@@ -29,6 +30,7 @@ def get_unblind_script(
     _ = keyfile
 
     out_path = os.path.join(out_dir, f"{library}.all.{gbs_cohort}.{enzyme}.unblind.sed")
+    previous = get_file_hash_times(out_path)
 
     with open(out_path, "w") as out_f:
         GQuery(
@@ -45,6 +47,11 @@ def get_unblind_script(
             items=[library],
             outfile=out_f,
         ).run()
+
+    # even if file is the same, redun won't think so unless we reset the mtime
+    if previous is not None:
+        previous.preserve_mtime_if_unchanged()
+
     return File(out_path)
 
 
