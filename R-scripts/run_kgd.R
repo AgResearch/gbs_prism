@@ -165,7 +165,7 @@ if ( geno_method == "default" ) {
     GHWdgm.05 <- calcG(snpsubset=which(HWdis.sep > -0.05),sfx="HWdgm.05",npc=4,puse=p.sep)
   }
   writeG(GHWdgm.05, "GHW05", outtype=c(1, 2, 3, 4, 5, 6))
-  writeVCF(outname="GFULL", ep=.001, mindepth=1, GTmethod="GP")
+  writeVCF(outname="GHW05", ep=.001, mindepth=1, GTmethod="GP")
   keypos <- match(seq2samp(seqID,nparts=npartsID),seqinfo$sample)
   if((DO_KGD_PLATE_PLOTS == "yes") && any(!is.na(samppos)))  {
      if(length(table(seqinfo$platename[keypos]))==1) {
