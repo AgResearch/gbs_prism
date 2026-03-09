@@ -193,15 +193,6 @@ def run_cohort(
     cohort_dir = spec.paths.cohort_dir(spec.cohort.name)
     cohort_blind_dir = spec.paths.cohort_blind_dir(spec.cohort.name)
 
-    unblind_script = get_unblind_script(
-        cohort_blind_dir,
-        flowcell_id(spec.run),
-        spec.cohort.enzyme,
-        spec.cohort.gbs_cohort,
-        spec.cohort.libname,
-        keyfile_for_tassel,
-    )
-
     demultiplexed = demultiplex(
         work_dir=cohort_blind_dir,
         enzyme=spec.cohort.enzyme,
