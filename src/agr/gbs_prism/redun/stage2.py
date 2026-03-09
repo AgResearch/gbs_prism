@@ -200,7 +200,6 @@ def run_cohort(
         job_context=job_context,
         prefix=spec.cohort.name,
     )
-    
     tag_count = demultiplexed.tag_count
     collated_tag_count = collate_tags_reads(
         run=spec.run,
