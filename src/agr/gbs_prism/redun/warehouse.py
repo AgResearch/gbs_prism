@@ -7,7 +7,7 @@ from agr.util.subprocess import run_catching_stderr
 from agr.seq.types import flowcell_id
 
 
-@task()
+@task(cache=False)
 def get_genophyle_export(out_path: str) -> File:
     with open(out_path, "w") as out_f:
         GQuery(
