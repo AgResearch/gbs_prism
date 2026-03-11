@@ -105,10 +105,11 @@ class BclConvertOutput:
 def bcl_convert(
     in_dir: str,
     out_dir: str,
-    sample_sheet_path: str,
+    sample_sheet: File,
     expected_fastq: set[str],
     job_context: JobContext,
 ) -> BclConvertOutput:
+    sample_sheet_path = sample_sheet.path
     paths = BclConvertPaths(out_dir)
 
     # if redun thinks we need to run bcl-convert, we'd better run it,

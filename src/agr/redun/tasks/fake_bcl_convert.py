@@ -2,6 +2,8 @@ import gzip
 import logging
 import os.path
 import shutil
+from typing import Optional
+
 from redun import task, File
 from redun.context import get_context
 from redun_psij import JobContext
@@ -20,8 +22,9 @@ logger = logging.getLogger(__name__)
 
 @task()
 def fake_bcl_convert(
-    in_dir: str, sample_sheet_path: str, out_dir: str, n_reads
+    in_dir: str, sample_sheet: File, out_dir: str, n_reads: int
 ) -> BclConvertOutput:
+    sample_sheet_path = sample_sheet.path
     paths = BclConvertPaths(out_dir)
 
     # find the real run
@@ -50,10 +53,10 @@ def fake_bcl_convert(
     real_reports_dir = os.path.join(real_fastq_dir, "Reports")
 
     logger.warning("FakeBclConvert with %d reads from %s" % (n_reads, real_fastq_dir))
-    sample_sheet = SampleSheet(sample_sheet_path, impute_lanes=[1, 2])
+    parsed_sample_sheet = SampleSheet(sample_sheet_path, impute_lanes=[1, 2])
 
     fastq_paths = []
-    for fastq_file in sample_sheet.fastq_files:
+    for fastq_file in parsed_sample_sheet.fastq_files:
         with gzip.open(os.path.join(real_fastq_dir, fastq_file), mode="r") as real_gz:
             fastq_paths.append(fastq_path := os.path.join(out_dir, fastq_file))
             with gzip.open(fastq_path, mode="w") as fake_gz:
@@ -80,23 +83,23 @@ def fake_bcl_convert(
 @task()
 def real_or_fake_bcl_convert(
     in_dir: str,
-    sample_sheet_path: str,
+    sample_sheet: File,
     expected_fastq: set[str],
     out_dir: str,
     job_context: JobContext,
-    tool_context=get_context("tools.bcl_convert"),
+    tool_context: Optional[dict] = get_context("tools.bcl_convert"),
 ) -> BclConvertOutput:
     if tool_context is not None and (fake := tool_context.get("fake")) is not None:
         return fake_bcl_convert(
             in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
+            sample_sheet=sample_sheet,
             out_dir=out_dir,
             n_reads=fake.get("n_reads", 2000000),  # enough to keep KGD happy
         )
     else:
         return bcl_convert(
             in_dir=in_dir,
-            sample_sheet_path=sample_sheet_path,
+            sample_sheet=sample_sheet,
             expected_fastq=expected_fastq,
             out_dir=out_dir,
             job_context=job_context,

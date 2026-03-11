@@ -2,6 +2,7 @@
 
 import csv
 import datetime
+import io
 import os
 import os.path
 import re
@@ -316,15 +317,33 @@ class SampleSheet:
         else:
             return None
 
-    def write(self, path: str):
-        """Write sample sheet."""
+    def render(self, exclude_sections: Optional[list[str]] = None) -> str:
+        """Render sample sheet to a string, optionally excluding named sections.
+
+        Uses lineterminator='\\n' so the result matches what csv.writer
+        produces when writing to a text-mode file on Linux (where the OS
+        translates \\r\\n → \\n).  Without this, StringIO would preserve
+        csv.writer's default \\r\\n, causing spurious content mismatches.
+        """
+        if exclude_sections is not None:
+            excluded = {s.casefold() for s in exclude_sections}
+            sections = [s for s in self._sections if s.name.casefold() not in excluded]
+        else:
+            sections = self._sections
+        buf = io.StringIO()
+        csvwriter = csv.writer(buf, lineterminator="\n")
+        num_cols = max((section.num_cols for section in sections), default=0)
+        for section in sections:
+            section.write(csvwriter, num_cols)
+        return buf.getvalue()
+
+    def write(self, path: str, exclude_sections: Optional[list[str]] = None):
+        """Write sample sheet, optionally excluding named sections."""
         out_dir = os.path.dirname(path)
         os.makedirs(out_dir, exist_ok=True)
+        content = self.render(exclude_sections=exclude_sections)
         with open(path, "w") as csvfile:
-            csvwriter = csv.writer(csvfile)
-            num_cols = max((section.num_cols for section in self._sections), default=0)
-            for section in self._sections:
-                section.write(csvwriter, num_cols)
+            csvfile.write(content)
 
 
 class SequencingType(Enum):
