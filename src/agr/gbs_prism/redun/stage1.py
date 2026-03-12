@@ -26,6 +26,7 @@ from agr.gbs_prism.gbs_target_spec import (
 from agr.gbs_prism.paths import SeqPaths, GbsPaths
 from agr.redun.tasks import (
     cook_sample_sheet,
+    get_gbs_library_specs,
     real_or_fake_bcl_convert,
     dedupe_all,
     fastq_sample_all,
@@ -121,7 +122,7 @@ def run_stage1(
 
     bclconvert_output = real_or_fake_bcl_convert(
         sequencer_run.dir,
-        sample_sheet_path=seq.sample_sheet.path,
+        sample_sheet=seq.sample_sheet,
         expected_fastq=seq.expected_fastq,
         out_dir=seq_paths.bclconvert_dir,
         job_context=job_context,
@@ -162,10 +163,12 @@ def run_stage1(
         job_context=job_context,
     )
 
+    library_specs = get_gbs_library_specs(raw_sample_sheet)
+
     gbs_keyfiles = get_gbs_keyfiles(
         sequencer_run=sequencer_run,
-        sample_sheet=seq.sample_sheet,
-        gbs_libraries=seq.gbs_libraries,
+        sample_sheet=raw_sample_sheet,
+        library_specs=library_specs,
         deduped_fastq_files=deduped_fastq,
         root=illumina_platform_root,
         out_dir=keyfiles_dir,

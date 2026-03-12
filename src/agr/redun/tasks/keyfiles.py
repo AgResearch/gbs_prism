@@ -1,6 +1,7 @@
 import logging
 import os.path
 import tempfile
+from typing import Optional
 from redun import task, File
 
 from agr.gquery import GQuery, GUpdate, Predicates
@@ -11,91 +12,14 @@ from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 logger = logging.getLogger(__name__)
 
 
-class GbsKeyfiles:
-    def __init__(
-        self,
-        sequencer_run: SequencerRun,
-        sample_sheet_path: str,
-        root: str,
-        out_dir: str,
-        fastq_link_farm: str,
-        backup_dir: str,
-    ):
-        self._sequencer_run = sequencer_run
-        self._sample_sheet_path = sample_sheet_path
-        self._root = root
-        self._out_dir = out_dir
-        self._fastq_link_farm = fastq_link_farm
-        self._backup_dir = backup_dir
-
-        self._keyfile_dump_path = os.path.join(self._backup_dir, "keyfile_dump.dat")
-        self._qcsampleid_history_path = os.path.join(
-            self._backup_dir, "qcsampleid_history.dat"
-        )
-        self._sample_sheet_dump_path = os.path.join(
-            self._backup_dir, "sample_sheet_dump.dat"
-        )
-        self._gbs_yield_stats_dump_path = os.path.join(
-            self._backup_dir, "yield_dump.dat"
-        )
-        self._runs_libraries_dump_path = os.path.join(
-            self._backup_dir, "runs_libraries_dump.dat"
-        )
-
-    def dump_gbs_tables(self):
-        # dump the GBS keyfile table
-        with open(self._keyfile_dump_path, "w") as dump_f:
-            GQuery(
-                task="sql",
-                predicates=Predicates(
-                    interface_type="postgres", host="postgres_readonly"
-                ),
-                items=["select * from gbskeyfilefact"],
-                outfile=dump_f,
-            ).run()
-
-        # dump the historical qc_sampleid (generated when a keyfile is *re*imported)
-        with open(self._qcsampleid_history_path, "w") as dump_f:
-            GQuery(
-                task="sql",
-                predicates=Predicates(
-                    interface_type="postgres", host="postgres_readonly"
-                ),
-                items=["select * from gbs_sampleid_history_fact"],
-                outfile=dump_f,
-            ).run()
-
-        # dump of the brdf table that has sample-sheet details in it
-        with open(self._sample_sheet_dump_path, "w") as dump_f:
-            GQuery(
-                task="sql",
-                predicates=Predicates(
-                    interface_type="postgres", host="postgres_readonly"
-                ),
-                items=["select * from hiseqsamplesheetfact"],
-                outfile=dump_f,
-            ).run()
-
-        # dump of the brdf table which has GBS yield stats (sample depth etc)
-        with open(self._gbs_yield_stats_dump_path, "w") as dump_f:
-            GQuery(
-                task="sql",
-                predicates=Predicates(
-                    interface_type="postgres", host="postgres_readonly"
-                ),
-                items=["select * from gbsyieldfact"],
-                outfile=dump_f,
-            ).run()
-
-        # dump of the brdf model of flowcell x library ( = biosample list x biosample)
-        with open(self._runs_libraries_dump_path, "w") as dump_f:
-            GQuery(
-                task="sql",
-                predicates=Predicates(
-                    interface_type="postgres", host="postgres_readonly"
-                ),
-                items=[  # SQL extracted from gbs_prism/runs_libraries_dump.sql
-                    """select
+_GBS_TABLE_DUMPS = [
+    ("keyfile_dump.dat", "select * from gbskeyfilefact"),
+    ("qcsampleid_history.dat", "select * from gbs_sampleid_history_fact"),
+    ("sample_sheet_dump.dat", "select * from hiseqsamplesheetfact"),
+    ("yield_dump.dat", "select * from gbsyieldfact"),
+    (
+        "runs_libraries_dump.dat",
+        """select
    b.obid as sampleobid,
    b.samplename,
    l.obid as listobid,
@@ -107,70 +31,144 @@ from
 where
    b.sampletype = 'Illumina GBS Library'
 """,
-                ],
+    ),
+]
+
+
+@task()
+def dump_gbs_tables(backup_dir: str) -> list[File]:
+    """Dump GBS database tables for backup. Runs once per pipeline invocation."""
+    os.makedirs(backup_dir, exist_ok=True)
+    dump_files = []
+    for filename, sql in _GBS_TABLE_DUMPS:
+        dump_path = os.path.join(backup_dir, filename)
+        with open(dump_path, "w") as dump_f:
+            GQuery(
+                task="sql",
+                predicates=Predicates(
+                    interface_type="postgres", host="postgres_readonly"
+                ),
+                items=[sql],
                 outfile=dump_f,
             ).run()
+        dump_files.append(File(dump_path))
+    return dump_files
 
-    def create(self):
 
-        if self._sequencer_run.exists_in_database():
-            logger.warning(
-                "run %s already exists, continuing anyway" % self._sequencer_run.name
-            )
+@task()
+def create_gbs_keyfile_for_library(
+    library_name: str,
+    library_rows: list[list[str]],
+    sequencer_run: SequencerRun,
+    sample_sheet_path: str,
+    root: str,
+    out_dir: str,
+    fastq_link_farm: str,
+    backup_ready: list[File],
+) -> File:
+    """Create and import a GBS keyfile for a single library.
 
-        self.dump_gbs_tables()
+    The library_rows parameter (header + data rows from the GenerateKeyfile
+    section for this library) serves as a cache key: redun will re-run this
+    task only when the library's sample sheet metadata changes.
+    """
+    _ = (library_rows, backup_ready)  # cache key and dependency trigger
 
-        GUpdate(
-            task="create_gbs_keyfiles",
-            explain=True,
-            predicates=Predicates(
-                fastq_folder_root=self._root,
-                run_folder_root=self._sequencer_run.seq_root,
-                out_folder=self._out_dir,
-                fastq_link_root=self._fastq_link_farm,
-                sample_sheet=self._sample_sheet_path,
-                import_=True,
-            ),
-            items=["all"],
-        ).run()
+    GUpdate(
+        task="create_gbs_keyfiles",
+        explain=True,
+        predicates=Predicates(
+            fastq_folder_root=root,
+            run_folder_root=sequencer_run.seq_root,
+            out_folder=out_dir,
+            fastq_link_root=fastq_link_farm,
+            sample_sheet=sample_sheet_path,
+            import_=True,
+        ),
+        items=[library_name],
+    ).run()
+
+    for suffix in [".generated.txt", ".txt"]:
+        path = os.path.join(out_dir, "%s%s" % (library_name, suffix))
+        if os.path.exists(path):
+            return File(path)
+    raise FileNotFoundError(
+        "Keyfile for library %s not found in %s." % (library_name, out_dir)
+    )
+
+
+@task(cache=False)
+def _sequenced_keyfile_import(
+    prev: Optional[File],
+    library_name: str,
+    library_rows: list[list[str]],
+    sequencer_run: SequencerRun,
+    sample_sheet_path: str,
+    root: str,
+    out_dir: str,
+    fastq_link_farm: str,
+    backup_ready: list[File],
+) -> File:
+    """Wrapper that serialises per-library keyfile imports.
+
+    This task is uncached so redun always evaluates it, but the inner
+    create_gbs_keyfile_for_library task *is* cached: if a library's
+    inputs haven't changed it returns from cache without calling GUpdate.
+    The `prev` parameter creates a chain dependency that prevents concurrent
+    database imports (which cause ShareLock deadlocks on gbskeyfilefact).
+    """
+    _ = prev  # ordering dependency only
+    return create_gbs_keyfile_for_library(
+        library_name=library_name,
+        library_rows=library_rows,
+        sequencer_run=sequencer_run,
+        sample_sheet_path=sample_sheet_path,
+        root=root,
+        out_dir=out_dir,
+        fastq_link_farm=fastq_link_farm,
+        backup_ready=backup_ready,
+    )
 
 
 @task()
 def get_gbs_keyfiles(
     sequencer_run: SequencerRun,
     sample_sheet: File,
-    gbs_libraries: list[str],
+    library_specs: dict[str, list[list[str]]],
     deduped_fastq_files: list[File],
     root: str,
     out_dir: str,
     fastq_link_farm: str,
     backup_dir: str,
 ) -> dict[str, File]:
-    """Get GBS keyfiles, which must depend on deduped fastq files having been produced."""
-    _ = deduped_fastq_files  # depending on existence rather than value
-    gbs_keyfiles = GbsKeyfiles(
-        sequencer_run=sequencer_run,
-        sample_sheet_path=sample_sheet.path,
-        root=root,
-        out_dir=out_dir,
-        fastq_link_farm=fastq_link_farm,
-        backup_dir=backup_dir,
-    )
-    gbs_keyfiles.create()
+    """Orchestrate per-library keyfile creation.
 
-    keyfile_paths = {}
-    for library in gbs_libraries:
-        if os.path.exists(os.path.join(out_dir, "%s.generated.txt" % library)):
-            keyfile_paths[library] = File(
-                os.path.join(out_dir, "%s.generated.txt" % library)
-            )
-        elif os.path.exists(os.path.join(out_dir, "%s.txt" % library)):
-            keyfile_paths[library] = File(os.path.join(out_dir, "%s.txt" % library))
-        else:
-            raise FileNotFoundError(
-                f"Keyfile for library {library} not found in {out_dir}."
-            )
-    return keyfile_paths
+    Each library is processed as a separate redun task, so only libraries
+    whose metadata has changed in the GenerateKeyfile section are reimported.
+    Libraries are chained sequentially to prevent database deadlocks from
+    concurrent imports into gbskeyfilefact.
+    """
+    _ = deduped_fastq_files  # depending on existence rather than value
+
+    backup_files = dump_gbs_tables(backup_dir)
+
+    results = {}
+    prev: Optional[File] = None
+    for library_name, rows in library_specs.items():
+        keyfile = _sequenced_keyfile_import(
+            prev=prev,
+            library_name=library_name,
+            library_rows=rows,
+            sequencer_run=sequencer_run,
+            sample_sheet_path=sample_sheet.path,
+            root=root,
+            out_dir=out_dir,
+            fastq_link_farm=fastq_link_farm,
+            backup_ready=backup_files,
+        )
+        results[library_name] = keyfile
+        prev = keyfile
+    return results
 
 
 @task()

@@ -13,7 +13,7 @@ from .fastqc import fastqc_one, fastqc_all
 from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
 from .multiqc import multiqc
-from .sample_sheet import cook_sample_sheet
+from .sample_sheet import cook_sample_sheet, get_gbs_library_specs
 from .samtools import bam_stats_one, bam_stats_all, collate_mapping_stats
 from .kgd import kgd
 from .gupdate import (
@@ -59,6 +59,7 @@ __all__ = [
     "collate_tags_reads",
     "collate_tags_reads_kgdstats",
     "cook_sample_sheet",
+    "get_gbs_library_specs",
     "cutadapt_one",
     "cutadapt_all",
     "dedupe_one",
