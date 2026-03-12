@@ -7,9 +7,19 @@ The design approach is as follows:
 - all rule implementations use in-process invocations of Python code instead of spawning shell scripts, for richer parameter handling (rather than strings passed on command line)
 - the Python library [agr](src/agr) is mostly a refactoring of existing Python code from legacy `gbs_prism` and `seq_prisms`
 
+## Quick Start
+
+The simplest way to run the pipeline is with the `run_gbs_prism` wrapper:
+
+```
+login-1$ kinit
+login-1$ module load gbs_prism 
+login-1$ run_gbs_prism 240323_A01439_0249_BH33MYDRX5
+```
+
 ## Usage
 
-This is the normal way to run the pipeline, and unless there is breakage, should be all that is needed.
+This is the original way to run the pipeline, and unless there is breakage, should be all that is needed. This is also the method for running the pipeline in a local dev install, but ommit the the global `$GBS_PRISM` variable.
 
 The pipeline uses the cluster configuration in `$GBS_PRISM_EXECUTOR_CONFIG`, which is expected to point at a valid [Jsonnet](https://jsonnet.org/) file.
 To see the post-processed configuration, view the output of `jsonnet $GBS_PRISM_EXECUTOR_CONFIG`.
@@ -24,8 +34,6 @@ There is no need to have a local copy of the repo if simply running the pipeline
 
 Note that the context file is where all path tweaking and memory sizing is done, and may be copied into the current directory for changing and using from there.
 
-Memory usage may be high, especially:
-- dedupe (150GB)
 
 ## Redun
 
