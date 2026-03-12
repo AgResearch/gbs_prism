@@ -1,10 +1,10 @@
 {
   "path": {
-    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_g/run_data",
-    "postprocessing_root": "/agr/persist/projects/2024_illumina_sequencing_g/postprocessing",
-    "keyfiles_dir": "/agr/persist/projects/2024_illumina_sequencing_g/key-files",
-    "fastq_link_farm": "/agr/persist/projects/2024_illumina_sequencing_g/fastq-link-farm",
-    "gbs_backup_dir": "/agr/scratch/projects/2024_illumina_sequencing_g/backups",
-    "geno_import_dir": "/agr/scratch/projects/2024_illumina_sequencing_g/geno-import"
+    "seq_root": "/agr/persist/projects/2026_sequence_production_a/run_data",
+    "postprocessing_root": "/agr/persist/projects/2026_sequence_production_a/postprocessing",
+    "keyfiles_dir": "/agr/persist/projects/2026_sequence_production_a/key-files",
+    "fastq_link_farm": "/agr/persist/projects/2026_gbs_linkfarm",
+    "gbs_backup_dir": "/agr/scratch/projects/2026_sequence_production_a/backups",
+    "geno_import_dir": "/agr/scratch/projects/2026_sequence_production_a/geno-import"
   }
 }
