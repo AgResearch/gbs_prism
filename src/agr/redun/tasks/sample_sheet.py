@@ -58,7 +58,26 @@ def cook_sample_sheet(
 
 
 @task()
-def get_gbs_libraries(in_file: File) -> list[str]:
-    """Extract GBS library names from the GenerateKeyfile section of a raw sample sheet."""
+def get_gbs_library_specs(in_file: File) -> dict[str, list[list[str]]]:
+    """Extract per-library row data from the GenerateKeyfile section.
+
+    Returns a dict mapping library name to its rows from the section.
+    Each value includes the header row as the first element, followed by
+    data rows for that library.  This structure serves as a cache key for
+    redun: when a library's metadata changes, the rows change, triggering
+    a re-run of only that library's keyfile task.
+    """
     sample_sheet = SampleSheet(in_file.path)
-    return sample_sheet.gbs_libraries
+    section = sample_sheet.get_section("GenerateKeyfile")
+    if section is None:
+        return {}
+    header = section.rows[0]
+    try:
+        sample_id_idx = [h.lower() for h in header].index("sample_id")
+    except ValueError:
+        return {}
+    specs: dict[str, list[list[str]]] = {}
+    for row in section.rows[1:]:
+        lib_name = row[sample_id_idx]
+        specs.setdefault(lib_name, [header]).append(row)
+    return specs

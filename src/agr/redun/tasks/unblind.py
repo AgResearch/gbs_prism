@@ -13,7 +13,7 @@ from agr.gquery import GQuery, Predicates
 logger = logging.getLogger(__name__)
 
 
-@task(cache=False)
+@task()
 def get_unblind_script(
     out_dir: str,
     flowcell_id: str,

@@ -312,7 +312,7 @@ class SampleSheet:
         return {s.name.casefold(): i for i, s in enumerate(self._sections)}
 
     def get_section(self, name: str) -> Optional[SampleSheetSection]:
-        if (i := self._section_indices[name.casefold()]) is not None:
+        if (i := self._section_indices.get(name.casefold())) is not None:
             return self._sections[i]
         else:
             return None
