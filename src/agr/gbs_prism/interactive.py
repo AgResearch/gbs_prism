@@ -6,7 +6,6 @@ from typing import Literal
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.sample_sheet import SampleSheet
 
-from agr.redun.tasks.keyfiles import GbsKeyfiles
 from agr.gbs_prism.paths import Paths
 from agr.util.path import expand
 
@@ -73,15 +72,4 @@ class RunContext:
     def sample_sheet(self) -> SampleSheet:
         return SampleSheet(
             self.sequencer_run.sample_sheet_path, impute_lanes=self._impute_lanes
-        )
-
-    @cached_property
-    def gbs_keyfiles(self) -> GbsKeyfiles:
-        return GbsKeyfiles(
-            sequencer_run=self.sequencer_run,
-            sample_sheet_path=self.paths.seq.sample_sheet_path,
-            root=self.paths.illumina_platform_root,
-            out_dir=self.keyfiles_dir,
-            fastq_link_farm=self.fastq_link_farm,
-            backup_dir=self.gbs_backup_dir,
         )

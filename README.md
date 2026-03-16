@@ -71,8 +71,6 @@ Python 3.11.10 (main, Sep  7 2024, 01:03:31) [GCC 13.2.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
 >>> from agr.gbs_prism.interactive import RunContext
 >>> run = RunContext("240323_A01439_0249_BH33MYDRX5", "$GBS_PRISM/eri-test.json")
-
->>> run.gbs_keyfiles.create()
 ```
 
 ## Postgres Backend
