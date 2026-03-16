@@ -80,6 +80,7 @@ class Stage1Output:
     fastqc: list[FastqcOutput]
     multiqc: File
     kmer_analysis: list[File]
+    deduped_fastq: list[File]
     spec: GbsTargetSpec
     spec_file: File
     gbs_paths: GbsPaths
@@ -189,6 +190,7 @@ def run_stage1(
         fastqc=fastqc_outputs,
         multiqc=multiqc_report,
         kmer_analysis=kmer_analysis_reports,
+        deduped_fastq=deduped_fastq,
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,

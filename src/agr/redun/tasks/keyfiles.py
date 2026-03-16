@@ -65,14 +65,17 @@ def create_gbs_keyfile_for_library(
     out_dir: str,
     fastq_link_farm: str,
     backup_ready: list[File],
+    deduped_fastq: list[File] = [],
 ) -> File:
     """Create and import a GBS keyfile for a single library.
 
     The library_rows parameter (header + data rows from the GenerateKeyfile
     section for this library) serves as a cache key: redun will re-run this
     task only when the library's sample sheet metadata changes.
+    The deduped_fastq parameter triggers reimport when upstream fastq content
+    changes (e.g. when the Data section of the sample sheet is modified).
     """
-    _ = (library_rows, backup_ready)  # cache key and dependency trigger
+    _ = (library_rows, backup_ready, deduped_fastq)  # cache key and dependency trigger
 
     GUpdate(
         task="create_gbs_keyfiles",
@@ -108,6 +111,7 @@ def _sequenced_keyfile_import(
     out_dir: str,
     fastq_link_farm: str,
     backup_ready: list[File],
+    deduped_fastq: list[File] = [],
 ) -> File:
     """Wrapper that serialises per-library keyfile imports.
 
@@ -127,6 +131,7 @@ def _sequenced_keyfile_import(
         out_dir=out_dir,
         fastq_link_farm=fastq_link_farm,
         backup_ready=backup_ready,
+        deduped_fastq=deduped_fastq,
     )
 
 
@@ -148,8 +153,6 @@ def get_gbs_keyfiles(
     Libraries are chained sequentially to prevent database deadlocks from
     concurrent imports into gbskeyfilefact.
     """
-    _ = deduped_fastq_files  # depending on existence rather than value
-
     backup_files = dump_gbs_tables(backup_dir)
 
     results = {}
@@ -165,6 +168,7 @@ def get_gbs_keyfiles(
             out_dir=out_dir,
             fastq_link_farm=fastq_link_farm,
             backup_ready=backup_files,
+            deduped_fastq=deduped_fastq_files,
         )
         results[library_name] = keyfile
         prev = keyfile

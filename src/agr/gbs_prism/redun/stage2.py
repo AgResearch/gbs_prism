@@ -58,11 +58,12 @@ class CohortSpec:
 
 
 @task
-def create_cohort_fastq_links(spec: CohortSpec) -> tuple[list[File], list[File]]:
+def create_cohort_fastq_links(spec: CohortSpec, deduped_fastq: list[File]) -> tuple[list[File], list[File]]:
     """Link the fastq files for a single cohort separately.
 
     So that subsequent dependencies can be properly captured in wildcarded paths.
     """
+    _ = deduped_fastq  # establishes dependency on upstream fastq content
     cohort_links = []
     cohort_munged_links = []
     for fastq_basename, fastq_link in spec.target.fastq_links.items():
@@ -160,12 +161,12 @@ def _cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
 
 @task()
 def run_cohort(
-    spec: CohortSpec, gbs_keyfile: File, job_context: JobContext
+    spec: CohortSpec, gbs_keyfile: File, deduped_fastq: list[File], job_context: JobContext
 ) -> CohortOutput:
     """Run the entire pipeline for a single cohort."""
     job_context = job_context.with_sub(spec.cohort.name)
 
-    fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec)
+    fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec, deduped_fastq)
 
     bwa_sampled = fastq_sample_all(
         fastq_links,
@@ -315,6 +316,7 @@ def run_stage2(
     spec: GbsTargetSpec,
     gbs_paths: GbsPaths,
     gbs_keyfiles: dict[str, File],
+    deduped_fastq: list[File],
     job_context: JobContext,
 ) -> Stage2Output:
     cohort_outputs = {}
@@ -339,7 +341,7 @@ def run_stage2(
         )
 
         cohort_outputs[name] = run_cohort(
-            target, gbs_keyfiles[cohort.libname], job_context
+            target, gbs_keyfiles[cohort.libname], deduped_fastq, job_context
         )
 
     # this import step need to be once for all cohorts

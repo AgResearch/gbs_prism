@@ -64,6 +64,7 @@ def main(
         spec=stage1.spec,
         gbs_paths=stage1.gbs_paths,
         gbs_keyfiles=stage1.gbs_keyfiles,
+        deduped_fastq=stage1.deduped_fastq,
         job_context=job_context,
     )
 
