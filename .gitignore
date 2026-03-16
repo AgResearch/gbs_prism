@@ -10,3 +10,4 @@ __pycache__*
 *.pickle
 kmer_binning.txt.*
 /src/redun
+C*.md
