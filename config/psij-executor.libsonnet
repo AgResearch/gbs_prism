@@ -66,7 +66,7 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       kmer_prism: tool_default(job_prefix),
 
       dedupe: tool_default(job_prefix) {
-        java_max_heap: '480G',
+        java_max_heap: '800G',
         job_attributes+: {
           queue_name: 'hugemem',
           duration: {
@@ -74,7 +74,7 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
           },
           custom_attributes+: customised({
             'cpus-per-task': '6',
-            mem: '488G',
+            mem: '820G',
           }),
         },
       },

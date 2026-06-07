@@ -59,6 +59,9 @@ KGD_OUTPUT_PLOTS_OPTIONAL = [
     "PC1vDepthHWdgm.05.png",
     "PC1vInbHWdgm.05.png",
     "PCG5HWdgm.05.pdf",
+    "GUSbase_comet.jpg",
+    "GUSbase_comet.pdf",
+    "Rplots.pdf",
 ]
 
 KGD_OUTPUT_TEXT_FILES_REQUIRED = [
@@ -71,6 +74,7 @@ KGD_OUTPUT_TEXT_FILES_REQUIRED = [
 KGD_OUTPUT_TEXT_FILES_OPTIONAL = [
     "HighRelatedness.csv",
     "HighRelatedness.split.csv",
+    "HighRelatednessHWdgm.05.csv",
     "HeatmapOrderHWdgm.05.csv",
     "GHW05.csv",
     "GHW05-Inbreeding.csv",
@@ -79,8 +83,18 @@ KGD_OUTPUT_TEXT_FILES_OPTIONAL = [
     "GHW05-pca_vectors.tsv",
     "GHW05-PC.csv",
     "GHW05.vcf",
+    "GUSbase.stdout",
+    "GUSbase.stderr",
+    "negCStats.csv",
+    "SampleStats.import-gbs.tsv",
 ]
 
+# NOTE: These lists cover the "default" geno_method path in run_kgd.R, which is
+# what the GBS QC pipeline uses. The "pooled" geno_method branch instead emits a
+# GFULL.* family (GFULL.RData, GFULL.csv, GFULL.vcf, etc.) and does NOT produce
+# GHW05.RData. Since GHW05.RData is required below, a cohort whose keyfile sets
+# geno_method='pooled' would fail the required-files check. If pooled is ever
+# expected, add the GFULL.* outputs and relax the GHW05.RData requirement.
 KGD_OUTPUT_BINARY_FILES_REQUIRED = [
     "GHW05.RData",
     "GUSbase.RData",
