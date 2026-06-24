@@ -11,8 +11,8 @@ GUSdata  <- args[1]
 
 load(GUSdata)
 
-ref = alleles[, seq(1, 2 * nsnps - 1, 2)]
-alt = alleles[, seq(2, 2 * nsnps, 2)]
+ref = alleles[, seq(1, 2 * nsnps - 1, 2), drop = FALSE]
+alt = alleles[, seq(2, 2 * nsnps, 2),  drop = FALSE]
 
 GUSbase::cometPlot(ref, alt, maxdepth=500, maxSNPs=1e6)
 
