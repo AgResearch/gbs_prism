@@ -58,7 +58,7 @@ def create_peacock_report(
                                 target=link_or_none(stage1.sample_sheet, relbase),
                             ),
                             Row(
-                                name="bclconvert reports",
+                                name="demultiplexing reports",
                                 target=Inline("TODO"),
                             ),
                             Row(

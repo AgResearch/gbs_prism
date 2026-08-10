@@ -1,19 +1,18 @@
 # re-exports for agr.redun.tasks
 
 from .barcode_yields import collate_barcode_yields
-from .bcl_convert import bcl_convert
+from .barcode_stat_multiqc import barcode_stat_multiqc
 from .bwa import bwa_aln_one, bwa_aln_all, bwa_samse_one, bwa_samse_all
 from .collate_tags_reads import collate_tags_reads, collate_tags_reads_kgdstats
 from .cutadapt import cutadapt_one, cutadapt_all
-from .dedupe import dedupe_one, dedupe_all
 from .demultiplex import demultiplex
-from .fake_bcl_convert import fake_bcl_convert, real_or_fake_bcl_convert
 from .fastq_sample import fastq_sample_one, fastq_sample_all
 from .fastqc import fastqc_one, fastqc_all
 from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
+from .merge_fastq import merge_all_libraries, merge_library_fastq
 from .multiqc import multiqc
-from .sample_sheet import cook_sample_sheet, get_gbs_library_specs
+from .split_barcodes import split_barcodes_one
 from .samtools import bam_stats_one, bam_stats_all, collate_mapping_stats
 from .kgd import kgd
 from .gupdate import (
@@ -51,21 +50,16 @@ __all__ = [
     "bam_stats_all",
     "collate_mapping_stats",
     "collate_barcode_yields",
-    "bcl_convert",
+    "barcode_stat_multiqc",
     "bwa_aln_one",
     "bwa_aln_all",
     "bwa_samse_one",
     "bwa_samse_all",
     "collate_tags_reads",
     "collate_tags_reads_kgdstats",
-    "cook_sample_sheet",
-    "get_gbs_library_specs",
     "cutadapt_one",
     "cutadapt_all",
-    "dedupe_one",
-    "dedupe_all",
     "demultiplex",
-    "fake_bcl_convert",
     "fastq_sample_one",
     "fastq_sample_all",
     "fastqc_one",
@@ -80,8 +74,10 @@ __all__ = [
     "kgd",
     "kmer_analysis_one",
     "kmer_analysis_all",
+    "merge_all_libraries",
+    "merge_library_fastq",
     "multiqc",
-    "real_or_fake_bcl_convert",
+    "split_barcodes_one",
     # Tassel:
     "create_consolidated_tag_count",
     "get_fastq_to_tag_count",

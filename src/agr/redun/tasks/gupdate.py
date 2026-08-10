@@ -21,7 +21,7 @@ def import_gbs_read_tag_counts(
     GUpdate(
         explain=True,
         task="lab_report",
-        predicates=Predicates(name="import_gbs_read_tag_counts", file=out_path),
+        predicates=Predicates(name="import_gbs_read_tag_counts", platform="mgi", file=out_path),
         items=[run],
     ).run()
 
@@ -73,7 +73,7 @@ def import_gbs_kgd_stats(
     GUpdate(
         explain=True,
         task="lab_report",
-        predicates=Predicates(name="import_gbs_kgd_stats", file=out_path),
+        predicates=Predicates(name="import_gbs_kgd_stats", platform="mgi", file=out_path),
         items=[run],
     ).run()
 
@@ -92,6 +92,7 @@ def import_gbs_kgd_cohort_stats(
             task="lab_report",
             predicates=Predicates(
                 name="import_gbs_kgd_cohort_stats",
+                platform="mgi",
                 file=kgd_stdout.path,
                 libraryname=cohort.libname,
                 qc_cohort=cohort.qc_cohort,

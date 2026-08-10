@@ -9,34 +9,42 @@ Dataclasses:
 """
 
 import os.path
+import shutil
 from dataclasses import dataclass
 
 from redun import task, File
 from redun_psij import JobContext
-from typing import Literal
 
 redun_namespace = "agr.gbs_prism"
 
 from agr.seq.sequencer_run import SequencerRun
+from agr.seq.mgi.barcodes import lane_plan, write_barcode_file
+from agr.seq.mgi.sample_sheet import (
+    gbs_library_specs,
+    lane_number,
+    lanes_by_library,
+    lanes_in_sample_sheet,
+    read_sample_sheet,
+)
 from agr.gbs_prism.gbs_target_spec import (
     gquery_gbs_target_spec,
     write_gbs_target_spec,
     GbsTargetSpec,
 )
-from agr.gbs_prism.paths import SeqPaths, GbsPaths
+from agr.gbs_prism.paths import Paths, GbsPaths
 from agr.redun.tasks import (
-    cook_sample_sheet,
-    get_gbs_library_specs,
-    real_or_fake_bcl_convert,
-    dedupe_all,
+    barcode_stat_multiqc,
     fastq_sample_all,
     fastqc_all,
     get_gbs_keyfiles,
     kmer_analysis_all,
+    merge_all_libraries,
     multiqc,
+    split_barcodes_one,
 )
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
 from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
+from agr.redun.tasks.split_barcodes import SplitBarcodesOutput
 from agr.redun import lazy_map
 
 
@@ -80,24 +88,47 @@ class Stage1Output:
     fastqc: list[FastqcOutput]
     multiqc: File
     kmer_analysis: list[File]
-    deduped_fastq: list[File]
+    merged_fastq: dict[str, File]
     spec: GbsTargetSpec
     spec_file: File
     gbs_paths: GbsPaths
     gbs_keyfiles: dict[str, File]
 
 
-@task()
-def await_run_complete(sequencer_run: SequencerRun) -> File:
-    """Await run complete and return the sample sheet as a file, so we retrigger if it changes."""
-    sequencer_run.await_complete()
+def _all_fastq(demultiplexed: dict[int, SplitBarcodesOutput]) -> list[File]:
+    """Every demultiplexed fastq across every lane, for the per-file QC tasks."""
+    return [
+        fastq_file
+        for lane in sorted(demultiplexed)
+        for fastq_file in demultiplexed[lane].fastq_files
+    ]
 
-    return File(sequencer_run.sample_sheet_path)
+
+def _fastq_by_lane(
+    demultiplexed: dict[int, SplitBarcodesOutput],
+) -> dict[int, list[File]]:
+    return {lane: output.fastq_files for lane, output in demultiplexed.items()}
+
+
+def _barcode_stats(demultiplexed: dict[int, SplitBarcodesOutput]) -> dict[str, File]:
+    """Lane *label* -> BarcodeStat.txt, for the MultiQC custom content.
+
+    Keyed by label so no lane name is ever inferred from a path.
+    """
+    return {output.lane: output.barcode_stat for output in demultiplexed.values()}
+
+
+def _barcode_stats_by_lane(
+    demultiplexed: dict[int, SplitBarcodesOutput],
+) -> dict[int, File]:
+    """Lane *number* -> BarcodeStat.txt, for the merge policy's read counts."""
+    return {lane: output.barcode_stat for lane, output in demultiplexed.items()}
 
 
 @task()
 def run_stage1(
     seq_root: str,
+    sample_sheet_root: str,
     postprocessing_root: str,
     gbs_backup_dir: str,
     keyfiles_dir: str,
@@ -105,73 +136,120 @@ def run_stage1(
     run: str,
     job_context: JobContext,
 ) -> Stage1Output:
-    """Stage 1: bclconvert, fastqc, multiqc, kmer analysis, deduplication, GBS keyfile creation."""
+    """Stage 1: splitBarcode demultiplexing, fastqc, multiqc, kmer analysis, lane
+    merging, GBS keyfile creation.
+
+    Everything derivable from the sample sheet - the lane set, the lane->library map,
+    the barcode geometry and the `-b` arguments - is resolved **here**, in the
+    composing task, before any Slurm job is submitted. That follows `mgi_prism`,
+    where a mismatched sheet/run pair aborts at DAG-build time rather than after a
+    long demultiplexing job has quietly sent a whole lane to `undecoded`.
+    """
     sequencer_run = SequencerRun(seq_root, run)
-    platform: Literal["iseq", "miseq", "novaseq"] = "novaseq"
-    illumina_platform_root = os.path.join(postprocessing_root, "illumina", platform)
-    illumina_platform_run_root = os.path.join(
-        illumina_platform_root, sequencer_run.name
-    )
-    seq_paths = SeqPaths(illumina_platform_run_root)
+    paths = Paths(postprocessing_root=postprocessing_root, run=run)
 
-    raw_sample_sheet = await_run_complete(sequencer_run)
+    # The MGI sheet lives outside the run tree, and gquery cross-checks its
+    # [Header] Flowcell against this filename stem, so the two must agree.
+    sample_sheet_path = os.path.join(sample_sheet_root, "%s.csv" % run)
+    sheet = read_sample_sheet(sample_sheet_path)
 
-    seq = cook_sample_sheet(
-        in_file=raw_sample_sheet,
-        out_path=seq_paths.sample_sheet_path,
-    )
+    lanes = [lane_number(label) for label in lanes_in_sample_sheet(sheet)]
+    library_lanes = lanes_by_library(sheet)
+    libraries = sorted(library_lanes)
 
-    bclconvert_output = real_or_fake_bcl_convert(
-        sequencer_run.dir,
-        sample_sheet=seq.sample_sheet,
-        expected_fastq=seq.expected_fastq,
-        out_dir=seq_paths.bclconvert_dir,
-        job_context=job_context,
-    )
+    # The run is required to have finished before the pipeline is launched; this only
+    # fails fast and legibly if it has not.
+    sequencer_run.validate(lanes=lanes)
+    paths.make_run_dirs(lanes=lanes, libraries=libraries)
+
+    # Archive the sheet actually processed. It lives outside the run tree and can be
+    # edited afterwards, so without this the run has no record of what it read - and
+    # the report's relative link would climb out of the postprocessing tree.
+    archived_sample_sheet = paths.seq.archived_sample_sheet(run)
+    _ = shutil.copyfile(sample_sheet_path, archived_sample_sheet)
+
+    # Barcode geometry per lane, confirmed against that lane's own reads. Raises
+    # rather than guessing - a wrong offset yields a run that looks successful while
+    # sending ~100% of reads to `undecoded`.
+    lane_plans = {
+        lane: lane_plan(sheet, lane, sequencer_run.dir, run) for lane in lanes
+    }
+    barcode_files = {
+        lane: File(
+            write_barcode_file(
+                plan.entries,
+                os.path.join(
+                    paths.seq.barcodes_dir, "%s.%s.barcodes" % (run, plan.lane)
+                ),
+            )
+        )
+        for lane, plan in lane_plans.items()
+    }
+
+    demultiplexed = {
+        lane: split_barcodes_one(
+            lane=plan.lane,
+            read_args=plan.reads.cli_args,
+            barcode_file=barcode_files[lane],
+            b_args=plan.b_args,
+            out_dir=paths.seq.demux_dir(lane),
+            job_context=job_context,
+        )
+        for lane, plan in lane_plans.items()
+    }
+
+    all_fastq = lazy_map(demultiplexed, _all_fastq)
 
     fastqc_outputs = fastqc_all(
-        bclconvert_output.fastq_files,
-        out_dir=seq_paths.fastqc_dir,
+        all_fastq,
+        out_dir=paths.seq.fastqc_dir,
         job_context=job_context,
+    )
+
+    demux_custom_content = barcode_stat_multiqc(
+        run=run,
+        barcode_stats=lazy_map(demultiplexed, _barcode_stats),
+        out_dir=paths.seq.multiqc_custom_dir,
     )
 
     multiqc_report = multiqc(
         fastqc_files=lazy_map(fastqc_outputs, fastqc_zip_files),
-        bclconvert_top_unknowns=bclconvert_output.top_unknown,
-        bclconvert_adapter_metrics=bclconvert_output.adapter_metrics,
-        bclconvert_demultiplex_stats=bclconvert_output.demultiplexing_metrics,
-        bclconvert_quality_metrics=bclconvert_output.quality_metrics,
-        bclconvert_run_info_xml=bclconvert_output.run_info_xml,
-        out_dir=seq_paths.multiqc_dir,
+        custom_content=demux_custom_content,
+        out_dir=paths.seq.multiqc_dir,
         run=sequencer_run.name,
         job_context=job_context,
     )
 
     kmer_samples = fastq_sample_all(
-        bclconvert_output.fastq_files,
+        all_fastq,
         spec=FastqSampleSpec(rate=0.0002, minimum_sample_size=10000),
-        out_dir=seq_paths.kmer_fastq_sample_dir,
+        out_dir=paths.seq.kmer_fastq_sample_dir,
         job_context=job_context,
     )
 
     kmer_analysis_reports = kmer_analysis_all(
-        kmer_samples, out_dir=seq_paths.kmer_analysis_dir, job_context=job_context
+        kmer_samples, out_dir=paths.seq.kmer_analysis_dir, job_context=job_context
     )
 
-    deduped_fastq = dedupe_all(
-        bclconvert_output.fastq_files,
-        out_dir=seq_paths.dedupe_dir,
+    merged_fastq = merge_all_libraries(
+        demultiplexed=lazy_map(demultiplexed, _fastq_by_lane),
+        # BarcodeStat.txt reports per-library read counts exactly, so the merge
+        # policy's threshold is checked without reading a fastq.
+        barcode_stats=lazy_map(demultiplexed, _barcode_stats_by_lane),
+        lanes_by_library=library_lanes,
+        merged_paths={
+            library: paths.seq.merged_fastq(library, run) for library in libraries
+        },
         job_context=job_context,
     )
 
-    library_specs = get_gbs_library_specs(raw_sample_sheet)
-
     gbs_keyfiles = get_gbs_keyfiles(
-        sequencer_run=sequencer_run,
-        sample_sheet=raw_sample_sheet,
-        library_specs=library_specs,
-        deduped_fastq_files=deduped_fastq,
-        root=illumina_platform_root,
+        sample_sheet_path=sample_sheet_path,
+        library_specs=gbs_library_specs(sheet),
+        merged_fastq=merged_fastq,
+        merged_fastq_dirs={
+            library: paths.seq.merged_dir(library) for library in libraries
+        },
         out_dir=keyfiles_dir,
         fastq_link_farm=fastq_link_farm,
         backup_dir=gbs_backup_dir,
@@ -186,11 +264,11 @@ def run_stage1(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
-        sample_sheet=seq.sample_sheet,
+        sample_sheet=File(archived_sample_sheet),
         fastqc=fastqc_outputs,
         multiqc=multiqc_report,
         kmer_analysis=kmer_analysis_reports,
-        deduped_fastq=deduped_fastq,
+        merged_fastq=merged_fastq,
         spec=gbs_targets.spec,
         spec_file=gbs_targets.spec_file,
         gbs_paths=gbs_targets.paths,

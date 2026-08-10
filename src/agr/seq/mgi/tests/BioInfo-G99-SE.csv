@@ -1,0 +1,23 @@
+ISW Version,1.4.0.803
+Machine ID,INV-MGI-G99
+Username,SYSTEM
+Sequence Type,SE100+8+10-GTSEQ
+Sequence Order,Read1-Read2-Dualbarcode-Barcode
+Recipe Version,1.4.0.109
+Sequence start time,2026-05-29 12:37:26.423
+Workflow type,Sequence
+BBS,NO
+Sequencing Cartridge ID,530-002836-00-W0526032150682
+Flow Cell ID,FT150034703
+DNB ID,GT0404
+Flow Cell Pos,A
+Barcode Type,E450
+Read1 Cycles,101
+Read2 Cycles,0
+Barcode,10
+Dual Barcode,8
+Read1 Dark Cycles,
+Read2 Dark Cycles,
+Resume Cycles,0
+Full Sequencing Cartridge ID,240530-002836-00^110W0056^121W0526032150682^117270309^19100
+Full Flow Cell ID,10WH2534GG01^121FT150034703^117260818

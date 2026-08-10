@@ -8,13 +8,13 @@
       url = "github:AgResearch/bbmap.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    bcl-convert = {
-      url = "github:AgResearch/bcl-convert.nix/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     cutadapt = {
       url = "github:AgResearch/cutadapt.nix/main";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    splitBarcode-src = {
+      url = "path:/agr/persist/apps/eri_rocky8/software/MGI-splitBarcode/2.0.0-4";
+      flake = false;
     };
     tassel3 = {
       url = "github:AgResearch/tassel3/main";
@@ -29,7 +29,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     gquery = {
-      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/main";
+      # Move this back to refs/heads/main once the branch merges.
+      url = "git+ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery?ref=refs/heads/mgi_refactor";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     geno-import = {
@@ -56,14 +57,24 @@
         let
           pkgs = import inputs.nixpkgs {
             inherit system;
+            config = {
+              # splitBarcode is proprietary MGI software, declared as such in
+              # nix/splitBarcode.nix. Permit that one package by name rather than
+              # setting allowUnfree globally, so anything else unfree still has to be
+              # a deliberate decision.
+              allowUnfreePredicate = pkg:
+                builtins.elem (pkgs.lib.getName pkg) [ "splitBarcode" ];
+            };
           };
 
           flakePkgs = {
             redun = inputs.redun.packages.${system}.default;
             redun-psij = inputs.redun-psij.packages.${system}.default;
             bbmap = inputs.bbmap.packages.${system}.default;
-            bcl-convert = inputs.bcl-convert.packages.${system}.default;
             cutadapt = inputs.cutadapt.packages.${system}.default;
+            splitBarcode = pkgs.callPackage ./nix/splitBarcode.nix {
+              src = inputs.splitBarcode-src;
+            };
             tassel3 = inputs.tassel3.packages.${system}.default;
             kgd-src = inputs.kgd.packages.${system}.src;
             kgd-rPackages = inputs.kgd.packages.${system}.rPackages;
@@ -91,8 +102,8 @@
 
           other-dependencies = (with flakePkgs; [
             bbmap
-            bcl-convert
             cutadapt
+            splitBarcode
             tassel3
           ]) ++ (with pkgs; [
             bwa

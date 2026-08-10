@@ -5,6 +5,7 @@ from redun import task, File
 
 from redun_psij import run_job_n, ExpectedPaths, JobContext, JobNSpec
 from agr.redun import one_forall
+from agr.seq.types import fastqc_basename
 from agr.util.path import baseroot
 
 logger = logging.getLogger(__name__)
@@ -30,12 +31,10 @@ _ZIP = "zip"
 def _fastqc_job_spec(
     in_path: str, out_dir: str, job_context: JobContext, num_threads: int = 8
 ) -> JobNSpec:
-    basename = os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq")
-    log_path = os.path.join(
-        out_dir,
-        "%s_fastqc.log"
-        % os.path.basename(in_path).removesuffix(".gz").removesuffix(".fastq"),
-    )
+    # Must match FastQC's own naming exactly - the html and zip below are declared as
+    # required expected_paths, so a mismatch reports a successful job as a failure.
+    basename = fastqc_basename(in_path)
+    log_path = os.path.join(out_dir, "%s_fastqc.log" % basename)
     zip_out_path = os.path.join(out_dir, "%s%s" % (basename, "_fastqc.zip"))
     html_out_path = os.path.join(out_dir, "%s%s" % (basename, "_fastqc.html"))
     return JobNSpec(

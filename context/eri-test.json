@@ -1,6 +1,7 @@
 {
   "path": {
-    "seq_root": "/agr/persist/projects/2024_illumina_sequencing_g/run_data",
+    "seq_root": "/agr/persist/projects/2026_sequence_production_a/run_data/T1+/INV-MGI-T1",
+    "sample_sheet_root": "/agr/persist/projects/2026_sequence_production_a/SampleSheets",
     "postprocessing_root": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/postprocessing",
     "gbs_backup_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/backups",
     "keyfiles_dir": "/agr/scratch/projects/2024_legacy_pipeline_migration/gbs_prism.test/key-files",

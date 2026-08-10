@@ -51,6 +51,7 @@ def main(
 
     stage1 = run_stage1(
         seq_root=path["seq_root"],
+        sample_sheet_root=path["sample_sheet_root"],
         postprocessing_root=path["postprocessing_root"],
         gbs_backup_dir=path["gbs_backup_dir"],
         keyfiles_dir=path["keyfiles_dir"],
@@ -64,7 +65,7 @@ def main(
         spec=stage1.spec,
         gbs_paths=stage1.gbs_paths,
         gbs_keyfiles=stage1.gbs_keyfiles,
-        deduped_fastq=stage1.deduped_fastq,
+        merged_fastq=stage1.merged_fastq,
         job_context=job_context,
     )
 

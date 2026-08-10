@@ -88,12 +88,18 @@ def read_gbs_target_spec(path: str) -> GbsTargetSpec:
     return GbsTargetSpec.model_validate_json(json_str)
 
 
+# NB `platform="mgi"` on both run-scoped lab_report calls below. gquery dispatches
+# through sequencing.factory.for_platform, which **defaults to illumina**, so without
+# it these look the run up as an Illumina run and find nothing. Both pass
+# notfound_ok=True, so the failure would be an empty list rather than an error, and
+# get_gbs_targets would silently build a target spec with zero cohorts.
 def _gquery_libraries(run_name: str) -> list[str]:
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
         GQuery(
             task="lab_report",
-            # Libraries are queried as samples 😩
-            predicates=Predicates(name="illumina_run_details", samples=True),
+            predicates=Predicates(
+                name="illumina_run_details", platform="mgi", samples=True
+            ),
             items=[run_name],
             notfound_ok=True,
             outfile=tmp_f,
@@ -106,9 +112,11 @@ def _gquery_cohorts_for_library(run_name: str, library: str) -> list[Cohort]:
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
         GQuery(
             task="lab_report",
-            # Libraries are queried as samples 😩
             predicates=Predicates(
-                name="illumina_run_details", cohorts=True, sample_id=library
+                name="illumina_run_details",
+                platform="mgi",
+                cohorts=True,
+                sample_id=library,
             ),
             items=[run_name],
             notfound_ok=True,

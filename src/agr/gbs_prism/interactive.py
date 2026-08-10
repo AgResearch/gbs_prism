@@ -1,10 +1,10 @@
 import json
 import logging
+import os.path
 from functools import cached_property
-from typing import Literal
 
 from agr.seq.sequencer_run import SequencerRun
-from agr.seq.sample_sheet import SampleSheet
+from agr.seq.mgi.sample_sheet import MgiSampleSheet, read_sample_sheet
 
 from agr.gbs_prism.paths import Paths
 from agr.util.path import expand
@@ -26,19 +26,12 @@ class RunContext:
     Extend as required, this is not yet complete.
     """
 
-    def __init__(
-        self,
-        run_name: str,
-        context_file: str,
-        platform: Literal["iseq", "miseq", "novaseq"] = "novaseq",
-        impute_lanes=[1, 2],
-    ):
+    def __init__(self, run_name: str, context_file: str):
         with open(expand(context_file), "r") as context_f:
             self._context = json.load(context_f)
             self._path_context = self._context["path"]
             self._run_name = run_name
-            self._paths = Paths(self.postprocessing_root, self._run_name, platform)
-            self._impute_lanes = impute_lanes
+            self._paths = Paths(self.postprocessing_root, self._run_name)
 
     @property
     def paths(self) -> Paths:
@@ -65,11 +58,18 @@ class RunContext:
         return expand(self._path_context["fastq_link_farm"])
 
     @cached_property
+    def sample_sheet_root(self) -> str:
+        return expand(self._path_context["sample_sheet_root"])
+
+    @cached_property
     def sequencer_run(self) -> SequencerRun:
         return SequencerRun(self.seq_root, self._run_name)
 
     @cached_property
-    def sample_sheet(self) -> SampleSheet:
-        return SampleSheet(
-            self.sequencer_run.sample_sheet_path, impute_lanes=self._impute_lanes
-        )
+    def sample_sheet_path(self) -> str:
+        """MGI sheets live outside the run tree, named for the flowcell."""
+        return os.path.join(self.sample_sheet_root, "%s.csv" % self._run_name)
+
+    @cached_property
+    def sample_sheet(self) -> MgiSampleSheet:
+        return read_sample_sheet(self.sample_sheet_path)

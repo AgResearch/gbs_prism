@@ -5,13 +5,17 @@ from typing import Optional
 from redun import task, File
 
 from agr.gquery import GQuery, GUpdate, Predicates
-from agr.seq.sequencer_run import SequencerRun
 from agr.seq.types import flowcell_id, Cohort
 from agr.seq.enzyme_sub import enzyme_sub_for_uneak
 
 logger = logging.getLogger(__name__)
 
 
+# Both sample types, deliberately. `realise_run_in_gbs_database` only inserts a
+# biosampleob row when none exists and its check ignores sampletype, so an MGI
+# library with prior Illumina history keeps its `Illumina GBS Library` row while a
+# first-time library gets `MGI GBS Library`. One MGI run can contain both; filtering
+# on either alone would silently back up some libraries and miss others.
 _GBS_TABLE_DUMPS = [
     ("keyfile_dump.dat", "select * from gbskeyfilefact"),
     ("qcsampleid_history.dat", "select * from gbs_sampleid_history_fact"),
@@ -29,7 +33,7 @@ from
    m.biosampleob = b.obid join
    biosamplelist as l on l.obid = m.biosamplelist
 where
-   b.sampletype = 'Illumina GBS Library'
+   b.sampletype in ('Illumina GBS Library', 'MGI GBS Library')
 """,
     ),
 ]
@@ -59,33 +63,44 @@ def dump_gbs_tables(backup_dir: str) -> list[File]:
 def create_gbs_keyfile_for_library(
     library_name: str,
     library_rows: list[list[str]],
-    sequencer_run: SequencerRun,
     sample_sheet_path: str,
-    root: str,
+    merged_fastq_dir: str,
     out_dir: str,
     fastq_link_farm: str,
     backup_ready: list[File],
-    deduped_fastq: list[File] = [],
+    merged_fastq: list[File] = [],
 ) -> File:
     """Create and import a GBS keyfile for a single library.
 
     The library_rows parameter (header + data rows from the GenerateKeyfile
     section for this library) serves as a cache key: redun will re-run this
     task only when the library's sample sheet metadata changes.
-    The deduped_fastq parameter triggers reimport when upstream fastq content
-    changes (e.g. when the Data section of the sample sheet is modified).
+    The merged_fastq parameter triggers reimport when upstream fastq content
+    changes.
     """
-    _ = (library_rows, backup_ready, deduped_fastq)  # cache key and dependency trigger
+    _ = (library_rows, backup_ready, merged_fastq)  # cache key and dependency trigger
 
     GUpdate(
         task="create_gbs_keyfiles",
         explain=True,
         predicates=Predicates(
-            fastq_folder_root=root,
-            run_folder_root=sequencer_run.seq_root,
-            out_folder=out_dir,
-            fastq_link_root=fastq_link_farm,
+            # Selects gquery's Mgi class via sequencing.factory.for_platform, which
+            # otherwise defaults to Illumina.
+            platform="mgi",
+            # MGI sheets live outside the run tree, so the path is passed rather than
+            # derived. This also makes run_folder_root and fastq_folder_root dead for
+            # this call, which is why neither is passed.
             sample_sheet=sample_sheet_path,
+            out_folder=out_dir,
+            # NB `fastq_root`, not `fastq_folder_root` - two similarly named
+            # predicates for near-identical concepts, and a real footgun. Without
+            # this, gquery composes Illumina's bcl2fastq layout,
+            # `<fastq_folder_root>/<run>/SampleSheet/dedupe/`, which does not exist
+            # for MGI. It must be the *per library* merged directory: gquery's glob
+            # is prefix-anchored, so a shared directory would let SQ5420 match a
+            # neighbouring SQ54201.
+            fastq_root=merged_fastq_dir,
+            fastq_link_root=fastq_link_farm,
             import_=True,
         ),
         items=[library_name],
@@ -105,13 +120,12 @@ def _sequenced_keyfile_import(
     prev: Optional[File],
     library_name: str,
     library_rows: list[list[str]],
-    sequencer_run: SequencerRun,
     sample_sheet_path: str,
-    root: str,
+    merged_fastq_dir: str,
     out_dir: str,
     fastq_link_farm: str,
     backup_ready: list[File],
-    deduped_fastq: list[File] = [],
+    merged_fastq: list[File] = [],
 ) -> File:
     """Wrapper that serialises per-library keyfile imports.
 
@@ -125,23 +139,21 @@ def _sequenced_keyfile_import(
     return create_gbs_keyfile_for_library(
         library_name=library_name,
         library_rows=library_rows,
-        sequencer_run=sequencer_run,
         sample_sheet_path=sample_sheet_path,
-        root=root,
+        merged_fastq_dir=merged_fastq_dir,
         out_dir=out_dir,
         fastq_link_farm=fastq_link_farm,
         backup_ready=backup_ready,
-        deduped_fastq=deduped_fastq,
+        merged_fastq=merged_fastq,
     )
 
 
 @task()
 def get_gbs_keyfiles(
-    sequencer_run: SequencerRun,
-    sample_sheet: File,
+    sample_sheet_path: str,
     library_specs: dict[str, list[list[str]]],
-    deduped_fastq_files: list[File],
-    root: str,
+    merged_fastq: dict[str, File],
+    merged_fastq_dirs: dict[str, str],
     out_dir: str,
     fastq_link_farm: str,
     backup_dir: str,
@@ -152,6 +164,9 @@ def get_gbs_keyfiles(
     whose metadata has changed in the GenerateKeyfile section are reimported.
     Libraries are chained sequentially to prevent database deadlocks from
     concurrent imports into gbskeyfilefact.
+
+    `merged_fastq_dirs` is per library because gquery's fastq discovery is a flat
+    listdir with a prefix-anchored match - see create_gbs_keyfile_for_library.
     """
     backup_files = dump_gbs_tables(backup_dir)
 
@@ -162,13 +177,12 @@ def get_gbs_keyfiles(
             prev=prev,
             library_name=library_name,
             library_rows=rows,
-            sequencer_run=sequencer_run,
-            sample_sheet_path=sample_sheet.path,
-            root=root,
+            sample_sheet_path=sample_sheet_path,
+            merged_fastq_dir=merged_fastq_dirs[library_name],
             out_dir=out_dir,
             fastq_link_farm=fastq_link_farm,
             backup_ready=backup_files,
-            deduped_fastq=deduped_fastq_files,
+            merged_fastq=[merged_fastq[library_name]],
         )
         results[library_name] = keyfile
         prev = keyfile
