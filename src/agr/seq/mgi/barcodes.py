@@ -39,6 +39,7 @@ MGI-native run aborts loudly rather than mis-decoding.
 *content*, so the `-b` offsets always come straight from geometry.
 """
 
+import collections
 import csv
 import gzip
 import logging
@@ -80,6 +81,33 @@ DEFAULT_MIN_HITS = 50
 # (~1.5s warm). Also the knob to raise for a batch of unusually low-yield samples -
 # the one legitimate case that can fail this gate.
 DEFAULT_MAX_SCAN_READS = 500000
+
+# Reads retained for the failure diagnostic. The observed-barcode census and the
+# sheet-transform panel are both computed from this bounded sample rather than from a
+# second pass over the fastq, so a diagnosis costs no extra decompression. The top of
+# the census is stable long before the cap: measured on FT150034703 L01, 21k reads
+# already carry 5778 distinct barcodes and the ranking has settled.
+DIAGNOSTIC_SAMPLE_READS = 20000
+
+# Rows shown in the census table. A GBS lane spreads its reads over thousands of
+# barcodes, so the operator needs a legible top, not the distribution.
+CENSUS_TOP_N = 20
+
+# Where the *coverage* scan stops. Reaching min_hits proves the layout; seeing every
+# listed barcode is a far deeper question, because per-sample yield has a long tail.
+# Measured on FT150034703 L01 (3788 rows): 5x coverage still leaves 172 rows unseen on a
+# perfectly healthy lane, 40x leaves 8, and all 3788 appear only at 679k reads (2.1s).
+# So coverage is scanned to exhaustion rather than to a multiple of the row count, and
+# this caps the lane where some rows genuinely never appear. The 96-row PE lane
+# DL100018466 needed 379k reads (1.5s) for the same reason - small sheets have the tail
+# too.
+#
+# The cap is what a lane with a genuinely dead sample costs, because coverage can then
+# never complete and the scan always runs to here. Measured on that lane's read 2 (the
+# 60 GB PE file, the worst case in production): 1M reads in 3.6s. Against a stage 1 that
+# goes on to run a ~25 minute splitBarcode job per lane, that is affordable even on a
+# fully cached rerun.
+COVERAGE_MAX_SCAN_READS = 1000000
 
 # Reads per scan chunk and - first chunk only - the window the modal read length is
 # taken over. That window IS the anchor, so a narrower one picking a different modal
@@ -734,6 +762,24 @@ class BarcodeLayout:
     # reported for diagnostics only.
     hits: int = 0
     sibling_hits: int = 0
+    # Coverage: which of the sheet's barcodes were actually seen. Separate from the
+    # hit count, and a much deeper question - min_hits proves the layout after a few
+    # dozen reads, while seeing every listed barcode takes hundreds of thousands
+    # because per-sample yield has a long tail. Reported, never fatal: a barcode that
+    # never appears is either a very low-yield sample or a mistyped row, and the reads
+    # cannot tell those apart.
+    n_expected: int = 0
+    unobserved: frozenset[str] = frozenset()
+    coverage_scanned: int = 0
+    coverage_exhausted: bool = False
+    # Filled only when coverage is bad enough to suggest the sheet is systematically
+    # wrong: the sheet rewrite that would explain it, in the same words a refusal uses.
+    coverage_diagnosis: str = ""
+
+    @property
+    def coverage_complete(self) -> bool:
+        """True when every barcode the sheet lists was seen in the reads."""
+        return self.n_expected > 0 and not self.unobserved
 
     @property
     def slot_lengths(self) -> tuple[int, int]:
@@ -858,6 +904,21 @@ def barcode_geometry(
     return offset, offset + first_block.length
 
 
+def _barcode_slice(
+    line: str, offset: int, offset2: int | None, slot1_len: int, slot2_len: int
+) -> str:
+    """The barcode a read carries at the given offsets, slot 1 then slot 2.
+
+    A block can be wider than the index it holds, so slot 2 is taken from its own
+    offset rather than from the end of slot 1 - the unused cycles in between are never
+    read.
+    """
+    observed = line[offset : offset + slot1_len]
+    if offset2 is not None:
+        observed += line[offset2 : offset2 + slot2_len]
+    return observed
+
+
 def _count_hits(
     usable: Sequence[str],
     offset: int,
@@ -865,22 +926,286 @@ def _count_hits(
     slot1_len: int,
     slot2_len: int,
     expected: set[str],
+    seen: set[str] | None = None,
 ) -> int:
     """How many scanned reads carry a **complete sheet pair** at the offsets.
 
     A complete pair, not two indices matched independently: the two halves must come
     from the *same* sample, so a read whose slot 1 belongs to one sample and slot 2
     to another is not a hit.
+
+    `seen`, when given, collects *which* listed barcodes were matched. That is a set of
+    at most one entry per sheet row, so it rides along with the hit count instead of
+    costing a second pass - which is what makes the coverage check in `verify_layout`
+    affordable.
     """
-    span2 = offset2 + slot2_len if offset2 is not None else offset + slot1_len
     hits = 0
     for line in usable:
-        observed = line[offset : offset + slot1_len]
-        if offset2 is not None:
-            observed += line[offset2:span2]
+        observed = _barcode_slice(line, offset, offset2, slot1_len, slot2_len)
         if observed in expected:
             hits += 1
+            if seen is not None:
+                seen.add(observed)
     return hits
+
+
+# --------------------------------------------------------------------------
+# Failure diagnostics - what the reads say, in the sheet's own terms
+# --------------------------------------------------------------------------
+
+# Sheet-level explanations for a lane whose reads do not carry the sheet's barcodes.
+# Each entry rewrites the sheet's (index, index2) pairs and scores the rewrite against
+# the same reads with the run's derived layout held FIXED - so this answers "how is the
+# sheet wrong", separately from the reverse-strand sibling's "the run is not what
+# BioInfo.csv says".
+#
+# Ordered commonest first: the i5 column alone is the usual culprit, because the two
+# Illumina i5 workflow conventions differ in exactly that column and nothing else.
+_SHEET_TRANSFORMS = (
+    (
+        "index2 (i5) column is reverse-complemented",
+        "reverse-complement the index2 column, or re-export the sheet in the other "
+        "Illumina i5 workflow convention",
+        lambda index, index2: (index, revcomp(index2)),
+    ),
+    (
+        "index (i7) column is reverse-complemented",
+        "reverse-complement the index column",
+        lambda index, index2: (revcomp(index), index2),
+    ),
+    (
+        "both index columns are reverse-complemented",
+        "reverse-complement both index columns",
+        lambda index, index2: (revcomp(index), revcomp(index2)),
+    ),
+    (
+        "index and index2 columns are swapped",
+        "swap the index and index2 columns",
+        lambda index, index2: (index2, index),
+    ),
+    (
+        "columns are swapped and both reverse-complemented",
+        "swap the index and index2 columns and reverse-complement both",
+        lambda index, index2: (revcomp(index2), revcomp(index)),
+    ),
+)
+
+
+def _transform_scores(
+    pairs: Sequence[tuple[str, str]],
+    sample_reads: Sequence[str],
+    bio: BioInfo,
+    read_len: int,
+    orientation: tuple[str, str],
+    slot_order: str,
+    sibling_expected: set[str] | None,
+) -> list[tuple[str, str, int | None, str]]:
+    """Score every sheet rewrite: `[(label, fix, hits or None, note), ...]`.
+
+    `hits is None` means the rewrite could not be *tested* on this lane - its slot
+    widths do not fit the sequenced blocks, so it has no offsets. That is reported as
+    such rather than as a zero, otherwise "nothing matched" would be claiming more than
+    was actually checked. It is the same limitation the reverse-strand sibling has on
+    asymmetric blocks.
+    """
+    results: list[tuple[str, str, int | None, str]] = []
+    original = list(pairs)
+
+    for label, fix, transform in _SHEET_TRANSFORMS:
+        rewritten = [transform(index, index2) for index, index2 in original]
+        # A rewrite that empties a column is a swap on a single-index lane: there is no
+        # second column to swap with, so it is not a candidate explanation at all.
+        if any(not index for index, _ in rewritten):
+            continue
+        if rewritten == original:
+            continue
+        lengths = {(len(index), len(index2)) for index, index2 in rewritten}
+        if len(lengths) > 1:
+            continue
+        index_len, index2_len = lengths.pop()
+        slot1_len, slot2_len = _slot_lengths(index_len, index2_len, slot_order)
+        try:
+            offset, offset2 = barcode_geometry(bio, read_len, slot1_len, slot2_len)
+        except BarcodeLayoutError:
+            results.append((label, fix, None, ""))
+            continue
+        expected = {
+            oriented_barcode(index, index2, orientation, slot_order)
+            for index, index2 in rewritten
+        }
+        # Some rewrites are algebraically the same set as the opposite-strand reading -
+        # for a single-index lane, "index reverse-complemented" IS the sibling. Say so
+        # in the same breath rather than letting the two reports contradict each other.
+        note = (
+            "equivalent to the reverse-strand reading"
+            if sibling_expected is not None and expected == sibling_expected
+            else ""
+        )
+        results.append(
+            (
+                label,
+                fix,
+                _count_hits(
+                    sample_reads, offset, offset2, slot1_len, slot2_len, expected
+                ),
+                note,
+            )
+        )
+
+    results.sort(key=lambda row: (row[2] is None, -(row[2] or 0)))
+    return results
+
+
+def _census(
+    sample_reads: Sequence[str],
+    offset: int,
+    offset2: int | None,
+    slot1_len: int,
+    slot2_len: int,
+) -> tuple[collections.Counter, int]:
+    """`(counts of the barcodes actually present, polyG/N read count)`."""
+    counts: collections.Counter = collections.Counter()
+    n_nosignal = 0
+    width = slot1_len + slot2_len
+
+    for line in sample_reads:
+        observed = _barcode_slice(line, offset, offset2, slot1_len, slot2_len)
+        if len(observed) < width:
+            continue
+        if set(observed) - _VALID_BASES:
+            # str.translate passes unknown characters straight through, so a junk slot
+            # would come out of sheet_indices as plausible-looking nonsense instead of
+            # being visibly junk.
+            continue
+        if observed == "G" * width or observed == "N" * width:
+            # MGI writes polyG (polyN on some recipes) where there was no signal. Folded
+            # into one figure so it cannot crowd the table - but ONLY polyG/polyN. A
+            # lane really carrying polyA or polyT is carrying signal, and folding that
+            # away would report "nothing observed" when there plainly is something.
+            n_nosignal += 1
+            continue
+        counts[observed] += 1
+
+    return counts, n_nosignal
+
+
+def _mismatch_report(
+    bio: BioInfo,
+    pairs: Sequence[tuple[str, str]],
+    sample_reads: Sequence[str],
+    layout: "BarcodeLayout",
+    sibling_expected: set[str] | None,
+    sample_ids: dict[tuple[str, str], str] | None,
+    min_hits: int,
+) -> str:
+    """The actionable half of a refusal: what would have matched, and what is there.
+
+    Deliberately NOT part of `BarcodeLayout.describe()`, which also runs on the success
+    path - a healthy lane has no business logging a census.
+    """
+    slot1_len, slot2_len = layout.slot_lengths
+    lines: list[str] = [""]
+
+    scores = _transform_scores(
+        pairs,
+        sample_reads,
+        bio,
+        layout.read_len,
+        layout.orientation,
+        layout.slot_order,
+        sibling_expected,
+    )
+    matched = [row for row in scores if row[2] is not None and row[2] >= min_hits]
+
+    if matched:
+        label, fix, hits, note = matched[0]
+        lines.append("  DIAGNOSIS: the sample sheet's %s." % label)
+        lines.append(
+            "    rewritten that way, %d of the %d sampled reads match this sheet."
+            % (hits, len(sample_reads))
+        )
+        lines.append("    FIX: %s." % fix)
+        if note:
+            lines.append("    (%s)" % note)
+    else:
+        lines.append(
+            "  DIAGNOSIS: no complement or column-order rewrite of this sheet matches "
+            "the reads either,"
+        )
+        lines.append(
+            "    so the listed barcodes are themselves wrong, or this is the wrong "
+            "sheet for this run."
+        )
+
+    if tested := ", ".join(
+        "%s (%d)" % (label, hits) for label, _, hits, _ in scores if hits is not None
+    ):
+        lines.append("    rewrites tested: %s" % tested)
+    if untestable := ", ".join(
+        label for label, _, hits, _ in scores if hits is None
+    ):
+        lines.append("    not testable on this lane's block widths: %s" % untestable)
+
+    counts, n_nosignal = _census(
+        sample_reads, layout.offset, layout.offset2, slot1_len, slot2_len
+    )
+    total = sum(counts.values()) + n_nosignal
+
+    lines.append("")
+    lines.append("  OBSERVED BARCODES, as they should appear in the sample sheet:")
+    if not counts:
+        lines.append(
+            "    nothing usable observed in %d sampled reads (%d were polyG/N "
+            "no-signal)" % (len(sample_reads), n_nosignal)
+        )
+        return "\n".join(lines)
+
+    lines.append(
+        "    top %d of %d distinct, over %d sampled reads; %.1f%% polyG/N no-signal"
+        % (
+            min(CENSUS_TOP_N, len(counts)),
+            len(counts),
+            len(sample_reads),
+            100.0 * n_nosignal / total if total else 0.0,
+        )
+    )
+    lines.append(
+        "       count   share  %-*s %-*s  sheet row"
+        % (max(slot1_len, 5), "index", max(slot2_len, 6), "index2")
+    )
+    listed = set(pairs)
+    for observed, count in counts.most_common(CENSUS_TOP_N):
+        index, index2 = sheet_indices(
+            observed,
+            layout.orientation,
+            layout.slot_order,
+            layout.index_len,
+            layout.index2_len,
+        )
+        pair = (index, index2)
+        # `sample_ids` comes from the sheet being complained about, so when that sheet
+        # is systematically wrong every row here reads "not in sheet" - correctly: none
+        # of the barcodes actually present is listed in it. The naming earns its keep on
+        # a partly-wrong sheet, where it separates the mistyped rows from the good ones.
+        if sample_ids is not None:
+            who = sample_ids.get(pair, "** not in sheet **")
+        elif pair in listed:
+            who = "listed in this sheet"
+        else:
+            who = "** not in sheet **"
+        lines.append(
+            "    %8d  %5.2f%%  %-*s %-*s  %s"
+            % (
+                count,
+                100.0 * count / total if total else 0.0,
+                max(slot1_len, 5),
+                index,
+                max(slot2_len, 6),
+                index2 or "-",
+                who,
+            )
+        )
+    return "\n".join(lines)
 
 
 def verify_layout(
@@ -891,6 +1216,8 @@ def verify_layout(
     slot_order: str,
     min_hits: int = DEFAULT_MIN_HITS,
     max_scan_reads: int = DEFAULT_MAX_SCAN_READS,
+    coverage_max_scan_reads: int = COVERAGE_MAX_SCAN_READS,
+    sample_ids: dict[tuple[str, str], str] | None = None,
 ) -> BarcodeLayout:
     """Confirm a *derived* `(orientation, slot_order)` against the reads.
 
@@ -898,9 +1225,16 @@ def verify_layout(
     rather than searches. Only the reads can catch a mismatched sheet/run pair, wrong
     geometry, or an MGI-native run mislabelled as Illumina-converted.
 
-    The scan is **adaptive**: chunks are read until the derived layout reaches
-    `min_hits`, or until `max_scan_reads`. Evidence is an absolute count, so a small
-    batch is not penalised - it just reads further.
+    The scan is **adaptive**, in two phases. First it reads chunks until the derived
+    layout reaches `min_hits`, or gives up at `max_scan_reads`; evidence is an absolute
+    count, so a small batch is not penalised, it just reads further. Once the layout is
+    proven it keeps going - much more cheaply, since nothing can fail from here - until
+    every listed barcode has been seen or `coverage_max_scan_reads` is reached, which is
+    what lets an unobserved sheet row be reported at all.
+
+    `sample_ids` maps `(index, index2)` to a sample name, and is used only to label the
+    census in a failure report. It is optional so this stays callable with nothing but
+    a sheet's index pairs.
 
     Two candidates are scored over the **same** reads at fixed offsets: the
     **derived** layout and its **reverse-strand sibling**. Either aborts:
@@ -979,17 +1313,35 @@ def verify_layout(
         sibling_hits = 0
         n_scanned = 0
         n_read = 0
+        n_expected = len(expected)
+        seen: set[str] = set()
+        sample_reads: list[str] = []
         while True:
             n_read += len(chunk)
             # Both candidates counted over the SAME reads, so the sibling comparison
             # stays like-for-like at every chunk boundary.
             usable = [line for line in chunk if len(line) == read_len]
             n_scanned += len(usable)
-            hits += _count_hits(usable, offset, offset2, slot1_len, slot2_len, expected)
+            # A bounded sample kept aside so a refusal can report what the reads
+            # actually carry, and score sheet rewrites, without a second pass.
+            if len(sample_reads) < DIAGNOSTIC_SAMPLE_READS:
+                sample_reads.extend(
+                    usable[: DIAGNOSTIC_SAMPLE_READS - len(sample_reads)]
+                )
+            hits += _count_hits(
+                usable, offset, offset2, slot1_len, slot2_len, expected, seen
+            )
             if sibling_plan is not None:
                 sibling_hits += _count_hits(usable, *sibling_plan)
 
-            if hits >= min_hits or n_read >= max_scan_reads:
+            if hits < min_hits:
+                # Still proving the layout. Stop at the failure cap: a mismatched
+                # sheet/run pair accumulates hits at chance and will never get there.
+                if n_read >= max_scan_reads:
+                    break
+            elif len(seen) >= n_expected or n_read >= coverage_max_scan_reads:
+                # Layout proven; the only question left is coverage, and it is answered
+                # either way. Nothing below can now fail, so this is the normal exit.
                 break
             chunk = _read_chunk(stream, SCAN_CHUNK_READS)
             if not chunk:
@@ -1017,7 +1369,13 @@ def verify_layout(
         is_pe=bio.is_pe,
         hits=hits,
         sibling_hits=sibling_hits,
+        n_expected=n_expected,
+        unobserved=frozenset(expected - seen),
+        coverage_scanned=n_read,
+        coverage_exhausted=n_read >= coverage_max_scan_reads,
     )
+
+    sibling_expected = sibling_plan[4] if sibling_plan is not None else None
 
     # The coherence tripwire, checked before the generic low-evidence gate so a clear
     # opposite-strand match gets a specific diagnosis, not "not enough hits". Guarded
@@ -1034,7 +1392,7 @@ def verify_layout(
             "the reads match the opposite strand in %s.\n  %s\n  the reverse-strand "
             "sibling (%s/%s, %s) scores %d against the derived layout's %d - wrong "
             "library convention? (SE/PE mislabelled in BioInfo.csv, or an MGI-native "
-            "library)"
+            "library)%s"
             % (
                 fastq,
                 layout.describe(),
@@ -1043,23 +1401,70 @@ def verify_layout(
                 sibling[1],
                 sibling_hits,
                 hits,
+                _mismatch_report(
+                    bio, pairs, sample_reads, layout, sibling_expected,
+                    sample_ids, min_hits,
+                ),
             )
         )
 
     if hits < min_hits:
         raise BarcodeLayoutError(
             "the sheet's indices are not where %s says they are.\n  %s\n"
-            "  only %d of %d reads carried a barcode this sheet lists at those "
-            "offsets, against the %d needed. The derived layout assumes an "
+            "  only %d of %d comparable reads carried a barcode this sheet lists at "
+            "those offsets, against the %d needed (%d reads consumed; the rest were "
+            "off the modal length and not comparable). The derived layout assumes an "
             "Illumina-converted library (SE -> i7+i5 forward, PE -> rc(i5)+rc(i7)); "
             "too few hits usually means an MGI-native library, the wrong sheet/run "
             "pair, or wrong geometry.\n"
             "  Batch size is NOT a cause - evidence is counted absolutely, so a sheet "
             "of one sample passes as readily as a full one. The exception is a batch "
             "whose samples are so low-yield that %d of their reads do not appear "
-            "within the %d-read cap.\n  fastq: %s"
-            % (bio.path, layout.describe(), hits, n_read, min_hits, min_hits, max_scan_reads, fastq)
+            "within the %d-read cap.\n  fastq: %s%s"
+            % (
+                bio.path,
+                layout.describe(),
+                hits,
+                n_scanned,
+                min_hits,
+                n_read,
+                min_hits,
+                max_scan_reads,
+                fastq,
+                _mismatch_report(
+                    bio, pairs, sample_reads, layout, sibling_expected,
+                    sample_ids, min_hits,
+                ),
+            )
         )
+
+    # A lane can clear min_hits on a sheet that is systematically wrong. Measured on
+    # FT150034703 L01 (3788 rows): reverse-complementing the whole i7 column still
+    # scores 8637 hits, because 34 of the rewritten barcodes collide with real ones and
+    # those few samples' reads pile up - so the hit gate passes and ~99% of the lane
+    # would go to `undecoded`. Coverage is what catches it: only 244 of 3788 listed
+    # barcodes were ever seen. When that much of the sheet is missing, run the same
+    # rewrite panel a refusal would, so the warning can name the cause instead of just
+    # counting the symptom.
+    if layout.n_expected and len(layout.unobserved) > layout.n_expected // 2:
+        best = next(
+            (
+                row
+                for row in _transform_scores(
+                    pairs, sample_reads, bio, read_len, orientation, slot_order,
+                    sibling_expected,
+                )
+                if row[2] is not None and row[2] >= min_hits and row[2] > hits
+            ),
+            None,
+        )
+        if best is not None:
+            layout = replace(
+                layout,
+                coverage_diagnosis="the sample sheet's %s (that rewrite scores %d "
+                "against this sheet's %d) - FIX: %s"
+                % (best[0], best[2], hits, best[1]),
+            )
 
     return layout
 
@@ -1122,6 +1527,96 @@ def b_args(params: Sequence[tuple[int, int, int]]) -> list[str]:
 # --------------------------------------------------------------------------
 
 
+# How many unobserved rows to name before the list is truncated. A lane where hundreds
+# are missing has one systematic problem, not hundreds of separate ones, so the list is
+# there to identify the problem, not to enumerate it.
+UNOBSERVED_REPORT_LIMIT = 20
+
+
+def _log_coverage(
+    label: str, layout: BarcodeLayout, sample_ids: dict[tuple[str, str], str]
+) -> None:
+    """Report which listed barcodes never turned up in the reads.
+
+    Deliberately a warning and not a refusal. The reads cannot distinguish a mistyped
+    row from a genuinely low-yield sample - measured on FT150034703 L01, a healthy lane
+    still has 172 of 3788 barcodes unseen at 5x coverage and 8 unseen at 40x - so this
+    states the scan depth and lets the operator judge, rather than aborting a good run.
+    """
+    if not layout.n_expected:
+        return
+
+    if layout.coverage_complete:
+        logger.info(
+            "lane %s: all %d listed barcodes observed within %d reads",
+            label,
+            layout.n_expected,
+            layout.coverage_scanned,
+        )
+        return
+
+    missing = sorted(
+        sheet_indices(
+            barcode,
+            layout.orientation,
+            layout.slot_order,
+            layout.index_len,
+            layout.index2_len,
+        )
+        for barcode in layout.unobserved
+    )
+    shown = ", ".join(
+        "%s (%s%s)" % (sample_ids.get(pair, "?"), pair[0], "+" + pair[1] if pair[1] else "")
+        for pair in missing[:UNOBSERVED_REPORT_LIMIT]
+    )
+    if len(missing) > UNOBSERVED_REPORT_LIMIT:
+        shown += ", and %d more" % (len(missing) - UNOBSERVED_REPORT_LIMIT)
+
+    if layout.coverage_diagnosis:
+        # Checked FIRST, and deliberately before the shallow-scan branch: a sheet that
+        # is systematically wrong always runs the coverage scan to its cap, so ordering
+        # this second would let "too shallow to judge" swallow the actual finding.
+        # Verified on FT150034703 L01 with the i7 column reverse-complemented, where
+        # 3544 of 3788 barcodes go unseen and the cap is always reached.
+        logger.warning(
+            "lane %s: only %d of %d listed barcodes were seen in %d reads. This looks "
+            "like %s. Launching as-is would send most of the lane to `undecoded`. "
+            "Unseen: %s",
+            label,
+            layout.n_expected - len(missing),
+            layout.n_expected,
+            layout.coverage_scanned,
+            layout.coverage_diagnosis,
+            shown,
+        )
+        return
+
+    if layout.coverage_exhausted:
+        # The cap bound before every barcode was seen, so absence here is not evidence
+        # of anything. Say that rather than letting the list read as an accusation.
+        logger.warning(
+            "lane %s: %d of %d listed barcodes were not seen in the first %d reads, "
+            "where the coverage scan stopped - too shallow to judge, so these may "
+            "simply be the lane's lowest-yield samples: %s",
+            label,
+            len(missing),
+            layout.n_expected,
+            layout.coverage_scanned,
+            shown,
+        )
+        return
+
+    logger.warning(
+        "lane %s: %d of %d listed barcodes never appeared in %d reads - either the "
+        "lane's lowest-yield samples, or rows whose barcodes are wrong: %s",
+        label,
+        len(missing),
+        layout.n_expected,
+        layout.coverage_scanned,
+        shown,
+    )
+
+
 @dataclass(frozen=True)
 class LanePlan:
     """Everything the demultiplex job needs for one lane, resolved up front.
@@ -1181,6 +1676,7 @@ def lane_plan(
     # derivation's only input, and the check above guards it against a run directory
     # that disagrees with BioInfo.csv.
     orientation, slot_order = derive_layout(bio.is_pe, library_type)
+    sample_ids = sample_ids_by_index(sheet, label)
     layout = verify_layout(
         reads.barcode_fastq,
         bio,
@@ -1189,11 +1685,13 @@ def lane_plan(
         slot_order,
         min_hits=min_hits,
         max_scan_reads=max_scan_reads,
+        sample_ids=sample_ids,
     )
     if reads.is_pe:
         layout = replace(layout, read1_len=read_length(reads.r1))
 
     logger.info("lane %s: %s", label, layout.describe())
+    _log_coverage(label, layout, sample_ids)
 
     return LanePlan(
         lane=label,

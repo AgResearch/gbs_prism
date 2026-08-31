@@ -9,6 +9,7 @@ reads.
 """
 
 import gzip
+import logging
 import os
 import os.path
 
@@ -25,6 +26,7 @@ from agr.seq.mgi.barcodes import (
     BarcodeLayoutError,
     BioInfoError,
     _COHERENT_LAYOUTS,
+    _log_coverage,
     _sheet_columns,
     barcode_geometry,
     barcode_params,
@@ -32,12 +34,15 @@ from agr.seq.mgi.barcodes import (
     format_b_args,
     oriented_barcode,
     read_bioinfo,
+    lane_plan,
     revcomp,
+    sample_ids_by_index,
     sheet_indices,
     write_barcode_file,
     verify_layout,
 )
 from agr.seq.mgi.sample_sheet import (
+    index_pairs,
     read_sample_sheet,
     samples_for_lane,
 )
@@ -515,3 +520,348 @@ def test_sheet_indices_is_the_exact_inverse_of_oriented_barcode(
         barcode, orientation, slot_order, len(INDEX), len(index2)
     ) == (INDEX, index2)
 
+
+def _sheet_file(tmp_path, rows, name="SHEET.csv"):
+    """A minimal MGI sheet: `rows` is `[(sample_id, index, index2), ...]`, all lane 1."""
+    path = tmp_path / name
+    lines = ["[Header]", "Flowcell,RUN01", "", "[Reads]", "100", "", "[Data]",
+             "Lanes,Sample_ID,index,index2"]
+    lines += ["1,%s,%s,%s" % row for row in rows]
+    _ = path.write_text("\n".join(lines) + "\n")
+    return read_sample_sheet(str(path))
+
+
+def _run_dir(tmp_path, reads, bioinfo_text, run="RUN01"):
+    """A run directory holding one SE lane, as `read_files`/`bioinfo_path` expect."""
+    lane_dir = tmp_path / run / "L01"
+    lane_dir.mkdir(parents=True)
+    _ = (lane_dir / "BioInfo.csv").write_text(bioinfo_text)
+    _ = _write_fastq(lane_dir / ("%s_L01_read.fq.gz" % run), reads)
+    return str(tmp_path / run)
+
+
+T1PLUS_SE_BIOINFO_TEXT = (
+    "Machine ID,INV-MGI-T1\nRead1Len,100\nRead2Len,0\nBarcodeLen,10\nDualBarcodeLen,8\n"
+)
+
+
+def test_a_reverse_complemented_index2_column_is_named_as_such(tmp_path):
+    """The commonest operator error, and the one the old message was silent about.
+
+    The two Illumina i5 workflow conventions differ in exactly this column, so a sheet
+    exported for the wrong one fails with every barcode intact and merely mirrored.
+    """
+    bio = read_bioinfo(T1PLUS_BIOINFO)
+    fastq = _write_fastq(
+        tmp_path / "L01.fq.gz", [_se_read(INDEX, revcomp(INDEX2))] * 200
+    )
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [(INDEX, INDEX2)], (FORWARD, FORWARD), INDEX_FIRST,
+            max_scan_reads=200,
+        )
+
+    message = str(excinfo.value)
+    assert "index2 (i5) column is reverse-complemented" in message
+    assert "FIX: reverse-complement the index2 column" in message
+
+
+def test_swapped_index_columns_are_named_as_such(tmp_path):
+    """Equal-width blocks, so the swap actually fits and can be scored."""
+    bio = _symmetric_bioinfo(tmp_path)
+    index, index2 = "CTAGTGCTCT", "CCAACAGACT"
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", [_se_read(index2, index)] * 200)
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [(index, index2)], (FORWARD, FORWARD), INDEX_FIRST,
+            max_scan_reads=200,
+        )
+
+    assert "index and index2 columns are swapped" in str(excinfo.value)
+
+
+def test_a_rewrite_that_cannot_fit_the_blocks_is_reported_as_untestable(tmp_path):
+    """Not as a zero - "nothing matched" must not claim more than was checked.
+
+    The reference run's blocks are 10 + 8, so swapping a 10-base index with an 8-base
+    index2 gives slot widths that do not fit, and the swap has no offsets to score at.
+    Same limitation the reverse-strand sibling has on asymmetric blocks.
+    """
+    bio = read_bioinfo(T1PLUS_BIOINFO)  # blocks 10 + 8, INDEX is 10 and INDEX2 is 8
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", [_se_read("TTTTTTTTTT", "TTTTTTTT")] * 200)
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [(INDEX, INDEX2)], (FORWARD, FORWARD), INDEX_FIRST,
+            max_scan_reads=200,
+        )
+
+    message = str(excinfo.value)
+    assert "not testable on this lane's block widths" in message
+    assert "index and index2 columns are swapped" in message.split(
+        "not testable on this lane's block widths"
+    )[1]
+
+
+def test_the_census_reports_barcodes_in_sheet_orientation_not_read_orientation(tmp_path):
+    """Under the PE derivation the two differ, which is the whole point of the census.
+
+    A census that quoted the read slice would be handing the operator a string that
+    appears nowhere in their sheet and cannot be pasted into one.
+    """
+    bio = read_bioinfo(os.path.join(HERE, "BioInfo-T1plus-PE.csv"))
+    index, index2 = "TTACCGAC", "CGAATACG"  # ZV0157752, from the real run
+    orientation, slot_order = derive_layout(is_pe=True)
+    observed = oriented_barcode(index, index2, orientation, slot_order)
+    # PE read 2: 150 bp insert, then two 10-cycle blocks holding 8-base indices.
+    read = "A" * 150 + observed[:8] + "NN" + observed[8:] + "NN"
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", [read] * 200)
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [("GGGGGGGG", "GGGGGGGG")], orientation, slot_order,
+            max_scan_reads=200,
+        )
+
+    message = str(excinfo.value)
+    assert "%s %s" % (index, index2) in " ".join(message.split()), message
+    assert observed not in message.split("OBSERVED BARCODES")[1]
+
+
+def test_polyt_is_reported_but_polyg_is_folded_away(tmp_path):
+    """PolyG/N is MGI's no-signal call; polyA/polyT is signal.
+
+    Folding every single-base run would make a lane that really is full of polyT report
+    "nothing observed", which is worse than useless.
+    """
+    bio = read_bioinfo(T1PLUS_BIOINFO)
+    reads = [_se_read("TTTTTTTTTT", "TTTTTTTT")] * 120 + [
+        _se_read("GGGGGGGGGG", "GGGGGGGG")
+    ] * 400
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", reads)
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [(INDEX, INDEX2)], (FORWARD, FORWARD), INDEX_FIRST,
+            max_scan_reads=600,
+        )
+
+    census = str(excinfo.value).split("OBSERVED BARCODES")[1]
+    assert "TTTTTTTTTT TTTTTTTT" in " ".join(census.split())
+    assert "GGGGGGGGGG GGGGGGGG" not in " ".join(census.split())
+    assert "polyG/N no-signal" in census
+
+
+# Ten distinct 10-base i7s whose reverse complements are all distinct from each other
+# and from the originals, so a wholesale rc of the column collides only where a test
+# arranges it to.
+I7S = [
+    "ACGTACGTAC", "ACGTACGTCA", "ACGTACGTGA", "ACGTACGTTA", "ACGTACGACA",
+    "ACGTACGCAA", "ACGTACGGAA", "ACGTACGTAG", "ACGTACGTAT", "ACGTACGTCC",
+]
+I5 = "CCAACAGA"
+
+
+def test_lane_plan_names_the_sample_whose_barcode_never_appeared(tmp_path, caplog):
+    """A barcode is only actionable with the sample it belongs to.
+
+    `index_pairs` drops Sample_ID by construction, so the warning is only useful
+    because `lane_plan` joins the unobserved barcodes back to the sheet.
+    """
+    sheet = _sheet_file(
+        tmp_path, [("PRESENT", INDEX, INDEX2), ("ABSENT", I7S[0], I5)]
+    )
+    run_dir = _run_dir(tmp_path, [_se_read(INDEX, INDEX2)] * 200, T1PLUS_SE_BIOINFO_TEXT)
+
+    with caplog.at_level(logging.WARNING):
+        _ = lane_plan(sheet, 1, run_dir, "RUN01")
+
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("ABSENT" in w for w in warnings), warnings
+    assert not any("PRESENT" in w for w in warnings)
+
+
+def test_a_healthy_lane_says_every_barcode_was_seen(tmp_path, caplog):
+    """The reassuring line an operator gets when nothing is wrong."""
+    sheet = _sheet_file(tmp_path, [("A", INDEX, INDEX2), ("B", I7S[0], I5)])
+    reads = [_se_read(INDEX, INDEX2)] * 100 + [_se_read(I7S[0], I5)] * 100
+    run_dir = _run_dir(tmp_path, reads, T1PLUS_SE_BIOINFO_TEXT)
+
+    with caplog.at_level(logging.INFO):
+        _ = lane_plan(sheet, 1, run_dir, "RUN01")
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("all 2 listed barcodes observed" in m for m in messages), messages
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
+
+def test_a_systematically_wrong_sheet_that_clears_the_hit_gate_is_still_caught(
+    tmp_path, caplog
+):
+    """The gap this closes, reproduced from a real run.
+
+    On FT150034703 L01, reverse-complementing the whole i7 column still scores 8637
+    hits - 34 of the rewritten barcodes collide with real ones, and those few samples'
+    reads are enough to clear min_hits. The layout check passes and ~99% of the lane
+    would go to `undecoded`. Only coverage notices: 244 of 3788 barcodes were ever seen.
+
+    Same shape here in miniature: ten samples whose i7 is reverse-complemented, plus two
+    rows that collide with real barcodes and carry the hit count over the gate.
+    """
+    rows = [("RC%d" % n, revcomp(i7), I5) for n, i7 in enumerate(I7S)]
+    rows += [("COLLIDE0", I7S[0], I5), ("COLLIDE1", I7S[1], I5)]
+    sheet = _sheet_file(tmp_path, rows)
+    reads = [read for i7 in I7S for read in [_se_read(i7, I5)] * 30]
+    run_dir = _run_dir(tmp_path, reads, T1PLUS_SE_BIOINFO_TEXT)
+
+    with caplog.at_level(logging.WARNING):
+        plan = lane_plan(sheet, 1, run_dir, "RUN01")
+
+    # It passed the hit gate, exactly as the real run did.
+    assert plan.layout.hits >= 50
+    warnings = " ".join(
+        r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING
+    )
+    assert "index (i7) column is reverse-complemented" in warnings, warnings
+    assert "undecoded" in warnings
+
+
+def test_a_coverage_scan_that_hits_its_cap_says_so_rather_than_accusing_a_row(tmp_path):
+    """Absence is not evidence when the scan stopped early.
+
+    Per-sample yield has a long tail - on FT150034703 a healthy lane still has 172 of
+    3788 barcodes unseen at 5x coverage - so a capped scan must report its depth, not
+    imply the rows are wrong.
+    """
+    bio = read_bioinfo(T1PLUS_BIOINFO)
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", [_se_read(INDEX, INDEX2)] * 200)
+
+    layout = verify_layout(
+        fastq, bio, [(INDEX, INDEX2), (I7S[0], I5)], (FORWARD, FORWARD), INDEX_FIRST,
+        coverage_max_scan_reads=100,
+    )
+
+    assert layout.coverage_exhausted
+    assert not layout.coverage_complete
+    assert not layout.coverage_diagnosis
+
+
+# --------------------------------------------------------------------------
+# Opt-in: the real reads, which are far too large to commit
+# --------------------------------------------------------------------------
+
+SEQ_ROOT = "/projects/2026_sequence_production_a"
+needs_real_reads = pytest.mark.skipif(
+    not os.path.isdir(os.path.join(SEQ_ROOT, "run_data")),
+    reason="real MGI runs not available on this machine",
+)
+
+
+@needs_real_reads
+@pytest.mark.parametrize(
+    "run,expected_b_args",
+    [
+        ("DL100018466", "-b 300 8 1 -b 310 8 1"),
+        ("FT150034703", "-b 100 8 1 -b 108 10 1"),
+    ],
+)
+def test_lane_plan_reproduces_the_recorded_barcode_parameters(run, expected_b_args):
+    """The -b arguments are the thing that must not move.
+
+    Ground truth is the `barcode_parameters` file the run was actually demultiplexed
+    with; a diagnostic change that shifted an offset would be a far worse regression
+    than the missing diagnostics it set out to fix.
+    """
+    sheet = read_sample_sheet(
+        os.path.join(SEQ_ROOT, "postprocessing/mgi", run, "SampleSheet.csv")
+    )
+    plan = lane_plan(sheet, 1, os.path.join(SEQ_ROOT, "run_data", run), run)
+
+    assert format_b_args(plan.params) == expected_b_args
+    # Both of these lanes are healthy, so every listed barcode should turn up.
+    assert plan.layout.coverage_complete
+
+
+@needs_real_reads
+def test_a_reverse_complemented_i5_column_is_diagnosed_on_a_real_run():
+    """End to end on DL100018466 read 2, with the sheet's i5 column mirrored."""
+    sheet = read_sample_sheet(
+        os.path.join(SEQ_ROOT, "postprocessing/mgi/DL100018466/SampleSheet.csv")
+    )
+    bio = read_bioinfo(
+        os.path.join(SEQ_ROOT, "run_data/DL100018466/L01/BioInfo.csv")
+    )
+    fastq = os.path.join(
+        SEQ_ROOT, "run_data/DL100018466/L01/DL100018466_L01_read_2.fq.gz"
+    )
+    orientation, slot_order = derive_layout(bio.is_pe)
+    broken = [(index, revcomp(index2)) for index, index2 in index_pairs(sheet, 1)]
+
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, broken, orientation, slot_order, max_scan_reads=20000
+        )
+
+    message = str(excinfo.value)
+    assert "index2 (i5) column is reverse-complemented" in message
+
+    # Every barcode the census quotes must be a row of the *unmodified* sheet, written
+    # the way that sheet writes it. This lane pairs its i7/i5 combinatorially, so an
+    # inversion that mixed up the slots would still yield real-looking pairs - they
+    # would just belong to the wrong samples - and would fail here rather than silently.
+    true_pairs = set(index_pairs(sheet, 1))
+    census = message.split("OBSERVED BARCODES")[1].splitlines()
+    quoted = [
+        (fields[2], fields[3])
+        for fields in (line.split() for line in census)
+        if len(fields) >= 4 and fields[0].isdigit()
+    ]
+    assert len(quoted) == 20, quoted
+    assert all(pair in true_pairs for pair in quoted), [
+        pair for pair in quoted if pair not in true_pairs
+    ]
+
+
+def test_the_census_separates_mistyped_rows_from_the_good_ones(tmp_path):
+    """The case the sample naming exists for: a sheet that is mostly right.
+
+    A wholly-wrong sheet lists none of the barcodes present, so every census row reads
+    "not in sheet" and the naming adds nothing. It earns its keep here, where four rows
+    are correct and one is mistyped: the operator needs to see which is which, not a
+    flat list of barcodes.
+    """
+    good = [("S%d" % n, i7, I5) for n, i7 in enumerate(I7S[:4])]
+    sheet_rows = good + [("MISTYPED", I7S[4], I5)]
+    # The reads carry the four good barcodes, plus one barcode nobody listed - what the
+    # mistyped row's sample really went out with.
+    unlisted = I7S[5]
+    reads = [read for _, i7, _ in good for read in [_se_read(i7, I5)] * 60]
+    reads += [_se_read(unlisted, I5)] * 200
+
+    bio = read_bioinfo(T1PLUS_BIOINFO)
+    fastq = _write_fastq(tmp_path / "L01.fq.gz", reads)
+    sheet = _sheet_file(tmp_path, sheet_rows)
+    sample_ids = sample_ids_by_index(sheet, 1)
+
+    # Forced to report by asking for more evidence than this lane can offer.
+    with pytest.raises(BarcodeLayoutError) as excinfo:
+        _ = verify_layout(
+            fastq, bio, [(i7, I5) for _, i7, _ in sheet_rows],
+            (FORWARD, FORWARD), INDEX_FIRST,
+            min_hits=10**6, max_scan_reads=len(reads), sample_ids=sample_ids,
+        )
+
+    census = str(excinfo.value).split("OBSERVED BARCODES")[1]
+    # count, share, index, index2, then the sheet row (which may contain spaces).
+    rows = {
+        fields[2]: " ".join(fields[4:])
+        for fields in (line.split() for line in census.splitlines())
+        if len(fields) >= 5 and fields[0].isdigit()
+    }
+    # The four listed barcodes are named; the one nobody listed is called out.
+    for name, i7, _ in good:
+        assert rows[i7] == name, census
+    assert rows[unlisted].startswith("**"), census
+    assert I7S[4] not in rows, "the mistyped row's barcode is not in the reads at all"
