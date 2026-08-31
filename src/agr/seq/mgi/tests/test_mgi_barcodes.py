@@ -24,6 +24,8 @@ from agr.seq.mgi.barcodes import (
     REVCOMP,
     BarcodeLayoutError,
     BioInfoError,
+    _COHERENT_LAYOUTS,
+    _sheet_columns,
     barcode_geometry,
     barcode_params,
     derive_layout,
@@ -31,8 +33,13 @@ from agr.seq.mgi.barcodes import (
     oriented_barcode,
     read_bioinfo,
     revcomp,
+    sheet_indices,
     write_barcode_file,
     verify_layout,
+)
+from agr.seq.mgi.sample_sheet import (
+    read_sample_sheet,
+    samples_for_lane,
 )
 
 HERE = os.path.dirname(__file__)
@@ -393,3 +400,118 @@ def test_write_barcode_file_rewrites_when_the_barcodes_change(tmp_path):
     _ = write_barcode_file([("SQ5420", "AAAAAAAAAACCCCCCCC")], path)
     assert os.stat(path).st_mtime != marker
     assert "AAAAAAAAAACCCCCCCC" in open(path).read()
+
+
+# --------------------------------------------------------------------------
+# Reporting observed barcodes in the sheet's own terms
+#
+# These are the tests for the operator-facing half of the check: when the reads and the
+# sheet disagree, what is quoted back has to be what the operator would type into the
+# sheet, not what the instrument wrote.
+# --------------------------------------------------------------------------
+
+# Real runs, reduced to their sample sheet plus the barcode file the demultiplexer was
+# actually given. The barcode file holds each sample's barcode exactly as it appears in
+# the reads, so together they are ground truth for the read -> sheet direction across
+# all three geometries in production.
+REAL_RUNS = [
+    ("DL100018469.csv", "DL100018469.L01.barcodes", "BioInfo-T1plus-SE.csv"),
+    ("FT150034703-head.csv", "FT150034703-head.L01.barcodes", "BioInfo-G99-SE.csv"),
+    ("DL100018466.csv", "DL100018466.L01.barcodes", "BioInfo-T1plus-PE.csv"),
+]
+
+
+def _real_run(sheet_name, barcodes_name, bioinfo_name):
+    """`(sheet rows by sample, observed barcodes by sample, layout)` for a real run."""
+    sheet = read_sample_sheet(os.path.join(HERE, sheet_name))
+    id_column, index_column, index2_column = _sheet_columns(sheet)
+    rows = {
+        row[id_column].strip(): (
+            row[index_column].strip().upper(),
+            (row.get(index2_column, "") or "").strip().upper() if index2_column else "",
+        )
+        for row in samples_for_lane(sheet, 1)
+    }
+    observed = dict(
+        line.rstrip("\n").split("\t")
+        for line in open(os.path.join(HERE, barcodes_name))
+    )
+    bio = read_bioinfo(os.path.join(HERE, bioinfo_name))
+    return rows, observed, derive_layout(bio.is_pe)
+
+
+@pytest.mark.parametrize("sheet_name,barcodes_name,bioinfo_name", REAL_RUNS)
+def test_observed_barcodes_reproduce_the_sample_sheet(
+    sheet_name, barcodes_name, bioinfo_name
+):
+    """Every barcode in a real run's barcode file maps back to that sheet's own columns.
+
+    The headline requirement, against production data rather than synthesis: T1+ SE
+    (10 + 8), G99 SE (8 + 10, blocks the other way round) and T1+ PE (revcomp,
+    index2-first). If `sheet_indices` is wrong in any of orientation, slot order or
+    slot width, one of these three fails.
+    """
+    rows, observed, (orientation, slot_order) = _real_run(
+        sheet_name, barcodes_name, bioinfo_name
+    )
+    assert observed, "fixture has no barcodes"
+
+    for sample_id, barcode in observed.items():
+        index, index2 = rows[sample_id]
+        # Forward: the fixture's own barcode file is what oriented_barcode must produce.
+        assert oriented_barcode(index, index2, orientation, slot_order) == barcode
+        # Back again: which is what an operator gets shown.
+        assert sheet_indices(
+            barcode, orientation, slot_order, len(index), len(index2)
+        ) == (index, index2), sample_id
+
+
+def test_a_misinverted_barcode_would_name_a_different_real_sample():
+    """Why the inversion is pinned by a test rather than by inspection.
+
+    DL100018466 pairs its i7/i5 combinatorially, so every sample's (index, index2) also
+    appears as some *other* sample's (index2, index). An inversion that drops the
+    index2-first swap therefore never produces an invalid-looking barcode - it silently
+    re-labels reads as a different, real sample. Measured on that run's read 2: wrong on
+    100% of decodable reads, visibly wrong on none of them.
+    """
+    rows, observed, (orientation, slot_order) = _real_run(*REAL_RUNS[2])
+    by_pair = {pair: sample for sample, pair in rows.items()}
+
+    misattributed = 0
+    for sample_id, barcode in observed.items():
+        index, index2 = rows[sample_id]
+        slot1, slot2 = barcode[: len(index2)], barcode[len(index2) :]
+        naive = (revcomp(slot1), revcomp(slot2))  # forgot the index2-first swap
+        assert naive != (index, index2)
+        if by_pair.get(naive) not in (None, sample_id):
+            misattributed += 1
+
+    assert misattributed == len(observed), (
+        "expected every row of this fixture to be swap-degenerate, so that a wrong "
+        "inversion is silent rather than obvious"
+    )
+    # And the real thing does not do that.
+    for sample_id, barcode in observed.items():
+        index, index2 = rows[sample_id]
+        assert by_pair[
+            sheet_indices(barcode, orientation, slot_order, len(index), len(index2))
+        ] == sample_id
+
+
+@pytest.mark.parametrize("orientation,slot_order", list(_COHERENT_LAYOUTS))
+@pytest.mark.parametrize("index2", [INDEX2, ""])
+def test_sheet_indices_is_the_exact_inverse_of_oriented_barcode(
+    orientation, slot_order, index2
+):
+    """Round trip for both physically possible layouts, dual- and single-index.
+
+    The single-index case is the one the real fixtures cannot cover: `_slot_lengths`
+    collapses to one slot regardless of order, so an inversion that always swaps would
+    report the index in the index2 column.
+    """
+    barcode = oriented_barcode(INDEX, index2, orientation, slot_order)
+    assert sheet_indices(
+        barcode, orientation, slot_order, len(INDEX), len(index2)
+    ) == (INDEX, index2)
+

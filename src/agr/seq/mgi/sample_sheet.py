@@ -29,10 +29,10 @@ _SECTION_RE = re.compile(r"^\[(?P<name>[^\]]+)\]")
 
 # Both spellings occur in production sheets: DL100018469 and DL100018479 use
 # "Lanes", DL100018216 uses "Lane". gquery's Mgi accepts both for the same reason.
-_LANE_COLUMNS = ("Lanes", "Lane")
-_SAMPLE_ID_COLUMNS = ("Sample_ID", "SampleID", "Sample_Name")
-_INDEX_COLUMNS = ("index", "Index", "I7_Index", "index1")
-_INDEX2_COLUMNS = ("index2", "Index2", "I5_Index")
+LANE_COLUMNS = ("Lanes", "Lane")
+SAMPLE_ID_COLUMNS = ("Sample_ID", "SampleID", "Sample_Name")
+INDEX_COLUMNS = ("index", "Index", "I7_Index", "index1")
+INDEX2_COLUMNS = ("index2", "Index2", "I5_Index")
 
 GENERATE_KEYFILE_SECTION = "GenerateKeyfile"
 
@@ -201,7 +201,7 @@ def lane_number(lane: int | str) -> int:
 
 def lanes_in_sample_sheet(sheet: MgiSampleSheet) -> list[str]:
     """Sorted, deduplicated lane labels across every `[Data]` row."""
-    lane_column = column(sheet, *_LANE_COLUMNS)
+    lane_column = column(sheet, *LANE_COLUMNS)
     found: set[int] = set()
     for row in sheet.data:
         found.update(parse_lanes(row[lane_column]))
@@ -211,7 +211,7 @@ def lanes_in_sample_sheet(sheet: MgiSampleSheet) -> list[str]:
 def samples_for_lane(sheet: MgiSampleSheet, lane: int | str) -> list[dict[str, str]]:
     """`[Data]` rows belonging to `lane` - by digit membership, not equality."""
     wanted = lane_number(lane)
-    lane_column = column(sheet, *_LANE_COLUMNS)
+    lane_column = column(sheet, *LANE_COLUMNS)
     rows = [row for row in sheet.data if wanted in parse_lanes(row[lane_column])]
     if not rows:
         raise MgiSampleSheetError(
@@ -231,8 +231,8 @@ def lanes_by_library(sheet: MgiSampleSheet) -> dict[str, list[int]]:
     Each lane's own `BioInfo.csv` records the same mapping as `DNBID_L<n>`, which is
     a useful cross-check, but the sheet is authoritative.
     """
-    id_column = column(sheet, *_SAMPLE_ID_COLUMNS)
-    lane_column = column(sheet, *_LANE_COLUMNS)
+    id_column = column(sheet, *SAMPLE_ID_COLUMNS)
+    lane_column = column(sheet, *LANE_COLUMNS)
 
     lanes: dict[str, set[int]] = {}
     for row in sheet.data:
@@ -283,8 +283,8 @@ def index_pairs(sheet: MgiSampleSheet, lane: int | str) -> list[tuple[str, str]]
     keeps them from tripping the mixed-index-length check on their empty values.
     """
     rows = samples_for_lane(sheet, lane)
-    index_column = column(sheet, *_INDEX_COLUMNS)
-    index2_column = optional_column(sheet, *_INDEX2_COLUMNS)
+    index_column = column(sheet, *INDEX_COLUMNS)
+    index2_column = optional_column(sheet, *INDEX2_COLUMNS)
 
     barcoded = [row for row in rows if row[index_column].strip()]
     if not barcoded:

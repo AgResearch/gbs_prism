@@ -47,6 +47,9 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
 
 from agr.seq.mgi.sample_sheet import (
+    INDEX_COLUMNS,
+    INDEX2_COLUMNS,
+    SAMPLE_ID_COLUMNS,
     MgiSampleSheet,
     SkippedLaneError,
     column,
@@ -234,9 +237,78 @@ def oriented_barcode(
     return first + second
 
 
+def sheet_indices(
+    barcode: str,
+    orientation: tuple[str, str],
+    slot_order: str,
+    index_len: int,
+    index2_len: int,
+) -> tuple[str, str]:
+    """`(index, index2)` as the *sample sheet* carries them, from a read's barcode.
+
+    The exact inverse of `oriented_barcode`, and deliberately adjacent to it: every
+    barcode this module quotes back to an operator passes through here, so an observed
+    barcode is reported in the complement and column order they would type into the
+    sheet - not in the orientation the instrument happened to write it.
+
+    Getting this wrong is **silent, not loud**. Real sheets pair i7/i5 combinatorially,
+    so on the verified run DL100018466 every sample's `(index, index2)` also appears as
+    some *other* sample's `(index2, index)`: dropping the INDEX2_FIRST swap re-labels
+    100% of decodable reads as a different, real sample and never once produces an
+    invalid-looking barcode. That is why this is pinned by a round-trip test against
+    that run's own barcode file rather than by inspection.
+    """
+    slot1_len, slot2_len = _slot_lengths(index_len, index2_len, slot_order)
+    slot1 = barcode[:slot1_len]
+    slot2 = barcode[slot1_len : slot1_len + slot2_len]
+
+    # A single-index lane has one slot whichever order was derived: _slot_lengths
+    # collapses to (index_len, 0) and oriented_barcode leaves the index in slot 1 even
+    # under INDEX2_FIRST. Swapping here would report it in the index2 column.
+    if not slot2_len:
+        return _oriented(slot1, orientation[0]), ""
+
+    first, second = (slot2, slot1) if slot_order == INDEX2_FIRST else (slot1, slot2)
+    return _oriented(first, orientation[0]), _oriented(second, orientation[1])
+
+
 # --------------------------------------------------------------------------
 # Barcode entries - the -B file
 # --------------------------------------------------------------------------
+
+
+def _sheet_columns(sheet: MgiSampleSheet) -> tuple[str, str, str | None]:
+    """`(Sample_ID, index, index2)` column names, resolved once.
+
+    Shared so the barcode file and the sample-name lookup below cannot disagree about
+    which column is which - the spellings vary between T1+ and G99 sheets.
+    """
+    return (
+        column(sheet, *SAMPLE_ID_COLUMNS),
+        column(sheet, *INDEX_COLUMNS),
+        optional_column(sheet, *INDEX2_COLUMNS),
+    )
+
+
+def sample_ids_by_index(sheet: MgiSampleSheet, lane: int | str) -> dict[tuple[str, str], str]:
+    """`{(index, index2): sample name}` for one lane.
+
+    Only for labelling diagnostics. `index_pairs` deliberately drops the sample name,
+    but a census row or an unobserved barcode is far more actionable with it: an
+    operator can go straight to the offending row instead of grepping their own sheet.
+
+    Two rows sharing a barcode is a collision the demultiplexer would suffer from
+    anyway, so they are joined rather than one silently winning.
+    """
+    id_column, index_column, index2_column = _sheet_columns(sheet)
+    names: dict[tuple[str, str], list[str]] = {}
+    for row in samples_for_lane(sheet, lane):
+        index = row[index_column].strip().upper()
+        if not index:
+            continue
+        index2 = (row.get(index2_column, "") or "").strip().upper() if index2_column else ""
+        names.setdefault((index, index2), []).append(row[id_column].strip())
+    return {pair: ", ".join(ids) for pair, ids in names.items()}
 
 
 def _validate_index(seq: str, what: str, sample_id: str) -> str:
@@ -270,9 +342,7 @@ def barcode_entries(
         )
 
     rows = samples_for_lane(sheet, lane)
-    id_column = column(sheet, "Sample_ID", "SampleID", "Sample_Name")
-    index_column = column(sheet, "index", "Index", "I7_Index", "index1")
-    index2_column = optional_column(sheet, "index2", "Index2", "I5_Index")
+    id_column, index_column, index2_column = _sheet_columns(sheet)
 
     entries: list[tuple[str, str]] = []
     lengths: set[tuple[int, int]] = set()

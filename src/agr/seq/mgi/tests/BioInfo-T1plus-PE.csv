@@ -1,0 +1,32 @@
+RunName,DL100018466
+UserName,user
+ISW Version,V1.1.0.340
+Machine ID,INV-MGI-T1
+Flow Cell Pos,B
+Recipe Version,V1.2.0.4
+IsRerunFlowcell,False
+StartSequenceTime,2026-06-05 16:53:22
+NeedAutoWash,True
+NeedAnalysis,False
+Process,ssDNA
+SplitBarcode,No split
+Read1Len,150
+Read2Len,150
+BarcodeLen,10
+DualBarcodeLen,10
+Read1DarkCycles,
+Read2DarkCycles,
+BarcodeDarkCycles,
+DualBarcodeDarkCycles,
+Customprimer,False
+Application,Default
+BarcodePosition,BarcodePosEnd
+DNBID_L1,NS0420
+BarcodeType_L1,App
+FlowcellID,DL100018466
+FlowcellType,FCL
+Cartridge1 ID,W0126041351210
+Cartridge1 Type,App-D
+Cartridge2 ID,W0126041450812
+Cartridge3 ID,W0126041504155
+UploadDataServer_L1,
