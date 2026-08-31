@@ -1,3 +1,62 @@
+## Developer Setup
+
+First-time setup on eRI, for working on `gbs_prism` itself. Do this on `login-1`,
+which is the Nix head node and builds much faster than the other login nodes.
+
+1. **Get a Kerberos ticket.** GQuery and the redun Postgres backend both
+   authenticate this way.
+
+   ```
+   login-1$ kinit
+   ```
+
+2. **Move into the local installation**
+
+   ```
+   login-1$ cd /projects/2023_sequence_production/gbs_prism
+   ```
+
+3. **Run the setup script.** It checks the prerequisites, configures direnv,
+   approves this repo, and builds the Nix devshell up front. The first run takes
+   a long time because it builds the whole flake; it is safe to re-run at any
+   point, and later runs are quick. Pass `--no-prebuild` to skip the build.
+
+   ```
+   login-1$ ./eri/dev-setup
+   ```
+
+   Ensure no `gbs_prism` environment module is loaded — it would shadow your
+   working tree. The script refuses to continue if one is.
+
+4. **Hook direnv into your shell.** The script does not edit your `~/.bashrc`;
+   add these two lines yourself, then start a fresh login shell with
+   `exec bash -l`.
+
+   ```
+   module load nix-direnv
+   eval "$(direnv hook bash)"
+   ```
+
+   Without them, `cd`ing into the repo will not load the environment.
+
+5. **Enter the repo.** direnv now loads the devshell automatically, using the
+   cache built in step 3. Leaving the directory tree unloads it again.
+
+   ```
+   login-1$ cd gbs_prism
+   direnv: loading .envrc
+   ```
+
+6. **Run the pipeline.**
+
+   ```
+   login-1$ redun run pipeline.py main --context-file context/eri-dev.json --run DL100018469
+   ```
+
+   `--context-file` is required in the devshell: only the environment-module
+   build bakes it into `redun.ini`. See [Usage](#usage) below for the module
+   route, which is the intended path for end users rather than developers.
+
 ## Quick Start
 
 The simplest way to run the pipeline is with the `run_gbs_prism` wrapper:
@@ -84,6 +143,10 @@ In dev and test, the default is to continue with a local SQLite database, for ea
 When switching GQuery environments for development as described below, when switching to the `prod` environment, the `prod` Postgres backend will be activated (by automatically setting `REDUN_CONFIG`), and when switching to the other environments the local SQLite backend will be selected (by unsetting `REDUN_CONFIG`.)  See the content of e.g. `$GBS_PRISM_PROD_ENV` to understand how this works.
 
 ## Development
+
+For first-time setup, see [Developer Setup](#developer-setup) at the top of this
+file, which automates the steps below via [eri/dev-setup](eri/dev-setup). The
+rest of this section explains what that script does and how to work day to day.
 
 All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv`.  When doing this, ensure you don't have any `gbs_prism` environment module loaded.
 

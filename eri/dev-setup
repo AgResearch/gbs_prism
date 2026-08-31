@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+#
+# Developer environment initialisation for gbs_prism on eRI.
+#
+#   login-1$ ./eri/dev-setup [--no-prebuild]
+#
+# Checks the prerequisites, approves this repo for direnv, and builds the Nix
+# devshell up front so that the first `cd` into the repo is instant and you can
+# get straight to testing.
+#
+# Safe to re-run any number of times:
+#   - a lock prevents two runs racing each other's Nix build
+#   - ~/.config/direnv/direnvrc is appended to only if the line is absent, and
+#     an existing file is never overwritten
+#   - the devshell is rebuilt only when flake.nix/flake.lock/.envrc change;
+#     nix-direnv replaces its old GC roots rather than accumulating them
+#   - GC roots orphaned by an interrupted build are swept before building
+#
+# This script never edits your ~/.bashrc.  It prints the two lines to add.
+
+set -uo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+layout_dir="$repo_root/.direnv"
+lockfile="$layout_dir/dev-setup.lock"
+direnvrc=~/.config/direnv/direnvrc
+nix_direnv_line='source $NIX_DIRENVRC'
+gquery_url='ssh://k-devops-pv01.agresearch.co.nz/tfs/Scientific/Bioinformatics/_git/gquery'
+prebuild=1
+hard_fail=0
+
+[[ ${1:-} == --no-prebuild ]] && prebuild=0
+
+say()  { printf '\n== %s\n' "$*"; }
+ok()   { printf '   ok      %s\n' "$*"; }
+warn() { printf '   WARN    %s\n' "$*"; }
+bad()  { printf '   FAIL    %s\n' "$*"; hard_fail=1; }
+
+say "Loading modules"
+
+# System profile scripts are written for interactive shells and reference
+# unset variables (lmod.sh dereferences SLURM_NODELIST), so relax -u here.
+set +u
+
+# module is a shell function, absent in the non-interactive shell running this.
+if ! command -v module >/dev/null; then
+    # shellcheck disable=SC1091
+    source /etc/profile.d/lmod.sh
+fi
+
+# MODULEPATH comes from the login shell; restore the eRI tree if it is missing.
+if [[ ${MODULEPATH-} != */agr/persist/apps/eri_rocky8/modules/all* ]]; then
+    module use /agr/persist/apps/eri_rocky8/modules/all
+fi
+
+# Provides direnv and $NIX_DIRENVRC.
+if command -v module >/dev/null && module load nix-direnv; then
+    ok "module load nix-direnv ($(direnv version 2>/dev/null))"
+else
+    bad "could not load the nix-direnv module"
+fi
+
+# Nix is not an environment module on eRI: it is installed system-wide and is
+# normally already on PATH.  Fall back to the system profile if it is not.
+if ! command -v nix >/dev/null; then
+    # shellcheck disable=SC1091
+    source /etc/profile.d/nix-env.sh 2>/dev/null \
+        || PATH=/nix/var/nix/profiles/system/bin:$PATH
+fi
+
+set -u
+
+say "Checking prerequisites"
+
+# The Nix head node builds far faster than the other login nodes.
+if [[ $(hostname -s) != login-1 ]]; then
+    warn "not on login-1 ($(hostname -s)); the devshell build will be much slower"
+else
+    ok "on login-1 (Nix head node)"
+fi
+
+# An environment module would shadow the working tree on PATH/PYTHONPATH.
+if [[ ${LOADEDMODULES:-} == *gbs_prism* ]]; then
+    bad "a gbs_prism environment module is loaded; run 'module unload gbs_prism' first"
+else
+    ok "no gbs_prism environment module loaded"
+fi
+
+if ! command -v nix >/dev/null; then
+    bad "nix not found on PATH or in the system profile"
+elif ! nix --extra-experimental-features 'nix-command flakes' flake --help >/dev/null 2>&1; then
+    bad "nix flakes are not enabled"
+else
+    ok "nix with flakes enabled ($(command -v nix))"
+fi
+
+# gquery and geno_import are pulled from the internal Azure DevOps host.
+if GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=10' \
+        git ls-remote "$gquery_url" >/dev/null 2>&1; then
+    ok "SSH access to k-devops-pv01 (gquery, geno_import)"
+else
+    bad "cannot reach $gquery_url over SSH; the devshell cannot be built until your key is set up"
+fi
+
+if (( hard_fail )); then
+    printf '\nFix the FAIL items above, then re-run.\n'
+    exit 1
+fi
+
+# One run at a time: a second invocation while a Nix build is in flight would
+# race for the same profile.  Taken after the checks so a failed run on the
+# wrong host leaves nothing behind.
+mkdir -p "$layout_dir"
+exec 9>"$lockfile"
+if ! flock -n 9; then
+    echo "Another dev-setup is already running in $repo_root; nothing to do."
+    exit 75  # EX_TEMPFAIL: the environment was not prepared by this run
+fi
+
+say "Configuring direnv"
+
+# $NIX_DIRENVRC must stay unexpanded: nix-direnv resolves it at shell time, so a
+# hardcoded store path would pin a stale version.
+mkdir -p "$(dirname "$direnvrc")"
+if [[ -e $direnvrc ]] && grep -qxF "$nix_direnv_line" "$direnvrc"; then
+    ok "$direnvrc already sources \$NIX_DIRENVRC"
+elif [[ -s $direnvrc ]]; then
+    # Never clobber: the file may hold the developer's own direnv config.
+    printf '\n%s\n' "$nix_direnv_line" >>"$direnvrc"
+    ok "appended \$NIX_DIRENVRC to your existing $direnvrc"
+else
+    echo "$nix_direnv_line" >"$direnvrc"
+    ok "wrote $direnvrc"
+fi
+
+if [[ -e $direnvrc ]] && grep -q '^[[:space:]]*source /nix/store/.*direnvrc' "$direnvrc"; then
+    warn "$direnvrc also sources a hardcoded /nix/store direnvrc; remove that stale line"
+fi
+
+# Re-allowing an already-allowed .envrc rewrites one file keyed by its path,
+# so this cannot accumulate.
+direnv allow "$repo_root" && ok "direnv allowed for $repo_root"
+
+# nix-direnv only removes its temporary profile on the success path, so a build
+# that was interrupted leaves a dangling GC root pinning store paths.  It names
+# these flake-tmp-profile.$$ after the shell running the build, and that shell
+# outlives the build -- so a live PID means someone (perhaps just a colleague's
+# `cd` into the repo, which never touches our lock) is building right now.
+# Only sweep the ones whose owning process is gone.
+orphans=()
+for tmp_profile in "$layout_dir"/flake-tmp-profile.*; do
+    [[ -e $tmp_profile ]] || continue
+    pid=${tmp_profile##*/flake-tmp-profile.}
+    pid=${pid%%[^0-9]*}
+    [[ -n $pid ]] && kill -0 "$pid" 2>/dev/null && continue  # build in flight
+    orphans+=("$tmp_profile")
+done
+if (( ${#orphans[@]} )); then
+    rm -f "${orphans[@]}"
+    ok "swept ${#orphans[@]} orphaned GC root(s) from an interrupted build"
+fi
+
+if (( prebuild )); then
+    # nix-direnv rebuilds only when these are newer than its cached profile.
+    profile_rc=$(ls -1t "$layout_dir"/flake-profile-*.rc 2>/dev/null | head -1)
+    cache_current=0
+    if [[ -n $profile_rc ]]; then
+        cache_current=1
+        for f in "$repo_root/flake.nix" "$repo_root/flake.lock" "$repo_root/.envrc"; do
+            [[ $f -nt $profile_rc ]] && cache_current=0
+        done
+    fi
+
+    if (( cache_current )); then
+        say "Devshell cache is current, nothing to rebuild"
+    else
+        say "Building the devshell (long the first time, cached thereafter)"
+    fi
+
+    if direnv exec "$repo_root" true; then
+        ok "devshell available from $layout_dir"
+    else
+        printf '\nThe devshell build failed; see the output above.\n'
+        printf 'Re-running this script is safe and will resume from the Nix store cache.\n'
+        exit 1
+    fi
+
+    say "Smoke testing the devshell"
+    direnv exec "$repo_root" bash -c '
+        redun --version >/dev/null   && printf "   ok      redun %s\n" "$(redun --version)"
+        python -c "import agr.seq.mgi.sample_sheet" \
+            && echo "   ok      agr importable from \$PWD/src"
+    ' || warn "the devshell loaded but the smoke test failed"
+fi
+
+say "Manual step: hook direnv into your interactive shell"
+
+cat <<'EOF'
+
+   Add these two lines to your ~/.bashrc (this script will not edit it):
+
+     module load nix-direnv
+     eval "$(direnv hook bash)"
+
+   Without them, direnv will not load the environment when you cd into the repo.
+EOF
+
+cat <<EOF
+
+Ready.  To start developing:
+
+  1. exec bash -l                # picks up the ~/.bashrc hook above
+  2. kinit                       # gquery and the redun backend authenticate by Kerberos
+  3. cd $repo_root               # direnv loads the devshell, already built
+  4. pytest src/agr              # unit tests, no cluster or database needed
+  5. redun run pipeline.py main --context-file context/eri-dev.json --run <RUN>
+
+     <RUN> is an MGI run name, e.g. DL100018469.  --context-file is required in the
+     devshell: only the environment-module build bakes it into redun.ini.
+
+GQuery dev is the default environment; 'source \$GBS_PRISM_TEST_ENV' (or _PROD_ENV)
+to switch, and confirm with 'gquery -t info'.
+EOF
