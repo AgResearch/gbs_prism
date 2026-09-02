@@ -7,7 +7,7 @@ Do this on `login-1`, which is the Nix head node and builds much faster than the
    authenticate this way.
 
    ```
-   login-1$ kinit
+   kinit
    ```
 
 2. **Move into the local installation**
@@ -67,7 +67,7 @@ Do this on `login-1`, which is the Nix head node and builds much faster than the
    login-1$ eval "$(direnv hook bash)"
    login-1$ cd /projects/2023_sequence_production/gbs_prism
    login-1$ source $GBS_PRISM_PROD_ENV # Changes the env variables to the production environment
-   login-1$ gquery -t info # To check the prod databases are configures
+   login-1$ gquery -t info # To check the prod databases are configured, invsqlpv05.agresearch.co.nz, n-db-agrbrdf-p1.eri.agresearch.co.nz
    login-1$ redun run pipeline.py main --context-file context/eri-prod.json --run DL100018469 # Make sure you change the context file to prod not dev
 
 ```
