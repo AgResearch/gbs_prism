@@ -1,7 +1,7 @@
-## Developer Setup
+## Developer Setup and Running as Local Install
 
-First-time setup on eRI, for working on `gbs_prism` itself. Do this on `login-1`,
-which is the Nix head node and builds much faster than the other login nodes.
+First-time setup on eRI, for working on `gbs_prism` or running it as Prod locally, prior to a module being built. 
+Do this on `login-1`, which is the Nix head node and builds much faster than the other login nodes.
 
 1. **Get a Kerberos ticket.** GQuery and the redun Postgres backend both
    authenticate this way.
@@ -20,19 +20,20 @@ which is the Nix head node and builds much faster than the other login nodes.
    approves this repo, and builds the Nix devshell up front. The first run takes
    a long time because it builds the whole flake; it is safe to re-run at any
    point, and later runs are quick. Pass `--no-prebuild` to skip the build.
+   **You only need to do this the very first time you try to run locally; not every time!**
 
    ```
    login-1$ ./eri/dev-setup
    ```
 
-   Ensure no `gbs_prism` environment module is loaded — it would shadow your
-   working tree. The script refuses to continue if one is.
+   Ensure no `gbs_prism` environment module is loaded/
+   The script refuses to continue if one is. 
 
-4. **Hook direnv into your shell.** The script does not edit your `~/.bashrc`;
-   add these two lines yourself, then start a fresh login shell with
-   `exec bash -l`.
+4. **Hook direnv into your shell.** Jump out of the gbs_prism directory after setup and prior to the following.
+   In subsequent runs, you will need to load nix-direnv and run the eval prior to moving into the local gbs_prism install.
 
    ```
+   login-1$ cd ..
    module load nix-direnv
    eval "$(direnv hook bash)"
    ```
@@ -43,11 +44,12 @@ which is the Nix head node and builds much faster than the other login nodes.
    cache built in step 3. Leaving the directory tree unloads it again.
 
    ```
+
    login-1$ cd gbs_prism
    direnv: loading .envrc
    ```
 
-6. **Run the pipeline.**
+6. **Run the pipeline.** This is to run the pipeline in Dev mode. It will not touch the prod databases, but requires the run you are testing to be in the dev databases.
 
    ```
    login-1$ redun run pipeline.py main --context-file context/eri-dev.json --run DL100018469
@@ -56,6 +58,21 @@ which is the Nix head node and builds much faster than the other login nodes.
    `--context-file` is required in the devshell: only the environment-module
    build bakes it into `redun.ini`. See [Usage](#usage) below for the module
    route, which is the intended path for end users rather than developers.
+
+**To run as Prod use the following commands** Assumes you have run the above commands include the setup script to configure everything. Just once on your first time. Note, the gbs_prism wrapper will not work in the local installation, it requires a module to be built.
+
+```
+   login-1$ module purge
+   login-1$ module load nix-direnv
+   login-1$ eval "$(direnv hook bash)"
+   login-1$ cd /projects/2023_sequence_production/gbs_prism
+   login-1$ source $GBS_PRISM_PROD_ENV # Changes the env variables to the production environment
+   login-1$ gquery -t info # To check the prod databases are configures
+   login-1$ redun run pipeline.py main --context-file context/eri-prod.json --run DL100018469 # Make sure you change the context file to prod not dev
+
+```
+
+
 
 ## Quick Start
 
