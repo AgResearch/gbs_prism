@@ -47,6 +47,11 @@ from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
 from agr.redun.tasks.split_barcodes import SplitBarcodesOutput
 from agr.redun import lazy_map
 
+# Lane fastqs must be unchanged across this interval before anything reads them.
+FASTQ_STABLE_INTERVAL_S = 5 * 60
+# Give up if a copy into the run directory has not finished by then.
+FASTQ_STABLE_MAX_WAIT_S = 2 * 60 * 60
+
 
 @dataclass
 class GbsTargetsOutput:
@@ -157,9 +162,15 @@ def run_stage1(
     library_lanes = lanes_by_library(sheet)
     libraries = sorted(library_lanes)
 
-    # The run is required to have finished before the pipeline is launched; this only
-    # fails fast and legibly if it has not.
+    # Fail fast and legibly if a lane's fastqs are absent altogether, then wait for
+    # them to stop changing: they arrive by an SMB copy that may still be running, and
+    # `lane_plan` below is the first thing to read them.
     sequencer_run.validate(lanes=lanes)
+    sequencer_run.wait_until_stable(
+        lanes=lanes,
+        interval_s=FASTQ_STABLE_INTERVAL_S,
+        max_wait_s=FASTQ_STABLE_MAX_WAIT_S,
+    )
     paths.make_run_dirs(lanes=lanes, libraries=libraries)
 
     # Archive the sheet actually processed. It lives outside the run tree and can be
