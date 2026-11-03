@@ -1,241 +1,218 @@
-## Developer Setup and Running as Local Install
+# gbs_prism
 
-First-time setup on eRI, for working on `gbs_prism` or running it as Prod locally, prior to a module being built. 
-Do this on `login-1`, which is the Nix head node and builds much faster than the other login nodes.
+GBS (genotyping-by-sequencing) post-processing pipeline for eRI, built on
+[redun](https://insitro.github.io/redun/index.html).
 
-1. **Get a Kerberos ticket.** GQuery and the redun Postgres backend both
-   authenticate this way.
+This branch processes **MGI single-end runs**. Illumina processing lives on the
+`illumina` branch (release 2.6.x). This code is a port of the legacy HPC
+[gbs_prism](https://github.com/AgResearch/gbs_prism/tree/legacy).
 
-   ```
-   kinit
-   ```
+## What it does
 
-2. **Move into the local installation**
+| Stage | Steps | Output |
+|---|---|---|
+| 1 | Check the sample sheet and lane fastqs, wait for fastqs to finish copying, demultiplex with `splitBarcode`, FastQC, MultiQC, k-mer analysis, merge lanes per library, create GBS keyfiles | `<postprocessing_root>/mgi/<run>/` |
+| 2 | Per cohort: sample + trim + BWA mapping, Tassel3 tag counting, unblinding, KGD, GUSbase, KGD report; then import results into the database | `<postprocessing_root>/gbs/<run>/<cohort>/` |
+| 3 | Run-wide summaries: tags/reads, mapping stats, barcode yields | `<postprocessing_root>/gbs/<run>/html/` |
+| Reports | Peacock report | `<postprocessing_root>/gbs/<run>/html/peacock.html` |
+| Warehouse | Export and import into the genotype database (runs last) | `<geno_import_dir>/` |
 
-   ```
-   login-1$ cd /projects/2023_sequence_production/gbs_prism
-   ```
+Before any cluster jobs start, stage 1 waits until the lane fastqs stop changing (it
+checks every 5 minutes). It stops with an error if:
+- the sample sheet and run do not match,
+- the run is paired-end,
+- a lane's fastqs are missing, or are still being copied after 2 hours.
 
-3. **Run the setup script.** It checks the prerequisites, configures direnv,
-   approves this repo, and builds the Nix devshell up front. The first run takes
-   a long time because it builds the whole flake; it is safe to re-run at any
-   point, and later runs are quick. Pass `--no-prebuild` to skip the build.
-   **You only need to do this the very first time you try to run locally; not every time!**
+## Inputs
 
-   ```
-   login-1$ ./eri/dev-setup
-   ```
+All paths come from a **context file** (`context/eri-{dev,test,prod}.json`):
 
-   Ensure no `gbs_prism` environment module is loaded/
-   The script refuses to continue if one is. 
+| Key | Meaning |
+|---|---|
+| `seq_root` | Sequencer run directories (`<seq_root>/<run>/`) |
+| `sample_sheet_root` | MGI sample sheets, named `<run>.csv`. `[Header] Flowcell` must equal the run name |
+| `postprocessing_root` | Where outputs are written |
+| `keyfiles_dir`, `fastq_link_farm`, `gbs_backup_dir`, `geno_import_dir` | Keyfiles, fastq links, database backups, warehouse files |
 
-4. **Hook direnv into your shell.** Jump out of the gbs_prism directory after setup and prior to the following.
-   In subsequent runs, you will need to load nix-direnv and run the eval prior to moving into the local gbs_prism install.
+The context file sets **paths only**. Which databases are used depends on the
+environment you have loaded (see [Environments](#environments-and-databases)).
 
-   ```
-   login-1$ cd ..
-   module load nix-direnv
-   eval "$(direnv hook bash)"
-   ```
+## Running
 
-   Without them, `cd`ing into the repo will not load the environment.
-
-5. **Enter the repo.** direnv now loads the devshell automatically, using the
-   cache built in step 3. Leaving the directory tree unloads it again.
-
-   ```
-
-   login-1$ cd gbs_prism
-   direnv: loading .envrc
-   ```
-
-6. **Run the pipeline.** This is to run the pipeline in Dev mode. It will not touch the prod databases, but requires the run you are testing to be in the dev databases.
-
-   ```
-   login-1$ redun run pipeline.py main --context-file context/eri-dev.json --run DL100018469
-   ```
-
-   `--context-file` is required in the devshell: only the environment-module
-   build bakes it into `redun.ini`. See [Usage](#usage) below for the module
-   route, which is the intended path for end users rather than developers.
-
-**To run as Prod use the following commands** Assumes you have run the above commands include the setup script to configure everything. Just once on your first time. Note, the gbs_prism wrapper will not work in the local installation, it requires a module to be built.
-
-```
-   login-1$ module purge
-   login-1$ module load nix-direnv
-   login-1$ eval "$(direnv hook bash)"
-   login-1$ cd /projects/2023_sequence_production/gbs_prism
-   login-1$ source $GBS_PRISM_PROD_ENV # Changes the env variables to the production environment
-   login-1$ gquery -t info # To check the prod databases are configured, invsqlpv05.agresearch.co.nz, n-db-agrbrdf-p1.eri.agresearch.co.nz
-   login-1$ redun run pipeline.py main --context-file context/eri-prod.json --run DL100018469 # Make sure you change the context file to prod not dev
-
-```
-
-
-
-## Quick Start
-
-The simplest way to run the pipeline is with the `run_gbs_prism` wrapper:
+### Standard (environment module)
 
 ```
 login-1$ kinit
 login-1$ tmux
-login-1$ module load gbs_prism 
-login-1$ run_gbs_prism 240323_A01439_0249_BH33MYDRX5
+login-1$ module load gbs_prism        # or gbs_prism-dev / gbs_prism-test
+login-1$ run_gbs_prism DL100018469
 ```
-## Rerun Behaviour
 
-gbs_prism uses [redun](https://insitro.github.io/redun/index.html) for caching, so only tasks whose inputs have changed are re-executed on reruns.
+`run_gbs_prism <run>` is shorthand for
+`redun run $GBS_PRISM/pipeline.py main --run <run>`.
 
-To trigger a rerun, edit the original sample sheet in the sequencer run directory (e.g. `SampleSheet.csv`). Do not edit any downstream copies of the sample sheet — these are generated by the pipeline and will be overwritten.
+### From a local checkout (developers)
 
-- **bcl-convert and fastq QC** reruns if the non-`[GenerateKeyfile]` portions of the sample sheet changes (e.g. indices); downstream analysis is also retriggered.
-- **Keyfile Updates** are per library: only libraries whose rows in the `[GenerateKeyfile]` section have changed are reimported. Unchanged libraries are skipped.
-- **Stage 2 GBS Cohort Processing** (e.g. Tassel & KGD) only reruns for cohorts whose keyfile was regenerated. Cohorts belonging to unchanged libraries are not reprocessed. Final summaries and database warehousing is also retriggered.
-
-In short: edit the sample sheet in the run directory, then rerun the pipeline. Redun will determine which tasks need to be re-executed.
-
-# gbs_prism for eRI
-
-The `main` branch in this repo is the port of legacy HPC [gbs_prism](https://github.com/AgResearch/gbs_prism/tree/legacy) for eRI. (The legacy branch has been retained and renamed from `master` to `legacy`.)
-
-The design approach is as follows:
-- use redun instead of Tardis
-- all rule implementations use in-process invocations of Python code instead of spawning shell scripts, for richer parameter handling (rather than strings passed on command line)
-- the Python library [agr](src/agr) is mostly a refactoring of existing Python code from legacy `gbs_prism` and `seq_prisms`
-
-## Usage
-
-This is the original way to run the pipeline, and unless there is breakage, should be all that is needed. This is also the method for running the pipeline in a local dev install, but ommit the the global `$GBS_PRISM` variable.
-
-The pipeline uses the cluster configuration in `$GBS_PRISM_EXECUTOR_CONFIG`, which is expected to point at a valid [Jsonnet](https://jsonnet.org/) file.
-To see the post-processed configuration, view the output of `jsonnet $GBS_PRISM_EXECUTOR_CONFIG`.
+Complete [Developer setup](#developer-setup) once first. Then:
 
 ```
 login-1$ kinit
-login-1$ module load gbs_prism   # or gbs_prism-dev or gbs_prism-test
-login-1$ redun run $GBS_PRISM/pipeline.py main --run 240323_A01439_0249_BH33MYDRX5
+login-1$ module load nix-direnv && eval "$(direnv hook bash)"
+login-1$ cd /projects/2023_sequence_production/gbs_prism   # direnv loads the dev environment
+login-1$ redun run pipeline.py main --context-file context/eri-dev.json --run DL100018469
 ```
 
-There is no need to have a local copy of the repo if simply running the pipeline from the environment module like this (but see note on development, below).
+`--context-file` is required in a local checkout; only the module has it built in.
 
-Note that the context file is where all path tweaking and memory sizing is done, and may be copied into the current directory for changing and using from there.
-
-
-## Redun
-
-The pipeline is built with [redun](https://insitro.github.io/redun/index.html), and that interface is exposed to users.
-
-A useful command to examine the status of previous jobs is [`redun console`](https://insitro.github.io/redun/console.html), which uses the `.redun` directory created in the current directory when running `redun`.
-
-## GQuery
-
-When switching between `dev`, `test`, and `prod` environments, it is important not to lose track of which databases `gquery` is currently using.
-
-This may be shown using `gquery -t info`.
-
-## Interactive Use
-
-For interactive troubleshooting, the `RunContext` class is useful, as it facilitates creation of various objects, with the paths defined in the redun context file.
-
-With the `gbs_prism` module loaded:
+To run against **prod** from a local checkout:
 
 ```
-$ python
-Python 3.11.10 (main, Sep  7 2024, 01:03:31) [GCC 13.2.0] on linux
-Type "help", "copyright", "credits" or "license" for more information.
->>> from agr.gbs_prism.interactive import RunContext
->>> run = RunContext("240323_A01439_0249_BH33MYDRX5", "$GBS_PRISM/eri-test.json")
+login-1$ source $GBS_PRISM_PROD_ENV     # prod databases + prod redun backend
+login-1$ gquery -t info                 # confirm which databases are active
+login-1$ redun run pipeline.py main --context-file context/eri-prod.json --run DL100018469
 ```
 
-## Postgres Backend
+> If `$GBS_PRISM_PROD_ENV` is sourced, a run with `eri-dev.json` still reads from **and
+> writes to** the prod databases (keyfile import, KGD imports, warehouse). Only the output
+> paths change.
 
-All production runs now store their redun state in the `gbs_prism_redun` database on `molten`.  This means that users will see a common history of runs when using `redun console`.
+## Reruns
 
-Authorisation for database access is by Kerberos ticket as for the other databases.  The host is `n-db-molten-[dtp]1`, database `gbs_prism_redun` and role `gbs_prism_redun`.
+redun caches every task. A rerun only repeats tasks whose inputs changed. Running a
+finished run again with nothing changed is quick; only a few database lookups repeat.
 
-In dev and test, the default is to continue with a local SQLite database, for ease of purging redun database state.  If desired, the Postgres backend may be selected by setting the environmemt variable `REDUN_CONFIG` to `$(pwd)/config/redun.dev` or `$(pwd)/config/redun.test`.
+A run that failed part-way resumes: finished tasks are reused, the rest run.
 
-When switching GQuery environments for development as described below, when switching to the `prod` environment, the `prod` Postgres backend will be activated (by automatically setting `REDUN_CONFIG`), and when switching to the other environments the local SQLite backend will be selected (by unsetting `REDUN_CONFIG`.)  See the content of e.g. `$GBS_PRISM_PROD_ENV` to understand how this works.
+### After editing the sample sheet
+
+Edit the sheet in `sample_sheet_root`, then rerun the same command. What re-runs
+depends on what you changed:
+
+- **Only `[GenerateKeyfile]`:** keyfiles are re-imported **only for the libraries
+  whose rows changed**. Then only those libraries' cohorts are re-analysed.
+  Demultiplexing and QC are reused.
+- **Anything in `[Data]`:** this means the first demultiplexing was wrong.
+  1. Remove `<postprocessing_root>/gbs/<run>/` first.
+  2. Rerun. The checks, the fastq wait and lane planning run again.
+  3. `splitBarcode` re-runs for each lane whose barcodes changed.
+  4. **Every library** is re-imported and re-analysed, even if only a non-barcode
+     column (such as `Description`) changed.
+- **Nothing (or only saving the file unchanged):** nothing re-runs.
+
+Do not use `--no-cache` to apply a sheet change. It repeats everything, including
+hours of demultiplexing and all prod database imports.
+
+> **One-off after upgrading to this version:** the first rerun of a run processed
+> by an older version behaves like a `[Data]` edit, except that demultiplexing,
+> lane merging, cutadapt and bwa are reused:
+> - the fastq checks run again. They wait at least 5 minutes, and much longer if
+>   the fastqs are on cold storage;
+> - every library is re-imported;
+> - every cohort's Tassel/KGD analysis re-runs;
+> - all stage-2 database imports and warehousing are repeated.
+>
+> Don't rerun an old run casually.
+
+Do not edit the archived copy of the sheet under the outputs; it is overwritten.
+
+## Monitoring and troubleshooting
+
+- **Job history:** `redun console` (see [docs](https://insitro.github.io/redun/console.html)).
+- **Pipeline log:** `gbs_prism.log` in the directory you ran from.
+- **Active databases:** `gquery -t info`.
+- **Interactive use:** load run objects with the paths from a context file:
+
+  ```python
+  >>> from agr.gbs_prism.interactive import RunContext
+  >>> run = RunContext("DL100018469", "context/eri-dev.json")
+  ```
+
+- **Cluster settings** (memory, partitions per tool) are in
+  `$GBS_PRISM_EXECUTOR_CONFIG` ([Jsonnet](https://jsonnet.org/)). View with
+  `jsonnet $GBS_PRISM_EXECUTOR_CONFIG`.
+
+## Environments and databases
+
+| Environment | Load with | gquery databases | redun state |
+|---|---|---|---|
+| dev (devshell default) | `source $GBS_PRISM_DEV_ENV` | dev | local SQLite `.redun/` |
+| test | `source $GBS_PRISM_TEST_ENV` | test | local SQLite `.redun/` |
+| prod | `source $GBS_PRISM_PROD_ENV` | prod | Postgres `gbs_prism_redun` on `n-db-molten-p1` |
+
+- All database access uses your Kerberos ticket (`kinit`).
+- Prod redun state is shared, so everyone sees the same run history in `redun console`.
+- To use Postgres in dev or test, set `REDUN_CONFIG=$(pwd)/config/redun.dev` (or `redun.test`).
+
+## Developer setup
+
+Do this once, on `login-1` (the Nix head node; builds are faster there).
+
+1. Get a Kerberos ticket: `kinit`
+2. Make sure no `gbs_prism` module is loaded (`module purge`).
+3. Run the setup script. The first run builds the Nix flake and is slow. It is safe to
+   re-run. Use `--no-prebuild` to skip the build.
+
+   ```
+   login-1$ cd /projects/2023_sequence_production/gbs_prism
+   login-1$ ./eri/dev-setup
+   ```
+
+4. Add these to `~/.bashrc` (or run them in each new shell):
+
+   ```
+   module load nix-direnv
+   eval "$(direnv hook bash)"
+   ```
+
+5. `cd` into the repo. direnv loads the devshell; leaving the repo unloads it.
+
+What the setup script does:
+- points direnv at the Nix-optimised `direnvrc` (`source $NIX_DIRENVRC`),
+- runs `direnv allow` for the repo,
+- prebuilds the devshell.
+
+In the devshell, `./src` is on `PYTHONPATH`, so code changes take effect immediately.
+Dependencies (`redun`, `gquery`, tools) come from Nix and need a flake rebuild to change.
 
 ## Development
 
-For first-time setup, see [Developer Setup](#developer-setup) at the top of this
-file, which automates the steps below via [eri/dev-setup](eri/dev-setup). The
-rest of this section explains what that script does and how to work day to day.
+- **Tests:** `python -m pytest src`
+- **Architecture, conventions, known issues:** see [CLAUDE.md](CLAUDE.md).
+- **Layout:**
+  - `pipeline.py`: entry point (`main`).
+  - `src/agr/gbs_prism/redun/`: the stage tasks and reports.
+  - `src/agr/redun/tasks/`: one task module per tool.
+  - `src/agr/seq/`: sample sheets, barcodes and run checks.
+  - `config/`: redun and cluster settings.
+  - `context/`: paths for each environment.
 
-All of the dependencies are deployed using Nix.  The best way to work on `gbs_prism` itself is in the Nix devshell using `direnv`.  When doing this, ensure you don't have any `gbs_prism` environment module loaded.
+## Release process
 
-To get going with `direnv` if you don't already have it available by means of Nix Home Manager, add these lines to your `~/.bashrc`:
+`gbs_prism` is installed as an environment module in `/agr/persist/apps/eri_rocky8`
+by the [install script](eri/install), run via the flake app `eri-install`.
 
-```
-module load nix-direnv
-eval "$(direnv hook bash)"
-```
+1. Create a release branch from `main`, e.g. `release-2.3.0`.
+2. Set an alpha version in [pyproject.toml](pyproject.toml), e.g. `2.3.0a1`. Commit, push, then tag `2.3.0a1` and push the tag.
+3. Install the module under your home directory (below), load it, and complete a test run.
+4. If there are problems, fix them, bump the alpha (e.g. `2.3.0a2`) and repeat step 3.
+5. Set the release version (e.g. `2.3.0`), push, and merge the branch to `main` with a PR.
+6. Tag `2.3.0` on `main`, then install the module publicly (below).
 
-To hook in the optimised Nix variant of `direnv`, run these commands directly just once for initial setup:
+Version format follows [Python version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers).
 
-```
-mkdir -p ~/.config/direnv && rm -f ~/.config/direnv/direnvrc && echo 'source $NIX_DIRENVRC' > ~/.config/direnv/direnvrc && cat ~/.config/direnv/direnvrc
-```
-
-If this fails to print `source $NIX_DIRENVRC` perhaps you omitted the single quotes.  It is important not to expand the environment variable ahead of time.
-
-Then, for each directory containing a `.envrc` file, you will need to `direnv allow` for it to do anything. In your interactive shell, `cd` into the top-level directory of the `gbs_prism` repo to get prompted to do this.  The first time you do this will take a long time building the Nix flake.  Ensure to do this on `login-1` which is faster by virtue of being the Nix head node.  Subsequent use is cached from `.direnv`.
-
-When working like this, `gbs_prism` itself is made available to Python by virtue of `./src` being on the `PYTHONPATH` (which is set up by the Nix flake).  So any changes made will take immediate effect.  However, all dependencies, including `gquery` and `redun` are consumed via Nix flakes, and therefore not possible to change without rebuilding the flake.
-
-When you change directory to anywhere other than the main repo or its children, the direnv environment is unloaded.
-
-### GQuery environments for development
-
-By default when working in the Nix devshell the GQuery dev environment is active.  In general, this is all that is needed and all that is appropriate.
-
-However, in case of needing access to other GQuery environments, they may be loaded up and confirmed as follows.  Note that since adding the Postgres database backends there is additional `gbs_prism` specific configuration to switch, so the environment variables have been changed from `GQUERY` prefixed ones to `GBS_PRISM` prefixed.
+Install on `login-1`. For testing, install to your home directory, then add `~/modulefiles` to the start of `$MODULEPATH`:
 
 ```
-source $GBS_PRISM_TEST_ENV
-gquery -t info
-```
-
-The other environments are available via `GBS_PRISM_DEV_ENV` and `GBS_PRISM_PROD_ENV`.
-
-## Release Process
-
-`gbs_prism` is installed as an environment module on eRI in `/agr/persist/apps/eri_rocky8`.  There is an [install script](eri/install) which is usually run from the Nix flake app `eri-install`.
-
-The release process is as follows:
-
-1. Create a release branch from latest commit on main, e.g. `release-2.3.0`
-2. On the release branch, in [pyproject.toml](pyproject.toml) set the version to some alpha version e.g. `2.3.0a4`, push this change to the branch, create a git tag `2.3.0a4` for that alpha version, and push the git tag
-3. Install the module under your home directory (below)
-4. Verify all is well by loading the module from there and completing a test run of the pipeline
-5. If not OK, go to step 2 with fixes and bump version to e.g. `2.3.0a4`
-6. On the release branch, update version in [pyproject.toml](pyproject.toml) to release e.g. `2.3.0`, push new commit to this branch
-7. Merge release branch to main with a PR
-8. Tag e.g. `2.3.0` on main branch after merging
-9. Install the module publicly (below)
-
-[Python packaging version specifiers](https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers) look like `2.3.0a1`, `2.3.0a2` for alpha releases and `2.3.0` for actual releases.
-
-The eRI module installer is available as a Nix Flake app, so the install process for the end-user facing environment module and script is as follows, and should be done on `login-1` for faster Nix build.
-
-To install in your home directory (for testing prior to general release):
-```
-login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0a4'
-
+login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0a1'
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --test --home $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --home $FLAKE_URI
 ```
-To load the module from there, prepend `$MODULEPATH` with `~/modulefiles`.
 
-Then, to install the verified pipeline as a verified module on the system:
+Public install (drop `--home`):
 
 ```
 login-1$ export FLAKE_URI='github:AgResearch/gbs_prism?ref=refs/tags/2.3.0'
-
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --dev $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- --test $FLAKE_URI
 login-1$ nix run "${FLAKE_URI}#eri-install" -- $FLAKE_URI
@@ -243,4 +220,4 @@ login-1$ nix run "${FLAKE_URI}#eri-install" -- $FLAKE_URI
 
 ## Notes
 
-1. historical_unblind has been omitted, seems not to be required
+- `historical_unblind` from the legacy pipeline is omitted; it appears not to be needed.
