@@ -63,6 +63,7 @@ def dump_gbs_tables(backup_dir: str) -> list[File]:
 def create_gbs_keyfile_for_library(
     library_name: str,
     library_rows: list[list[str]],
+    data_rows: list[list[str]],
     sample_sheet_path: str,
     merged_fastq_dir: str,
     out_dir: str,
@@ -75,10 +76,16 @@ def create_gbs_keyfile_for_library(
     The library_rows parameter (header + data rows from the GenerateKeyfile
     section for this library) serves as a cache key: redun will re-run this
     task only when the library's sample sheet metadata changes.
+    The data_rows parameter is the whole [Data] section, shared by every library:
+    any [Data] edit re-imports *all* libraries. That is deliberate. gquery's import
+    also reads [Data] columns which never reach the barcode file (Description,
+    Sample_Project, Sample_Plate), and a [Data] edit means the initial
+    demultiplexing was wrong, so re-importing everything is the safe response.
     The merged_fastq parameter triggers reimport when upstream fastq content
     changes.
     """
-    _ = (library_rows, backup_ready, merged_fastq)  # cache key and dependency trigger
+    # cache key and dependency trigger
+    _ = (library_rows, data_rows, backup_ready, merged_fastq)
 
     GUpdate(
         task="create_gbs_keyfiles",
@@ -120,6 +127,7 @@ def _sequenced_keyfile_import(
     prev: Optional[File],
     library_name: str,
     library_rows: list[list[str]],
+    data_rows: list[list[str]],
     sample_sheet_path: str,
     merged_fastq_dir: str,
     out_dir: str,
@@ -139,6 +147,7 @@ def _sequenced_keyfile_import(
     return create_gbs_keyfile_for_library(
         library_name=library_name,
         library_rows=library_rows,
+        data_rows=data_rows,
         sample_sheet_path=sample_sheet_path,
         merged_fastq_dir=merged_fastq_dir,
         out_dir=out_dir,
@@ -152,6 +161,7 @@ def _sequenced_keyfile_import(
 def get_gbs_keyfiles(
     sample_sheet_path: str,
     library_specs: dict[str, list[list[str]]],
+    data_rows: list[list[str]],
     merged_fastq: dict[str, File],
     merged_fastq_dirs: dict[str, str],
     out_dir: str,
@@ -161,7 +171,8 @@ def get_gbs_keyfiles(
     """Orchestrate per-library keyfile creation.
 
     Each library is processed as a separate redun task, so only libraries
-    whose metadata has changed in the GenerateKeyfile section are reimported.
+    whose metadata has changed in the GenerateKeyfile section are reimported,
+    whereas any change to the [Data] section (`data_rows`) reimports them all.
     Libraries are chained sequentially to prevent database deadlocks from
     concurrent imports into gbskeyfilefact.
 
@@ -177,6 +188,7 @@ def get_gbs_keyfiles(
             prev=prev,
             library_name=library_name,
             library_rows=rows,
+            data_rows=data_rows,
             sample_sheet_path=sample_sheet_path,
             merged_fastq_dir=merged_fastq_dirs[library_name],
             out_dir=out_dir,

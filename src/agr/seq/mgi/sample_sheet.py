@@ -23,7 +23,8 @@ against that filename stem, so the two must agree.
 import csv
 import os.path
 import re
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 
 _SECTION_RE = re.compile(r"^\[(?P<name>[^\]]+)\]")
 
@@ -272,6 +273,36 @@ def gbs_library_specs(sheet: MgiSampleSheet) -> dict[str, list[list[str]]]:
             continue
         specs.setdefault(row[sample_id_index], [header]).append(row)
     return specs
+
+
+def without_sections(sheet: MgiSampleSheet, names: Sequence[str]) -> MgiSampleSheet:
+    """`sheet` with the named sections dropped; `[Data]` cannot be dropped.
+
+    This is redun's cache key for demultiplexing. Stage 1 passes
+    `without_sections(sheet, [GENERATE_KEYFILE_SECTION])` to the demultiplex task, and
+    redun hashes the value rather than the file. An edit confined to
+    `[GenerateKeyfile]` therefore leaves the value equal, so splitBarcode, its
+    pre-flight checks and everything downstream of the fastqs stay cached.
+    """
+    if "Data" in names:
+        raise ValueError("the [Data] section cannot be dropped")
+    return replace(
+        sheet,
+        sections={
+            name: rows for name, rows in sheet.sections.items() if name not in names
+        },
+    )
+
+
+def data_rows(sheet: MgiSampleSheet) -> list[list[str]]:
+    """The `[Data]` section verbatim, header row first.
+
+    This is the keyfile import's "any `[Data]` change" cache key, shared by *every*
+    library. gquery's import also reads `[Data]` columns that never reach the barcode
+    file (Description, Sample_Project, Sample_Plate), so a `[Data]` edit
+    re-imports every library to be safe.
+    """
+    return [list(row) for row in sheet.sections["Data"]]
 
 
 def index_pairs(sheet: MgiSampleSheet, lane: int | str) -> list[tuple[str, str]]:

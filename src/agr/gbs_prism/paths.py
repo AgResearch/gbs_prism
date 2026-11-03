@@ -40,8 +40,9 @@ class SeqPaths:
         gquery's `derive_run_name_from_sample_sheet` cross-checks the filename stem
         against `[Header] Flowcell`.
 
-        Note the keyfile import still reads the *original*, so that correcting the
-        upstream sheet re-triggers the import rather than being masked by this copy.
+        Written by `archive_sample_sheet`, which refreshes it whenever the original
+        is edited. Note the keyfile import still reads the *original*: it is the
+        original's `File` hash that re-triggers stage 1 and the import.
         """
         return os.path.join(self._run_root, "%s.csv" % run)
 

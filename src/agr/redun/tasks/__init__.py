@@ -10,6 +10,7 @@ from .fastq_sample import fastq_sample_one, fastq_sample_all
 from .fastqc import fastqc_one, fastqc_all
 from .keyfiles import get_gbs_keyfiles, get_keyfile_for_tassel, get_keyfile_for_gbsx
 from .kmer_analysis import kmer_analysis_one, kmer_analysis_all
+from .mgi_sample_sheet import archive_sample_sheet, get_sample_sheet
 from .merge_fastq import merge_all_libraries, merge_library_fastq
 from .multiqc import multiqc
 from .split_barcodes import split_barcodes_one
@@ -46,6 +47,7 @@ from .unblind import (
 )
 
 __all__ = [
+    "archive_sample_sheet",
     "bam_stats_one",
     "bam_stats_all",
     "collate_mapping_stats",
@@ -65,6 +67,7 @@ __all__ = [
     "fastqc_one",
     "fastqc_all",
     "get_gbs_keyfiles",
+    "get_sample_sheet",
     "get_keyfile_for_tassel",
     "get_keyfile_for_gbsx",
     "gusbase",

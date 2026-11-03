@@ -5,11 +5,14 @@ devshell - see CLAUDE.md on why CI can collect nothing that imports gquery or re
 """
 
 import os.path
+from dataclasses import replace
 
 import pytest
 
 from agr.seq.mgi.sample_sheet import (
+    GENERATE_KEYFILE_SECTION,
     MgiSampleSheetError,
+    data_rows,
     gbs_library_specs,
     lane_label,
     lanes_by_library,
@@ -17,6 +20,7 @@ from agr.seq.mgi.sample_sheet import (
     parse_lanes,
     read_sample_sheet,
     samples_for_lane,
+    without_sections,
 )
 
 REFERENCE_SHEET = os.path.join(os.path.dirname(__file__), "DL100018469.csv")
@@ -113,3 +117,81 @@ def test_lane_label():
 def test_missing_sheet_is_an_error():
     with pytest.raises(MgiSampleSheetError):
         _ = read_sample_sheet("/no/such/sample-sheet.csv")
+
+
+# --------------------------------------------------------------------------
+# Cache keys: which edits re-demultiplex, which re-import which libraries
+# --------------------------------------------------------------------------
+
+
+def _edited_copy(tmp_path, old: str, new: str) -> str:
+    with open(REFERENCE_SHEET) as f:
+        content = f.read()
+    assert content.count(old) == 1, "edit target must be unique: %s" % old
+    path = os.path.join(str(tmp_path), "DL100018469.csv")
+    with open(path, "w") as f:
+        f.write(content.replace(old, new))
+    return path
+
+
+def _keys(sheet):
+    return (
+        without_sections(sheet, [GENERATE_KEYFILE_SECTION]),
+        data_rows(sheet),
+        gbs_library_specs(sheet),
+    )
+
+
+def test_without_sections_drops_only_generate_keyfile(sheet):
+    view = without_sections(sheet, [GENERATE_KEYFILE_SECTION])
+    assert GENERATE_KEYFILE_SECTION not in view.sections
+    assert set(view.sections) == set(sheet.sections) - {GENERATE_KEYFILE_SECTION}
+    assert view.data == sheet.data
+    # the original is untouched
+    assert GENERATE_KEYFILE_SECTION in sheet.sections
+
+
+def test_without_sections_refuses_to_drop_data(sheet):
+    with pytest.raises(ValueError):
+        _ = without_sections(sheet, ["Data"])
+
+
+def test_data_rows_is_the_data_section_with_its_header(sheet):
+    rows = data_rows(sheet)
+    assert rows[0] == sheet.data_columns
+    assert len(rows) == len(sheet.data) + 1
+
+
+def test_generate_keyfile_edit_changes_only_that_librarys_key(sheet, tmp_path):
+    """Edits to [GenerateKeyfile] alone must not re-demultiplex, and only re-import
+    the library whose rows changed."""
+    edited = read_sample_sheet(
+        _edited_copy(
+            tmp_path,
+            "SQ5421,13441,GENOMNZ,384,PstI,220-340",
+            "SQ5421,13441,GENOMNZ,384,PstI,200-340",
+        )
+    )
+    demux, data, specs = _keys(sheet)
+    e_demux, e_data, e_specs = _keys(edited)
+
+    # path differs between the copies; it is constant for a real run
+    assert replace(e_demux, path=demux.path) == demux
+    assert e_data == data
+    assert {lib for lib in specs if specs[lib] != e_specs[lib]} == {"SQ5421"}
+
+
+def test_data_edit_changes_the_demux_and_shared_import_keys(sheet, tmp_path):
+    """A [Data] edit re-demultiplexes (where barcodes change) and re-imports every
+    library, via the shared data_rows key."""
+    edited = read_sample_sheet(_edited_copy(
+            tmp_path,
+            "1,SQ5420,SQ5420_Deer_Goat_PstI,NS07,,,UDP0007,CTAGTGCTCT",
+            "1,SQ5420,SQ5420_Deer_Goat_PstI,NS07,,,UDP0007,CTAGTGCTCA",
+        ))
+    demux, data, specs = _keys(sheet)
+    e_demux, e_data, e_specs = _keys(edited)
+
+    assert replace(e_demux, path=demux.path) != demux
+    assert e_data != data
+    assert e_specs == specs

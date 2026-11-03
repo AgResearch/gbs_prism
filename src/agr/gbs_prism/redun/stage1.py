@@ -2,6 +2,7 @@
 This module contains tasks for stage 1 of gbs_prism bioinformatics pipeline.
 Tasks:
     get_gbs_targets: Get GBS targets for stage 2.
+    split_barcodes_run: Pre-flight checks and splitBarcode demultiplexing per lane.
     run_stage1: Triggers running of the tasks via redun.
 Dataclasses:
     GbsTargetsOutput: Collect targets and paths for gbs_prism stage 2.
@@ -9,7 +10,6 @@ Dataclasses:
 """
 
 import os.path
-import shutil
 from dataclasses import dataclass
 
 from redun import task, File
@@ -20,11 +20,15 @@ redun_namespace = "agr.gbs_prism"
 from agr.seq.sequencer_run import SequencerRun
 from agr.seq.mgi.barcodes import lane_plan, write_barcode_file
 from agr.seq.mgi.sample_sheet import (
+    GENERATE_KEYFILE_SECTION,
+    MgiSampleSheet,
+    data_rows,
     gbs_library_specs,
     lane_number,
     lanes_by_library,
     lanes_in_sample_sheet,
     read_sample_sheet,
+    without_sections,
 )
 from agr.gbs_prism.gbs_target_spec import (
     gquery_gbs_target_spec,
@@ -33,6 +37,7 @@ from agr.gbs_prism.gbs_target_spec import (
 )
 from agr.gbs_prism.paths import Paths, GbsPaths
 from agr.redun.tasks import (
+    archive_sample_sheet,
     barcode_stat_multiqc,
     fastq_sample_all,
     fastqc_all,
@@ -131,36 +136,33 @@ def _barcode_stats_by_lane(
 
 
 @task()
-def run_stage1(
+def split_barcodes_run(
     seq_root: str,
-    sample_sheet_root: str,
-    postprocessing_root: str,
-    gbs_backup_dir: str,
-    keyfiles_dir: str,
-    fastq_link_farm: str,
     run: str,
+    demux_sheet: MgiSampleSheet,
+    postprocessing_root: str,
     job_context: JobContext,
-) -> Stage1Output:
-    """Stage 1: splitBarcode demultiplexing, fastqc, multiqc, kmer analysis, lane
-    merging, GBS keyfile creation.
+) -> dict[int, SplitBarcodesOutput]:
+    """Pre-flight checks, then splitBarcode demultiplexing of every lane.
 
-    Everything derivable from the sample sheet - the lane set, the lane->library map,
-    the barcode geometry and the `-b` arguments - is resolved **here**, in the
-    composing task, before any Slurm job is submitted. That follows `mgi_prism`,
-    where a mismatched sheet/run pair aborts at DAG-build time rather than after a
-    long demultiplexing job has quietly sent a whole lane to `undecoded`.
+    `demux_sheet` is the parsed sheet *without* `[GenerateKeyfile]`, and redun hashes
+    it by value. An edit confined to `[GenerateKeyfile]` therefore makes this a cache
+    hit: no stability wait, no fastq scan, no re-demultiplexing. Any other edit
+    re-runs this body. Each lane's `split_barcodes_one` then re-runs only if that
+    lane's barcode file or `-b` arguments actually changed, because
+    `write_barcode_file` leaves an unchanged file's mtime alone.
+
+    Everything derivable from the sample sheet - the lane set, the barcode geometry
+    and the `-b` arguments - is resolved **here**, before any Slurm job is submitted.
+    That follows `mgi_prism`, where a mismatched sheet/run pair aborts at DAG-build
+    time rather than after a long demultiplexing job has quietly sent a whole lane to
+    `undecoded`.
     """
     sequencer_run = SequencerRun(seq_root, run)
     paths = Paths(postprocessing_root=postprocessing_root, run=run)
 
-    # The MGI sheet lives outside the run tree, and gquery cross-checks its
-    # [Header] Flowcell against this filename stem, so the two must agree.
-    sample_sheet_path = os.path.join(sample_sheet_root, "%s.csv" % run)
-    sheet = read_sample_sheet(sample_sheet_path)
-
-    lanes = [lane_number(label) for label in lanes_in_sample_sheet(sheet)]
-    library_lanes = lanes_by_library(sheet)
-    libraries = sorted(library_lanes)
+    lanes = [lane_number(label) for label in lanes_in_sample_sheet(demux_sheet)]
+    libraries = sorted(lanes_by_library(demux_sheet))
 
     # Fail fast and legibly if a lane's fastqs are absent altogether, then wait for
     # them to stop changing: they arrive by an SMB copy that may still be running, and
@@ -173,17 +175,11 @@ def run_stage1(
     )
     paths.make_run_dirs(lanes=lanes, libraries=libraries)
 
-    # Archive the sheet actually processed. It lives outside the run tree and can be
-    # edited afterwards, so without this the run has no record of what it read - and
-    # the report's relative link would climb out of the postprocessing tree.
-    archived_sample_sheet = paths.seq.archived_sample_sheet(run)
-    _ = shutil.copyfile(sample_sheet_path, archived_sample_sheet)
-
     # Barcode geometry per lane, confirmed against that lane's own reads. Raises
     # rather than guessing - a wrong offset yields a run that looks successful while
     # sending ~100% of reads to `undecoded`.
     lane_plans = {
-        lane: lane_plan(sheet, lane, sequencer_run.dir, run) for lane in lanes
+        lane: lane_plan(demux_sheet, lane, sequencer_run.dir, run) for lane in lanes
     }
     barcode_files = {
         lane: File(
@@ -197,7 +193,7 @@ def run_stage1(
         for lane, plan in lane_plans.items()
     }
 
-    demultiplexed = {
+    return {
         lane: split_barcodes_one(
             lane=plan.lane,
             read_args=plan.reads.cli_args,
@@ -208,6 +204,58 @@ def run_stage1(
         )
         for lane, plan in lane_plans.items()
     }
+
+
+@task()
+def run_stage1(
+    seq_root: str,
+    sample_sheet: File,
+    postprocessing_root: str,
+    gbs_backup_dir: str,
+    keyfiles_dir: str,
+    fastq_link_farm: str,
+    run: str,
+    job_context: JobContext,
+) -> Stage1Output:
+    """Stage 1: splitBarcode demultiplexing, fastqc, multiqc, kmer analysis, lane
+    merging, GBS keyfile creation.
+
+    `sample_sheet` is a `File` (from `get_sample_sheet`), so any edit to the sheet,
+    even a `touch`, re-runs this body. The body only parses the sheet, which is
+    cheap, and splits it into value keys, so each child re-runs only for the edits
+    that concern it:
+
+    - `without_sections(sheet, [GenerateKeyfile])` keys `split_barcodes_run`.
+      A `[GenerateKeyfile]`-only edit leaves demultiplexing and QC cached.
+    - `gbs_library_specs(sheet)` keys each library's keyfile import, so a
+      `[GenerateKeyfile]` edit re-imports only the libraries whose rows changed.
+    - `data_rows(sheet)` is a key shared by every library's import, so any
+      `[Data]` edit re-imports them all.
+    """
+    paths = Paths(postprocessing_root=postprocessing_root, run=run)
+
+    # The MGI sheet lives outside the run tree, and gquery cross-checks its
+    # [Header] Flowcell against this filename stem, so the two must agree.
+    sample_sheet_path = sample_sheet.path
+    sheet = read_sample_sheet(sample_sheet_path)
+
+    library_lanes = lanes_by_library(sheet)
+    libraries = sorted(library_lanes)
+
+    # Archive the sheet actually processed. It lives outside the run tree and can be
+    # edited afterwards, so without this the run has no record of what it read - and
+    # the report's relative link would climb out of the postprocessing tree.
+    archived_sample_sheet = archive_sample_sheet(
+        sample_sheet, paths.seq.archived_sample_sheet(run)
+    )
+
+    demultiplexed = split_barcodes_run(
+        seq_root=seq_root,
+        run=run,
+        demux_sheet=without_sections(sheet, [GENERATE_KEYFILE_SECTION]),
+        postprocessing_root=postprocessing_root,
+        job_context=job_context,
+    )
 
     all_fastq = lazy_map(demultiplexed, _all_fastq)
 
@@ -227,7 +275,7 @@ def run_stage1(
         fastqc_files=lazy_map(fastqc_outputs, fastqc_zip_files),
         custom_content=demux_custom_content,
         out_dir=paths.seq.multiqc_dir,
-        run=sequencer_run.name,
+        run=run,
         job_context=job_context,
     )
 
@@ -257,6 +305,7 @@ def run_stage1(
     gbs_keyfiles = get_gbs_keyfiles(
         sample_sheet_path=sample_sheet_path,
         library_specs=gbs_library_specs(sheet),
+        data_rows=data_rows(sheet),
         merged_fastq=merged_fastq,
         merged_fastq_dirs={
             library: paths.seq.merged_dir(library) for library in libraries
@@ -275,7 +324,7 @@ def run_stage1(
 
     # the return value forces evaluation of the lazy expressions, otherwise nothing happens
     return Stage1Output(
-        sample_sheet=File(archived_sample_sheet),
+        sample_sheet=archived_sample_sheet,
         fastqc=fastqc_outputs,
         multiqc=multiqc_report,
         kmer_analysis=kmer_analysis_reports,

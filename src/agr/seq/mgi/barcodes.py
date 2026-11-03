@@ -44,6 +44,7 @@ import csv
 import gzip
 import logging
 import os.path
+import sys
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field, replace
 
@@ -1514,9 +1515,20 @@ def format_b_args(params: Sequence[tuple[int, int, int]]) -> str:
 
 
 def b_args(params: Sequence[tuple[int, int, int]]) -> list[str]:
-    """The same, as argv tokens for a Job1Spec."""
+    """The same, as argv tokens for a Job1Spec.
+
+    **Every token is interned, so the list's redun hash is stable.** It is a cache key
+    for `split_barcodes_one`, and redun hashes a list by pickling it. Pickle writes
+    a repeated *object* as a back-reference, so equal strings that are distinct
+    objects pickle differently from equal strings that are one shared object.
+    `str(1)` returns a fresh `'1'` each time, but the same list, once unpickled
+    from redun's cache, holds CPython's single shared `'1'`. Without interning, the
+    freshly built list and its cached copy hashed differently (DL100018469:
+    25b24a65 vs c9e2871d). Every lane then re-ran its ~25 minute splitBarcode job
+    whenever `split_barcodes_run` was a cache hit.
+    """
     return [
-        token
+        sys.intern(token)
         for start, length, mismatch in params
         for token in ("-b", str(start), str(length), str(mismatch))
     ]

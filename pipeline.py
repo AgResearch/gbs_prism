@@ -5,6 +5,7 @@ from redun.scheduler import catch_all
 from redun_psij import JobContext
 
 from agr.util.path import expand
+from agr.redun.tasks import get_sample_sheet
 from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
     run_stage1,
@@ -49,9 +50,12 @@ def main(
     path = {k: expand(v) for (k, v) in path_context.items()}
     job_context = JobContext(run)
 
+    # A File, so that editing the sheet re-triggers stage 1 (see get_sample_sheet).
+    sample_sheet = get_sample_sheet(path["sample_sheet_root"], run)
+
     stage1 = run_stage1(
         seq_root=path["seq_root"],
-        sample_sheet_root=path["sample_sheet_root"],
+        sample_sheet=sample_sheet,
         postprocessing_root=path["postprocessing_root"],
         gbs_backup_dir=path["gbs_backup_dir"],
         keyfiles_dir=path["keyfiles_dir"],

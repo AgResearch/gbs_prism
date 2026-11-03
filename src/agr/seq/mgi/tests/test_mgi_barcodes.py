@@ -13,6 +13,8 @@ import logging
 import os
 import os.path
 
+import pickle
+
 import pytest
 
 from agr.seq.mgi.barcodes import (
@@ -31,6 +33,7 @@ from agr.seq.mgi.barcodes import (
     barcode_geometry,
     barcode_params,
     derive_layout,
+    b_args,
     format_b_args,
     oriented_barcode,
     read_bioinfo,
@@ -200,6 +203,19 @@ def test_oriented_barcode_is_index_then_index2_for_a_t1plus_se_lane():
 
 def test_format_b_args():
     assert format_b_args([(100, 10, 1), (110, 8, 1)]) == "-b 100 10 1 -b 110 8 1"
+
+
+@pytest.mark.parametrize(
+    "params", [[(100, 10, 1), (110, 8, 1)], [(100, 10, 1)], [(5, 5, 0), (17, 8, 2)]]
+)
+def test_b_args_pickle_identically_after_a_round_trip(params):
+    """redun hashes this cache key by pickling it, so a fresh list and its copy
+    unpickled from the cache must pickle to the same bytes. Otherwise every lane
+    re-runs splitBarcode when `split_barcodes_run` is a cache hit."""
+    fresh = b_args(params)
+    cached = pickle.loads(pickle.dumps(fresh))
+    assert cached == fresh
+    assert pickle.dumps(fresh) == pickle.dumps(cached)
 
 
 def _write_fastq(path, reads):
