@@ -16,6 +16,12 @@ class GbsTargetSpec(BaseModel):
 
     libraries: dict[str, "LibraryTargetSpec"]
 
+    # Reference basenames indicated by the keyfile, by cohort name, used for the
+    # mapping % summary.  Deliberately not part of CohortTargetSpec, so that adding it
+    # doesn't change the args of the per-cohort tasks, which would defeat their caching.
+    # Defaulted so that target-spec.json files written before this existed still load.
+    indicated_references: dict[str, list[str]] = {}
+
     @property
     def cohorts(self) -> dict[str, "CohortTargetSpec"]:
         return dict(
@@ -43,6 +49,7 @@ class CohortTargetSpec(BaseModel):
 def gquery_gbs_target_spec(run_name: str, fastq_link_farm: str) -> GbsTargetSpec:
     """Extract targets from database using gquery after Stage 1 processing."""
     library_target_specs = {}
+    indicated_references_by_cohort = {}
     library_names = _gquery_libraries(run_name)
     for library_name in library_names:
         cohort_target_specs = {}
@@ -58,9 +65,10 @@ def gquery_gbs_target_spec(run_name: str, fastq_link_farm: str) -> GbsTargetSpec
                 fastq_links
             ), "non-unique fastq link basenames: %s" % ", ".join(fastq_links)
             genotyping_method = _gquery_cohort_genotyping_method(run_name, cohort_name)
-            alignment_references = _gquery_cohort_alignment_references(
+            alignment_references, indicated = _gquery_cohort_alignment_references(
                 run_name, cohort_name
             )
+            indicated_references_by_cohort[str(cohort_name)] = indicated
 
             cohort_target_specs[str(cohort_name)] = CohortTargetSpec(
                 fastq_links=fastq_links_by_basename,
@@ -71,7 +79,10 @@ def gquery_gbs_target_spec(run_name: str, fastq_link_farm: str) -> GbsTargetSpec
             cohorts=cohort_target_specs
         )
 
-    return GbsTargetSpec(libraries=library_target_specs)
+    return GbsTargetSpec(
+        libraries=library_target_specs,
+        indicated_references=indicated_references_by_cohort,
+    )
 
 
 def write_gbs_target_spec(path: str, targets: GbsTargetSpec):
@@ -187,7 +198,11 @@ def _gquery_cohort_genotyping_method(run_name: str, cohort: Cohort) -> str:
 
 def _gquery_cohort_alignment_references(
     run_name: str, cohort: Cohort
-) -> dict[str, str]:
+) -> tuple[dict[str, str], list[str]]:
+    """All bwa references for the cohort (path by basename), and the indicated ones.
+
+    Both come from the same query, so they cannot disagree.  See `indicated_references`.
+    """
     fcid = flowcell_id(run_name)
     with tempfile.TemporaryFile(mode="w+") as tmp_f:
         GQuery(
@@ -197,7 +212,7 @@ def _gquery_cohort_alignment_references(
                 flowcell=fcid,
                 enzyme=cohort.enzyme,
                 gbs_cohort=cohort.gbs_cohort,
-                columns="refgenome_bwa_indexes",
+                columns="control,refgenome_bwa_indexes",
                 noheading=True,
                 distinct=True,
             ),
@@ -205,25 +220,51 @@ def _gquery_cohort_alignment_references(
             outfile=tmp_f,
         ).run()
         _ = tmp_f.seek(0)
-        paths = list(
-            # ensure uniqueness
-            set(
-                [
-                    # gquery sometimes spits out empty paths, which we filter out here
-                    path
-                    for line in tmp_f.readlines()
-                    if (path := line.strip())
-                ]
-            )
+        rows = parse_control_reference_rows(tmp_f.readlines())
+
+    # sorted, so the order (and therefore the pickled hash) is the same in every process
+    paths = sorted(set(path for (_, path) in rows if path))
+    path_by_moniker = dict([(os.path.basename(path), path) for path in paths])
+    assert len(path_by_moniker) == len(
+        paths
+    ), "uniqueness of basenames in bwa-references for cohort %s: %s" % (
+        cohort,
+        ", ".join(paths),
+    )
+    return (path_by_moniker, indicated_references(rows))
+
+
+def parse_control_reference_rows(lines: list[str]) -> list[tuple[str, str]]:
+    """Parse gquery `control<TAB>refgenome_bwa_indexes` lines into (control, path) pairs.
+
+    Either field may be empty, e.g. a non-control sample has an empty control.
+    """
+    rows = []
+    for line in lines:
+        line = line.rstrip("\r\n")
+        if not line.strip():
+            continue
+        control, _, path = line.partition("\t")
+        rows.append((control.strip(), path.strip()))
+    return rows
+
+
+def indicated_references(rows: list[tuple[str, str]]) -> list[str]:
+    """The reference basenames the keyfile indicates for a cohort, sorted.
+
+    These are the references of every row which is not a negative control.  Negative
+    controls are conventionally keyed as SHEEP, so every cohort also gets mapped to
+    sheep, but that isn't the reference of interest for the cohort.
+
+    An empty result means the cohort has no reference (e.g. microbes cohorts).
+    """
+    return sorted(
+        set(
+            os.path.basename(path)
+            for (control, path) in rows
+            if path and control.upper() != "NEGATIVE"
         )
-        path_by_moniker = dict([(os.path.basename(path), path) for path in paths])
-        assert len(path_by_moniker) == len(
-            paths
-        ), "uniqueness of basenames in bwa-references for cohort %s: %s" % (
-            cohort,
-            ", ".join(paths),
-        )
-        return path_by_moniker
+    )
 
 
 def real_basename(symlink: str) -> str:

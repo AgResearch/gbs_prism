@@ -64,6 +64,21 @@
                     <font size="-2">
                       <pre>{{ target.content }}</pre>
                     </font>
+                  {% elif isinstance(target, Table) -%}
+                    <table border="1" cellpadding="3" style="border-collapse: collapse">
+                      <tr>
+                        {% for heading in target.header -%}
+                          <th>{{ heading }}</th>
+                        {% endfor -%}
+                      </tr>
+                      {% for table_row in target.rows -%}
+                        <tr>
+                          {% for cell in table_row -%}
+                            <td>{{ cell }}</td>
+                          {% endfor -%}
+                        </tr>
+                      {% endfor -%}
+                    </table>
                   {% endif -%}
                 </td>
               {% endfor -%}

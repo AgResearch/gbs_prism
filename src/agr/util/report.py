@@ -24,7 +24,15 @@ class Inline:
     content: str
 
 
-Target = Image | Link | Inline
+@dataclass
+class Table:
+    """A small table rendered inline, e.g. a summary which is easier read than linked."""
+
+    header: list[str]
+    rows: list[list[str]]
+
+
+Target = Image | Link | Inline | Table
 
 
 @dataclass(kw_only=True)
@@ -75,7 +83,9 @@ def render_report(
     env = Environment(loader=PackageLoader(module), autoescape=select_autoescape())
 
     # register extra functions and classes we want to use in the Jinja template
-    env.globals.update(isinstance=isinstance, Image=Image, Link=Link, Inline=Inline)
+    env.globals.update(
+        isinstance=isinstance, Image=Image, Link=Link, Inline=Inline, Table=Table
+    )
 
     template = env.get_template(template)
     with open(out_path, "w") as out_f:

@@ -75,7 +75,11 @@ def get_gbs_targets(
     fastq_link_farm: str,
     gbs_keyfiles: dict[str, File],
 ) -> GbsTargetsOutput:
-    """Get GBS target spec, which must depend on GBS keyfiles having been produced."""
+    """Get GBS target spec, which must depend on GBS keyfiles having been produced.
+
+    The spec includes the keyfile-indicated reference genomes per cohort, for the
+    mapping % summary in the report.
+    """
     _ = gbs_keyfiles  # depending on existence rather than value
     gbs_root = os.path.join(postprocessing_root, "gbs")
     paths = GbsPaths(root=gbs_root, run=run)

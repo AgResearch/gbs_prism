@@ -14,7 +14,13 @@ from .mgi_sample_sheet import archive_sample_sheet, get_sample_sheet
 from .merge_fastq import merge_all_libraries, merge_library_fastq
 from .multiqc import multiqc
 from .split_barcodes import split_barcodes_one
-from .samtools import bam_stats_one, bam_stats_all, collate_mapping_stats
+from .samtools import (
+    bam_stats_one,
+    bam_stats_all,
+    collate_mapping_stats,
+    collate_indicated_mapping_stats,
+    plot_mapping_stats,
+)
 from .kgd import kgd
 from .gupdate import (
     import_gbs_read_tag_counts,
@@ -51,6 +57,8 @@ __all__ = [
     "bam_stats_one",
     "bam_stats_all",
     "collate_mapping_stats",
+    "collate_indicated_mapping_stats",
+    "plot_mapping_stats",
     "collate_barcode_yields",
     "barcode_stat_multiqc",
     "bwa_aln_one",

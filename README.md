@@ -17,6 +17,12 @@ This branch processes **MGI single-end runs**. Illumina processing lives on the
 | Reports | Peacock report | `<postprocessing_root>/gbs/<run>/html/peacock.html` |
 | Warehouse | Export and import into the genotype database (runs last) | `<geno_import_dir>/` |
 
+**BWA mapping % in the peacock report.** The table and plot show each cohort mapped to
+the reference genome its keyfile names. Negative controls are keyed as SHEEP, so every
+cohort is also mapped to sheep. Those numbers are not in the table, but they are in
+`stats_summary.txt` (linked as "all references"). A cohort with no reference in its
+keyfile (e.g. microbes) shows as `(none indicated)`.
+
 Before any cluster jobs start, stage 1 waits until the lane fastqs stop changing (it
 checks every 5 minutes). It stops with an error if:
 - the sample sheet and run do not match,

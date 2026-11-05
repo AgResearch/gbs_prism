@@ -16,7 +16,7 @@ from ..stage2 import Stage2Output, CohortOutput
 from ..stage3 import Stage3Output
 
 from .kgd import kgd_plots_section, kgd_links_section, KgdTargets
-from .util import image_or_none, link_or_none, row_for_link
+from .util import image_or_none, link_or_none, mapping_table_or_none, row_for_link
 
 redun_namespace = "agr.gbs_prism.reports"
 
@@ -92,11 +92,19 @@ def create_peacock_report(
                                 ),
                             ),
                             Row(
-                                name="BWA alignment plot",
-                                target=Inline("mapping_stats.jpg TODO"),
+                                name="BWA mapping % (keyfile reference)",
+                                target=mapping_table_or_none(
+                                    stage3.indicated_mapping_summary
+                                ),
                             ),
                             Row(
-                                name="BWA alignment summary",
+                                name="BWA alignment plot",
+                                target=image_or_none(
+                                    stage3.mapping_stats_plot, relbase
+                                ),
+                            ),
+                            Row(
+                                name="BWA alignment summary (all references)",
                                 target=link_or_none(stage3.bam_stats_summary, relbase),
                             ),
                             Row(

@@ -73,7 +73,9 @@ def main(
         job_context=job_context,
     )
 
-    stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
+    stage3 = run_stage3(
+        stage2=stage2, spec=stage1.spec, out_dir=stage1.gbs_paths.report_dir
+    )
 
     reports = create_reports(
         run=run,
