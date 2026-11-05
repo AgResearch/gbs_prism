@@ -16,15 +16,45 @@ class SequencerRunError(Exception):
         self._e = e
 
 
+def find_seq_root(seq_roots: list[str], run_name: str) -> str:
+    """The instrument directory in `seq_roots` that holds `run_name`.
+
+    Only an exact `<root>/<run_name>` directory counts, so suffixed copies such as
+    `<run>_corrupt` never match. A run reached from several roots through symlinks is
+    one run, and the **first** root in list order wins: keeping already-processed runs
+    on the root they were processed under keeps their redun cache (the root ends up in
+    the splitBarcode arguments). Distinct copies in different roots are refused rather
+    than guessed between.
+    """
+    found = [
+        root for root in seq_roots if os.path.isdir(os.path.join(root, run_name))
+    ]
+    if not found:
+        raise SequencerRunError(
+            "run %s not found in any of %s" % (run_name, ", ".join(seq_roots))
+        )
+    first = os.path.join(found[0], run_name)
+    distinct = [
+        root
+        for root in found[1:]
+        if not os.path.samefile(first, os.path.join(root, run_name))
+    ]
+    if distinct:
+        raise SequencerRunError(
+            "ambiguous: run %s found as distinct directories in %s; remove or rename "
+            "all but one" % (run_name, ", ".join([found[0]] + distinct))
+        )
+    return found[0]
+
+
 class SequencerRun:
     """An MGI (DNBSEQ) sequencing run.
 
-    `seq_root` is the **instrument** directory, not the run-data root: MGI nests runs
-    three levels below run_data (`<run_data>/T1+/INV-MGI-T1/<flowcell>`) where
-    Illumina runs sat flat. Pointing seq_root at the instrument keeps the plain
-    `join(seq_root, run_name)` below working, and puts the completion sentinels a
-    sibling of the run directory. That is a context-file change rather than a code
-    change, which is why it is preferred to teaching this class to search.
+    `seq_root` is the **instrument** directory, not the run-data root, so the plain
+    `join(seq_root, run_name)` below works and the completion sentinels are a sibling
+    of the run directory. Runs have been synced to more than one instrument directory
+    over time, so the context lists several and `find_seq_root` picks the one holding
+    the run; this class still takes exactly one.
 
     Note there is no `sample_sheet_path`: an MGI sheet lives outside the run tree
     entirely, at `<sample_sheet_root>/<flowcell>.csv`, and is supplied separately.

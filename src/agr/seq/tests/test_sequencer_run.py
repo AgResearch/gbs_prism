@@ -12,7 +12,7 @@ import os
 
 import pytest
 
-from agr.seq.sequencer_run import SequencerRun, SequencerRunError
+from agr.seq.sequencer_run import SequencerRun, SequencerRunError, find_seq_root
 
 RUN = "DL100018469"
 LANES = [1, 2, 3, 4]
@@ -236,3 +236,62 @@ def test_wait_does_not_report_resident_files_as_tiered(tmp_path, monkeypatch, ca
 
     assert "checking all 4 can be opened" in caplog.text
     assert "tiered storage" not in caplog.text
+
+
+# --- find_seq_root: which of several instrument directories holds the run ---
+
+
+def _roots(tmp_path, *names):
+    roots = []
+    for name in names:
+        root = tmp_path / name
+        root.mkdir(parents=True)
+        roots.append(root)
+    return roots
+
+
+def test_find_seq_root_returns_the_root_holding_the_run(tmp_path):
+    old, new = _roots(tmp_path, "old", "new")
+    (new / RUN).mkdir()
+    assert find_seq_root([str(old), str(new)], RUN) == str(new)
+
+
+def test_find_seq_root_lists_every_root_searched_when_absent(tmp_path):
+    old, new = _roots(tmp_path, "old", "new")
+    with pytest.raises(SequencerRunError) as e:
+        _ = find_seq_root([str(old), str(new)], RUN)
+    assert str(old) in str(e.value) and str(new) in str(e.value)
+
+
+def test_find_seq_root_prefers_the_first_root_for_a_symlinked_run(tmp_path):
+    """A run symlinked into an earlier root is one run, not two: the first root wins,
+    so a run already processed under that root keeps its seq_root (and its cache)."""
+    old, new = _roots(tmp_path, "old", "new")
+    (new / RUN).mkdir()
+    (old / RUN).symlink_to(new / RUN)
+    assert find_seq_root([str(old), str(new)], RUN) == str(old)
+
+
+def test_find_seq_root_sees_through_differently_spelled_symlink_targets(tmp_path):
+    """eRI reaches the same directory as /projects, /agr/persist and /mnt/gpfs/persist."""
+    old, new = _roots(tmp_path, "old", "real/new")
+    alias = tmp_path / "alias"
+    alias.symlink_to(tmp_path / "real")
+    (new / RUN).mkdir()
+    (old / RUN).symlink_to(alias / "new" / RUN)
+    assert find_seq_root([str(old), str(alias / "new")], RUN) == str(old)
+
+
+def test_find_seq_root_refuses_to_guess_between_distinct_copies(tmp_path):
+    old, new = _roots(tmp_path, "old", "new")
+    (old / RUN).mkdir()
+    (new / RUN).mkdir()
+    with pytest.raises(SequencerRunError, match="ambiguous"):
+        _ = find_seq_root([str(old), str(new)], RUN)
+
+
+def test_find_seq_root_ignores_suffixed_copies(tmp_path):
+    old, new = _roots(tmp_path, "old", "new")
+    (old / (RUN + "_corrupt")).mkdir()
+    (new / RUN).mkdir()
+    assert find_seq_root([str(old), str(new)], RUN) == str(new)

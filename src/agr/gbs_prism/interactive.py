@@ -3,7 +3,7 @@ import logging
 import os.path
 from functools import cached_property
 
-from agr.seq.sequencer_run import SequencerRun
+from agr.seq.sequencer_run import SequencerRun, find_seq_root
 from agr.seq.mgi.sample_sheet import MgiSampleSheet, read_sample_sheet
 
 from agr.gbs_prism.paths import Paths
@@ -39,7 +39,9 @@ class RunContext:
 
     @cached_property
     def seq_root(self) -> str:
-        return expand(self._path_context["seq_root"])
+        return find_seq_root(
+            [expand(root) for root in self._path_context["seq_roots"]], self._run_name
+        )
 
     @cached_property
     def postprocessing_root(self) -> str:

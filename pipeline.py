@@ -5,6 +5,7 @@ from redun.scheduler import catch_all
 from redun_psij import JobContext
 
 from agr.util.path import expand
+from agr.seq.sequencer_run import find_seq_root
 from agr.redun.tasks import get_sample_sheet
 from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
@@ -47,14 +48,18 @@ def main(
     run: str,
     path_context=get_context("path"),
 ) -> MainResults:
-    path = {k: expand(v) for (k, v) in path_context.items()}
+    path = {
+        k: [expand(x) for x in v] if isinstance(v, list) else expand(v)
+        for (k, v) in path_context.items()
+    }
     job_context = JobContext(run)
 
     # A File, so that editing the sheet re-triggers stage 1 (see get_sample_sheet).
     sample_sheet = get_sample_sheet(path["sample_sheet_root"], run)
 
     stage1 = run_stage1(
-        seq_root=path["seq_root"],
+        # Resolved here so stage 1 keeps taking the single root it always has.
+        seq_root=find_seq_root(path["seq_roots"], run),
         sample_sheet=sample_sheet,
         postprocessing_root=path["postprocessing_root"],
         gbs_backup_dir=path["gbs_backup_dir"],

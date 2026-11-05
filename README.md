@@ -35,7 +35,7 @@ All paths come from a **context file** (`context/eri-{dev,test,prod}.json`):
 
 | Key | Meaning |
 |---|---|
-| `seq_root` | Sequencer run directories (`<seq_root>/<run>/`) |
+| `seq_roots` | Sequencer directories searched in order for `<root>/<run>/`. Stops with an error if the run is in two of them (a symlink to the same run is fine) |
 | `sample_sheet_root` | MGI sample sheets, named `<run>.csv`. `[Header] Flowcell` must equal the run name |
 | `postprocessing_root` | Where outputs are written |
 | `keyfiles_dir`, `fastq_link_farm`, `gbs_backup_dir`, `geno_import_dir` | Keyfiles, fastq links, database backups, warehouse files |
