@@ -55,7 +55,9 @@ def _klist(bin_dir, listing, valid=True):
     _script(
         bin_dir,
         "klist",
-        '[ "$1" = "-s" ] && exit %d\n/bin/cat %s\n' % (0 if valid else 1, listing_file),
+        # Builtins only: the PATH holds nothing else.
+        '[ "$1" = "-s" ] && exit %d\nwhile IFS= read -r line; do printf "%%s\\n" "$line"; done < %s\n'
+        % (0 if valid else 1, listing_file),
     )
 
 
