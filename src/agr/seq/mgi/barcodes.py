@@ -53,6 +53,7 @@ from agr.seq.mgi.sample_sheet import (
     INDEX2_COLUMNS,
     SAMPLE_ID_COLUMNS,
     MgiSampleSheet,
+    MgiSampleSheetError,
     SkippedLaneError,
     column,
     index_pairs,
@@ -428,6 +429,28 @@ def barcode_entries(
             "an empty index" % (sheet.path, lane_label(lane_number(lane)))
         )
     return entries
+
+
+def check_sheet_lanes(sheet: MgiSampleSheet, lanes: Sequence[int | str]):
+    """Fail at launch on any lane the sheet alone shows cannot be demultiplexed.
+
+    The sheet-only half of `lane_plan`, which needs the reads and so runs only after
+    the copy wait: a lane with no barcoded samples, an empty or duplicated Sample_ID,
+    a non-ACGTN index, or mixed index lengths. The orientation that `lane_plan`
+    later confirms against the reads changes only the barcode *text*, never whether
+    a lane fails these, so the default is used here. Every lane is checked and the
+    problems raised together.
+    """
+    problems = []
+    for lane in lanes:
+        try:
+            _ = barcode_entries(sheet, lane)
+        except (MgiSampleSheetError, BarcodeLayoutError) as e:
+            problems.append(str(e))
+    if problems:
+        raise MgiSampleSheetError(
+            "sample sheet cannot be demultiplexed:\n  %s" % "\n  ".join(problems)
+        )
 
 
 def write_barcode_file(entries: Sequence[tuple[str, str]], path: str) -> str:

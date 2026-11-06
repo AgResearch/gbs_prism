@@ -45,6 +45,7 @@ from agr.seq.mgi.barcodes import (
     verify_layout,
 )
 from agr.seq.mgi.sample_sheet import (
+    MgiSampleSheetError,
     index_pairs,
     read_sample_sheet,
     samples_for_lane,
@@ -881,3 +882,30 @@ def test_the_census_separates_mistyped_rows_from_the_good_ones(tmp_path):
         assert rows[i7] == name, census
     assert rows[unlisted].startswith("**"), census
     assert I7S[4] not in rows, "the mistyped row's barcode is not in the reads at all"
+
+
+# --- check_sheet_lanes: the sheet-only half of lane_plan, before any wait ---
+
+
+def test_check_sheet_lanes_accepts_the_reference_sheet():
+    from agr.seq.mgi.barcodes import check_sheet_lanes
+
+    sheet = read_sample_sheet(os.path.join(HERE, "DL100018469.csv"))
+    check_sheet_lanes(sheet, [1, 2, 3, 4])  # must not raise
+
+
+def test_check_sheet_lanes_reports_every_bad_lane_together(tmp_path):
+    from agr.seq.mgi.barcodes import check_sheet_lanes
+
+    path = tmp_path / "SHEET.csv"
+    lines = ["[Header]", "Flowcell,RUN01", "", "[Data]", "Lanes,Sample_ID,index,index2",
+             "1,S1,,", "1,S2,,",  # lane 1: nothing to demultiplex on
+             "2,S3,ACGTACGTAC,ACGTACGT", "2,S4,ACGTACGTAC,ACG",  # lane 2: mixed lengths
+             "3,S5,ACGTACGTAC,ACGTACGT"]
+    _ = path.write_text("\n".join(lines) + "\n")
+    sheet = read_sample_sheet(str(path))
+    with pytest.raises(MgiSampleSheetError) as e:
+        check_sheet_lanes(sheet, [1, 2, 3])
+    assert "lane L01 has no samples with barcodes" in str(e.value)
+    assert "lane L02 mixes index lengths" in str(e.value)
+    assert "L03" not in str(e.value)

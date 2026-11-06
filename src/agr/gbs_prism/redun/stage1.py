@@ -18,10 +18,11 @@ from redun_psij import JobContext
 redun_namespace = "agr.gbs_prism"
 
 from agr.seq.sequencer_run import SequencerRun
-from agr.seq.mgi.barcodes import lane_plan, write_barcode_file
+from agr.seq.mgi.barcodes import check_sheet_lanes, lane_plan, write_barcode_file
 from agr.seq.mgi.sample_sheet import (
     GENERATE_KEYFILE_SECTION,
     MgiSampleSheet,
+    check_flowcell,
     data_rows,
     gbs_library_specs,
     lane_number,
@@ -52,9 +53,15 @@ from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
 from agr.redun.tasks.split_barcodes import SplitBarcodesOutput
 from agr.redun import lazy_map
 
-# Lane fastqs must be unchanged across this interval before anything reads them; a
-# copy with nothing written for this long is stalled and stops the run.
+# Lane fastqs must be unchanged across this interval before anything reads them.
 FASTQ_STABLE_INTERVAL_S = 5 * 60
+# An unfinished copy with nothing written anywhere in the run for this long is
+# stalled and stops the run. Several intervals, so one transient SMB pause cannot
+# end an overnight launch-ahead run.
+FASTQ_STALL_AFTER_S = 15 * 60
+# Fastqs still locked by a copy with nothing written for this long: a hung copier.
+# Longer, as a lock can linger briefly after a copy completes.
+FASTQ_LOCKED_IDLE_AFTER_S = 60 * 60
 # Backstop: give up if a still-progressing copy has not finished by then. A slow copy
 # (DL100022099 L02/L04 re-copy, 6 Nov: ~1.6 MB/s, ~7 h) must fit, so a run can be
 # launched ahead of it and start by itself when it completes.
@@ -165,10 +172,19 @@ def split_barcodes_run(
     time rather than after a long demultiplexing job has quietly sent a whole lane to
     `undecoded`.
 
-    The fastqs are vetted first, also before any Slurm job: present, stable, finished
-    gzip copies, and md5-identical to the instrument's `FileInfo.txt` (about 1.5 min
-    for 4 lanes, in parallel on this host). A run may be launched ahead of its copy:
-    this waits up to 24 h while the copy progresses and stops at once if it stalls.
+    The fastqs are vetted first, also before any Slurm job, cheapest first:
+
+    1. `check_sheet_lanes`: every sheet lane has barcodes splitBarcode can use.
+    2. `validate`: each lane's fastq, `BioInfo.csv` and `FileInfo.txt` are present
+       and agree. Like 1, this needs no fastq content, so it fails at launch.
+    3. `wait_until_stable`: the copy has finished. A run may be launched ahead of
+       its copy: this waits up to 24 h while the copy progresses, and stops once
+       nothing has been written for 15 min (1 h if the files are only locked).
+    4. `verify_checksums`: md5-identical to `FileInfo.txt` (about 1.5 min for 4
+       lanes, in parallel on this host).
+
+    The verified md5s are passed to `split_barcodes_one`, so each lane's
+    demultiplexing is keyed on its fastqs' content, not only their paths.
     """
     sequencer_run = SequencerRun(seq_root, run)
     paths = Paths(postprocessing_root=postprocessing_root, run=run)
@@ -176,18 +192,22 @@ def split_barcodes_run(
     lanes = [lane_number(label) for label in lanes_in_sample_sheet(demux_sheet)]
     libraries = sorted(lanes_by_library(demux_sheet))
 
-    # Fail fast and legibly if a lane's fastqs are absent altogether, then wait for
-    # them to stop changing and look like finished gzip copies: they arrive by an SMB
-    # copy that may still be running, and `lane_plan` below is the first thing to read
+    # Fail fast and legibly on everything knowable at launch - the sheet's barcodes,
+    # each lane's fastq, BioInfo.csv and FileInfo.txt - then wait for the fastqs to
+    # stop changing and look like finished gzip copies: they arrive by an SMB copy
+    # that may still be running, and `lane_plan` below is the first thing to read
     # them. Finally check every fastq's md5 against the instrument's FileInfo.txt, the
     # only check a copy that stalled or was rewritten cannot pass.
+    check_sheet_lanes(demux_sheet, lanes)
     sequencer_run.validate(lanes=lanes)
     sequencer_run.wait_until_stable(
         lanes=lanes,
         interval_s=FASTQ_STABLE_INTERVAL_S,
         max_wait_s=FASTQ_STABLE_MAX_WAIT_S,
+        stall_after_s=FASTQ_STALL_AFTER_S,
+        locked_idle_after_s=FASTQ_LOCKED_IDLE_AFTER_S,
     )
-    sequencer_run.verify_checksums(lanes=lanes)
+    fastq_md5 = sequencer_run.verify_checksums(lanes=lanes)
     paths.make_run_dirs(lanes=lanes, libraries=libraries)
 
     # Barcode geometry per lane, confirmed against that lane's own reads. Raises
@@ -212,6 +232,7 @@ def split_barcodes_run(
         lane: split_barcodes_one(
             lane=plan.lane,
             read_args=plan.reads.cli_args,
+            fastq_md5=[fastq_md5[path] for path in plan.reads.paths],
             barcode_file=barcode_files[lane],
             b_args=plan.b_args,
             out_dir=paths.seq.demux_dir(lane),
@@ -253,6 +274,8 @@ def run_stage1(
     # [Header] Flowcell against this filename stem, so the two must agree.
     sample_sheet_path = sample_sheet.path
     sheet = read_sample_sheet(sample_sheet_path)
+    # Before anything else, so a sheet for another run never reaches demultiplexing.
+    check_flowcell(sheet, run)
 
     library_lanes = lanes_by_library(sheet)
     libraries = sorted(library_lanes)
