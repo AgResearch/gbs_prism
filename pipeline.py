@@ -4,6 +4,7 @@ from redun.context import get_context
 from redun.scheduler import catch_all
 from redun_psij import JobContext
 
+from agr.util.kerberos import check_ticket, start_renewer
 from agr.util.path import expand
 from agr.seq.sequencer_run import find_seq_root
 from agr.redun.tasks import get_sample_sheet
@@ -29,6 +30,13 @@ logging.basicConfig(
 )
 # for noisy_module in ["asyncio", "pulp.apis.core", "urllib3"]:
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
+
+# At import, not in `main`: a fully cached relaunch skips main's body yet still
+# reaches the database (`get_genophyle_export` is cache=False). Fails fast without a
+# ticket; renews hourly with `kinit -R` (no password) so a run that waits out a slow
+# copy still has a ticket for its database steps.
+check_ticket()
+_ = start_renewer()
 
 
 MainResults = tuple[Stage1Output, Stage2Output, Stage3Output, list[File], str]
