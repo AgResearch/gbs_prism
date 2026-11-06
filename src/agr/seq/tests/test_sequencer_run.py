@@ -47,8 +47,16 @@ def _make_run(tmp_path, lanes=LANES, fastq_lanes=None, reads=("read",)):
         _ = (
             run_dir / ("L%02d" % lane) / ("%s_L%02d_FileInfo.txt" % (RUN, lane))
         ).write_text("".join(info))
+        paired = any(read.startswith("read_") for read in reads)
+        _ = (run_dir / ("L%02d" % lane) / "BioInfo.csv").write_text(
+            PE_BIOINFO if paired else SE_BIOINFO
+        )
 
     return str(seq_root)
+
+
+SE_BIOINFO = "Machine ID,INV-MGI-T1\nRead1Len,100\nRead2Len,0\nBarcodeLen,10\nDualBarcodeLen,8\n"
+PE_BIOINFO = "Machine ID,INV-MGI-T1\nRead1Len,150\nRead2Len,150\nBarcodeLen,10\nDualBarcodeLen,8\n"
 
 
 def _gz(lane, read):
@@ -109,26 +117,86 @@ def test_validate_rejects_half_a_paired_end_pair(tmp_path):
         run.validate(lanes=LANES)
 
 
+def _lane_file(seq_root, lane, name):
+    return os.path.join(seq_root, RUN, "L%02d" % lane, name)
+
+
+def test_validate_requires_bioinfo_before_any_wait(tmp_path):
+    """BioInfo.csv lands before the fastq, so its absence is known at launch rather
+    than after a copy wait of up to 24 h."""
+    seq_root = _make_run(tmp_path)
+    os.remove(_lane_file(seq_root, 2, "BioInfo.csv"))
+    with pytest.raises(SequencerRunError, match="L02: .*no BioInfo.csv"):
+        SequencerRun(seq_root, RUN).validate(lanes=LANES)
+
+
+def test_validate_rejects_bioinfo_that_disagrees_with_the_fastqs(tmp_path):
+    seq_root = _make_run(tmp_path)
+    _ = open(_lane_file(seq_root, 3, "BioInfo.csv"), "w").write(PE_BIOINFO)
+    with pytest.raises(
+        SequencerRunError, match="L03: .*BioInfo.csv declares paired-end but the run "
+        "directory holds a single fastq"
+    ):
+        SequencerRun(seq_root, RUN).validate(lanes=LANES)
+
+
+def test_validate_requires_file_info_before_any_wait(tmp_path):
+    seq_root = _make_run(tmp_path)
+    os.remove(_lane_file(seq_root, 1, "%s_L01_FileInfo.txt" % RUN))
+    with pytest.raises(SequencerRunError, match="L01: no .*L01_FileInfo.txt"):
+        SequencerRun(seq_root, RUN).validate(lanes=LANES)
+
+
+def test_validate_requires_each_fastq_to_be_listed_in_file_info(tmp_path):
+    seq_root = _make_run(tmp_path)
+    info = _lane_file(seq_root, 4, "%s_L04_FileInfo.txt" % RUN)
+    _ = open(info, "w").write("%s  someone_else.fq.gz\n" % ("0" * 32))
+    with pytest.raises(SequencerRunError, match="L04: .*L04_read.fq.gz is not listed"):
+        SequencerRun(seq_root, RUN).validate(lanes=LANES)
+
+
+def test_validate_reports_every_problem_together(tmp_path):
+    seq_root = _make_run(tmp_path, fastq_lanes=[1, 2, 3])
+    os.remove(_lane_file(seq_root, 1, "BioInfo.csv"))
+    os.remove(_lane_file(seq_root, 2, "%s_L02_FileInfo.txt" % RUN))
+    with pytest.raises(SequencerRunError) as e:
+        SequencerRun(seq_root, RUN).validate(lanes=LANES)
+    message = str(e.value)
+    assert "L01: " in message and "BioInfo.csv" in message
+    assert "L02: no " in message
+    assert "L04: " in message  # no fastq at all
+
+
 def test_missing_run_directory_is_an_error(tmp_path):
     with pytest.raises(SequencerRunError):
         _ = SequencerRun(str(tmp_path), "NO_SUCH_RUN")
 
 
 class _FakeSleep:
-    """Stands in for `time.sleep`, running `on_sleep(n)` for the nth call (from 1)."""
+    """Stands in for `time.sleep`, running `on_sleep(n)` for the nth call (from 1).
+
+    Also the clock: `monotonic` advances only by the seconds slept, so idle and
+    backstop durations are exact multiples of the interval.
+    """
 
     def __init__(self, on_sleep=None):
         self.calls = 0
+        self.now = 0.0
         self._on_sleep = on_sleep
 
-    def __call__(self, _seconds):
+    def __call__(self, seconds):
         self.calls += 1
+        self.now += seconds
         if self._on_sleep is not None:
             self._on_sleep(self.calls)
+
+    def monotonic(self):
+        return self.now
 
 
 def _install(monkeypatch, fake):
     monkeypatch.setattr("agr.seq.sequencer_run.time.sleep", fake)
+    monkeypatch.setattr("agr.seq.sequencer_run.time.monotonic", fake.monotonic)
 
 
 def _fastq(seq_root, lane=1):
@@ -300,9 +368,10 @@ def test_wait_stops_on_a_stalled_zero_tail(tmp_path, monkeypatch):
         SequencerRun(seq_root, RUN).wait_until_stable(lanes=LANES, interval_s=300)
 
 
-def test_a_stalled_copy_stops_after_one_interval_with_the_reason(tmp_path, monkeypatch):
-    """DL100022099 L02/L04 on 6 Nov: unchanged since 09:30, so stop now rather than
-    wait out the 2 h cap."""
+def test_a_stalled_copy_stops_after_stall_after_s_with_the_reason(tmp_path, monkeypatch):
+    """DL100022099 L02/L04 on 6 Nov: unchanged since 09:30. Stop once nothing has
+    been written for `stall_after_s`, rather than wait out the 24 h backstop - but not
+    after a single quiet interval, which a transient SMB pause can produce."""
     seq_root = _make_run(tmp_path)
     fastq = _fastq(seq_root, lane=2)
     with open(fastq, "r+b") as f:
@@ -310,11 +379,126 @@ def test_a_stalled_copy_stops_after_one_interval_with_the_reason(tmp_path, monke
     fake = _FakeSleep()
     _install(monkeypatch, fake)
     with pytest.raises(SequencerRunError) as e:
-        SequencerRun(seq_root, RUN).wait_until_stable(lanes=LANES, interval_s=300)
-    assert fake.calls == 1
-    assert "copy stalled, nothing written to these fastqs in the last 5 min" in str(e.value)
+        SequencerRun(seq_root, RUN).wait_until_stable(
+            lanes=LANES, interval_s=300, stall_after_s=900
+        )
+    assert fake.calls == 3
+    assert "copy stalled, nothing written to these fastqs in the last 15 min" in str(e.value)
     assert "L02_read.fq.gz: not gzip at start" in str(e.value)
     assert "Re-copy" in str(e.value)
+
+
+def test_a_stall_that_resumes_before_the_threshold_keeps_waiting(
+    tmp_path, monkeypatch, caplog
+):
+    seq_root = _make_run(tmp_path)
+    fastq = _fastq(seq_root, lane=2)
+    good = open(fastq, "rb").read()
+    with open(fastq, "r+b") as f:
+        _ = f.write(b"\x9b\x7a")
+
+    def resume(n):
+        if n == 2:  # the copy comes back after 10 quiet minutes and completes
+            _ = open(fastq, "wb").write(good)
+            os.utime(fastq, ns=(5 * 10**9, 5 * 10**9))
+
+    fake = _FakeSleep(resume)
+    _install(monkeypatch, fake)
+    with caplog.at_level(logging.INFO, logger="agr.seq.sequencer_run"):
+        SequencerRun(seq_root, RUN).wait_until_stable(
+            lanes=LANES, interval_s=300, stall_after_s=900
+        )
+    # 1: quiet and unfinished, under the threshold; 2: written to; 3: ready.
+    assert fake.calls == 3
+    assert "no progress for 5 min (stopping at 15 min if nothing is written)" in caplog.text
+
+
+def _lock(monkeypatch, path, until=lambda: True):
+    """Make `open(path)` fail as a copy's share lock does, while `until()` holds."""
+    real_open = open
+
+    def open_locked(p, *args, **kwargs):
+        if p == path and until():
+            raise PermissionError(13, "Permission denied", p)
+        return real_open(p, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.open", open_locked)
+
+
+def test_a_locked_copy_with_nothing_written_is_stopped_as_hung(tmp_path, monkeypatch):
+    """A lock is evidence of a live copy - but not forever: locked with nothing
+    written for `locked_idle_after_s` is a hung copier, not a 24 h wait."""
+    seq_root = _make_run(tmp_path)
+    _lock(monkeypatch, _fastq(seq_root, lane=1))
+    fake = _FakeSleep()
+    _install(monkeypatch, fake)
+    with pytest.raises(SequencerRunError) as e:
+        SequencerRun(seq_root, RUN).wait_until_stable(
+            lanes=LANES, interval_s=300, stall_after_s=300, locked_idle_after_s=900
+        )
+    assert fake.calls == 3
+    assert "nothing written for 15 min" in str(e.value)
+    assert "may be hung" in str(e.value)
+    assert "L01_read.fq.gz: " in str(e.value)
+
+
+def test_a_stalled_lane_is_reported_while_another_is_locked(tmp_path, monkeypatch):
+    """One lane's lock must not hide another lane's stalled copy."""
+    seq_root = _make_run(tmp_path)
+    _lock(monkeypatch, _fastq(seq_root, lane=1))
+    stalled = _fastq(seq_root, lane=2)
+    with open(stalled, "r+b") as f:
+        _ = f.write(b"\x9b\x7a")
+    _install(monkeypatch, _FakeSleep())
+    with pytest.raises(SequencerRunError, match=r"copy stalled(.|\n)*L02_read.fq.gz: not gzip"):
+        SequencerRun(seq_root, RUN).wait_until_stable(
+            lanes=LANES, interval_s=300, stall_after_s=900, locked_idle_after_s=3600
+        )
+
+
+def test_a_recall_still_in_progress_is_not_a_stall(tmp_path, monkeypatch):
+    """A cold-tier file whose recall has not completed when probed is partly
+    allocated, like a stalled copy, but is no evidence of one."""
+    seq_root = _make_run(tmp_path)
+    cold = _fastq(seq_root, lane=2)
+    _write_big_gzip(cold)
+    fake = _FakeSleep()
+    real_stat = os.stat
+    probes = []
+
+    def stat(p, *args, **kwargs):
+        st = real_stat(p, *args, **kwargs)
+        if p != cold:
+            return st
+        # Offline until probed; the recall then runs one interval past each probe.
+        fraction = 0.0 if not probes else (0.5 if fake.calls < 4 else 1.0)
+        extra = {
+            name: getattr(st, name)
+            for name in ("st_atime", "st_mtime", "st_ctime")
+            + ("st_atime_ns", "st_mtime_ns", "st_ctime_ns")
+        }
+        extra["st_blocks"] = int(st.st_size * fraction) // 512
+        extra["st_blksize"] = st.st_blksize
+        return os.stat_result(list(st)[:10], extra)
+
+    import agr.seq.sequencer_run as sr
+
+    real_unreadable = sr._unreadable
+
+    def unreadable(paths):
+        probes.append(fake.calls)
+        return real_unreadable(paths)
+
+    monkeypatch.setattr("agr.seq.sequencer_run.os.stat", stat)
+    monkeypatch.setattr("agr.seq.sequencer_run._unreadable", unreadable)
+    _install(monkeypatch, fake)
+    SequencerRun(seq_root, RUN).wait_until_stable(
+        lanes=LANES, interval_s=300, stall_after_s=300
+    )
+    # 1: probed, recall half done -> waiting, not a stall even at stall_after_s=300;
+    # 2: blocks moved -> progressing; 3: half done still -> waiting;
+    # 4: recall done, blocks moved -> progressing; 5: ready.
+    assert fake.calls == 5
 
 
 def test_wait_resumes_when_an_unfinished_copy_completes(tmp_path, monkeypatch):
@@ -365,9 +549,9 @@ def test_a_live_preallocated_copy_is_not_mistaken_for_a_stall(tmp_path, monkeypa
     monkeypatch.setattr("agr.seq.sequencer_run.os.stat", stat)
     _install(monkeypatch, fake)
     SequencerRun(seq_root, RUN).wait_until_stable(lanes=LANES, interval_s=300)
-    # 1, 2: partly allocated but ctime/blocks moving -> wait; 3: copy done -> return.
-    # Stability is size+mtime only, so the blocks/ctime jump at 3 does not cost a poll.
-    assert fake.calls == 3
+    # 1, 2: partly allocated but ctime/blocks moving -> wait; 3: copy done, but its
+    # blocks/ctime jumped since 2, so not yet settled; 4: nothing moved -> return.
+    assert fake.calls == 4
 
 
 def test_a_locked_unfinished_file_is_not_a_stall(tmp_path, monkeypatch):
@@ -445,6 +629,44 @@ def test_assess_a_growing_size_is_reported_as_a_size_change():
     assert line == "a: size 100 -> 200 bytes"
 
 
+def test_assess_ready_needs_nothing_at_all_to_have_moved():
+    """Size and mtime settled is not enough: a write that moved only ctime/blocks
+    means the copy is still live, so md5 must not run yet."""
+    before = {"a": _st(ctime=1)}
+    after = {"a": _st(ctime=2)}
+    assert _assess(before, after, [], {}, 300).state == "progressing"
+
+
+from agr.seq.sequencer_run import _should_stop  # noqa: E402
+
+
+def test_should_stop_a_stall_only_once_quiet_for_stall_after_s():
+    assert not _should_stop("stalled", 600, stall_after_s=900, locked_idle_after_s=3600)
+    assert _should_stop("stalled", 900, stall_after_s=900, locked_idle_after_s=3600)
+
+
+def test_should_stop_a_locked_wait_only_once_idle_for_locked_idle_after_s():
+    assert not _should_stop("waiting", 900, stall_after_s=900, locked_idle_after_s=3600)
+    assert _should_stop("waiting", 3600, stall_after_s=900, locked_idle_after_s=3600)
+
+
+def test_should_never_stop_a_progressing_copy():
+    assert not _should_stop("progressing", 10**9, stall_after_s=1, locked_idle_after_s=1)
+
+
+def test_unfinished_does_not_count_a_recalling_file_as_stall_evidence(tmp_path, monkeypatch):
+    from agr.seq.sequencer_run import _unfinished
+
+    seq_root = _make_run(tmp_path)
+    path = _fastq(seq_root, lane=1)
+    _write_big_gzip(path)
+    _fake_allocation(monkeypatch, path, 0.5)
+    assert _unfinished([path])[path].stall_evidence
+    recalling = _unfinished([path], recalled={path})[path]
+    assert not recalling.stall_evidence
+    assert "cold tier" in recalling.reason
+
+
 # --- the loop: launch ahead of a slow copy ---
 
 
@@ -478,10 +700,10 @@ def test_launch_ahead_of_a_slow_copy_starts_when_it_completes(tmp_path, monkeypa
     _install(monkeypatch, fake)
     with caplog.at_level(logging.INFO, logger="agr.seq.sequencer_run"):
         SequencerRun(seq_root, RUN).wait_until_stable(lanes=LANES, interval_s=300)
-    # Polls 1-4 see blocks/ctime advance; at 5 the copy is complete, and a file whose
-    # size and mtime are settled and which looks finished is ready straight away.
-    assert fake.calls == 5
-    assert caplog.text.count("copy in progress") == 4
+    # Polls 1-5 see blocks/ctime advance (at 5 the copy completes); at 6 nothing
+    # moved and the file looks finished, so it is ready.
+    assert fake.calls == 6
+    assert caplog.text.count("copy in progress") == 5
     assert "% written (+15.0% in 5 min" in caplog.text and "left)" in caplog.text
     assert "copy stalled" not in caplog.text
 
@@ -538,9 +760,21 @@ def test_read_file_info_rejects_a_malformed_line(tmp_path):
         _ = read_file_info(str(path))
 
 
-def test_verify_checksums_passes_when_all_match(tmp_path):
+def test_verify_checksums_returns_the_verified_md5_of_every_fastq(tmp_path):
+    """Returned so the demultiplexing cache key can carry the fastqs' content."""
     seq_root = _make_run(tmp_path)
-    SequencerRun(seq_root, RUN).verify_checksums(lanes=LANES)
+    md5s = SequencerRun(seq_root, RUN).verify_checksums(lanes=LANES)
+    assert md5s == {
+        _fastq(seq_root, lane): hashlib.md5(open(_fastq(seq_root, lane), "rb").read()).hexdigest()
+        for lane in LANES
+    }
+
+
+def test_verify_checksums_says_a_mismatch_may_be_a_copy_still_writing(tmp_path):
+    seq_root = _make_run(tmp_path)
+    _ = open(_fastq(seq_root, lane=1), "ab").write(b"y")
+    with pytest.raises(SequencerRunError, match="still being written"):
+        SequencerRun(seq_root, RUN).verify_checksums(lanes=LANES)
 
 
 def test_verify_checksums_reports_a_mismatch_with_both_hashes(tmp_path):

@@ -6,7 +6,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import NamedTuple
 
-from agr.seq.mgi.barcodes import BarcodeLayoutError, read_files
+from agr.seq.mgi.barcodes import (
+    BarcodeLayoutError,
+    BioInfoError,
+    bioinfo_path,
+    read_bioinfo,
+    read_files,
+)
 from agr.util.subprocess import run_catching_stderr
 
 logger = logging.getLogger(__name__)
@@ -98,10 +104,14 @@ class SequencerRun:
     def validate(self, lanes: list[int]):
         """Check the run looks complete enough to process.
 
-        **This does not wait** - that is `wait_until_stable`. This only fails fast and
-        legibly on a typo'd run name, a lane whose fastqs have not appeared at all, or
-        a paired-end run, rather than surfacing later as a confusing error from deep
-        inside splitBarcode or the downstream GBS analysis.
+        **This does not wait** - that is `wait_until_stable`. This fails fast and
+        legibly, before any wait, on everything that can be known at launch: a
+        typo'd run name, a lane whose fastqs have not appeared at all, a paired-end
+        run, and a lane whose `BioInfo.csv` or `FileInfo.txt` is missing, unreadable
+        or disagrees with its fastqs. Those small files land before the fastq (the
+        copier writes a lane's small files first), so even a run launched ahead of its
+        copy has them; otherwise a launch-ahead would find out only after a wait of
+        up to 24 h.
 
         gbs_prism processes **single-end runs only**. The MGI demultiplexing code
         (`agr.seq.mgi.barcodes`) can lay out a paired-end lane, but nothing
@@ -117,8 +127,11 @@ class SequencerRun:
         instrument *upload* rather than to the fastqs landing on eRI - in the
         reference run they carry 24 Jul mtimes while the lane directories are dated
         28-29 Jul - so they are not what is checked here.
+
+        All problems are collected and raised together as one `SequencerRunError`.
         """
         problems = []
+        fastqs: dict[int, list[str]] = {}
         for lane in lanes:
             try:
                 reads = read_files(self._dir, self._run_name, lane)
@@ -135,6 +148,23 @@ class SequencerRun:
                         os.path.basename(reads.r2 or ""),
                     )
                 )
+            fastqs[lane] = reads.paths
+            try:
+                bio = read_bioinfo(bioinfo_path(self._dir, lane))
+            except (BioInfoError, OSError) as e:
+                problems.append("L%02d: %s" % (lane, e))
+                continue
+            if bio.is_pe != reads.is_pe:
+                problems.append(
+                    "L%02d: %s declares %s but the run directory holds %s"
+                    % (
+                        lane,
+                        bio.path,
+                        "paired-end" if bio.is_pe else "single-end",
+                        "a paired-end pair of fastqs" if reads.is_pe else "a single fastq",
+                    )
+                )
+        problems += self._expected_md5s(fastqs)[1]
         if problems:
             raise SequencerRunError(
                 "run %s is not ready to process:\n  %s"
@@ -143,44 +173,60 @@ class SequencerRun:
         logger.info("run %s has all %d lanes", self._run_name, len(lanes))
 
     def wait_until_stable(
-        self, lanes: list[int], interval_s: float = 300, max_wait_s: float = 24 * 3600
+        self,
+        lanes: list[int],
+        interval_s: float = 300,
+        max_wait_s: float = 24 * 3600,
+        stall_after_s: float = 15 * 60,
+        locked_idle_after_s: float = 60 * 60,
     ):
         """Wait until every lane fastq is a complete, settled copy; meanwhile wait as
-        long as the copy is progressing, and stop at once if it has stalled.
+        long as the copy is progressing, and stop once it has clearly stalled.
 
         Fastqs reach eRI by an SMB copy that can still be running when the pipeline
         is launched - deliberately so, as a run may be launched ahead of a slow copy.
         Polls every `interval_s`, so this always takes at least one interval: two
         snapshots apart in time are the only evidence of stability. At each poll:
 
-        - **Ready**: every file's size and mtime are unchanged, it opens (a copy's
-          share lock surfaces as EACCES), and it looks like a finished gzip copy
-          (`_unfinished`). Returns.
-        - **Progressing**: *any* fastq was written to since the last poll - size,
-          mtime, ctime or allocated blocks moved. Keeps waiting, logging % written and
-          an ETA. Judged across the run, not per file: a copier doing one file at a
-          time leaves later files half-done and untouched meanwhile. ctime and blocks
-          matter because a preallocating copy has its final size from the start and
-          may not update mtime until it closes the file.
-        - **Stalled**: nothing in the run was written to for a whole interval, yet a
-          file is still unfinished. Raises at once, naming the files and why.
-        - Files that are only locked, with nothing moving, keep waiting.
+        - **Ready**: nothing about any file changed - size, mtime, ctime, allocated
+          blocks - it opens (a copy's share lock surfaces as EACCES), and it looks
+          like a finished gzip copy (`_unfinished`). Returns.
+        - **Progressing**: *any* fastq was written to since the last poll. Keeps
+          waiting, logging % written and an ETA, and resets the idle clock. Judged
+          across the run, not per file: a copier doing one file at a time leaves later
+          files half-done and untouched meanwhile. ctime and blocks matter because a
+          preallocating copy has its final size from the start.
+        - **Stalled**: nothing in the run was written to, yet a readable file is
+          unfinished. Raises once nothing has been written for `stall_after_s`
+          (15 min) - not after one quiet interval, which a transient SMB pause can
+          produce.
+        - **Waiting**: nothing moving, and what is not ready is only locked (or still
+          being recalled from the cold tier). A lock means a live copy, but not
+          forever: raises once nothing has been written for `locked_idle_after_s`
+          (1 h), as a hung copier.
 
         Raises after `max_wait_s` (24 h) whatever the state, as a backstop.
 
-        On tiered storage the open probe recalls each migrated file in full before
-        returning, which can block well beyond `interval_s`; that recall is needed by
+        Readable files are probed even while others are locked, so one lane's lock
+        cannot hide another lane's stalled copy. A file seen on the cold tier at any
+        poll is being recalled, so its allocation shortfall is never stall evidence.
+
+        On tiered storage the open probe recalls each migrated file before returning,
+        which can block well beyond `interval_s`; that recall is needed by
         `lane_plan` anyway, so it is logged rather than avoided.
         """
         paths = [path for lane in lanes for path in self.lane_fastqs(lane)]
         start = time.monotonic()
-        previous = _snapshot(paths)
+        previous, previous_t = _snapshot(paths), start
+        idle_since: float | None = None
+        recalled: set[str] = set()
         while True:
             time.sleep(interval_s)
+            now = time.monotonic()
             current = _snapshot(paths)
-            unreadable: list[str] = []
+            unreadable: dict[str, str] = {}
             unfinished: dict[str, _Unfinished] = {}
-            if all(_stable_key(current[p]) == _stable_key(previous[p]) for p in paths):
+            if all(current[p] == previous[p] for p in paths):
                 logger.info(
                     "run %s: fastqs unchanged over %ds, checking all %d can be opened",
                     self._run_name,
@@ -188,6 +234,7 @@ class SequencerRun:
                     len(paths),
                 )
                 if stubs := _cold_stubs(paths):
+                    recalled.update(stubs)
                     logger.info(
                         "run %s: %d fastq(s) are on the cold tier (offline); opening "
                         "them recalls the whole file, which may take a while:\n  %s",
@@ -196,10 +243,13 @@ class SequencerRun:
                         "\n  ".join(stubs),
                     )
                 unreadable = _unreadable(paths)
-                if not unreadable:
-                    unfinished = _unfinished(paths)
+                unfinished = _unfinished(
+                    [p for p in paths if p not in unreadable], recalled=recalled
+                )
 
-            verdict = _assess(previous, current, unreadable, unfinished, interval_s)
+            verdict = _assess(
+                previous, current, list(unreadable.values()), unfinished, interval_s
+            )
             if verdict.state == _READY:
                 logger.info(
                     "run %s: all %d fastqs complete and stable over %ds",
@@ -208,27 +258,45 @@ class SequencerRun:
                     interval_s,
                 )
                 return
-            if verdict.state == _STALLED:
+
+            if verdict.state == _PROGRESSING:
+                idle_since = None
+            elif idle_since is None:
+                idle_since = previous_t
+            idle_s = 0.0 if idle_since is None else now - idle_since
+            idle_min = int(idle_s // 60)
+
+            if _should_stop(verdict.state, idle_s, stall_after_s, locked_idle_after_s):
+                if verdict.state == _STALLED:
+                    raise SequencerRunError(
+                        "run %s: copy stalled, nothing written to these fastqs in the "
+                        "last %d min:\n  %s\nRe-copy them and relaunch."
+                        % (self._run_name, idle_min, "\n  ".join(verdict.lines))
+                    )
                 raise SequencerRunError(
-                    "run %s: copy stalled, nothing written to these fastqs in the "
-                    "last %d min:\n  %s\nRe-copy them and relaunch."
-                    % (self._run_name, interval_s // 60, "\n  ".join(verdict.lines))
+                    "run %s: fastqs locked or still recalling, but nothing written for "
+                    "%d min - the copy may be hung:\n  %s\nCheck the copier, then "
+                    "relaunch." % (self._run_name, idle_min, "\n  ".join(verdict.lines))
                 )
-            elapsed = time.monotonic() - start
+            elapsed = now - start
             if elapsed >= max_wait_s:
                 raise SequencerRunError(
                     "run %s fastqs still not stable after %d min:\n  %s"
                     % (self._run_name, elapsed // 60, "\n  ".join(verdict.lines))
                 )
+            if verdict.state == _PROGRESSING:
+                status = "copy in progress"
+            elif verdict.state == _STALLED:
+                status = "no progress for %d min (stopping at %d min if nothing is written)" % (
+                    idle_min,
+                    stall_after_s // 60,
+                )
+            else:
+                status = "waiting for fastqs to settle, no change for %d min" % idle_min
             logger.info(
-                "run %s: %s:\n  %s",
-                self._run_name,
-                "copy in progress"
-                if verdict.state == _PROGRESSING
-                else "waiting for fastqs to settle",
-                "\n  ".join(verdict.lines),
+                "run %s: %s:\n  %s", self._run_name, status, "\n  ".join(verdict.lines)
             )
-            previous = current
+            previous, previous_t = current, now
 
     def file_info_path(self, lane: int) -> str:
         """The instrument's per-lane md5 manifest, `L0n/<run>_L0n_FileInfo.txt`."""
@@ -236,38 +304,58 @@ class SequencerRun:
             self.lane_dir(lane), "%s_L%02d_FileInfo.txt" % (self._run_name, lane)
         )
 
-    def verify_checksums(self, lanes: list[int], max_workers: int = 8):
-        """Check every lane fastq's md5 against the instrument's `FileInfo.txt`.
-
-        This is the definitive check that the fastqs on eRI are the ones the
-        instrument wrote: a copy can stall or be rewritten while still looking
-        complete (see `wait_until_stable`). Files are hashed in parallel, about 85 s
-        per 40 GB lane on login-1.
-
-        A missing FileInfo, or a fastq it does not list, is an error: without an
-        expected hash there is nothing to vouch for the file. All problems are
-        collected and raised together as one `SequencerRunError`.
+    def _expected_md5s(
+        self, fastqs: dict[int, list[str]]
+    ) -> tuple[dict[str, str], list[str]]:
+        """Each lane fastq's md5 according to its lane's `FileInfo.txt`, and the
+        problems that leave a fastq without one: a missing or malformed FileInfo, or
+        a fastq it does not list. Without an expected hash there is nothing to vouch
+        for the file, so each of those is an error.
         """
         problems = []
         expected: dict[str, str] = {}
-        for lane in lanes:
+        for lane, paths in fastqs.items():
             info_path = self.file_info_path(lane)
             try:
                 info = read_file_info(info_path)
             except FileNotFoundError:
                 problems.append("L%02d: no %s" % (lane, info_path))
                 continue
-            except ValueError as e:
+            except (ValueError, OSError) as e:
                 problems.append("L%02d: %s" % (lane, e))
                 continue
-            for path in self.lane_fastqs(lane):
+            for path in paths:
                 name = os.path.basename(path)
                 if name in info:
                     expected[path] = info[name]
                 else:
-                    problems.append("L%02d: %s is not listed in %s" % (lane, name, info_path))
+                    problems.append(
+                        "L%02d: %s is not listed in %s" % (lane, name, info_path)
+                    )
+        return expected, problems
+
+    def verify_checksums(self, lanes: list[int], max_workers: int = 8) -> dict[str, str]:
+        """Check every lane fastq's md5 against the instrument's `FileInfo.txt`, and
+        return the verified md5 per fastq path.
+
+        This is the definitive check that the fastqs on eRI are the ones the
+        instrument wrote: a copy can stall or be rewritten while still looking
+        complete (see `wait_until_stable`). Files are hashed in parallel, about 85 s
+        per 40 GB lane on login-1 (about 1.5 min for 4 lanes).
+
+        The md5s are returned so that demultiplexing can be keyed on the fastqs'
+        verified content rather than on their paths alone.
+
+        `validate` has already checked each FileInfo is present and lists its fastq;
+        the same problems are still reported here, so this stands alone. All problems
+        are collected and raised together as one `SequencerRunError`.
+        """
+        expected, problems = self._expected_md5s(
+            {lane: self.lane_fastqs(lane) for lane in lanes}
+        )
 
         start = time.monotonic()
+        mismatched = False
         if expected:
             logger.info(
                 "run %s: verifying md5 of %d fastq(s) against FileInfo",
@@ -278,14 +366,22 @@ class SequencerRun:
                 actual = dict(zip(expected, pool.map(_md5, expected)))
             for path, want in expected.items():
                 if actual[path] != want:
+                    mismatched = True
                     problems.append(
                         "%s: md5 mismatch, expected %s, got %s" % (path, want, actual[path])
                     )
 
         if problems:
             raise SequencerRunError(
-                "run %s fastqs failed integrity checks:\n  %s"
-                % (self._run_name, "\n  ".join(problems))
+                "run %s fastqs failed integrity checks:\n  %s%s"
+                % (
+                    self._run_name,
+                    "\n  ".join(problems),
+                    "\nAn md5 mismatch means the copy is corrupt or was still being "
+                    "written: let the copy finish, or re-copy, then relaunch."
+                    if mismatched
+                    else "",
+                )
             )
         logger.info(
             "run %s: md5 of all %d fastq(s) match FileInfo (%ds)",
@@ -293,6 +389,7 @@ class SequencerRun:
             len(expected),
             time.monotonic() - start,
         )
+        return expected
 
     # TODO move this to a more appropriate class, perhaps
     def exists_in_database(self) -> bool:
@@ -345,12 +442,6 @@ def _snapshot(paths: list[str]) -> dict[str, FileStat]:
     return snapshot
 
 
-def _stable_key(stat: FileStat) -> tuple[int, int] | None:
-    """What stability is judged on: size and mtime only, so a cold-tier recall
-    (blocks) or a chmod (ctime) does not cost an extra interval."""
-    return None if stat is None else (stat.size, stat.mtime_ns)
-
-
 def _describe_change(before: FileStat, after: FileStat) -> str:
     if after is None:
         return "missing"
@@ -378,13 +469,17 @@ def _assess(
     """Decide one poll of `wait_until_stable`; pure, so the rules are testable alone.
 
     `unreadable` and `unfinished` are the probe results, empty when the probes did
-    not run (because some file's size or mtime had changed).
+    not run (because something about some file had changed). Ready needs nothing at
+    all to have changed: a write that moved only ctime or blocks is a live copy, and
+    md5ing it would fail with the wrong advice. That costs at most one extra interval
+    after a chmod or a recall triggered by an earlier poll's probe.
+
+    The verdict does not decide when to *stop*: see `_should_stop`.
     """
-    settled = all(_stable_key(current[p]) == _stable_key(previous[p]) for p in current)
-    if settled and not unreadable and not unfinished:
+    progressed = [p for p in current if current[p] != previous[p]]
+    if not progressed and not unreadable and not unfinished:
         return _Verdict(_READY, [])
 
-    progressed = [p for p in current if current[p] != previous[p]]
     if progressed:
         lines = [_progress_line(p, previous[p], current[p], interval_s) for p in progressed]
         lines += [u.reason for p, u in unfinished.items() if p not in progressed]
@@ -394,6 +489,21 @@ def _assess(
     if stalled:
         return _Verdict(_STALLED, stalled)
     return _Verdict(_WAITING, unreadable + [u.reason for u in unfinished.values()])
+
+
+def _should_stop(
+    state: str, idle_s: float, stall_after_s: float, locked_idle_after_s: float
+) -> bool:
+    """Whether a poll's verdict, after `idle_s` with nothing written anywhere in the
+    run, ends the wait: a stall after `stall_after_s`, a locked (or recalling) wait
+    after the longer `locked_idle_after_s`. A progressing copy never stops here; only
+    the backstop ends it.
+    """
+    if state == _STALLED:
+        return idle_s >= stall_after_s
+    if state == _WAITING:
+        return idle_s >= locked_idle_after_s
+    return False
 
 
 def _progress_line(path: str, before: FileStat, after: FileStat, interval_s: float) -> str:
@@ -469,11 +579,19 @@ class _Unfinished(NamedTuple):
     stall_evidence: bool
 
 
-def _unfinished(paths: list[str]) -> dict[str, _Unfinished]:
+def _unfinished(
+    paths: list[str], recalled: set[str] | frozenset[str] = frozenset()
+) -> dict[str, _Unfinished]:
     """The paths which do not look like a finished gzip copy, with why.
 
-    Run only once the files open, i.e. after any cold-tier recall, so a complete file
-    is fully allocated here.
+    Run only on files that open, i.e. after the open probe has started any cold-tier
+    recall, and never on locked files: the allocation test below needs no open, so it
+    would read a live locked copy as stall evidence.
+
+    A file in `recalled` was seen offline during this wait. If the recall has not
+    finished (recall need not block until the whole file is resident), it is partly
+    allocated like a stalled copy, but that is no evidence of one. The content
+    checks still apply to it: what a read returns is the real data.
     """
     unfinished: dict[str, _Unfinished] = {}
 
@@ -484,6 +602,13 @@ def _unfinished(paths: list[str]) -> dict[str, _Unfinished]:
         try:
             st = os.stat(path)
             unallocated = st.st_size - _allocated(st)
+            if unallocated > _UNALLOCATED_SLACK and path in recalled:
+                unfinished[path] = _Unfinished(
+                    "%s: %.1f%% recalled from the cold tier so far, recall still in "
+                    "progress?" % (path, 100 * _allocated(st) / st.st_size),
+                    stall_evidence=False,
+                )
+                continue
             if unallocated > _UNALLOCATED_SLACK:
                 shape(
                     path,
@@ -538,13 +663,13 @@ def _md5(path: str, chunk: int = 8 * 1024 * 1024) -> str:
     return h.hexdigest()
 
 
-def _unreadable(paths: list[str]) -> list[str]:
+def _unreadable(paths: list[str]) -> dict[str, str]:
     """The paths which cannot be opened, with why - typically a copy's share lock."""
-    unreadable = []
+    unreadable = {}
     for path in paths:
         try:
             with open(path, "rb") as f:
                 _ = f.read(1)
         except OSError as e:
-            unreadable.append("%s: %s (still locked by a copy?)" % (path, e))
+            unreadable[path] = "%s: %s (still locked by a copy?)" % (path, e)
     return unreadable
