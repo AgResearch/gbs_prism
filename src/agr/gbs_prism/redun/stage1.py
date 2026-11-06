@@ -52,10 +52,13 @@ from agr.redun.tasks.fastqc import FastqcOutput, fastqc_zip_files
 from agr.redun.tasks.split_barcodes import SplitBarcodesOutput
 from agr.redun import lazy_map
 
-# Lane fastqs must be unchanged across this interval before anything reads them.
+# Lane fastqs must be unchanged across this interval before anything reads them; a
+# copy with nothing written for this long is stalled and stops the run.
 FASTQ_STABLE_INTERVAL_S = 5 * 60
-# Give up if a copy into the run directory has not finished by then.
-FASTQ_STABLE_MAX_WAIT_S = 2 * 60 * 60
+# Backstop: give up if a still-progressing copy has not finished by then. A slow copy
+# (DL100022099 L02/L04 re-copy, 6 Nov: ~1.6 MB/s, ~7 h) must fit, so a run can be
+# launched ahead of it and start by itself when it completes.
+FASTQ_STABLE_MAX_WAIT_S = 24 * 60 * 60
 
 
 @dataclass
@@ -161,6 +164,11 @@ def split_barcodes_run(
     That follows `mgi_prism`, where a mismatched sheet/run pair aborts at DAG-build
     time rather than after a long demultiplexing job has quietly sent a whole lane to
     `undecoded`.
+
+    The fastqs are vetted first, also before any Slurm job: present, stable, finished
+    gzip copies, and md5-identical to the instrument's `FileInfo.txt` (about 1.5 min
+    for 4 lanes, in parallel on this host). A run may be launched ahead of its copy:
+    this waits up to 24 h while the copy progresses and stops at once if it stalls.
     """
     sequencer_run = SequencerRun(seq_root, run)
     paths = Paths(postprocessing_root=postprocessing_root, run=run)
@@ -169,14 +177,17 @@ def split_barcodes_run(
     libraries = sorted(lanes_by_library(demux_sheet))
 
     # Fail fast and legibly if a lane's fastqs are absent altogether, then wait for
-    # them to stop changing: they arrive by an SMB copy that may still be running, and
-    # `lane_plan` below is the first thing to read them.
+    # them to stop changing and look like finished gzip copies: they arrive by an SMB
+    # copy that may still be running, and `lane_plan` below is the first thing to read
+    # them. Finally check every fastq's md5 against the instrument's FileInfo.txt, the
+    # only check a copy that stalled or was rewritten cannot pass.
     sequencer_run.validate(lanes=lanes)
     sequencer_run.wait_until_stable(
         lanes=lanes,
         interval_s=FASTQ_STABLE_INTERVAL_S,
         max_wait_s=FASTQ_STABLE_MAX_WAIT_S,
     )
+    sequencer_run.verify_checksums(lanes=lanes)
     paths.make_run_dirs(lanes=lanes, libraries=libraries)
 
     # Barcode geometry per lane, confirmed against that lane's own reads. Raises
