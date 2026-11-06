@@ -23,23 +23,35 @@ cohort is also mapped to sheep. Those numbers are not in the table, but they are
 `stats_summary.txt` (linked as "all references"). A cohort with no reference in its
 keyfile (e.g. microbes) shows as `(none indicated)`.
 
-Before any cluster jobs start, stage 1 waits until the lane fastqs are complete
-copies (gzip, with no unwritten end) that have stopped changing. It checks every 5
-minutes and logs how far the copy has got, with an estimate of the time left.
+Before any cluster jobs start, stage 1 checks the run. First, at launch, it checks
+everything it can without waiting for the fastqs to arrive:
+- the sample sheet's `[Header] Flowcell` is the run name,
+- every lane in the sheet has barcodes to demultiplex on,
+- every lane has its fastq, `BioInfo.csv` and `L0n/<run>_L0n_FileInfo.txt`, and the
+  run is single-end.
+
+Then it waits until the lane fastqs are complete copies (gzip, with no unwritten end)
+that have stopped changing. It checks every 5 minutes and logs how far the copy has
+got, with an estimate of the time left.
 
 You can launch a run **before its copy has finished**: it waits for up to 24 hours
 while the copy keeps progressing, and starts by itself as soon as the copy is
-complete. If the copy stops part-way (nothing written to any fastq for 5 minutes), it
-stops straight away. Then it checks every fastq's md5 against the instrument's
-`L0n/<run>_L0n_FileInfo.txt` (about 2 minutes for 4 lanes).
+complete. If the copy stops part-way (nothing written to any fastq for 15 minutes),
+it stops. Then it checks every fastq's md5 against the instrument's `FileInfo.txt`
+(about 1.5 minutes for 4 lanes).
 
 It stops with an error if:
-- the sample sheet and run do not match,
+- the sheet's Flowcell is not the run, or a lane has no usable barcodes (fix the
+  sheet),
+- the sample sheet's barcodes do not match the run's reads,
 - the run is paired-end,
-- a lane's fastqs are missing, or are still being copied after 24 hours,
-- a copy has stopped part-way ("copy stalled": re-copy those files),
-- a lane has no `FileInfo.txt`, or a fastq's md5 does not match it (corrupt copy:
-  re-copy the run).
+- a lane's fastq, `BioInfo.csv` or `FileInfo.txt` is missing, or the fastq is still
+  being copied after 24 hours,
+- a copy has stopped part-way ("copy stalled", after 15 minutes with nothing
+  written: re-copy those files),
+- a copy still holds its files locked but has written nothing for an hour ("the
+  copy may be hung": check the copier),
+- a fastq's md5 does not match `FileInfo.txt` (corrupt copy: re-copy the run).
 
 ## Inputs
 
@@ -68,8 +80,11 @@ login-1$ run_gbs_prism DL100018469
 
 A Kerberos ticket lasts 10 hours, and the database steps come at the end of a run. A
 run launched ahead of a slow copy can outlast it. `kinit -r 7d` makes the ticket
-renewable for 7 days. Before it expires (`klist` shows when), renew it from any
-login-1 shell with `kinit -R`. The running pipeline picks up the renewed ticket.
+renewable for 7 days, and the pipeline then renews it itself every hour (`kinit -R`,
+no password needed). It will not start without a valid ticket, and warns in
+`gbs_prism.log` if the ticket is not renewable. To renew by hand, e.g. for a run
+started with an older version, use `kinit -R` from any login-1 shell before the
+ticket expires (`klist` shows when).
 
 `run_gbs_prism <run>` is shorthand for
 `redun run $GBS_PRISM/pipeline.py main --run <run>`.
