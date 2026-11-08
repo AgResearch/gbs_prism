@@ -200,6 +200,22 @@ def lane_number(lane: int | str) -> int:
     return int(text)
 
 
+def check_flowcell(sheet: MgiSampleSheet, run: str):
+    """Refuse a sheet whose `[Header] Flowcell` is not `run`.
+
+    For MGI the flowcell id is the run name, and gquery cross-checks the two at
+    keyfile import - hours into a run, after demultiplexing. A sheet copied from a
+    template with the old Flowcell can still fit the run's barcodes, so this is
+    checked at launch instead.
+    """
+    if sheet.flowcell != run:
+        raise MgiSampleSheetError(
+            "%s: [Header] Flowcell is %s but the run is %s; fix the sheet's Flowcell "
+            "(or check the sheet is for this run) and relaunch"
+            % (sheet.path, sheet.flowcell, run)
+        )
+
+
 def lanes_in_sample_sheet(sheet: MgiSampleSheet) -> list[str]:
     """Sorted, deduplicated lane labels across every `[Data]` row."""
     lane_column = column(sheet, *LANE_COLUMNS)

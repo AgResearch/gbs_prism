@@ -12,6 +12,7 @@ import pytest
 from agr.seq.mgi.sample_sheet import (
     GENERATE_KEYFILE_SECTION,
     MgiSampleSheetError,
+    check_flowcell,
     data_rows,
     gbs_library_specs,
     lane_label,
@@ -195,3 +196,20 @@ def test_data_edit_changes_the_demux_and_shared_import_keys(sheet, tmp_path):
     assert replace(e_demux, path=demux.path) != demux
     assert e_data != data
     assert e_specs == specs
+
+
+def test_check_flowcell_accepts_the_sheets_own_run(sheet):
+    check_flowcell(sheet, "DL100018469")  # must not raise
+
+
+def test_check_flowcell_refuses_a_sheet_for_another_run(sheet):
+    """A sheet copied from a template can carry the wrong Flowcell yet still fit the
+    run's barcodes; caught at launch rather than at keyfile import, hours later."""
+    with pytest.raises(MgiSampleSheetError, match="Flowcell is DL100018469 but the run is DL100099999"):
+        check_flowcell(sheet, "DL100099999")
+
+
+def test_check_flowcell_refuses_a_sheet_with_no_flowcell(sheet):
+    no_header = replace(sheet, sections={**sheet.sections, "Header": []})
+    with pytest.raises(MgiSampleSheetError, match="no Flowcell"):
+        check_flowcell(no_header, "DL100018469")

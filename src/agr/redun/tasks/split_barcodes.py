@@ -111,6 +111,7 @@ def _split_barcodes_job_spec(
 def split_barcodes_one(
     lane: str,
     read_args: list[str],
+    fastq_md5: list[str],
     barcode_file: File,
     b_args: list[str],
     out_dir: str,
@@ -121,7 +122,15 @@ def split_barcodes_one(
     Geometry arrives as already-resolved argv fragments rather than as a `LanePlan`,
     so the redun cache key is the arguments that actually affect the output - change
     an offset and this lane re-runs; change something cosmetic and it does not.
+
+    `fastq_md5` is the md5 of each read file, verified against the instrument's
+    `FileInfo.txt`, in `read_args` order. It is unused here: it is a *content* key.
+    `read_args` holds only paths, and a redun `File` would not do either, since its
+    hash is path + size + mtime and the copier restores the source mtime, so a
+    re-copied fastq looks identical to redun. With the md5 in the key, a lane whose
+    fastq content changed re-demultiplexes rather than reusing a stale result.
     """
+    _ = fastq_md5  # content key, see above
     os.makedirs(out_dir, exist_ok=True)
 
     result = run_job_n(
