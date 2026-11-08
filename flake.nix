@@ -213,7 +213,7 @@
 
                 # create simplified wrapper script for lab staff
                 cat >$out/bin/run_gbs_prism <<EOF
-                #!{pkgs.bash}/bin/bash
+                #!${pkgs.bash}/bin/bash
 
                 test \$# -eq 1 || { echo >&2 "usage: run_gbs_prism <run>"; exit 1; }
                 test "\$1" == "--help" -o "\$1" == "-h" && { echo >&2 "usage: run_gbs_prism <run>"; exit; }
