@@ -1,13 +1,14 @@
 [project]
 name = "gbs_prism"
-version = "2.6.1"
+version = "3.0.0"
 description = "GBS Prism pipeline"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-  { name = "Alan McCulloch", email = "alan.mcculloch@agresearch.co.nz" },
+  { name = "Ben Perry", email = "ben.perry@agresearch.co.nz" },
   { name = "Simon Guest", email = "simon.guest@agresearch.co.nz" },
+  { name = "Alan McCulloch", email = "alan.mcculloch@agresearch.co.nz" },
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
