@@ -1,0 +1,32 @@
+RunName,DL100018469
+UserName,research
+ISW Version,V1.1.0.340
+Machine ID,INV-MGI-T1
+Flow Cell Pos,A
+Recipe Version,V1.2.0.4
+IsRerunFlowcell,False
+StartSequenceTime,2026-07-24 11:05:21
+NeedAutoWash,True
+NeedAnalysis,False
+Process,ssDNA
+SplitBarcode,No split
+Read1Len,100
+Read2Len,0
+BarcodeLen,10
+DualBarcodeLen,8
+Read1DarkCycles,
+Read2DarkCycles,
+BarcodeDarkCycles,
+DualBarcodeDarkCycles,
+Customprimer,False
+Application,Default
+BarcodePosition,BarcodePosEnd
+DNBID_L1,SQ5420_SQ5421
+BarcodeType_L1,NovaSeqi5x8i7x10
+FlowcellID,DL100018469
+FlowcellType,FCL
+Cartridge1 ID,W0126020405949
+Cartridge1 Type,App-D
+Cartridge2 ID,W0126020503365
+Cartridge3 ID,W0126020802803
+UploadDataServer_L1,["Remote1"]

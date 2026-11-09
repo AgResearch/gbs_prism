@@ -11,3 +11,4 @@ __pycache__*
 kmer_binning.txt.*
 /src/redun
 C*.md
+/log/

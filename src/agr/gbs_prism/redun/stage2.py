@@ -14,7 +14,7 @@ from agr.redun import concat, lazy_map
 
 from agr.gbs_prism.paths import GbsPaths
 from agr.gbs_prism.gbs_target_spec import CohortTargetSpec, GbsTargetSpec
-from agr.seq.types import flowcell_id, Cohort
+from agr.seq.types import fastq_name_for_tassel3, flowcell_id, Cohort
 from agr.redun.tasks import (
     bam_stats_all,
     bwa_aln_all,
@@ -33,10 +33,7 @@ from agr.redun.tasks import (
 )
 from agr.redun.tasks.bwa import Bwa
 from agr.redun.tasks.fastq_sample import FastqSampleSpec
-from agr.redun.tasks.tassel3 import (
-    fastq_name_for_tassel3,
-    hap_map_dir,
-)
+from agr.redun.tasks.tassel3 import hap_map_dir
 from agr.redun.tasks.kgd import KgdOutput, kgd_dir
 from agr.redun.tasks.unblind import (
     get_unblind_script,
@@ -58,12 +55,14 @@ class CohortSpec:
 
 
 @task
-def create_cohort_fastq_links(spec: CohortSpec, deduped_fastq: list[File]) -> tuple[list[File], list[File]]:
+def create_cohort_fastq_links(
+    spec: CohortSpec, merged_fastq: dict[str, File]
+) -> tuple[list[File], list[File]]:
     """Link the fastq files for a single cohort separately.
 
     So that subsequent dependencies can be properly captured in wildcarded paths.
     """
-    _ = deduped_fastq  # establishes dependency on upstream fastq content
+    _ = merged_fastq  # establishes dependency on upstream fastq content
     cohort_links = []
     cohort_munged_links = []
     for fastq_basename, fastq_link in spec.target.fastq_links.items():
@@ -78,7 +77,7 @@ def create_cohort_fastq_links(spec: CohortSpec, deduped_fastq: list[File]) -> tu
                     fastq_basename
                     if not blind
                     else fastq_name_for_tassel3(
-                        spec.cohort.libname, flowcell_id(spec.run), fastq_basename
+                        spec.cohort.libname, flowcell_id(spec.run)
                     )
                 ),
             )
@@ -161,12 +160,17 @@ def _cohort_gbs_kgd_stats_import(cohort_output: CohortOutput) -> Optional[File]:
 
 @task()
 def run_cohort(
-    spec: CohortSpec, gbs_keyfile: File, deduped_fastq: list[File], job_context: JobContext
+    spec: CohortSpec,
+    gbs_keyfile: File,
+    merged_fastq: dict[str, File],
+    job_context: JobContext,
 ) -> CohortOutput:
     """Run the entire pipeline for a single cohort."""
     job_context = job_context.with_sub(spec.cohort.name)
 
-    fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(spec, deduped_fastq)
+    fastq_links, munged_fastq_links_for_tassel = create_cohort_fastq_links(
+        spec, merged_fastq
+    )
 
     bwa_sampled = fastq_sample_all(
         fastq_links,
@@ -316,7 +320,7 @@ def run_stage2(
     spec: GbsTargetSpec,
     gbs_paths: GbsPaths,
     gbs_keyfiles: dict[str, File],
-    deduped_fastq: list[File],
+    merged_fastq: dict[str, File],
     job_context: JobContext,
 ) -> Stage2Output:
     cohort_outputs = {}
@@ -341,7 +345,7 @@ def run_stage2(
         )
 
         cohort_outputs[name] = run_cohort(
-            target, gbs_keyfiles[cohort.libname], deduped_fastq, job_context
+            target, gbs_keyfiles[cohort.libname], merged_fastq, job_context
         )
 
     # this import step need to be once for all cohorts

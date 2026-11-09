@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 import shutil
 from dataclasses import dataclass
 from redun import task, File
@@ -41,23 +40,6 @@ HAP_MAP_FILES = [
 
 def tassel3_tool_name(plugin: str) -> str:
     return f"tassel3_{plugin}"
-
-
-# TODO review this!!!
-def fastq_name_for_tassel3(
-    libname: str, fcid: str, original_fastq_filename: str
-) -> str:
-    """Tassel3 is very fussy about what filenames it accepts for FASTQ files.
-
-    This was cribbed from gquery/sequencing/illumina.py
-    """
-    lane_re = re.compile("_L00([0-9])_")
-    if m := lane_re.search(original_fastq_filename):
-        lane = m.group(1)
-        return "%s_%s_s_%s_fastq.txt.gz" % (libname, fcid, lane)
-    else:
-        # return "%s_%s_s_X_fastq.txt.gz" % (libname, fcid)
-        return original_fastq_filename
 
 
 class Tassel3:

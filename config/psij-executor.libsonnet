@@ -40,12 +40,28 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
   tools(job_prefix)::
     {
       default: tool_default(job_prefix),
-
-      bcl_convert: tool_default(job_prefix) {
+      split_barcodes: tool_default(job_prefix) {
+        threads: 24,
+        max_mem_gb: 88,
         job_attributes+: {
+          duration: {
+            hours: 1,
+          },
           custom_attributes+: customised({
-            'cpus-per-task': '16',
-            mem: '50G',
+            'cpus-per-task': '24',
+            mem: '96G',
+          }),
+        },
+      },
+
+      merge_fastq: tool_default(job_prefix) {
+        job_attributes+: {
+          duration: {
+            hours: 2,
+          },
+          custom_attributes+: customised({
+            'cpus-per-task': '1',
+            mem: '2G',
           }),
         },
       },
@@ -64,20 +80,6 @@ local tassel3_default(job_prefix) = tool_default(job_prefix) {
       seqtk_sample: tool_default(job_prefix),
 
       kmer_prism: tool_default(job_prefix),
-
-      dedupe: tool_default(job_prefix) {
-        java_max_heap: '800G',
-        job_attributes+: {
-          queue_name: 'hugemem',
-          duration: {
-            hours: 8,
-          },
-          custom_attributes+: customised({
-            'cpus-per-task': '6',
-            mem: '820G',
-          }),
-        },
-      },
 
       cutadapt: tool_default(job_prefix),
 

@@ -4,7 +4,10 @@ from redun.context import get_context
 from redun.scheduler import catch_all
 from redun_psij import JobContext
 
+from agr.util.kerberos import check_ticket, start_renewer
 from agr.util.path import expand
+from agr.seq.sequencer_run import find_seq_root
+from agr.redun.tasks import get_sample_sheet
 from agr.redun.util import await_results
 from agr.gbs_prism.redun import (
     run_stage1,
@@ -28,6 +31,13 @@ logging.basicConfig(
 # for noisy_module in ["asyncio", "pulp.apis.core", "urllib3"]:
 #     logging.getLogger(noisy_module).setLevel(logging.WARN)
 
+# At import, not in `main`: a fully cached relaunch skips main's body yet still
+# reaches the database (`get_genophyle_export` is cache=False). Fails fast without a
+# ticket; renews hourly with `kinit -R` (no password) so a run that waits out a slow
+# copy still has a ticket for its database steps.
+check_ticket()
+_ = start_renewer()
+
 
 MainResults = tuple[Stage1Output, Stage2Output, Stage3Output, list[File], str]
 
@@ -46,11 +56,19 @@ def main(
     run: str,
     path_context=get_context("path"),
 ) -> MainResults:
-    path = {k: expand(v) for (k, v) in path_context.items()}
+    path = {
+        k: [expand(x) for x in v] if isinstance(v, list) else expand(v)
+        for (k, v) in path_context.items()
+    }
     job_context = JobContext(run)
 
+    # A File, so that editing the sheet re-triggers stage 1 (see get_sample_sheet).
+    sample_sheet = get_sample_sheet(path["sample_sheet_root"], run)
+
     stage1 = run_stage1(
-        seq_root=path["seq_root"],
+        # Resolved here so stage 1 keeps taking the single root it always has.
+        seq_root=find_seq_root(path["seq_roots"], run),
+        sample_sheet=sample_sheet,
         postprocessing_root=path["postprocessing_root"],
         gbs_backup_dir=path["gbs_backup_dir"],
         keyfiles_dir=path["keyfiles_dir"],
@@ -64,11 +82,13 @@ def main(
         spec=stage1.spec,
         gbs_paths=stage1.gbs_paths,
         gbs_keyfiles=stage1.gbs_keyfiles,
-        deduped_fastq=stage1.deduped_fastq,
+        merged_fastq=stage1.merged_fastq,
         job_context=job_context,
     )
 
-    stage3 = run_stage3(stage2=stage2, out_dir=stage1.gbs_paths.report_dir)
+    stage3 = run_stage3(
+        stage2=stage2, spec=stage1.spec, out_dir=stage1.gbs_paths.report_dir
+    )
 
     reports = create_reports(
         run=run,

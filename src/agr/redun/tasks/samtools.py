@@ -3,7 +3,13 @@ import re
 from redun import task, File
 
 from agr.util.subprocess import run_catching_stderr
-from agr.redun import one_forall
+from agr.redun import one_forall, existing_file
+from agr.gbs_prism.mapping_summary import (
+    indicated_mapping_rows,
+    mapping_pct_and_std,
+    parse_flagstat,
+    write_mapping_summary,
+)
 
 import logging
 
@@ -29,6 +35,7 @@ def bam_stats_all(bam_files: list[File]) -> list[File]:
 
 @task()
 def collate_mapping_stats(stats_files: list[File], out_path: str) -> File:
+    """Mapping % for every sample and reference, as `stats_summary.txt`."""
     # adapted, fixed, and simplified from legacy seq_prisms collate_mapping_stats.py
 
     stats_dict = {}
@@ -45,36 +52,46 @@ def collate_mapping_stats(stats_files: list[File], out_path: str) -> File:
         )
         sample_ref = re.sub(r"\.B10\.stats", "", sample_ref)
 
-        map_stats = [0.0, 0.0, 0.0]  # will contain count, total, percent
-
-        with open(stats_file.path, "r") as f:
-            for record in f:
-                tokens = re.split(r"\s+", record.strip())
-                if len(tokens) >= 5:
-                    if (tokens[3], tokens[4]) == ("in", "total"):
-                        map_stats[1] = float(tokens[0])
-                    elif tokens[3] == "mapped":
-                        map_stats[0] = float(tokens[0])
-                        if map_stats[1] > 0:
-                            map_stats[2] = map_stats[0] / map_stats[1]
-                        else:
-                            map_stats[2] = 0.0
-                        break
-
-        stats_dict[sample_ref] = map_stats
+        stats_dict[sample_ref] = mapping_pct_and_std(parse_flagstat(stats_file.path))
 
     with open(out_path, "w") as out_f:
         print("\t".join(("sample_ref", "map_pct", "map_std")), file=out_f)
-        for sample_ref in stats_dict:
-            out_rec = [sample_ref, "0", "0"]
-            (p, n) = (stats_dict[sample_ref][2], stats_dict[sample_ref][1])
-
-            q = 1 - p
-            stddev = 0.0
-            if n > 0:
-                stddev = (p * q / n) ** 0.5
-            out_rec[1] = str(p * 100.0)
-            out_rec[2] = str(stddev * 100.0)
-            print("\t".join(out_rec), file=out_f)
+        for sample_ref, (map_pct, map_std) in stats_dict.items():
+            print("\t".join((sample_ref, str(map_pct), str(map_std))), file=out_f)
 
     return File(out_path)
+
+
+@task()
+def collate_indicated_mapping_stats(
+    stats_by_cohort: dict[str, list[File]],
+    refs_by_cohort: dict[str, list[str]],
+    indicated_by_cohort: dict[str, list[str]],
+    out_path: str,
+) -> File:
+    """Mapping % for the keyfile-indicated reference(s) of each cohort only."""
+    rows = indicated_mapping_rows(
+        stats_by_cohort={
+            cohort: [file.path for file in files]
+            for cohort, files in stats_by_cohort.items()
+        },
+        refs_by_cohort=refs_by_cohort,
+        indicated_by_cohort=indicated_by_cohort,
+    )
+    write_mapping_summary(rows, out_path)
+    return File(out_path)
+
+
+@task()
+def plot_mapping_stats(mapping_summary: File) -> File:
+    """Bar chart of the indicated mapping summary, as `mapping_stats.jpg` alongside it."""
+    data_dir = os.path.dirname(mapping_summary.path)
+    _ = run_catching_stderr(
+        [
+            "mapping_stats_plots.R",
+            f"datafolder={data_dir}",
+            f"summary={os.path.basename(mapping_summary.path)}",
+        ],
+        check=True,
+    )
+    return existing_file(os.path.join(data_dir, "mapping_stats.jpg"))

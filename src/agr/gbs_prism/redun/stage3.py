@@ -11,8 +11,12 @@ from agr.redun.tasks import (
     get_tags_reads_plots,
     get_tags_reads_cv,
     collate_mapping_stats,
+    collate_indicated_mapping_stats,
+    plot_mapping_stats,
     collate_barcode_yields,
 )
+
+from agr.gbs_prism.gbs_target_spec import GbsTargetSpec
 
 from .stage2 import Stage2Output
 
@@ -24,12 +28,16 @@ class Stage3Output:
     tags_reads_cv: File
     tags_reads_plots: dict[str, File]
     bam_stats_summary: File
+    indicated_mapping_summary: File
+    mapping_stats_plot: File
     barcode_yield_summary: File
     barcode_yields_plot: File
 
 
 @task()
-def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
+def run_stage3(
+    stage2: Stage2Output, spec: GbsTargetSpec, out_dir: str
+) -> Stage3Output:
     os.makedirs(out_dir, exist_ok=True)
 
     tag_counts = sorted(
@@ -55,6 +63,21 @@ def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
         bam_stats_files, out_path=os.path.join(out_dir, "stats_summary.txt")
     )
 
+    # mapping % for just the reference genome(s) the keyfile indicates for each cohort
+    indicated_mapping_summary = collate_indicated_mapping_stats(
+        stats_by_cohort={
+            cohort_name: cohort.bam_stats_files
+            for cohort_name, cohort in stage2.cohorts.items()
+        },
+        refs_by_cohort={
+            cohort_name: sorted(target.alignment_references.keys())
+            for cohort_name, target in spec.cohorts.items()
+        },
+        indicated_by_cohort=spec.indicated_references,
+        out_path=os.path.join(out_dir, "indicated_mapping_summary.txt"),
+    )
+    mapping_stats_plot = plot_mapping_stats(indicated_mapping_summary)
+
     fastq_to_tag_count_stdouts = {
         cohort_part: stdout
         for cohort in stage2.cohorts.values()
@@ -75,6 +98,8 @@ def run_stage3(stage2: Stage2Output, out_dir: str) -> Stage3Output:
         tags_reads_cv=tags_reads_cv,
         tags_reads_plots=tags_read_plots,
         bam_stats_summary=bam_stats_summary,
+        indicated_mapping_summary=indicated_mapping_summary,
+        mapping_stats_plot=mapping_stats_plot,
         barcode_yield_summary=barcode_yield_summary,
         barcode_yields_plot=barcode_yields_plot,
     )
