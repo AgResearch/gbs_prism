@@ -4,10 +4,6 @@ Ported from `mgi_prism/workflow/scripts/process_samplesheet.py`, which is
 stdlib-only and `NamedTuple`-based because bare python3 on the eRI compute nodes is
 3.6.8. gbs_prism runs 3.12, so the style is modernised; the logic is not.
 
-**Keep this module stdlib-only.** CI (`nix run '.#tests'`) builds python plus pytest
-and nothing else, so anything importing gquery, redun or pydantic fails at
-collection - see CLAUDE.md.
-
 Two structural differences from the Illumina sheets `agr.seq.sample_sheet` handles:
 
 * an MGI sheet has no `[Settings]` section, so the Illumina parser rejects it

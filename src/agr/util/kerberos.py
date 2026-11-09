@@ -10,7 +10,7 @@ password, but only works while the ticket is still valid and before its "renew u
 time. A ticket is renewable only if it was obtained with `kinit -r <lifetime>`; the
 README tells users to launch with `kinit -r 7d`.
 
-`klist`/`kinit` being absent (CI, a laptop) only logs a warning, so nothing that
+`klist`/`kinit` being absent (e.g. a laptop) only logs a warning, so nothing that
 imports the pipeline needs Kerberos to exist.
 """
 

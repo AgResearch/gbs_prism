@@ -1,7 +1,5 @@
 """Tests for MGI barcode geometry and layout verification.
 
-Stdlib-only, so these run under `nix run '.#tests'`.
-
 A wrong offset produces a run that *looks* successful while sending ~100% of reads
 to `undecoded`, so these pin the arithmetic against both real BioInfo.csv fixtures
 (T1+ and G99, which order their barcode blocks oppositely) and against synthesised

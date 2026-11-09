@@ -1,7 +1,5 @@
 """Tests for splitBarcode's BarcodeStat.txt, against the reference run's real file.
 
-Stdlib-only, so these run in CI.
-
 This is the MGI analog of the five bcl-convert metrics files the Illumina report used:
 MultiQC has no splitBarcode parser, so the demultiplexing stats reach the report as
 custom content.

@@ -1,7 +1,5 @@
 """Tests for the MGI post-processing path layout.
 
-Stdlib-only, so these run in CI.
-
 The layout dropped `illumina/<platform>/` for a single `mgi/` segment, aligning with
 `mgi_prism`, which already writes to `postprocessing/mgi/<flowcell>`.
 """

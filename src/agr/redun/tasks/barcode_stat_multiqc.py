@@ -4,8 +4,8 @@ Runs in-process rather than as a Slurm job: this is a few thousand lines of text
 processing measured in seconds, and queueing it would cost more than doing it.
 `mgi_prism` treats the equivalent rule as a `localrule` for the same reason.
 
-The work itself is in `agr.seq.mgi.barcode_stat`, which is stdlib-only and therefore
-unit-tested in CI; this module is only the redun wrapper.
+The work itself is in `agr.seq.mgi.barcode_stat`, which is unit-tested; this module
+is only the redun wrapper.
 """
 
 import logging

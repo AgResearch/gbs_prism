@@ -1,7 +1,6 @@
 """splitBarcode's `BarcodeStat.txt` -> MultiQC custom content.
 
-Ported from `mgi_prism/workflow/scripts/barcodestat_to_multiqc.py`. **Keep this
-module stdlib-only**, so it stays CI-testable.
+Ported from `mgi_prism/workflow/scripts/barcodestat_to_multiqc.py`.
 
 This is the MGI analog of the five bcl-convert metrics files the Illumina report
 used. MultiQC has no splitBarcode parser and no plugin to write one into, so the

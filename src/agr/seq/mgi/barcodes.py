@@ -1,8 +1,7 @@
 """MGI barcode geometry for `splitBarcode`, and the layout check that confirms it.
 
 Ported from `mgi_prism/workflow/scripts/process_samplesheet.py` - the logic is
-unchanged, the style is modernised for 3.12. **Keep this module stdlib-only**: CI
-builds python plus pytest and nothing else.
+unchanged, the style is modernised for 3.12.
 
 Design principle: **fail loudly**. A wrong barcode offset produces a run that looks
 successful while sending ~100% of reads to `undecoded`, so nothing here guesses.

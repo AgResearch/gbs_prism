@@ -9,7 +9,7 @@ This mirrors the stage 1 nesting with stub tasks:
 It uses the real `agr.seq.mgi.sample_sheet` helpers stage 1 uses, and counts stub
 executions to assert which edits re-run what.
 
-Needs redun, so it is skipped under CI (`nix run '.#tests'`), which has none.
+Needs redun, so it is skipped outside the devshell.
 """
 
 import os.path

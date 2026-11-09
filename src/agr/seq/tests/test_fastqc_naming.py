@@ -1,7 +1,5 @@
 """Tests for predicting FastQC's output filenames.
 
-Stdlib-only, so these run in CI.
-
 FastQC names its output by stripping known extensions from the input, and the task
 must predict that name exactly: redun checks for the file at the predicted path, so a
 mismatch reports a successful job as a failure and takes the whole run down with it.

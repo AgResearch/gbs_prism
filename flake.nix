@@ -348,17 +348,6 @@
               type = "app";
               program = "${print-lmod-commands}/bin/gbs_prism-print-lmod-commands";
             };
-
-            # For now we can't clone gquery and geno_import repos in GitHub actions, as they're on Azure DevOps.
-            # This may be enough to run useful tests though:
-            tests = let test-environment = python3.withPackages (ps: [ ps.pytest ]); in {
-              type = "app";
-              program = "${writeShellScript "gbs_prism-tests" ''
-                export PATH=${pkgs.lib.makeBinPath [test-environment]}
-                export PYTHONPATH=$(pwd)/src:$PYTHONPATH
-                pytest src
-              ''}";
-            };
           };
 
           # for other flakes to consume the gquery environment

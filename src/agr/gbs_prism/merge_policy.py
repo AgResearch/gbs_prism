@@ -1,7 +1,6 @@
 """Which of a library's lanes to merge, and when to refuse the library.
 
-Stdlib-only, so this stays CI-testable; `agr.redun.tasks.merge_fastq` is only the
-redun wrapper around it.
+`agr.redun.tasks.merge_fastq` is only the redun wrapper around it.
 
 **The problem this solves.** MGI leaves splitBarcode's output per lane, and a
 library's lanes are merged into the single fastq the GBS link farm needs. When a lane

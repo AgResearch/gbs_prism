@@ -1,7 +1,5 @@
 """Tests for the MGI run directory.
 
-Stdlib-only, so these run in CI.
-
 `validate` fails fast on a run that is obviously not ready; `wait_until_stable` waits
 out a copy still in progress. Its sleeps are replaced here by a fake that mutates the
 files between snapshots, so nothing actually waits.

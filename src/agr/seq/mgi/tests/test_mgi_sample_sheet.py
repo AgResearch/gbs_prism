@@ -1,7 +1,4 @@
 """Tests for MGI sample sheet parsing, against the real DL100018469 sheet.
-
-Stdlib-only by design, so these run under `nix run '.#tests'` as well as in the
-devshell - see CLAUDE.md on why CI can collect nothing that imports gquery or redun.
 """
 
 import os.path

@@ -1,7 +1,5 @@
 """Tests for the lane-merge policy.
 
-Stdlib-only, so these run in CI.
-
 The policy exists because two situations look identical on disk - a lane whose
 demultiplexing failed, and a lane where the library legitimately underperformed - and
 they want opposite handling. Read counts from `BarcodeStat.txt` are what tells them
